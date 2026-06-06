@@ -6,8 +6,10 @@ from nlfr.db.ingest import (
     upsert_action,
     upsert_artifact,
     upsert_cache_event,
+    upsert_change,
     upsert_failure,
     upsert_invocation,
+    upsert_proof_block,
     upsert_run,
     upsert_target,
 )
@@ -153,6 +155,127 @@ def seed_remote_exec_db(tmp_path, command=None):
         redaction_state="safe",
     )
     return conn
+
+
+def seed_agent_loop_db(tmp_path):
+    conn = initialize(connect(tmp_path / "nlfr.sqlite"))
+    run_id = upsert_run(
+        conn,
+        stable_key="run:agent-loop",
+        run_group="agent-loop",
+        scenario="llm-bounded-patch",
+        mode="cache-only",
+        status="completed",
+        source_kind="collectable_v1",
+        confidence="high",
+        evidence_refs=["artifact:run.json"],
+        redaction_state="safe",
+    )
+    target_id = upsert_target(
+        conn,
+        stable_key="target:agent-loop",
+        run_id=run_id,
+        label="//tasks:priority_test",
+        target_kind="py_test",
+        status="passed",
+        source_kind="collectable_v1",
+        confidence="high",
+        evidence_refs=["bep:target-completed"],
+        redaction_state="safe",
+    )
+    upsert_cache_event(
+        conn,
+        stable_key="cache:agent-loop",
+        run_id=run_id,
+        target_id=target_id,
+        event_key="agent-loop-cache",
+        event_kind="action_cache",
+        hit=True,
+        source_kind="derived_v1",
+        confidence="medium",
+        evidence_refs=["execution-log:agent-loop"],
+        redaction_state="safe",
+    )
+    upsert_change(
+        conn,
+        stable_key="run:agent-loop:change:llm-bounded-patch:tasks/priority_test.py",
+        run_id=run_id,
+        change_kind="safe_leaf",
+        path="tasks/priority_test.py",
+        before_hash="a" * 64,
+        after_hash="b" * 64,
+        summary="llm-bounded-patch touched tasks/priority_test.py",
+        source_kind="simulated_v1",
+        confidence="medium",
+        evidence_refs=["scenario:llm-bounded-patch", "prompt:sha256:5f78"],
+        redaction_state="safe",
+    )
+    upsert_proof_block(
+        conn,
+        stable_key="run:agent-loop:proof:agent-provenance:llm-bounded-patch",
+        run_id=run_id,
+        block_key="agent-provenance:llm-bounded-patch",
+        block_kind="agent_provenance",
+        title="Agent Provenance: demo-bounded-llm-worker",
+        summary="llm-bounded-patch patch recorded with build status completed.",
+        payload={
+            "scenario_id": "llm-bounded-patch",
+            "agent": {
+                "kind": "bounded_llm_v1",
+                "name": "demo-bounded-llm-worker",
+                "model": "demo-bounded-llm",
+                "prompt_sha256": "5f787e73d6d3f8b65082f2d922e670104c580461abff1185780c76ed13a300a6",
+                "input_signal": "redacted",
+            },
+            "change": {
+                "change_class": "safe_leaf",
+                "patch_sha256": "c" * 64,
+            },
+            "build": {"status": "completed"},
+        },
+        source_kind="simulated_v1",
+        confidence="medium",
+        evidence_refs=["scenario:llm-bounded-patch"],
+        redaction_state="safe",
+    )
+    return conn
+
+
+def test_action_graph_projects_agent_patch_validation_chain(tmp_path):
+    graph = export_action_graph(seed_agent_loop_db(tmp_path), run_group="agent-loop")
+
+    assert graph["summary"]["changes"] == 1
+    assert graph["summary"]["agents"] == 1
+
+    agent_nodes = [node for node in graph["nodes"] if node["kind"] == "agent"]
+    change_nodes = [node for node in graph["nodes"] if node["kind"] == "change"]
+    run_nodes = [node for node in graph["nodes"] if node["kind"] == "run"]
+    assert len(agent_nodes) == 1
+    assert len(change_nodes) == 1
+
+    agent = agent_nodes[0]
+    assert agent["source_kind"] == "simulated_v1"
+    assert agent["payload"]["model"] == "demo-bounded-llm"
+    assert agent["payload"]["prompt_sha256"].startswith("5f787e73")
+    # Raw prompt must never appear anywhere in the projection.
+    assert "raw_prompt" not in json.dumps(graph)
+
+    change = change_nodes[0]
+    assert change["source_kind"] == "simulated_v1"
+    assert change["label"] == "tasks/priority_test.py"
+
+    authored = [edge for edge in graph["edges"] if edge["kind"] == "authored_change"]
+    validated = [edge for edge in graph["edges"] if edge["kind"] == "validated_by"]
+    assert len(authored) == 1
+    assert authored[0]["from"] == agent["id"]
+    assert authored[0]["to"] == change["id"]
+    assert len(validated) == 1
+    assert validated[0]["from"] == change["id"]
+    assert validated[0]["to"] == run_nodes[0]["id"]
+
+    # The validated run carries the validation + cache evidence tail.
+    assert any(node["kind"] == "target" for node in graph["nodes"])
+    assert any(node["kind"] == "cache_event" for node in graph["nodes"])
 
 
 def test_action_graph_projection_preserves_truth_labels(tmp_path):

@@ -46,23 +46,25 @@ else
   echo "local-exec: blocker or failure recorded at $OUT/local-exec.log"
 fi
 
-echo "== NLFR simulated-agent provenance =="
-rm -rf "$OUT/agent-sim"
+echo "== NLFR simulated agent-loop provenance (fixture chain) =="
+# Deterministic, no-Nix agent loop: a bounded agent patch is recorded, then
+# fixture Bazel evidence is attached to the SAME run so the action graph shows
+# agent -> change -> run -> validation -> cache. This fixture chain is
+# simulated_v1; the collectable_v1 chain lives in scripts/agent-loop-proof.sh.
+rm -f "$DB"
+rm -rf "$OUT/workspaces" "$OUT/provenance" "$OUT/simulations"
+AGENT_RUN_KEY="simulation:llm-bounded-patch:cache-only"
 PYTHONPATH=src uv run python -m nlfr simulate \
-  --scenario safe-leaf-change \
-  --output-dir "$OUT/agent-sim" \
+  --scenario llm-bounded-patch \
+  --output-dir "$OUT" \
+  --run-group latest \
   --skip-run \
   --json >"$OUT/agent-sim.json"
-PYTHONPATH=src uv run python -m nlfr proof export \
-  --db "$OUT/agent-sim/nlfr.sqlite" \
-  --run-group agent-sim \
-  --output "$OUT/agent-sim-proof.json"
 
-echo "== NLFR fixture-backed ingest =="
-rm -f "$DB"
+echo "== NLFR fixture-backed validation ingest (joins agent run) =="
 PYTHONPATH=src uv run python -m nlfr ingest \
   --database "$DB" \
-  --run-key fixture-run:cache-only \
+  --run-key "$AGENT_RUN_KEY" \
   --run-group latest \
   --bep "$ROOT/tests/fixtures/bazel/bep.jsonl" \
   --execution-log "$ROOT/tests/fixtures/bazel/execution-log.json" \

@@ -55,9 +55,13 @@ Foundation issues: PER-998, PER-1007, PER-1013, PER-1019, PER-1053.
 
 **Exit:** A-O1 (PER-1055), D-O1 (PER-1057) sign-off.
 
-### Phase 2 — Quantified “fast” (Ring 3, cache leg) → **M2**
+### Phase 2 — Quantified “fast” (Ring 3, cache leg) → **M2** (done)
 
 **Goal:** “Fast” is measurable in proof JSON, not rhetoric.
+
+**Proven (Nix, `collectable_v1`):** cold `hit_rate` 0.0 / 8.17s vs warm
+`hit_rate` 1.0 / 5.48s (`warm_hit_rate_higher` and `warm_duration_lower` both
+true). Evidence: `data/cold-warm-proof/summary.json`.
 
 - Re-run cold/warm in Nix; persist timing + cache `hit_rate` in proof packet
 - Projector exposes collectable cache economics (hits, misses, rate — not dollar claims)
@@ -67,14 +71,14 @@ Foundation issues: PER-998, PER-1007, PER-1013, PER-1019, PER-1053.
 
 **Stop:** Do not claim “10× faster” without artifact-backed deltas.
 
-### Phase 3 — Execution ladder (Ring 3, remote leg) → **M3**
+### Phase 3 — Execution ladder (Ring 3, remote leg) → **M3** (two-worker live)
 
 Strict order — each step is a new claim boundary:
 
 ```
 1-worker endpoints ready     ← Nix proof exists (635ee36)
         ↓
-2-worker config + Nix smoke  ← config done; live proof pending
+2-worker live endpoints      ← Nix proof exists (worker_endpoints_ready, 2 configured)
         ↓
 Direct worker/admin log ingest  ← new parsers, new proof block kinds
         ↓
@@ -83,19 +87,40 @@ Action placement / identity (only if direct evidence exists)
 Multi-machine / LRE / fleet
 ```
 
-- **2-worker:** `NLFR_EXPECTED_WORKERS=2 scripts/local-exec-proof.sh` in Nix → new `summary.json`
+- **2-worker (done):** `NLFR_EXPECTED_WORKERS=2 NLFR_LOCAL_EXEC_OUTPUT=$PWD/data/local-exec-proof-2w scripts/local-exec-proof.sh`
+  ran live in Nix → `data/local-exec-proof-2w/summary.json` with
+  `status=completed`, `worker_readiness.status=worker_endpoints_ready`,
+  `expected_workers=2`, `configured_workers=2`, no environment blocker
+  (`collectable_v1`). This proves two workers configured AND endpoints opened
+  live — not work distribution.
 - **Parsers:** NativeLink stdout/admin only when structured rules exist; else stay unsupported
 - **Graph:** worker nodes only when SQLite has direct evidence rows
 
+**Still unsupported:** worker identity, scheduler assignment, queue time, action
+placement, load distribution.
+
 **Exit:** Each step has `summary.json` + pytest + no softened blockers.
 
-### Phase 4 — Agent loop closure (Ring 2 → 3 bridge) → **M4**
+### Phase 4 — Agent loop closure (Ring 2 → 3 bridge) → **M4** (proven)
 
 **Goal:** Connect “agent changed code” to “validation ran” without token firehose.
 
 - `nlfr simulate` scenarios (backbone) — already there
-- One bounded LLM patch path with full provenance chain
+- One bounded LLM patch path with full provenance chain — `demo/scenarios/llm-bounded-patch.json`
 - Optional: thin adapter docs for Cursor/Bazel monorepo (reference architecture, not product)
+
+**Proven (Nix, `collectable_v1`):** `scripts/agent-loop-proof.sh` applies the
+bounded `llm-bounded-patch` scenario to a copied workspace (never the source),
+runs Bazel through the NativeLink cache, ingests validation+cache evidence with
+`simulate --ingest`, and exports projections. The action graph then shows the
+chain `agent → (authored_change) → change → (validated_by) → run →
+evaluated_target → target → produced_action → action → observed_cache_event →
+cache_event`. Evidence: `data/agent-loop-proof/summary.json` with
+`chain_complete=true`. The patch carries a `model` label and a SHA-256 prompt
+hash only; the raw prompt is never stored or exported (AGENTS.md privacy rule).
+The graph projector now also derives the `agent` node from the
+`agent_provenance` proof block plus the `changes` table, with new edge kinds
+`authored_change` and `validated_by`.
 
 **Exit:** One end-to-end proof run: patch → run → ingest → graph shows agent → patch → validation → cache/execution evidence.
 
@@ -113,14 +138,17 @@ Multi-machine / LRE / fleet
 
 ## Milestones
 
-| Milestone | Proves | Ring | Linear |
-|-----------|--------|------|--------|
-| M1 | PR merged + tryout tag | Ring 1 ~95% | child of PER-1058 |
-| M2 | Cold/warm metrics in proof packet | Ring 3 cache leg | child of PER-1058 |
-| M3 | Two-worker Nix `summary.json` | Ring 3 ~55% | child of PER-1058 |
-| M4 | One LLM spark + full provenance | Ring 2+3 bridge | child of PER-1058 |
+| Milestone | Proves | Ring | Status | Linear |
+|-----------|--------|------|--------|--------|
+| M1 | PR merged + tryout tag | Ring 1 ~95% | done | child of PER-1058 |
+| M2 | Cold/warm metrics in proof packet | Ring 3 cache leg | done (`data/cold-warm-proof/summary.json`) | child of PER-1058 |
+| M3 | Two-worker live Nix `summary.json` | Ring 3 cache+remote leg | done (`data/local-exec-proof-2w/summary.json`) | child of PER-1058 |
+| M4 | One bounded LLM patch + full provenance chain | Ring 2+3 bridge | done (`data/agent-loop-proof/summary.json`) | child of PER-1058 |
 
-After M4: credibly at reference-kit + credible substrate demo, not operator console or enterprise provenance yet.
+After M4: credibly at reference-kit + credible substrate demo, not operator
+console or enterprise provenance yet. Worker identity, scheduler assignment,
+queue time, action placement, and load distribution remain unsupported until
+direct worker evidence is captured.
 
 ## Decision rules
 
@@ -153,6 +181,7 @@ scripts/verify-demo.sh
 # Real toolchain (inside nix develop):
 scripts/cold-warm-cache-proof.sh
 scripts/local-exec-proof.sh
-NLFR_EXPECTED_WORKERS=2 scripts/local-exec-proof.sh
+NLFR_EXPECTED_WORKERS=2 NLFR_LOCAL_EXEC_OUTPUT=$PWD/data/local-exec-proof-2w scripts/local-exec-proof.sh
+scripts/agent-loop-proof.sh
 npm --prefix apps/canvas run capture
 ```

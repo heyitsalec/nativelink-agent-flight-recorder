@@ -22,6 +22,8 @@ def export_action_graph(conn: Connection, *, run_group: str) -> dict[str, Any]:
     actions = rows(conn, "actions", run_ids)
     cache_events = rows(conn, "cache_events", run_ids)
     failures = rows(conn, "failures", run_ids)
+    changes = rows(conn, "changes", run_ids)
+    proof_blocks = rows(conn, "proof_blocks", run_ids)
     explicit_nodes = rows(conn, "graph_nodes", run_ids)
     explicit_edges = rows(conn, "graph_edges", run_ids)
 
@@ -30,6 +32,14 @@ def export_action_graph(conn: Connection, *, run_group: str) -> dict[str, Any]:
 
     for run in runs:
         nodes.append(_node(run["id"], "run", run.get("scenario") or run["stable_key"], run))
+
+    agent_node_by_run = _project_agents(proof_blocks, nodes)
+    for item in changes:
+        nodes.append(_node(item["id"], "change", item.get("path") or item["id"], item))
+        agent_node_id = agent_node_by_run.get(item["run_id"])
+        if agent_node_id:
+            edges.append(_edge(agent_node_id, item["id"], "authored_change", item))
+        edges.append(_edge(item["id"], item["run_id"], "validated_by", item))
     for item in invocations:
         nodes.append(
             _node(
@@ -122,10 +132,56 @@ def export_action_graph(conn: Connection, *, run_group: str) -> dict[str, Any]:
             "target_statuses": status_counts(targets),
             "cache_events": len(cache_events),
             "failures": len(failures),
+            "changes": len(changes),
+            "agents": len(agent_node_by_run),
         },
         "nodes": nodes,
         "edges": edges,
     }
+
+
+def _project_agents(
+    proof_blocks: list[dict[str, Any]],
+    nodes: list[dict[str, Any]],
+) -> dict[str, str]:
+    """Derive agent nodes from recorded agent_provenance proof blocks.
+
+    Returns a mapping of run_id -> agent node id so changes recorded under the
+    same run can be linked with an authored_change edge.
+    """
+
+    agent_node_by_run: dict[str, str] = {}
+    for block in proof_blocks:
+        if block.get("block_kind") != "agent_provenance":
+            continue
+        payload = block.get("payload") if isinstance(block.get("payload"), dict) else {}
+        agent = payload.get("agent") if isinstance(payload.get("agent"), dict) else {}
+        change = payload.get("change") if isinstance(payload.get("change"), dict) else {}
+        build = payload.get("build") if isinstance(payload.get("build"), dict) else {}
+        agent_name = str(agent.get("name") or block.get("block_key") or "agent")
+        agent_node_id = f"agent:{block['id']}"
+        # Carry only redacted, hash-level provenance into the node payload.
+        # Never surface raw prompts: only the prompt hash and model label.
+        agent_row = {
+            "status": build.get("status"),
+            "source_kind": block.get("source_kind"),
+            "confidence": block.get("confidence"),
+            "evidence_refs": block.get("evidence_refs"),
+            "redaction_state": block.get("redaction_state"),
+            "agent_kind": agent.get("kind"),
+            "agent_name": agent_name,
+            "model": agent.get("model"),
+            "prompt_sha256": agent.get("prompt_sha256"),
+            "input_signal": agent.get("input_signal"),
+            "change_class": change.get("change_class"),
+            "patch_sha256": change.get("patch_sha256"),
+            "scenario_id": payload.get("scenario_id"),
+        }
+        nodes.append(_node(agent_node_id, "agent", agent_name, agent_row))
+        run_id = block.get("run_id")
+        if run_id is not None:
+            agent_node_by_run[run_id] = agent_node_id
+    return agent_node_by_run
 
 
 def _node(

@@ -41,7 +41,7 @@ export function App() {
   const [focus, setFocus] = useState<FocusFilter>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [command, setCommand] = useState("");
-  const [operatorNote, setOperatorNote] = useState("Ask for cache, failures, proof, runway, or reset.");
+  const [operatorNote, setOperatorNote] = useState("Ask for cache, failures, agents, proof, runway, or reset.");
   const [usingFixtureFallback, setUsingFixtureFallback] = useState(false);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const zoomRef = useRef<ReturnType<typeof zoom<SVGSVGElement, unknown>> | null>(null);
@@ -141,6 +141,12 @@ export function App() {
       setMode("remote");
       setFocus("remote");
       setOperatorNote("Remote boundary is isolated; worker claims stay gated.");
+    } else if (value.includes("agent") || value.includes("loop") || value.includes("change")) {
+      setFocus("agent");
+      setMode("graph");
+      const firstAgent = graph.nodes.find((node) => node.kind === "agent");
+      setSelectedId(firstAgent?.id ?? null);
+      setOperatorNote("Agent loop is isolated: agent and change evidence stays simulated until collected.");
     } else if (value.includes("runway") || value.includes("timeline")) {
       setMode("runway");
       setFocus("all");
@@ -609,6 +615,11 @@ function highlightedIds(nodes: PositionedNode[], focus: FocusFilter): Set<string
       ["remote_execution_config", "worker_readiness"].includes(node.kind),
     );
     return new Set((remoteNodes.length ? remoteNodes : nodes).map((node) => node.id));
+  }
+  if (focus === "agent") {
+    return new Set(
+      nodes.filter((node) => node.kind === "agent" || node.kind === "change").map((node) => node.id),
+    );
   }
   return new Set(nodes.filter((node) => node.source_kind === "derived_v1").map((node) => node.id));
 }

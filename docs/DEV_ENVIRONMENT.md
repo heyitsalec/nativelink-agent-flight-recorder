@@ -32,6 +32,9 @@ uv sync
 npm --prefix apps/canvas install
 scripts/cold-warm-cache-proof.sh
 scripts/local-exec-proof.sh
+NLFR_EXPECTED_WORKERS=2 NLFR_LOCAL_EXEC_OUTPUT=$PWD/data/local-exec-proof-2w \
+  scripts/local-exec-proof.sh
+scripts/agent-loop-proof.sh
 ```
 
 The shell provides:
@@ -141,6 +144,24 @@ flag tokens; use the CLI form when a future flag needs complex quoting.
 This path is expected to work best inside the Nix shell, devcontainer, a Linux
 VM, or WSL2. On a plain macOS host without the pinned NativeLink/Bazel tooling,
 the expected result is a truth-labeled `environment-blocker.json`.
+
+## Agent-Loop Closure Proof
+
+`scripts/agent-loop-proof.sh`:
+
+1. checks for `nativelink`/`native-link` and Bazel/Bazelisk, else writes a
+   truth-labeled `environment-blocker.json` and exits nonzero;
+2. starts the cache-only NativeLink server and waits for `127.0.0.1:50051`;
+3. simulates the bounded `llm-bounded-patch` scenario into a copied workspace
+   (never the source) with `simulate --ingest`, applying the patch, running
+   Bazel through the NativeLink cache, and ingesting validation+cache evidence;
+4. exports graph, runway, and proof projections for `run_group=agent-loop`;
+5. writes `summary.json` with `chain_complete=true` and
+   `source_kind: collectable_v1`.
+
+The Action Graph shows `agent → (authored_change) → change → (validated_by) →
+run → target → action → cache_event`. The bounded patch carries a `model` label
+and a SHA-256 prompt hash only; the raw prompt is never stored or exported.
 
 ## Windows Gaming PC / WSL2 Option
 

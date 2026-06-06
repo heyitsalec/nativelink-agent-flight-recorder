@@ -74,4 +74,4 @@ export type PositionedEdge = ProjectionEdge & {
 };
 
 export type CanvasMode = "graph" | "runway" | "proof" | "remote";
-export type FocusFilter = "all" | "cache" | "failures" | "derived" | "remote";
+export type FocusFilter = "all" | "cache" | "failures" | "derived" | "remote" | "agent";

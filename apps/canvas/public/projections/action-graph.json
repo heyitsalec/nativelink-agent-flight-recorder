@@ -1,171 +1,299 @@
 {
   "edges": [
     {
+      "confidence": "medium",
+      "evidence_refs": [
+        "scenario:llm-bounded-patch",
+        "agent:demo-bounded-llm-worker",
+        "patch:sha256:856871f76606d071644921e408592cc65d4f348442e8712815b88bac7e527e98",
+        "prompt:sha256:5f787e73d6d3f8b65082f2d922e670104c580461abff1185780c76ed13a300a6",
+        "run:runs_9bf331740a74989f379808da"
+      ],
+      "from": "agent:proof_blocks_41b28bb488d97ae1794cf264",
+      "id": "authored_change:agent:proof_blocks_41b28bb488d97ae1794cf264:changes_d16636ae11e890c114031219",
+      "kind": "authored_change",
+      "redaction_state": "safe",
+      "source_kind": "simulated_v1",
+      "to": "changes_d16636ae11e890c114031219"
+    },
+    {
+      "confidence": "medium",
+      "evidence_refs": [
+        "scenario:llm-bounded-patch",
+        "agent:demo-bounded-llm-worker",
+        "patch:sha256:856871f76606d071644921e408592cc65d4f348442e8712815b88bac7e527e98",
+        "prompt:sha256:5f787e73d6d3f8b65082f2d922e670104c580461abff1185780c76ed13a300a6",
+        "run:runs_9bf331740a74989f379808da"
+      ],
+      "from": "changes_d16636ae11e890c114031219",
+      "id": "validated_by:changes_d16636ae11e890c114031219:runs_9bf331740a74989f379808da",
+      "kind": "validated_by",
+      "redaction_state": "safe",
+      "source_kind": "simulated_v1",
+      "to": "runs_9bf331740a74989f379808da"
+    },
+    {
+      "confidence": "medium",
+      "evidence_refs": [
+        "scenario:llm-bounded-patch",
+        "agent:demo-bounded-llm-worker",
+        "patch:sha256:856871f76606d071644921e408592cc65d4f348442e8712815b88bac7e527e98",
+        "prompt:sha256:5f787e73d6d3f8b65082f2d922e670104c580461abff1185780c76ed13a300a6",
+        "run:runs_9bf331740a74989f379808da"
+      ],
+      "from": "runs_9bf331740a74989f379808da",
+      "id": "recorded_artifact:runs_9bf331740a74989f379808da:artifacts_b611de9d50de27b5c231578d",
+      "kind": "recorded_artifact",
+      "redaction_state": "safe",
+      "source_kind": "simulated_v1",
+      "to": "artifacts_b611de9d50de27b5c231578d"
+    },
+    {
       "confidence": "high",
       "evidence_refs": [
         "simulated_v1:bep.jsonl"
       ],
-      "from": "runs_efd15c8fc1b784129fb7645c",
-      "id": "evaluated_target:runs_efd15c8fc1b784129fb7645c:targets_3a7d039221663f4789b5510f",
+      "from": "runs_9bf331740a74989f379808da",
+      "id": "evaluated_target:runs_9bf331740a74989f379808da:targets_aecefec8b0d2148629b024c4",
       "kind": "evaluated_target",
       "redaction_state": "safe",
       "source_kind": "simulated_v1",
-      "to": "targets_3a7d039221663f4789b5510f"
+      "to": "targets_aecefec8b0d2148629b024c4"
     },
     {
       "confidence": "high",
       "evidence_refs": [
         "simulated_v1:bep.jsonl"
       ],
-      "from": "runs_efd15c8fc1b784129fb7645c",
-      "id": "evaluated_target:runs_efd15c8fc1b784129fb7645c:targets_5658831dad78d6f0abdbd647",
+      "from": "runs_9bf331740a74989f379808da",
+      "id": "evaluated_target:runs_9bf331740a74989f379808da:targets_c0fe8bbfbbcee268433849e3",
       "kind": "evaluated_target",
       "redaction_state": "safe",
       "source_kind": "simulated_v1",
-      "to": "targets_5658831dad78d6f0abdbd647"
+      "to": "targets_c0fe8bbfbbcee268433849e3"
     },
     {
       "confidence": "high",
       "evidence_refs": [
         "simulated_v1:bep.jsonl"
       ],
-      "from": "targets_5658831dad78d6f0abdbd647",
-      "id": "produced_action:targets_5658831dad78d6f0abdbd647:actions_3c4046b933708a355f13b36f",
+      "from": "targets_c0fe8bbfbbcee268433849e3",
+      "id": "produced_action:targets_c0fe8bbfbbcee268433849e3:actions_1649ba3bcd71a4c1bca7889c",
       "kind": "produced_action",
       "redaction_state": "safe",
       "source_kind": "simulated_v1",
-      "to": "actions_3c4046b933708a355f13b36f"
+      "to": "actions_1649ba3bcd71a4c1bca7889c"
     },
     {
       "confidence": "high",
       "evidence_refs": [
         "simulated_v1:bep.jsonl"
       ],
-      "from": "targets_5658831dad78d6f0abdbd647",
-      "id": "produced_action:targets_5658831dad78d6f0abdbd647:actions_7aa091be0bdcc7e1375b3e4f",
+      "from": "targets_aecefec8b0d2148629b024c4",
+      "id": "produced_action:targets_aecefec8b0d2148629b024c4:actions_3ff6fcddb284148d684d57c5",
       "kind": "produced_action",
       "redaction_state": "safe",
       "source_kind": "simulated_v1",
-      "to": "actions_7aa091be0bdcc7e1375b3e4f"
+      "to": "actions_3ff6fcddb284148d684d57c5"
     },
     {
       "confidence": "high",
       "evidence_refs": [
         "simulated_v1:bep.jsonl"
       ],
-      "from": "targets_3a7d039221663f4789b5510f",
-      "id": "produced_action:targets_3a7d039221663f4789b5510f:actions_e77415194169644835c3225b",
+      "from": "targets_c0fe8bbfbbcee268433849e3",
+      "id": "produced_action:targets_c0fe8bbfbbcee268433849e3:actions_dcf05812ab20689f3108483f",
       "kind": "produced_action",
       "redaction_state": "safe",
       "source_kind": "simulated_v1",
-      "to": "actions_e77415194169644835c3225b"
+      "to": "actions_dcf05812ab20689f3108483f"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "simulated_v1:execution-log.json"
+      ],
+      "from": "targets_c0fe8bbfbbcee268433849e3",
+      "id": "observed_cache_event:targets_c0fe8bbfbbcee268433849e3:cache_events_7436531115a20e86a59bc00b",
+      "kind": "observed_cache_event",
+      "redaction_state": "safe",
+      "source_kind": "simulated_v1",
+      "to": "cache_events_7436531115a20e86a59bc00b"
     },
     {
       "confidence": "medium",
       "evidence_refs": [
         "simulated_v1:profile.json"
       ],
-      "from": "targets_5658831dad78d6f0abdbd647",
-      "id": "observed_cache_event:targets_5658831dad78d6f0abdbd647:cache_events_2c5aa3b32b68a25b478d4417",
+      "from": "targets_c0fe8bbfbbcee268433849e3",
+      "id": "observed_cache_event:targets_c0fe8bbfbbcee268433849e3:cache_events_8a5988733feeee06ba389854",
       "kind": "observed_cache_event",
       "redaction_state": "safe",
       "source_kind": "derived_v1",
-      "to": "cache_events_2c5aa3b32b68a25b478d4417"
-    },
-    {
-      "confidence": "high",
-      "evidence_refs": [
-        "simulated_v1:execution-log.json"
-      ],
-      "from": "targets_5658831dad78d6f0abdbd647",
-      "id": "observed_cache_event:targets_5658831dad78d6f0abdbd647:cache_events_5300f4c95786094dfcb9d7cb",
-      "kind": "observed_cache_event",
-      "redaction_state": "safe",
-      "source_kind": "simulated_v1",
-      "to": "cache_events_5300f4c95786094dfcb9d7cb"
-    },
-    {
-      "confidence": "high",
-      "evidence_refs": [
-        "simulated_v1:execution-log.json"
-      ],
-      "from": "targets_3a7d039221663f4789b5510f",
-      "id": "observed_cache_event:targets_3a7d039221663f4789b5510f:cache_events_cd491628c2ce1a1744045ece",
-      "kind": "observed_cache_event",
-      "redaction_state": "safe",
-      "source_kind": "simulated_v1",
-      "to": "cache_events_cd491628c2ce1a1744045ece"
+      "to": "cache_events_8a5988733feeee06ba389854"
     },
     {
       "confidence": "low",
       "evidence_refs": [
         "simulated_v1:profile.json"
       ],
-      "from": "targets_3a7d039221663f4789b5510f",
-      "id": "observed_cache_event:targets_3a7d039221663f4789b5510f:cache_events_9aae150c5ae2c4bb9a8203a6",
+      "from": "targets_aecefec8b0d2148629b024c4",
+      "id": "observed_cache_event:targets_aecefec8b0d2148629b024c4:cache_events_d4d32866770093896742c2ab",
       "kind": "observed_cache_event",
       "redaction_state": "safe",
       "source_kind": "derived_v1",
-      "to": "cache_events_9aae150c5ae2c4bb9a8203a6"
+      "to": "cache_events_d4d32866770093896742c2ab"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "simulated_v1:execution-log.json"
+      ],
+      "from": "targets_aecefec8b0d2148629b024c4",
+      "id": "observed_cache_event:targets_aecefec8b0d2148629b024c4:cache_events_e55a33a312d157da4f58d38d",
+      "kind": "observed_cache_event",
+      "redaction_state": "safe",
+      "source_kind": "simulated_v1",
+      "to": "cache_events_e55a33a312d157da4f58d38d"
     },
     {
       "confidence": "high",
       "evidence_refs": [
         "simulated_v1:bep.jsonl"
       ],
-      "from": "runs_efd15c8fc1b784129fb7645c",
-      "id": "observed_failure:runs_efd15c8fc1b784129fb7645c:failures_aacfa7067d451e2284f552f9",
+      "from": "runs_9bf331740a74989f379808da",
+      "id": "observed_failure:runs_9bf331740a74989f379808da:failures_63f9ef6937b97907cc6b775d",
       "kind": "observed_failure",
       "redaction_state": "safe",
       "source_kind": "simulated_v1",
-      "to": "failures_aacfa7067d451e2284f552f9"
+      "to": "failures_63f9ef6937b97907cc6b775d"
     },
     {
       "confidence": "high",
       "evidence_refs": [
         "simulated_v1:bep.jsonl"
       ],
-      "from": "runs_efd15c8fc1b784129fb7645c",
-      "id": "observed_failure:runs_efd15c8fc1b784129fb7645c:failures_d157bd86959f2c75ddde1aef",
+      "from": "runs_9bf331740a74989f379808da",
+      "id": "observed_failure:runs_9bf331740a74989f379808da:failures_7a6c04fae39ea2dd90d15afa",
       "kind": "observed_failure",
       "redaction_state": "safe",
       "source_kind": "simulated_v1",
-      "to": "failures_d157bd86959f2c75ddde1aef"
+      "to": "failures_7a6c04fae39ea2dd90d15afa"
     }
   ],
-  "generated_at": "2026-06-06T21:45:21.733246Z",
+  "generated_at": "2026-06-06T22:37:55.760382Z",
   "nodes": [
     {
-      "confidence": "high",
+      "confidence": "medium",
       "evidence_refs": [
-        "simulated_v1:bep.jsonl",
-        "simulated_v1:execution-log.json",
-        "simulated_v1:profile.json"
+        "scenario:llm-bounded-patch"
       ],
-      "id": "runs_efd15c8fc1b784129fb7645c",
+      "id": "runs_9bf331740a74989f379808da",
       "kind": "run",
-      "label": "fixture-ingest",
+      "label": "llm-bounded-patch",
       "payload": {
         "mode": "cache-only",
         "run_group": "latest",
-        "scenario": "fixture-ingest",
-        "status": "ingested"
+        "scenario": "llm-bounded-patch",
+        "status": "simulated_only"
       },
       "redaction_state": "safe",
       "source_kind": "simulated_v1",
-      "status": "ingested"
+      "status": "simulated_only"
+    },
+    {
+      "confidence": "medium",
+      "evidence_refs": [
+        "scenario:llm-bounded-patch",
+        "agent:demo-bounded-llm-worker",
+        "patch:sha256:856871f76606d071644921e408592cc65d4f348442e8712815b88bac7e527e98",
+        "prompt:sha256:5f787e73d6d3f8b65082f2d922e670104c580461abff1185780c76ed13a300a6",
+        "run:runs_9bf331740a74989f379808da"
+      ],
+      "id": "agent:proof_blocks_41b28bb488d97ae1794cf264",
+      "kind": "agent",
+      "label": "demo-bounded-llm-worker",
+      "payload": {
+        "agent_kind": "bounded_llm_v1",
+        "agent_name": "demo-bounded-llm-worker",
+        "change_class": "safe_leaf",
+        "input_signal": "redacted: one-line code task; raw prompt withheld, hash retained",
+        "model": "demo-bounded-llm",
+        "patch_sha256": "856871f76606d071644921e408592cc65d4f348442e8712815b88bac7e527e98",
+        "prompt_sha256": "5f787e73d6d3f8b65082f2d922e670104c580461abff1185780c76ed13a300a6",
+        "scenario_id": "llm-bounded-patch",
+        "status": "simulated_only"
+      },
+      "redaction_state": "safe",
+      "source_kind": "simulated_v1",
+      "status": "simulated_only"
+    },
+    {
+      "confidence": "medium",
+      "evidence_refs": [
+        "scenario:llm-bounded-patch",
+        "agent:demo-bounded-llm-worker",
+        "patch:sha256:856871f76606d071644921e408592cc65d4f348442e8712815b88bac7e527e98",
+        "prompt:sha256:5f787e73d6d3f8b65082f2d922e670104c580461abff1185780c76ed13a300a6",
+        "run:runs_9bf331740a74989f379808da"
+      ],
+      "id": "changes_d16636ae11e890c114031219",
+      "kind": "change",
+      "label": "tasks/priority_test.py",
+      "payload": {
+        "after_hash": "6c456a81ba3a67cd4c3c148b0d8871318ef49bf0f55e3e42c9dbea7376590721",
+        "before_hash": "6c456a81ba3a67cd4c3c148b0d8871318ef49bf0f55e3e42c9dbea7376590721",
+        "change_kind": "safe_leaf",
+        "path": "tasks/priority_test.py",
+        "run_id": "runs_9bf331740a74989f379808da",
+        "summary": "llm-bounded-patch touched tasks/priority_test.py"
+      },
+      "redaction_state": "safe",
+      "source_kind": "simulated_v1",
+      "status": null
+    },
+    {
+      "confidence": "medium",
+      "evidence_refs": [
+        "scenario:llm-bounded-patch",
+        "agent:demo-bounded-llm-worker",
+        "patch:sha256:856871f76606d071644921e408592cc65d4f348442e8712815b88bac7e527e98",
+        "prompt:sha256:5f787e73d6d3f8b65082f2d922e670104c580461abff1185780c76ed13a300a6",
+        "run:runs_9bf331740a74989f379808da"
+      ],
+      "id": "artifacts_b611de9d50de27b5c231578d",
+      "kind": "artifact",
+      "label": "agent-provenance.json",
+      "payload": {
+        "artifact_key": "agent-provenance.json",
+        "artifact_path": "agent-provenance.json",
+        "content_type": "application/json",
+        "manifest_path": "artifact_manifest.json",
+        "producer_command": [
+          "nlfr",
+          "simulate",
+          "--scenario",
+          "llm-bounded-patch"
+        ],
+        "run_id": "runs_9bf331740a74989f379808da",
+        "sha256": "da86e3e82dc0a17069b9e61815f259abe36c0eb7fca99eb45e7cfb3e5c105577",
+        "size_bytes": 3595
+      },
+      "redaction_state": "safe",
+      "source_kind": "simulated_v1",
+      "status": null
     },
     {
       "confidence": "high",
       "evidence_refs": [
         "simulated_v1:bep.jsonl"
       ],
-      "id": "targets_3a7d039221663f4789b5510f",
+      "id": "targets_aecefec8b0d2148629b024c4",
       "kind": "target",
       "label": "//tasks:flaky_test",
       "payload": {
         "label": "//tasks:flaky_test",
-        "run_id": "runs_efd15c8fc1b784129fb7645c",
+        "run_id": "runs_9bf331740a74989f379808da",
         "status": "FAILED",
         "target_kind": "py_test rule"
       },
@@ -178,12 +306,12 @@
       "evidence_refs": [
         "simulated_v1:bep.jsonl"
       ],
-      "id": "targets_5658831dad78d6f0abdbd647",
+      "id": "targets_c0fe8bbfbbcee268433849e3",
       "kind": "target",
       "label": "//tasks:priority_test",
       "payload": {
         "label": "//tasks:priority_test",
-        "run_id": "runs_efd15c8fc1b784129fb7645c",
+        "run_id": "runs_9bf331740a74989f379808da",
         "status": "PASSED",
         "target_kind": "py_test rule"
       },
@@ -196,34 +324,15 @@
       "evidence_refs": [
         "simulated_v1:bep.jsonl"
       ],
-      "id": "actions_3c4046b933708a355f13b36f",
-      "kind": "action",
-      "label": "BazelTest",
-      "payload": {
-        "action_key": "//tasks:priority_test:test:run=1:shard=1:attempt=1",
-        "mnemonic": "BazelTest",
-        "run_id": "runs_efd15c8fc1b784129fb7645c",
-        "status": "PASSED",
-        "target_id": "targets_5658831dad78d6f0abdbd647"
-      },
-      "redaction_state": "safe",
-      "source_kind": "simulated_v1",
-      "status": "PASSED"
-    },
-    {
-      "confidence": "high",
-      "evidence_refs": [
-        "simulated_v1:bep.jsonl"
-      ],
-      "id": "actions_7aa091be0bdcc7e1375b3e4f",
+      "id": "actions_1649ba3bcd71a4c1bca7889c",
       "kind": "action",
       "label": "PythonTestSetup",
       "payload": {
         "action_key": "//tasks:priority_test:action:1",
         "mnemonic": "PythonTestSetup",
-        "run_id": "runs_efd15c8fc1b784129fb7645c",
+        "run_id": "runs_9bf331740a74989f379808da",
         "status": "SUCCESS",
-        "target_id": "targets_5658831dad78d6f0abdbd647"
+        "target_id": "targets_c0fe8bbfbbcee268433849e3"
       },
       "redaction_state": "safe",
       "source_kind": "simulated_v1",
@@ -234,46 +343,45 @@
       "evidence_refs": [
         "simulated_v1:bep.jsonl"
       ],
-      "id": "actions_e77415194169644835c3225b",
+      "id": "actions_3ff6fcddb284148d684d57c5",
       "kind": "action",
       "label": "BazelTest",
       "payload": {
         "action_key": "//tasks:flaky_test:test:run=1:shard=1:attempt=1",
         "mnemonic": "BazelTest",
-        "run_id": "runs_efd15c8fc1b784129fb7645c",
+        "run_id": "runs_9bf331740a74989f379808da",
         "status": "FAILED",
-        "target_id": "targets_3a7d039221663f4789b5510f"
+        "target_id": "targets_aecefec8b0d2148629b024c4"
       },
       "redaction_state": "safe",
       "source_kind": "simulated_v1",
       "status": "FAILED"
     },
     {
-      "confidence": "medium",
+      "confidence": "high",
       "evidence_refs": [
-        "simulated_v1:profile.json"
+        "simulated_v1:bep.jsonl"
       ],
-      "id": "cache_events_2c5aa3b32b68a25b478d4417",
-      "kind": "cache_event",
-      "label": "remote_cache_hit",
+      "id": "actions_dcf05812ab20689f3108483f",
+      "kind": "action",
+      "label": "BazelTest",
       "payload": {
-        "digest": "sha256:1111222233334444",
-        "event_key": "profile://tasks:priority_test:PyTest:sha256:1111222233334444",
-        "event_kind": "remote_cache_hit",
-        "hit": 1,
-        "run_id": "runs_efd15c8fc1b784129fb7645c",
-        "target_id": "targets_5658831dad78d6f0abdbd647"
+        "action_key": "//tasks:priority_test:test:run=1:shard=1:attempt=1",
+        "mnemonic": "BazelTest",
+        "run_id": "runs_9bf331740a74989f379808da",
+        "status": "PASSED",
+        "target_id": "targets_c0fe8bbfbbcee268433849e3"
       },
       "redaction_state": "safe",
-      "source_kind": "derived_v1",
-      "status": null
+      "source_kind": "simulated_v1",
+      "status": "PASSED"
     },
     {
       "confidence": "high",
       "evidence_refs": [
         "simulated_v1:execution-log.json"
       ],
-      "id": "cache_events_5300f4c95786094dfcb9d7cb",
+      "id": "cache_events_7436531115a20e86a59bc00b",
       "kind": "cache_event",
       "label": "remote_cache_hit",
       "payload": {
@@ -281,31 +389,31 @@
         "event_key": "//tasks:priority_test:PyTest:sha256:1111222233334444",
         "event_kind": "remote_cache_hit",
         "hit": 1,
-        "run_id": "runs_efd15c8fc1b784129fb7645c",
-        "target_id": "targets_5658831dad78d6f0abdbd647"
+        "run_id": "runs_9bf331740a74989f379808da",
+        "target_id": "targets_c0fe8bbfbbcee268433849e3"
       },
       "redaction_state": "safe",
       "source_kind": "simulated_v1",
       "status": null
     },
     {
-      "confidence": "high",
+      "confidence": "medium",
       "evidence_refs": [
-        "simulated_v1:execution-log.json"
+        "simulated_v1:profile.json"
       ],
-      "id": "cache_events_cd491628c2ce1a1744045ece",
+      "id": "cache_events_8a5988733feeee06ba389854",
       "kind": "cache_event",
-      "label": "cache_miss",
+      "label": "remote_cache_hit",
       "payload": {
-        "digest": "sha256:aaaabbbbccccdddd",
-        "event_key": "//tasks:flaky_test:PyTest:sha256:aaaabbbbccccdddd",
-        "event_kind": "cache_miss",
-        "hit": 0,
-        "run_id": "runs_efd15c8fc1b784129fb7645c",
-        "target_id": "targets_3a7d039221663f4789b5510f"
+        "digest": "sha256:1111222233334444",
+        "event_key": "profile://tasks:priority_test:PyTest:sha256:1111222233334444",
+        "event_kind": "remote_cache_hit",
+        "hit": 1,
+        "run_id": "runs_9bf331740a74989f379808da",
+        "target_id": "targets_c0fe8bbfbbcee268433849e3"
       },
       "redaction_state": "safe",
-      "source_kind": "simulated_v1",
+      "source_kind": "derived_v1",
       "status": null
     },
     {
@@ -313,14 +421,14 @@
       "evidence_refs": [
         "simulated_v1:profile.json"
       ],
-      "id": "cache_events_9aae150c5ae2c4bb9a8203a6",
+      "id": "cache_events_d4d32866770093896742c2ab",
       "kind": "cache_event",
       "label": "action_cache_observed",
       "payload": {
         "event_key": "profile://tasks:flaky_test:PyTest:202",
         "event_kind": "action_cache_observed",
-        "run_id": "runs_efd15c8fc1b784129fb7645c",
-        "target_id": "targets_3a7d039221663f4789b5510f"
+        "run_id": "runs_9bf331740a74989f379808da",
+        "target_id": "targets_aecefec8b0d2148629b024c4"
       },
       "redaction_state": "safe",
       "source_kind": "derived_v1",
@@ -329,21 +437,18 @@
     {
       "confidence": "high",
       "evidence_refs": [
-        "simulated_v1:bep.jsonl"
+        "simulated_v1:execution-log.json"
       ],
-      "id": "failures_aacfa7067d451e2284f552f9",
-      "kind": "failure",
-      "label": "build_finished",
+      "id": "cache_events_e55a33a312d157da4f58d38d",
+      "kind": "cache_event",
+      "label": "cache_miss",
       "payload": {
-        "failure_kind": "build_finished",
-        "message": "Bazel finished with TESTS_FAILED (exit code 3)",
-        "run_id": "runs_efd15c8fc1b784129fb7645c",
-        "span": {
-          "event_index": 9,
-          "id": {
-            "buildFinished": {}
-          }
-        }
+        "digest": "sha256:aaaabbbbccccdddd",
+        "event_key": "//tasks:flaky_test:PyTest:sha256:aaaabbbbccccdddd",
+        "event_kind": "cache_miss",
+        "hit": 0,
+        "run_id": "runs_9bf331740a74989f379808da",
+        "target_id": "targets_aecefec8b0d2148629b024c4"
       },
       "redaction_state": "safe",
       "source_kind": "simulated_v1",
@@ -354,13 +459,13 @@
       "evidence_refs": [
         "simulated_v1:bep.jsonl"
       ],
-      "id": "failures_d157bd86959f2c75ddde1aef",
+      "id": "failures_63f9ef6937b97907cc6b775d",
       "kind": "failure",
       "label": "target_completed",
       "payload": {
         "failure_kind": "target_completed",
         "message": "//tasks:flaky_test failed: expected stable priority ordering",
-        "run_id": "runs_efd15c8fc1b784129fb7645c",
+        "run_id": "runs_9bf331740a74989f379808da",
         "span": {
           "event_index": 8,
           "id": {
@@ -374,17 +479,42 @@
       "redaction_state": "safe",
       "source_kind": "simulated_v1",
       "status": null
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "simulated_v1:bep.jsonl"
+      ],
+      "id": "failures_7a6c04fae39ea2dd90d15afa",
+      "kind": "failure",
+      "label": "build_finished",
+      "payload": {
+        "failure_kind": "build_finished",
+        "message": "Bazel finished with TESTS_FAILED (exit code 3)",
+        "run_id": "runs_9bf331740a74989f379808da",
+        "span": {
+          "event_index": 9,
+          "id": {
+            "buildFinished": {}
+          }
+        }
+      },
+      "redaction_state": "safe",
+      "source_kind": "simulated_v1",
+      "status": null
     }
   ],
   "projection_kind": "action_graph",
   "run_group": "latest",
   "schema_version": 1,
   "summary": {
+    "agents": 1,
     "cache_events": 4,
-    "edges": 11,
+    "changes": 1,
+    "edges": 14,
     "failures": 2,
     "invocation_statuses": {},
-    "nodes": 12,
+    "nodes": 15,
     "runs": 1,
     "target_statuses": {
       "FAILED": 1,

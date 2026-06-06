@@ -74,14 +74,24 @@ fixture projections under `apps/canvas/public/projections/`. This path uses
 ### Path B — Real NativeLink proof (Nix)
 
 Outside `nix develop`, real-tool scripts record truth-labeled
-`environment_blocker` evidence. Inside Nix, PER-1019 proved cold/warm cache and
-one-process local-exec (`635ee36`, NativeLink 1.3.2, Bazel 9.1.1):
+`environment_blocker` evidence. Inside Nix (NativeLink 1.3.2, Bazel 9.1.1) the
+recorder has proven cold/warm cache, one-process local-exec, live two-worker
+endpoint readiness, and agent-loop closure:
 
 ```bash
 nix develop
 scripts/cold-warm-cache-proof.sh
 scripts/local-exec-proof.sh
+NLFR_EXPECTED_WORKERS=2 NLFR_LOCAL_EXEC_OUTPUT=$PWD/data/local-exec-proof-2w \
+  scripts/local-exec-proof.sh
+scripts/agent-loop-proof.sh
 ```
+
+These write `summary.json` evidence under `data/cold-warm-proof/`,
+`data/local-exec-proof/`, `data/local-exec-proof-2w/`, and
+`data/agent-loop-proof/`. The two-worker run proves two workers configured AND
+endpoints opened live (`worker_endpoints_ready`, `expected_workers=2`) — not
+work distributed across two workers.
 
 See [docs/DEV_ENVIRONMENT.md](docs/DEV_ENVIRONMENT.md) for prerequisites (~82GB
 disk for first proof run, Nix with flakes).
@@ -168,7 +178,34 @@ PYTHONPATH=src uv run python -m nlfr simulate \
 
 Remove `--skip-run` to invoke `nlfr run` after applying each copied-workspace
 patch. Failed or blocked builds are recorded as outcomes tied to the simulated
-agent and patch provenance.
+agent and patch provenance. Add `--ingest` to auto-ingest a real run's Bazel
+artifacts so validation and cache evidence join the same chain. The
+`llm-bounded-patch` scenario carries bounded-LLM provenance fields — a `model`
+label and a `prompt_sha256` (SHA-256 hash of the prompt). The raw prompt is
+never stored or exported; only the hash. This is the reference pattern for real
+agent provenance under the `AGENTS.md` privacy rule. As a fixture
+(`simulated_v1`), it makes no live LLM call.
+
+Agent-loop closure proof, inside `nix develop` or the devcontainer:
+
+```bash
+scripts/agent-loop-proof.sh
+```
+
+This applies the bounded `llm-bounded-patch` scenario to a copied workspace
+(never the source), runs Bazel through the NativeLink cache, ingests
+validation+cache evidence via `simulate --ingest`, and exports projections. The
+Action Graph then shows the chain `agent → (authored_change) → change →
+(validated_by) → run → evaluated_target → target → produced_action → action →
+observed_cache_event → cache_event`. It writes `data/agent-loop-proof/summary.json`
+with `chain_complete=true` and `source_kind: collectable_v1`. The graph
+projector derives the `agent` node from the `agent_provenance` proof block and
+the `changes` table, with edge kinds `authored_change` and `validated_by`. The
+fixture (no-Nix) canvas shows the same chain as `simulated_v1`:
+`scripts/verify-demo.sh` simulates `llm-bounded-patch` into `run_group=latest`,
+then attaches fixture Bazel evidence to the same run, so the committed
+`apps/canvas/public/projections/action-graph.json` includes the agent and change
+nodes.
 
 Canvas:
 

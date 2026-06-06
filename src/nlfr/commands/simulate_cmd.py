@@ -102,6 +102,11 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         help="apply patches and record simulated provenance without invoking nlfr run",
     )
     parser.add_argument(
+        "--ingest",
+        action="store_true",
+        help="after a real run, ingest its Bazel artifacts so validation/cache evidence joins the chain",
+    )
+    parser.add_argument(
         "--skip-nativelink",
         action="store_true",
         help="pass through to nlfr run when using an already-running NativeLink cache",
@@ -157,6 +162,8 @@ def _run_scenario(
         if args.skip_run
         else _execute_recorder_run(args, scenario, workspace, output_dir)
     )
+    if getattr(args, "ingest", False) and not args.skip_run:
+        build["ingest"] = _ingest_run_artifacts(args, build, output_dir)
     provenance = _provenance_payload(
         scenario=scenario,
         scenario_path=scenario_path,
@@ -292,7 +299,7 @@ def _execute_recorder_run(
         "--json",
     ]
     for startup_arg in args.bazel_startup_arg:
-        command.extend(["--bazel-startup-arg", startup_arg])
+        command.append(f"--bazel-startup-arg={startup_arg}")
     if args.skip_nativelink:
         command.append("--skip-nativelink")
     command.append(_target_for_scenario(scenario))
@@ -326,6 +333,66 @@ def _execute_recorder_run(
         "source_kind": "collectable_v1",
         "confidence": "high" if payload.get("run_id") else "unknown",
         "redaction_state": "safe",
+    }
+
+
+def _ingest_run_artifacts(
+    args: argparse.Namespace,
+    build: dict[str, Any],
+    output_dir: Path,
+) -> dict[str, Any]:
+    """Ingest a real run's Bazel artifacts into the same DB and run group.
+
+    This joins targets/actions/cache_events/failures to the run that the agent
+    patch validated, so the action graph can show the full
+    agent -> change -> run -> validation -> cache chain.
+    """
+
+    artifact_root = build.get("artifact_root")
+    run_key = build.get("run_key")
+    if not artifact_root or not run_key:
+        return {"status": "skipped", "reason": "missing artifact_root or run_key"}
+
+    command = [
+        sys.executable,
+        "-m",
+        "nlfr",
+        "ingest",
+        str(artifact_root),
+        "--database",
+        str(output_dir / "nlfr.sqlite"),
+        "--run-key",
+        str(run_key),
+        "--run-group",
+        args.run_group,
+        "--source-kind",
+        "collectable_v1",
+        "--json",
+    ]
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(_repo_root() / "src")
+    result = subprocess.run(
+        command,
+        cwd=_repo_root(),
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        return {
+            "status": "ingest_failed",
+            "returncode": result.returncode,
+            "detail": result.stderr.strip() or result.stdout.strip(),
+        }
+    try:
+        payload = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return {"status": "ingest_unparsed", "returncode": result.returncode}
+    return {
+        "status": "ingested",
+        "returncode": result.returncode,
+        "counts": payload.get("counts", {}),
     }
 
 
@@ -389,6 +456,9 @@ def _provenance_payload(
         f"agent:{agent_name}",
         f"patch:sha256:{patch_sha}",
     ]
+    prompt_sha = _prompt_sha256(agent)
+    if prompt_sha:
+        evidence_refs.append(f"prompt:sha256:{prompt_sha}")
     if build.get("run_id"):
         evidence_refs.append(f"run:{build['run_id']}")
 
@@ -402,6 +472,8 @@ def _provenance_payload(
             "kind": agent.get("kind", "simulated_v1"),
             "name": agent_name,
             "input_signal": agent.get("input_signal"),
+            "model": agent.get("model"),
+            "prompt_sha256": _prompt_sha256(agent),
         },
         "change": {
             "change_class": scenario.get("change_class"),
@@ -564,6 +636,23 @@ def _file_sha256(path: Path) -> str | None:
     if not path.exists() or not path.is_file():
         return None
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _prompt_sha256(agent: dict[str, Any]) -> str | None:
+    """Return a prompt hash for bounded-LLM provenance, never the raw prompt.
+
+    A scenario may supply either a precomputed ``prompt_sha256`` or a raw
+    ``prompt`` string. If a raw prompt is supplied it is hashed immediately and
+    discarded; the raw prompt is never stored or exported (AGENTS.md privacy).
+    """
+
+    precomputed = agent.get("prompt_sha256")
+    if isinstance(precomputed, str) and precomputed:
+        return precomputed
+    prompt = agent.get("prompt")
+    if isinstance(prompt, str) and prompt:
+        return hashlib.sha256(prompt.encode("utf-8")).hexdigest()
+    return None
 
 
 def _timestamp() -> str:

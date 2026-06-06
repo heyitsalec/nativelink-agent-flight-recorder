@@ -50,14 +50,19 @@ queue time, worker identity, action placement, load distribution, or fleet
 scheduling behavior until those facts are captured directly.
 
 `scripts/local-exec-proof.sh` writes `worker-readiness.json` for this boundary.
-For a future two-worker config, run:
+With this one-worker config, requesting two workers stops at
+`configuration_blocker`:
 
 ```bash
 NLFR_EXPECTED_WORKERS=2 scripts/local-exec-proof.sh
 ```
 
-With this one-worker config, that command should stop at
-`configuration_blocker`.
+A two-worker config has since been proven live in Nix
+(`worker_endpoints_ready`, `expected_workers=2`, `configured_workers=2`,
+`collectable_v1`; see `data/local-exec-proof-2w/summary.json`). That proves two
+workers configured AND endpoints opened live — not work distributed across two
+workers. Worker identity, scheduler assignment, queue time, action placement,
+and load distribution stay unsupported.
 
 Future full-LRE experiments can pass generated Bazel flags through NLFR after
 the LRE config/toolchains exist on a supported Linux/x86_64-style environment:

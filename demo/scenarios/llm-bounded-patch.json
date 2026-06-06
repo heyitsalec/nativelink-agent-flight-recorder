@@ -1,0 +1,69 @@
+{
+  "schema_version": "nlfr.demo.scenario.v1",
+  "scenario_id": "llm-bounded-patch",
+  "title": "Bounded LLM patch with hashed prompt provenance",
+  "parent_issue": "PER-1058",
+  "child_issue": "PER-1062",
+  "provenance_note": "Reference pattern for a bounded LLM patch path. The model label and prompt_sha256 model how a real agent patch would attach provenance. The raw prompt is never stored or exported; only its SHA-256 hash. This fixture remains deterministic and does not make a live LLM call.",
+  "simulated_agent": {
+    "kind": "bounded_llm_v1",
+    "name": "demo-bounded-llm-worker",
+    "model": "demo-bounded-llm",
+    "input_signal": "redacted: one-line code task; raw prompt withheld, hash retained",
+    "prompt_sha256": "5f787e73d6d3f8b65082f2d922e670104c580461abff1185780c76ed13a300a6"
+  },
+  "change_class": "safe_leaf",
+  "workload": {
+    "repo_root": "demo/bazel-monorepo",
+    "bazel_targets": [
+      "//tasks:priority_test"
+    ],
+    "affected_paths": [
+      "tasks/priority_test.py"
+    ]
+  },
+  "patch": {
+    "format": "unified_diff",
+    "applies_to": "demo/bazel-monorepo",
+    "diff": "diff --git a/tasks/priority_test.py b/tasks/priority_test.py\n--- a/tasks/priority_test.py\n+++ b/tasks/priority_test.py\n@@ -7,3 +7,7 @@\n \n def test_describe_task_keeps_leaf_label_readable():\n     assert describe_task(\"NLFR-3\", 72) == \"NLFR-3: normal\"\n+\n+\n+def test_priority_band_marks_backlog_for_low_score():\n+    assert priority_band(10) == \"backlog\"\n"
+  },
+  "expected_result": {
+    "run_expectation": "passes_when_applied",
+    "risk": "low",
+    "why": "The bounded LLM patch adds a single leaf assertion exercising existing library behavior."
+  },
+  "proof_claims": [
+    {
+      "claim_id": "demo.llm.provenance.hashed",
+      "statement": "The bounded LLM patch carries a model label and a SHA-256 prompt hash; the raw prompt is not stored.",
+      "source_kind": "simulated_v1",
+      "confidence": "medium",
+      "evidence_refs": [
+        "scenario:llm-bounded-patch",
+        "prompt:sha256:5f787e73d6d3f8b65082f2d922e670104c580461abff1185780c76ed13a300a6"
+      ],
+      "redaction_state": "redacted"
+    },
+    {
+      "claim_id": "demo.llm.patch.scope.leaf",
+      "statement": "The candidate patch touched only a leaf test file in the demo workload.",
+      "source_kind": "simulated_v1",
+      "confidence": "medium",
+      "evidence_refs": [
+        "scenario:llm-bounded-patch",
+        "patch:tasks/priority_test.py"
+      ],
+      "redaction_state": "safe"
+    },
+    {
+      "claim_id": "demo.llm.bazel.target.validated",
+      "statement": "A real recorder run may claim the target passed only after Bazel test evidence is captured and ingested.",
+      "source_kind": "future",
+      "confidence": "unknown",
+      "evidence_refs": [
+        "future:bazel-test-result://tasks:priority_test"
+      ],
+      "redaction_state": "unknown"
+    }
+  ]
+}

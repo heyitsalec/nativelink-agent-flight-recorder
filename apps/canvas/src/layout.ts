@@ -15,6 +15,8 @@ import type {
 } from "./types";
 
 const anchors: Record<string, { x: number; y: number }> = {
+  agent: { x: -660, y: -210 },
+  change: { x: -560, y: 120 },
   run: { x: -430, y: -40 },
   invocation: { x: -260, y: -230 },
   target: { x: -70, y: -20 },
@@ -82,6 +84,8 @@ export function layoutProjection(projection: ActionGraphProjection): {
 
 function radiusFor(kind: string): number {
   if (kind === "run") return 54;
+  if (kind === "agent") return 50;
+  if (kind === "change") return 40;
   if (kind === "failure") return 46;
   if (kind === "remote_execution_config") return 48;
   if (kind === "worker_readiness") return 46;

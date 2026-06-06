@@ -237,6 +237,16 @@ input {
   fill: #f9fbff;
 }
 
+.graph-node.agent .node-body {
+  fill: #f6f5ff;
+  stroke: #5961a8;
+}
+
+.graph-node.change .node-body {
+  fill: #fffbf2;
+  stroke: #9a7b1f;
+}
+
 .graph-node.selected .node-halo {
   fill: rgba(43, 140, 159, 0.16);
   stroke: rgba(43, 140, 159, 0.72);

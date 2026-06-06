@@ -23,10 +23,21 @@ NLFR is a local-first black-box recorder for agent validation loops:
 
 ## What is proven today (Nix, `635ee36`)
 
-- Cold/warm NativeLink cache proof (exit 0).
+- Cold/warm NativeLink cache proof (exit 0; cold `hit_rate` 0.0 / 8.17s vs warm
+  `hit_rate` 1.0 / 5.48s — `collectable_v1`).
 - One-process local remote-executor smoke (`worker_endpoints_ready`).
-- Two-worker config gate (configuration readiness; not worker placement).
+- Two-worker live endpoint readiness in Nix (`worker_endpoints_ready`,
+  `expected_workers=2`, `configured_workers=2`, no environment blocker;
+  `collectable_v1`). This is two workers configured AND endpoints opened live —
+  not work distributed across two workers.
 - Deterministic simulated-agent provenance (zero LLM tokens).
+- Agent loop closure: a bounded LLM patch validates through the chain
+  `agent → change → run → target → action → cache_event`
+  (`scripts/agent-loop-proof.sh`, `chain_complete=true`). The validation/cache
+  leg is `collectable_v1` (ingested Bazel evidence); the `agent` and `change`
+  provenance nodes stay `simulated_v1` (deterministic patch, no live LLM). The
+  patch carries a `model` label and a SHA-256 prompt hash only — the raw prompt
+  is never stored or exported.
 
 ## What is explicitly unproven
 

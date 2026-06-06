@@ -28,6 +28,10 @@ await page.locator('input[aria-label="operator command"]').fill("focus failures"
 await page.locator('input[aria-label="operator command"]').press("Enter");
 await page.waitForTimeout(650);
 await page.screenshot({ path: path.join(outputRoot, "canvas-failure-focus.png"), fullPage: true });
+await page.locator('input[aria-label="operator command"]').fill("agent loop");
+await page.locator('input[aria-label="operator command"]').press("Enter");
+await page.waitForTimeout(650);
+await page.screenshot({ path: path.join(outputRoot, "canvas-agent-loop.png"), fullPage: true });
 
 const video = page.video();
 await context.close();
@@ -53,6 +57,7 @@ console.log(
       proof: path.join(outputRoot, "canvas-proof.png"),
       remote: path.join(outputRoot, "canvas-remote-boundary.png"),
       failure: path.join(outputRoot, "canvas-failure-focus.png"),
+      agentLoop: path.join(outputRoot, "canvas-agent-loop.png"),
       mobile: path.join(outputRoot, "canvas-mobile.png"),
       video: path.join(outputRoot, "canvas-operator-flow.webm"),
     },

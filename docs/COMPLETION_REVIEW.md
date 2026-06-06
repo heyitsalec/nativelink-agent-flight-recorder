@@ -182,3 +182,34 @@ inside `nix develop` (not run this session — Nix not on coordinator PATH).
 Framing distance: [docs/FRAMING_DISTANCE.md](FRAMING_DISTANCE.md)
 
 Operator gates (A-O1, B-O1, D-O1): pending human read-through.
+
+## PER-1058 Live Milestone Proofs Addendum
+
+Date: 2026-06-06
+
+Three milestone proofs ran live inside `nix develop` and produced durable
+`collectable_v1` `summary.json` evidence:
+
+- **M2 — cold/warm cache:** `scripts/cold-warm-cache-proof.sh` →
+  `data/cold-warm-proof/summary.json`. Cold `hit_rate` 0.0 / 8.17s vs warm
+  `hit_rate` 1.0 / 5.48s (`warm_hit_rate_higher` and `warm_duration_lower` both
+  true).
+- **M3 — two-worker live endpoints:**
+  `NLFR_EXPECTED_WORKERS=2 NLFR_LOCAL_EXEC_OUTPUT=$PWD/data/local-exec-proof-2w scripts/local-exec-proof.sh`
+  → `data/local-exec-proof-2w/summary.json` with `status=completed`,
+  `worker_readiness.status=worker_endpoints_ready`, `expected_workers=2`,
+  `configured_workers=2`, no environment blocker. This upgrades the prior
+  two-worker config gate to a live endpoint-readiness proof: two workers
+  configured AND endpoints opened live — not work distributed across two
+  workers.
+- **M4 — agent-loop closure:** `scripts/agent-loop-proof.sh` →
+  `data/agent-loop-proof/summary.json` with `chain_complete=true`. The bounded
+  `llm-bounded-patch` scenario applies to a copied workspace, runs Bazel through
+  the NativeLink cache, ingests validation+cache evidence (`simulate --ingest`),
+  and the Action Graph shows `agent → change → run → target → action →
+  cache_event`. The patch carries a `model` label and a SHA-256 prompt hash
+  only; the raw prompt is never stored or exported.
+
+Still unsupported (no direct evidence captured): worker identity, scheduler
+assignment, queue time, action placement, load distribution, and production
+AI-agent identity/auth.

@@ -122,10 +122,17 @@ Commit: `635ee36` — Unblock NativeLink 1.3.2 and Bazel 9 proof paths.
 
 | Proof | Result |
 |-------|--------|
-| `scripts/cold-warm-cache-proof.sh` | Exit 0 — cold + warm completed |
+| `scripts/cold-warm-cache-proof.sh` | Exit 0 — cold `hit_rate` 0.0 / 8.17s vs warm `hit_rate` 1.0 / 5.48s |
 | `scripts/local-exec-proof.sh` | Exit 0 — `worker_endpoints_ready` |
+| `NLFR_EXPECTED_WORKERS=2 … scripts/local-exec-proof.sh` | Exit 0 — `worker_endpoints_ready`, `expected_workers=2`, `configured_workers=2` |
+| `scripts/agent-loop-proof.sh` | Exit 0 — `chain_complete=true` (`agent → change → run → cache`) |
 
-Summaries: `data/cold-warm-proof/summary.json`, `data/local-exec-proof/summary.json`.
+Summaries: `data/cold-warm-proof/summary.json`,
+`data/local-exec-proof/summary.json`, `data/local-exec-proof-2w/summary.json`,
+`data/agent-loop-proof/summary.json` (all `collectable_v1`). The two-worker run
+proves two workers configured AND endpoints opened live — not work distributed
+across workers. The agent-loop patch stores a SHA-256 prompt hash only; the raw
+prompt is never stored or exported.
 
 Toolchain: NativeLink 1.3.2, Bazel 9.1.1. Config fix: `cache-only.json` uses
 NativeLink 1.3.x `stores` array schema.
@@ -146,8 +153,10 @@ These are explicit follow-ups, not implied claims:
 - full NativeLink Local Remote Execution on a supported Linux/x86_64-style
   environment.
 
-The next best technical step is two-worker proof, full LRE on a Linux/x86_64-style
-host, and direct worker/admin/log evidence before expanding unsupported claims.
+The next best technical step is full LRE on a Linux/x86_64-style host and direct
+worker/admin/log evidence (identity, placement, scheduler, queue time, load)
+before expanding unsupported claims. The two-worker live endpoint proof and
+agent-loop closure are now done (see proof table above).
 
 ## Why It Fits NativeLink
 

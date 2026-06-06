@@ -57,6 +57,42 @@ def test_simulate_command_mutates_workspace_and_records_provenance(tmp_path) -> 
     assert json.loads(proof["payload"])["scenario_id"] == "safe-leaf-change"
 
 
+def test_simulate_bounded_llm_patch_records_hashed_prompt_provenance(tmp_path) -> None:
+    output_dir = tmp_path / "agent-sim"
+
+    result = run_nlfr(
+        "simulate",
+        "--scenario",
+        "llm-bounded-patch",
+        "--output-dir",
+        str(output_dir),
+        "--skip-run",
+        "--json",
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    scenario = payload["scenarios"][0]
+    provenance = json.loads(Path(scenario["provenance_path"]).read_text())
+
+    agent = provenance["agent"]
+    assert agent["kind"] == "bounded_llm_v1"
+    assert agent["model"] == "demo-bounded-llm"
+    assert agent["prompt_sha256"] == (
+        "5f787e73d6d3f8b65082f2d922e670104c580461abff1185780c76ed13a300a6"
+    )
+    # Hashed-prompt evidence ref is present; the raw prompt is never stored.
+    assert "prompt:sha256:5f787e73" in " ".join(provenance["evidence_refs"])
+    assert "prompt" not in agent  # only the hash, never a raw prompt field
+
+    with sqlite3.connect(output_dir / "nlfr.sqlite") as conn:
+        conn.row_factory = sqlite3.Row
+        proof = conn.execute("SELECT payload FROM proof_blocks").fetchone()
+    stored = json.loads(proof["payload"])
+    assert stored["agent"]["prompt_sha256"].startswith("5f787e73")
+    assert "prompt" not in stored["agent"]
+
+
 def test_simulate_command_records_build_blocker_provenance(tmp_path) -> None:
     output_dir = tmp_path / "agent-sim"
 

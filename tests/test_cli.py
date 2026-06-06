@@ -65,8 +65,11 @@ def test_script_entrypoint_resolves_to_cli_main() -> None:
 def test_doctor_local_exec_reports_config_and_tool_checks() -> None:
     result = run_nlfr("doctor", "--mode", "local-exec", "--json")
 
-    assert result.returncode == 1
     payload = json.loads(result.stdout)
+    # Return code tracks overall readiness: 0 when every check passes (e.g.
+    # inside nix develop with Bazel + NativeLink present), 1 when a tool is
+    # absent. Both are valid; assert the code is consistent with the payload.
+    assert result.returncode == (0 if payload["ok"] else 1)
     checks = {check["name"]: check for check in payload["checks"]}
 
     assert payload["mode"] == "local-exec"

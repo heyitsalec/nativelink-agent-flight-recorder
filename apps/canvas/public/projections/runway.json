@@ -1,50 +1,59 @@
 {
   "events": [
     {
-      "confidence": "high",
+      "confidence": "medium",
       "ended_at": null,
       "evidence_refs": [
-        "simulated_v1:bep.jsonl",
-        "simulated_v1:execution-log.json",
-        "simulated_v1:profile.json"
+        "scenario:llm-bounded-patch"
       ],
-      "id": "runs_efd15c8fc1b784129fb7645c",
-      "label": "fixture-ingest",
+      "id": "runs_9bf331740a74989f379808da",
+      "label": "llm-bounded-patch",
       "lane": "run",
       "payload": {
         "mode": "cache-only",
         "run_group": "latest",
-        "scenario": "fixture-ingest",
-        "stable_key": "fixture-run:cache-only",
-        "status": "ingested"
+        "scenario": "llm-bounded-patch",
+        "stable_key": "simulation:llm-bounded-patch:cache-only",
+        "status": "simulated_only"
       },
       "redaction_state": "safe",
       "source_kind": "simulated_v1",
-      "started_at": "2026-06-06T21:45:21.673Z",
-      "status": "ingested"
+      "started_at": "2026-06-06T22:37:55.645Z",
+      "status": "simulated_only"
     },
     {
       "confidence": "medium",
       "ended_at": null,
       "evidence_refs": [
-        "simulated_v1:profile.json"
+        "scenario:llm-bounded-patch",
+        "agent:demo-bounded-llm-worker",
+        "patch:sha256:856871f76606d071644921e408592cc65d4f348442e8712815b88bac7e527e98",
+        "prompt:sha256:5f787e73d6d3f8b65082f2d922e670104c580461abff1185780c76ed13a300a6",
+        "run:runs_9bf331740a74989f379808da"
       ],
-      "id": "cache_events_2c5aa3b32b68a25b478d4417",
-      "label": "profile://tasks:priority_test:PyTest:sha256:1111222233334444",
-      "lane": "cache",
+      "id": "artifacts_b611de9d50de27b5c231578d",
+      "label": "agent-provenance.json",
+      "lane": "artifact",
       "payload": {
-        "digest": "sha256:1111222233334444",
-        "event_key": "profile://tasks:priority_test:PyTest:sha256:1111222233334444",
-        "event_kind": "remote_cache_hit",
-        "hit": 1,
-        "run_id": "runs_efd15c8fc1b784129fb7645c",
-        "stable_key": "fixture-run:cache-only:cache_event:profile://tasks:priority_test:PyTest:sha256:1111222233334444",
-        "target_id": "targets_5658831dad78d6f0abdbd647"
+        "artifact_key": "agent-provenance.json",
+        "artifact_path": "agent-provenance.json",
+        "content_type": "application/json",
+        "manifest_path": "artifact_manifest.json",
+        "producer_command": [
+          "nlfr",
+          "simulate",
+          "--scenario",
+          "llm-bounded-patch"
+        ],
+        "run_id": "runs_9bf331740a74989f379808da",
+        "sha256": "da86e3e82dc0a17069b9e61815f259abe36c0eb7fca99eb45e7cfb3e5c105577",
+        "size_bytes": 3595,
+        "stable_key": "simulation:llm-bounded-patch:cache-only:artifact:agent-provenance"
       },
       "redaction_state": "safe",
-      "source_kind": "derived_v1",
-      "started_at": "2026-06-06T21:45:21.674Z",
-      "status": "remote_cache_hit"
+      "source_kind": "simulated_v1",
+      "started_at": "2026-06-06T22:37:55.646Z",
+      "status": null
     },
     {
       "confidence": "high",
@@ -52,7 +61,7 @@
       "evidence_refs": [
         "simulated_v1:execution-log.json"
       ],
-      "id": "cache_events_5300f4c95786094dfcb9d7cb",
+      "id": "cache_events_7436531115a20e86a59bc00b",
       "label": "//tasks:priority_test:PyTest:sha256:1111222233334444",
       "lane": "cache",
       "payload": {
@@ -60,37 +69,14 @@
         "event_key": "//tasks:priority_test:PyTest:sha256:1111222233334444",
         "event_kind": "remote_cache_hit",
         "hit": 1,
-        "run_id": "runs_efd15c8fc1b784129fb7645c",
-        "stable_key": "fixture-run:cache-only:cache_event://tasks:priority_test:PyTest:sha256:1111222233334444",
-        "target_id": "targets_5658831dad78d6f0abdbd647"
+        "run_id": "runs_9bf331740a74989f379808da",
+        "stable_key": "simulation:llm-bounded-patch:cache-only:cache_event://tasks:priority_test:PyTest:sha256:1111222233334444",
+        "target_id": "targets_c0fe8bbfbbcee268433849e3"
       },
       "redaction_state": "safe",
       "source_kind": "simulated_v1",
-      "started_at": "2026-06-06T21:45:21.674Z",
+      "started_at": "2026-06-06T22:37:55.704Z",
       "status": "remote_cache_hit"
-    },
-    {
-      "confidence": "high",
-      "ended_at": null,
-      "evidence_refs": [
-        "simulated_v1:execution-log.json"
-      ],
-      "id": "cache_events_cd491628c2ce1a1744045ece",
-      "label": "//tasks:flaky_test:PyTest:sha256:aaaabbbbccccdddd",
-      "lane": "cache",
-      "payload": {
-        "digest": "sha256:aaaabbbbccccdddd",
-        "event_key": "//tasks:flaky_test:PyTest:sha256:aaaabbbbccccdddd",
-        "event_kind": "cache_miss",
-        "hit": 0,
-        "run_id": "runs_efd15c8fc1b784129fb7645c",
-        "stable_key": "fixture-run:cache-only:cache_event://tasks:flaky_test:PyTest:sha256:aaaabbbbccccdddd",
-        "target_id": "targets_3a7d039221663f4789b5510f"
-      },
-      "redaction_state": "safe",
-      "source_kind": "simulated_v1",
-      "started_at": "2026-06-06T21:45:21.674Z",
-      "status": "cache_miss"
     },
     {
       "confidence": "high",
@@ -98,19 +84,19 @@
       "evidence_refs": [
         "simulated_v1:bep.jsonl"
       ],
-      "id": "targets_3a7d039221663f4789b5510f",
+      "id": "targets_aecefec8b0d2148629b024c4",
       "label": "//tasks:flaky_test",
       "lane": "target",
       "payload": {
         "label": "//tasks:flaky_test",
-        "run_id": "runs_efd15c8fc1b784129fb7645c",
-        "stable_key": "fixture-run:cache-only:target://tasks:flaky_test",
+        "run_id": "runs_9bf331740a74989f379808da",
+        "stable_key": "simulation:llm-bounded-patch:cache-only:target://tasks:flaky_test",
         "status": "FAILED",
         "target_kind": "py_test rule"
       },
       "redaction_state": "safe",
       "source_kind": "simulated_v1",
-      "started_at": "2026-06-06T21:45:21.674Z",
+      "started_at": "2026-06-06T22:37:55.704Z",
       "status": "FAILED"
     },
     {
@@ -119,20 +105,43 @@
       "evidence_refs": [
         "simulated_v1:bep.jsonl"
       ],
-      "id": "targets_5658831dad78d6f0abdbd647",
+      "id": "targets_c0fe8bbfbbcee268433849e3",
       "label": "//tasks:priority_test",
       "lane": "target",
       "payload": {
         "label": "//tasks:priority_test",
-        "run_id": "runs_efd15c8fc1b784129fb7645c",
-        "stable_key": "fixture-run:cache-only:target://tasks:priority_test",
+        "run_id": "runs_9bf331740a74989f379808da",
+        "stable_key": "simulation:llm-bounded-patch:cache-only:target://tasks:priority_test",
         "status": "PASSED",
         "target_kind": "py_test rule"
       },
       "redaction_state": "safe",
       "source_kind": "simulated_v1",
-      "started_at": "2026-06-06T21:45:21.674Z",
+      "started_at": "2026-06-06T22:37:55.704Z",
       "status": "PASSED"
+    },
+    {
+      "confidence": "medium",
+      "ended_at": null,
+      "evidence_refs": [
+        "simulated_v1:profile.json"
+      ],
+      "id": "cache_events_8a5988733feeee06ba389854",
+      "label": "profile://tasks:priority_test:PyTest:sha256:1111222233334444",
+      "lane": "cache",
+      "payload": {
+        "digest": "sha256:1111222233334444",
+        "event_key": "profile://tasks:priority_test:PyTest:sha256:1111222233334444",
+        "event_kind": "remote_cache_hit",
+        "hit": 1,
+        "run_id": "runs_9bf331740a74989f379808da",
+        "stable_key": "simulation:llm-bounded-patch:cache-only:cache_event:profile://tasks:priority_test:PyTest:sha256:1111222233334444",
+        "target_id": "targets_c0fe8bbfbbcee268433849e3"
+      },
+      "redaction_state": "safe",
+      "source_kind": "derived_v1",
+      "started_at": "2026-06-06T22:37:55.705Z",
+      "status": "remote_cache_hit"
     },
     {
       "confidence": "low",
@@ -140,46 +149,43 @@
       "evidence_refs": [
         "simulated_v1:profile.json"
       ],
-      "id": "cache_events_9aae150c5ae2c4bb9a8203a6",
+      "id": "cache_events_d4d32866770093896742c2ab",
       "label": "profile://tasks:flaky_test:PyTest:202",
       "lane": "cache",
       "payload": {
         "event_key": "profile://tasks:flaky_test:PyTest:202",
         "event_kind": "action_cache_observed",
-        "run_id": "runs_efd15c8fc1b784129fb7645c",
-        "stable_key": "fixture-run:cache-only:cache_event:profile://tasks:flaky_test:PyTest:202",
-        "target_id": "targets_3a7d039221663f4789b5510f"
+        "run_id": "runs_9bf331740a74989f379808da",
+        "stable_key": "simulation:llm-bounded-patch:cache-only:cache_event:profile://tasks:flaky_test:PyTest:202",
+        "target_id": "targets_aecefec8b0d2148629b024c4"
       },
       "redaction_state": "safe",
       "source_kind": "derived_v1",
-      "started_at": "2026-06-06T21:45:21.675Z",
+      "started_at": "2026-06-06T22:37:55.705Z",
       "status": "action_cache_observed"
     },
     {
       "confidence": "high",
       "ended_at": null,
       "evidence_refs": [
-        "simulated_v1:bep.jsonl"
+        "simulated_v1:execution-log.json"
       ],
-      "id": "failures_aacfa7067d451e2284f552f9",
-      "label": "Bazel finished with TESTS_FAILED (exit code 3)",
-      "lane": "failure",
+      "id": "cache_events_e55a33a312d157da4f58d38d",
+      "label": "//tasks:flaky_test:PyTest:sha256:aaaabbbbccccdddd",
+      "lane": "cache",
       "payload": {
-        "failure_kind": "build_finished",
-        "message": "Bazel finished with TESTS_FAILED (exit code 3)",
-        "run_id": "runs_efd15c8fc1b784129fb7645c",
-        "span": {
-          "event_index": 9,
-          "id": {
-            "buildFinished": {}
-          }
-        },
-        "stable_key": "fixture-run:cache-only:failure:build_finished:9:TESTS_FAILED"
+        "digest": "sha256:aaaabbbbccccdddd",
+        "event_key": "//tasks:flaky_test:PyTest:sha256:aaaabbbbccccdddd",
+        "event_kind": "cache_miss",
+        "hit": 0,
+        "run_id": "runs_9bf331740a74989f379808da",
+        "stable_key": "simulation:llm-bounded-patch:cache-only:cache_event://tasks:flaky_test:PyTest:sha256:aaaabbbbccccdddd",
+        "target_id": "targets_aecefec8b0d2148629b024c4"
       },
       "redaction_state": "safe",
       "source_kind": "simulated_v1",
-      "started_at": "2026-06-06T21:45:21.675Z",
-      "status": null
+      "started_at": "2026-06-06T22:37:55.705Z",
+      "status": "cache_miss"
     },
     {
       "confidence": "high",
@@ -187,13 +193,13 @@
       "evidence_refs": [
         "simulated_v1:bep.jsonl"
       ],
-      "id": "failures_d157bd86959f2c75ddde1aef",
+      "id": "failures_63f9ef6937b97907cc6b775d",
       "label": "//tasks:flaky_test failed: expected stable priority ordering",
       "lane": "failure",
       "payload": {
         "failure_kind": "target_completed",
         "message": "//tasks:flaky_test failed: expected stable priority ordering",
-        "run_id": "runs_efd15c8fc1b784129fb7645c",
+        "run_id": "runs_9bf331740a74989f379808da",
         "span": {
           "event_index": 8,
           "id": {
@@ -203,15 +209,41 @@
             }
           }
         },
-        "stable_key": "fixture-run:cache-only:failure://tasks:flaky_test:target_completed:8"
+        "stable_key": "simulation:llm-bounded-patch:cache-only:failure://tasks:flaky_test:target_completed:8"
       },
       "redaction_state": "safe",
       "source_kind": "simulated_v1",
-      "started_at": "2026-06-06T21:45:21.675Z",
+      "started_at": "2026-06-06T22:37:55.705Z",
+      "status": null
+    },
+    {
+      "confidence": "high",
+      "ended_at": null,
+      "evidence_refs": [
+        "simulated_v1:bep.jsonl"
+      ],
+      "id": "failures_7a6c04fae39ea2dd90d15afa",
+      "label": "Bazel finished with TESTS_FAILED (exit code 3)",
+      "lane": "failure",
+      "payload": {
+        "failure_kind": "build_finished",
+        "message": "Bazel finished with TESTS_FAILED (exit code 3)",
+        "run_id": "runs_9bf331740a74989f379808da",
+        "span": {
+          "event_index": 9,
+          "id": {
+            "buildFinished": {}
+          }
+        },
+        "stable_key": "simulation:llm-bounded-patch:cache-only:failure:build_finished:9:TESTS_FAILED"
+      },
+      "redaction_state": "safe",
+      "source_kind": "simulated_v1",
+      "started_at": "2026-06-06T22:37:55.705Z",
       "status": null
     }
   ],
-  "generated_at": "2026-06-06T21:45:21.789184Z",
+  "generated_at": "2026-06-06T22:37:55.815357Z",
   "lanes": [
     {
       "id": "run",
@@ -251,7 +283,7 @@
       "cache_miss": 1,
       "remote_cache_hit": 2
     },
-    "events": 9,
+    "events": 10,
     "failures": 2,
     "invocation_statuses": {},
     "runs": 1
