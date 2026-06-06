@@ -7,6 +7,17 @@ The MVP records real build/test/cache evidence, stores it in SQLite, exports
 truth-labeled projection JSON, and renders a sparse Action Graph canvas from
 that projection.
 
+![Action Graph canvas rendered from fixture-backed projection JSON (simulated_v1)](docs/images/canvas-desktop.png)
+
+The canvas is not a dashboard over invented state. It renders only projection
+JSON produced from the recorder's SQLite evidence spine. Screenshots below are
+fixture-backed (`simulated_v1`) canvas renders; see Truth Labels. The same run
+can be inspected through the agent-loop focus and Proof Packet:
+
+![Agent-loop focus rendered from fixture projection JSON (simulated_v1)](docs/images/canvas-agent-loop.png)
+
+![Proof Packet view rendered from fixture projection JSON (simulated_v1)](docs/images/canvas-proof.png)
+
 ## V1 Thesis
 
 NativeLink is strongest in this tryout when the demo proves a real loop:
@@ -107,7 +118,9 @@ local-exec, simulated-agent provenance, fixture ingest, projection exports, and
 canvas build. Use after either path above.
 
 Tryout narrative: [docs/TRYOUT_PACKET.md](docs/TRYOUT_PACKET.md) · One-pager:
-[docs/ONE_PAGER.md](docs/ONE_PAGER.md)
+[docs/ONE_PAGER.md](docs/ONE_PAGER.md) · Demo script:
+[docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) · Redacted proof samples:
+[docs/proof-samples/](docs/proof-samples/)
 
 ## CLI Flow
 
@@ -221,7 +234,8 @@ CANVAS_URL=http://127.0.0.1:5174/ npm --prefix apps/canvas run capture
 ```
 
 The capture script writes desktop, proof, remote-boundary, failure-focus,
-mobile, and WebM operator-flow artifacts under ignored `output/playwright/`.
+agent-loop, mobile, and WebM operator-flow artifacts under ignored
+`output/playwright/`.
 
 ## Truth Labels
 

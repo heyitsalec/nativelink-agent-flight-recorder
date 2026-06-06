@@ -46,6 +46,16 @@ else
   echo "local-exec: blocker or failure recorded at $OUT/local-exec.log"
 fi
 
+echo "== NLFR agent-loop closure proof (collectable chain) =="
+# Real Nix proof of the bounded-LLM agent loop: agent -> change -> run ->
+# validation -> cache, asserting chain_complete=true. Outside nix develop this
+# records a durable environment_blocker instead of a false success.
+if NLFR_AGENT_LOOP_OUTPUT="$OUT/agent-loop" scripts/agent-loop-proof.sh >"$OUT/agent-loop.log" 2>&1; then
+  echo "agent-loop: deterministic bounded-agent patch validated through collectable validation/cache chain (chain_complete=true)"
+else
+  echo "agent-loop: blocker or failure recorded at $OUT/agent-loop.log"
+fi
+
 echo "== NLFR simulated agent-loop provenance (fixture chain) =="
 # Deterministic, no-Nix agent loop: a bounded agent patch is recorded, then
 # fixture Bazel evidence is attached to the SAME run so the action graph shows

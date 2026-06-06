@@ -274,6 +274,7 @@ export function App() {
         {selectedNode && mode !== "proof" && mode !== "remote" && (
           <Inspector node={selectedNode} onClose={() => setSelectedId(null)} />
         )}
+        <TruthLegend />
       </section>
 
       <div className="operator" data-testid="operator-chat">
@@ -585,6 +586,29 @@ function ProofBlockView({ block }: { block: ProofBlock }) {
         </div>
       )}
     </section>
+  );
+}
+
+function TruthLegend() {
+  const items: { kind: SourceKind; label: string; hint: string }[] = [
+    { kind: "collectable_v1", label: "collectable_v1", hint: "recorded from real tools" },
+    { kind: "derived_v1", label: "derived_v1", hint: "computed from artifacts" },
+    { kind: "simulated_v1", label: "simulated_v1", hint: "deterministic fixture" },
+    { kind: "future", label: "future", hint: "claim not yet collected" },
+  ];
+  return (
+    <aside className="truth-legend" aria-label="truth label legend" data-testid="truth-legend">
+      <span className="truth-legend-title">Truth labels</span>
+      <ul>
+        {items.map((item) => (
+          <li key={item.kind} data-source-kind={item.kind}>
+            <span className={`truth-dot ${item.kind}`} />
+            <span className="truth-legend-label">{item.label}</span>
+            <span className="truth-legend-hint">{item.hint}</span>
+          </li>
+        ))}
+      </ul>
+    </aside>
   );
 }
 

@@ -1,0 +1,56 @@
+{
+  "agent": {
+    "input_signal": "redacted: one-line code task; raw prompt withheld, hash retained",
+    "kind": "bounded_llm_v1",
+    "model": "demo-bounded-llm",
+    "name": "demo-bounded-llm-worker",
+    "prompt_sha256": "5f787e73d6d3f8b65082f2d922e670104c580461abff1185780c76ed13a300a6"
+  },
+  "build_status": "completed",
+  "chain_complete": true,
+  "confidence": "high",
+  "evidence_refs": [
+    "simulate.json",
+    "projections/action-graph.json",
+    "projections/proof.json",
+    "nativelink.stdout.txt",
+    "nativelink.stderr.txt"
+  ],
+  "graph_edge_kinds": {
+    "authored_change": 1,
+    "evaluated_target": 1,
+    "observed_cache_event": 2,
+    "produced_action": 1,
+    "recorded_artifact": 4,
+    "recorded_invocation": 1,
+    "validated_by": 1
+  },
+  "graph_node_kinds": {
+    "action": 1,
+    "agent": 1,
+    "artifact": 4,
+    "cache_event": 2,
+    "change": 1,
+    "invocation": 1,
+    "run": 1,
+    "target": 1
+  },
+  "ingest": {
+    "counts": {
+      "actions": 1,
+      "cache_events": 2,
+      "failures": 0,
+      "targets": 1
+    },
+    "returncode": 0,
+    "status": "ingested"
+  },
+  "redaction_state": "safe",
+  "scenario_id": "llm-bounded-patch",
+  "source_kind": "collectable_v1",
+  "validation_tail": {
+    "actions": 1,
+    "cache_events": 2,
+    "targets": 1
+  }
+}
