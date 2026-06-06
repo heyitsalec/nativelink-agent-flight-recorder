@@ -236,14 +236,34 @@ def _load_json_events(path: Path) -> list[dict[str, Any]]:
         return []
 
     try:
-        payload = json.loads(text)
+        return _normalize_json_payload(json.loads(text))
     except json.JSONDecodeError:
-        return [
-            event
-            for event in (json.loads(line) for line in text.splitlines() if line.strip())
-            if isinstance(event, dict)
-        ]
+        try:
+            return _load_concatenated_json_events(text)
+        except json.JSONDecodeError:
+            return [
+                event
+                for event in (json.loads(line) for line in text.splitlines() if line.strip())
+                if isinstance(event, dict)
+            ]
 
+
+def _load_concatenated_json_events(text: str) -> list[dict[str, Any]]:
+    events: list[dict[str, Any]] = []
+    decoder = json.JSONDecoder()
+    index = 0
+    length = len(text)
+    while index < length:
+        while index < length and text[index].isspace():
+            index += 1
+        if index >= length:
+            break
+        payload, index = decoder.raw_decode(text, index)
+        events.extend(_normalize_json_payload(payload))
+    return events
+
+
+def _normalize_json_payload(payload: Any) -> list[dict[str, Any]]:
     if isinstance(payload, list):
         return [event for event in payload if isinstance(event, dict)]
     if isinstance(payload, dict):

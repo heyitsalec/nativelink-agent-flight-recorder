@@ -13,6 +13,15 @@ Sources:
 - NativeLink Develop with Bazel: <https://docs.nativelink.com/contribute/bazel>
 - NativeLink Basic cache configs: <https://docs.nativelink.com/configuration/basic>
 
+## Prerequisites
+
+- Nix with flakes enabled (Determinate installer recommended).
+- ~82GB free disk for the first `nix develop` fetch and Bazel proof runs.
+- First cold/warm + local-exec proof may take 30+ minutes depending on network.
+
+Outside Nix, use the fixture canvas path in README Path A (~5 minutes, no real
+NativeLink proof).
+
 ## Nix
 
 Install Nix with flakes enabled, then:

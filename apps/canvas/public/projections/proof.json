@@ -15,7 +15,7 @@
       "kind": "derived_summary",
       "metrics": {},
       "redaction_state": "safe",
-      "source_kind": "derived_v1",
+      "source_kind": "simulated_v1",
       "summary": "Local recorded evidence for AI-generated code validation (cache-only mode).",
       "title": "Proof Scope"
     },
@@ -35,8 +35,8 @@
       "claims": [],
       "confidence": "low",
       "evidence_refs": [
-        "simulated_v1:execution-log.json",
-        "simulated_v1:profile.json"
+        "simulated_v1:profile.json",
+        "simulated_v1:execution-log.json"
       ],
       "id": "cache",
       "kind": "derived_summary",
@@ -72,8 +72,10 @@
         "remote_executor_endpoints": [],
         "unsupported_claims": [
           "worker_identity",
+          "action_placement",
           "queue_time",
-          "scheduler_assignment"
+          "scheduler_assignment",
+          "load_distribution"
         ]
       },
       "redaction_state": "unknown",
@@ -95,7 +97,7 @@
         "targets": 2
       },
       "redaction_state": "safe",
-      "source_kind": "derived_v1",
+      "source_kind": "simulated_v1",
       "summary": "Targets, actions, and failures visible to the recorder.",
       "title": "Validation Surface"
     },
@@ -114,7 +116,7 @@
       "title": "Artifact Chain"
     }
   ],
-  "generated_at": "2026-06-06T19:44:54.332690Z",
+  "generated_at": "2026-06-06T21:45:21.847362Z",
   "projection_kind": "proof_packet",
   "run_group": "latest",
   "schema_version": 1,

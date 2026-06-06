@@ -10,8 +10,10 @@ REMOTE_ENDPOINT_FLAGS = ("--remote_cache", "--remote_executor")
 
 UNSUPPORTED_REMOTE_EXECUTION_CLAIMS = (
     "worker_identity",
+    "action_placement",
     "queue_time",
     "scheduler_assignment",
+    "load_distribution",
 )
 
 

@@ -148,6 +148,37 @@ Real toolchain proof on this host:
 - `scripts/cold-warm-cache-proof.sh` → `environment_blocker` (no NativeLink).
 - `scripts/local-exec-proof.sh` → `environment_blocker` (no NativeLink).
 
-PER-1019 remains open until a Nix/devcontainer or Linux host runs successful
-cold/warm and local-exec proof. Fixture-backed and blocker evidence on this Mac
-is honest and complete for the available toolchain boundary.
+PER-1019 closed 2026-06-06 with commit `635ee36`:
+
+- Nix/Determinate installed; disk cleanup freed ~82GB for first proof run
+- `nix develop` provides NativeLink 1.3.2 + Bazel 9.1.1
+- `scripts/cold-warm-cache-proof.sh` — cold + warm exit 0
+- `scripts/local-exec-proof.sh` — exit 0, `worker_endpoints_ready`
+- Summaries at `data/cold-warm-proof/summary.json` and
+  `data/local-exec-proof/summary.json`
+
+Unsupported claims (worker identity, scheduler assignment, queue time, action
+placement, load distribution) remain explicit in proof output.
+
+## PER-1053 Vision DAG Addendum
+
+Date: 2026-06-06
+
+Umbrella [PER-1053](https://linear.app/gradschool/issue/PER-1053) executed serial
+A→B→C→D in single coordinator session.
+
+| Sub-DAG | Result |
+|---------|--------|
+| A Tryout | README dual-path, ONE_PAGER, GITHUB_RELEASE, TRYOUT_PACKET fix |
+| B Truth | Remote lens proof-faithful; redaction in drawer; source_kind fix |
+| C Remote Wave 1 | Two-worker config; `NLFR_EXPECTED_WORKERS=2` config gate passes |
+| D Integration | 42 pytest, verify-demo, capture; framing distance table |
+
+Proof: `uv run pytest tests -q` → 42 passed; canvas build + capture passed.
+
+Nix live two-worker full proof: run `NLFR_EXPECTED_WORKERS=2 scripts/local-exec-proof.sh`
+inside `nix develop` (not run this session — Nix not on coordinator PATH).
+
+Framing distance: [docs/FRAMING_DISTANCE.md](FRAMING_DISTANCE.md)
+
+Operator gates (A-O1, B-O1, D-O1): pending human read-through.

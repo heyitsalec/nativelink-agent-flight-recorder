@@ -1,6 +1,7 @@
 {
-  "stores": {
-    "AC_MAIN_STORE": {
+  "stores": [
+    {
+      "name": "AC_MAIN_STORE",
       "filesystem": {
         "content_path": "/tmp/nlfr-nativelink/cache-only/ac",
         "temp_path": "/tmp/nlfr-nativelink/cache-only/tmp-ac",
@@ -10,7 +11,8 @@
         }
       }
     },
-    "CAS_MAIN_STORE": {
+    {
+      "name": "CAS_MAIN_STORE",
       "filesystem": {
         "content_path": "/tmp/nlfr-nativelink/cache-only/cas",
         "temp_path": "/tmp/nlfr-nativelink/cache-only/tmp-cas",
@@ -20,7 +22,7 @@
         }
       }
     }
-  },
+  ],
   "servers": [
     {
       "name": "cache_only",

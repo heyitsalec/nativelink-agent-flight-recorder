@@ -97,7 +97,7 @@ run_leg() {
     --output-dir "$OUT/nlfr" \
     --skip-nativelink \
     --bazel-executable "$BAZEL_BIN" \
-    --bazel-startup-arg "--output_base=$output_base" \
+    --bazel-startup-arg=--output_base="$output_base" \
     --remote-cache "$REMOTE_CACHE" \
     --json \
     "$TARGET" >"$result"

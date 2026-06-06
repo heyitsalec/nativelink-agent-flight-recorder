@@ -35,6 +35,20 @@ input {
     linear-gradient(140deg, #fbfcfd 0%, #f4f7f8 54%, #f8faf9 100%);
 }
 
+.fixture-fallback-banner {
+  position: absolute;
+  z-index: 5;
+  top: 0;
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 0.55rem 1rem;
+  background: #3d2e00;
+  color: #ffe8a3;
+  font-size: 0.85rem;
+  border-bottom: 1px solid #6b5200;
+}
+
 .topbar {
   position: absolute;
   z-index: 4;
