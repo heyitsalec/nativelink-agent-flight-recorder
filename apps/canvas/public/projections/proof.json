@@ -5,49 +5,97 @@
         "This packet can prove recorded commands, artifacts, statuses, and cache events present in the local evidence spine.",
         "This packet does not claim remote worker assignment, queue timing, or opaque SaaS telemetry."
       ],
-      "confidence": "medium",
+      "confidence": "high",
       "evidence_refs": [
-        "scenario:llm-bounded-patch"
+        "artifact:run.json"
       ],
       "id": "scope",
       "kind": "derived_summary",
       "metrics": {},
       "redaction_state": "safe",
-      "source_kind": "simulated_v1",
-      "summary": "Local recorded evidence for AI-generated code validation (cache-only mode).",
+      "source_kind": "collectable_v1",
+      "summary": "Local recorded evidence for AI-generated code validation (generic mode).",
       "title": "Proof Scope"
     },
     {
       "claims": [],
-      "confidence": "unknown",
-      "evidence_refs": [],
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_4d3e7b3a82e13bccbdd16b5e",
+        "command:0",
+        "command:1",
+        "run:run_9fdec126c4e1d72366a0a5ca"
+      ],
       "id": "invocations",
       "kind": "derived_summary",
-      "metrics": {},
-      "redaction_state": "unknown",
-      "source_kind": "future",
+      "metrics": {
+        "unknown": 4
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
       "summary": "NativeLink and Bazel command outcomes captured by the recorder.",
       "title": "Invocation Results"
     },
     {
       "claims": [],
-      "confidence": "low",
-      "evidence_refs": [
-        "simulated_v1:execution-log.json",
-        "simulated_v1:profile.json"
-      ],
+      "confidence": "unknown",
+      "evidence_refs": [],
       "id": "cache",
       "kind": "derived_summary",
       "metrics": {
-        "hit_rate": 0.6666666666666666,
-        "hits": 2,
-        "misses": 1,
-        "unknown": 1
+        "hit_rate": null,
+        "hits": 0,
+        "misses": 0,
+        "unknown": 0
       },
-      "redaction_state": "safe",
-      "source_kind": "derived_v1",
+      "redaction_state": "unknown",
+      "source_kind": "future",
       "summary": "Cache hit/miss records extracted from available Bazel evidence.",
       "title": "Cache Evidence"
+    },
+    {
+      "claims": [
+        "Hit rates and durations are derived from ingested cache events and run timestamps.",
+        "This block does not claim dollar savings or fleet-wide cache performance."
+      ],
+      "confidence": "unknown",
+      "evidence_refs": [],
+      "id": "cache_economics",
+      "kind": "derived_summary",
+      "metrics": {
+        "legs": 2
+      },
+      "payload": {
+        "comparison": null,
+        "legs": [
+          {
+            "duration_seconds": 5.357282,
+            "hit_rate": null,
+            "hits": 0,
+            "misses": 0,
+            "mode": "generic",
+            "run_id": "runs_36750ab4f943a870ac624345",
+            "scenario": "canvas-build",
+            "status": "completed",
+            "unknown": 0
+          },
+          {
+            "duration_seconds": 3.051823,
+            "hit_rate": null,
+            "hits": 0,
+            "misses": 0,
+            "mode": "generic",
+            "run_id": "runs_0490cf555e81990b0074ae45",
+            "scenario": "canvas-build",
+            "status": "completed",
+            "unknown": 0
+          }
+        ]
+      },
+      "redaction_state": "unknown",
+      "source_kind": "future",
+      "summary": "Per-run cache economics from recorded Bazel evidence. Durations come from run or invocation timestamps when present.",
+      "title": "Cache Economics"
     },
     {
       "claims": [
@@ -83,163 +131,53 @@
     },
     {
       "claims": [],
-      "confidence": "high",
-      "evidence_refs": [
-        "simulated_v1:bep.jsonl"
-      ],
+      "confidence": "unknown",
+      "evidence_refs": [],
       "id": "validation",
       "kind": "derived_summary",
       "metrics": {
-        "actions": 3,
-        "failures": 2,
-        "targets": 2
+        "actions": 0,
+        "failures": 0,
+        "targets": 0
       },
-      "redaction_state": "safe",
-      "source_kind": "simulated_v1",
+      "redaction_state": "unknown",
+      "source_kind": "future",
       "summary": "Targets, actions, and failures visible to the recorder.",
       "title": "Validation Surface"
     },
     {
       "claims": [],
-      "confidence": "medium",
+      "confidence": "high",
       "evidence_refs": [
-        "scenario:llm-bounded-patch",
-        "agent:demo-bounded-llm-worker",
-        "patch:sha256:856871f76606d071644921e408592cc65d4f348442e8712815b88bac7e527e98",
-        "prompt:sha256:5f787e73d6d3f8b65082f2d922e670104c580461abff1185780c76ed13a300a6",
-        "run:runs_9bf331740a74989f379808da"
+        "invocation:invocations_c97620f6d371a2ebdd1909ec",
+        "invocation:invocations_a6659a1313197c2d229d08b1",
+        "run:run_4d3e7b3a82e13bccbdd16b5e",
+        "artifact:canvas-dist",
+        "invocation:invocations_9db16b3577fc4f051fbfa84d",
+        "invocation:invocations_ea91247b2182fbd032c25404",
+        "run:run_9fdec126c4e1d72366a0a5ca"
       ],
       "id": "artifacts",
       "kind": "derived_summary",
       "metrics": {
-        "artifacts": 1
+        "artifacts": 12
       },
       "redaction_state": "safe",
-      "source_kind": "simulated_v1",
+      "source_kind": "collectable_v1",
       "summary": "Immutable files referenced by the proof packet.",
       "title": "Artifact Chain"
-    },
-    {
-      "confidence": "medium",
-      "evidence_refs": [
-        "scenario:llm-bounded-patch",
-        "agent:demo-bounded-llm-worker",
-        "patch:sha256:856871f76606d071644921e408592cc65d4f348442e8712815b88bac7e527e98",
-        "prompt:sha256:5f787e73d6d3f8b65082f2d922e670104c580461abff1185780c76ed13a300a6",
-        "run:runs_9bf331740a74989f379808da"
-      ],
-      "id": "proof_blocks_41b28bb488d97ae1794cf264",
-      "kind": "agent_provenance",
-      "payload": {
-        "agent": {
-          "input_signal": "redacted: one-line code task; raw prompt withheld, hash retained",
-          "kind": "bounded_llm_v1",
-          "model": "demo-bounded-llm",
-          "name": "demo-bounded-llm-worker",
-          "prompt_sha256": "5f787e73d6d3f8b65082f2d922e670104c580461abff1185780c76ed13a300a6"
-        },
-        "build": {
-          "artifact_root": "/Users/alecbot/Documents/nativelink-agent-flight-recorder/data/demo-proof/simulations/llm-bounded-patch/artifacts",
-          "confidence": "medium",
-          "mode": "cache-only",
-          "redaction_state": "safe",
-          "results": [],
-          "returncode": 0,
-          "run_group": "latest",
-          "run_id": "runs_9bf331740a74989f379808da",
-          "run_key": "simulation:llm-bounded-patch:cache-only",
-          "source_kind": "simulated_v1",
-          "status": "simulated_only",
-          "target": "//tasks:priority_test"
-        },
-        "change": {
-          "affected_paths": [
-            "tasks/priority_test.py"
-          ],
-          "after_hashes": {
-            "tasks/priority_test.py": "6c456a81ba3a67cd4c3c148b0d8871318ef49bf0f55e3e42c9dbea7376590721"
-          },
-          "before_hashes": {
-            "tasks/priority_test.py": "6c456a81ba3a67cd4c3c148b0d8871318ef49bf0f55e3e42c9dbea7376590721"
-          },
-          "change_class": "safe_leaf",
-          "patch_applied": true,
-          "patch_sha256": "856871f76606d071644921e408592cc65d4f348442e8712815b88bac7e527e98"
-        },
-        "confidence": "medium",
-        "evidence_refs": [
-          "scenario:llm-bounded-patch",
-          "agent:demo-bounded-llm-worker",
-          "patch:sha256:856871f76606d071644921e408592cc65d4f348442e8712815b88bac7e527e98",
-          "prompt:sha256:5f787e73d6d3f8b65082f2d922e670104c580461abff1185780c76ed13a300a6",
-          "run:runs_9bf331740a74989f379808da"
-        ],
-        "expected_result": {
-          "risk": "low",
-          "run_expectation": "passes_when_applied",
-          "why": "The bounded LLM patch adds a single leaf assertion exercising existing library behavior."
-        },
-        "generated_at": "2026-06-06T22:37:55.645409Z",
-        "mode": "cache-only",
-        "proof_claims": [
-          {
-            "claim_id": "demo.llm.provenance.hashed",
-            "confidence": "medium",
-            "evidence_refs": [
-              "scenario:llm-bounded-patch",
-              "prompt:sha256:5f787e73d6d3f8b65082f2d922e670104c580461abff1185780c76ed13a300a6"
-            ],
-            "redaction_state": "redacted",
-            "source_kind": "simulated_v1",
-            "statement": "The bounded LLM patch carries a model label and a SHA-256 prompt hash; the raw prompt is not stored."
-          },
-          {
-            "claim_id": "demo.llm.patch.scope.leaf",
-            "confidence": "medium",
-            "evidence_refs": [
-              "scenario:llm-bounded-patch",
-              "patch:tasks/priority_test.py"
-            ],
-            "redaction_state": "safe",
-            "source_kind": "simulated_v1",
-            "statement": "The candidate patch touched only a leaf test file in the demo workload."
-          },
-          {
-            "claim_id": "demo.llm.bazel.target.validated",
-            "confidence": "unknown",
-            "evidence_refs": [
-              "future:bazel-test-result://tasks:priority_test"
-            ],
-            "redaction_state": "unknown",
-            "source_kind": "future",
-            "statement": "A real recorder run may claim the target passed only after Bazel test evidence is captured and ingested."
-          }
-        ],
-        "redaction_state": "safe",
-        "run_group": "latest",
-        "scenario_id": "llm-bounded-patch",
-        "scenario_path": "/Users/alecbot/Documents/nativelink-agent-flight-recorder/demo/scenarios/llm-bounded-patch.json",
-        "schema_version": "nlfr.agent_provenance.v1",
-        "source_kind": "simulated_v1",
-        "title": "Bounded LLM patch with hashed prompt provenance",
-        "workspace": "/Users/alecbot/Documents/nativelink-agent-flight-recorder/data/demo-proof/workspaces/llm-bounded-patch"
-      },
-      "redaction_state": "safe",
-      "source_kind": "simulated_v1",
-      "summary": "llm-bounded-patch patch recorded with build status simulated_only.",
-      "title": "Agent Provenance: demo-bounded-llm-worker"
     }
   ],
-  "generated_at": "2026-06-06T22:37:55.872770Z",
+  "generated_at": "2026-06-06T23:32:34.486120Z",
   "projection_kind": "proof_packet",
-  "run_group": "latest",
+  "run_group": "canvas-dev",
   "schema_version": 1,
   "summary": {
-    "actions": 3,
-    "artifacts": 1,
-    "cache_events": 4,
-    "failures": 2,
-    "runs": 1,
-    "targets": 2
+    "actions": 0,
+    "artifacts": 12,
+    "cache_events": 0,
+    "failures": 0,
+    "runs": 2,
+    "targets": 0
   }
 }

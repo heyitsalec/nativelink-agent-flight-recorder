@@ -314,6 +314,7 @@ function GraphNode({
   return (
     <g
       className={`graph-node ${node.kind} ${node.source_kind} ${selected ? "selected" : ""} ${dimmed ? "dimmed" : ""}`}
+      data-graph-node-id={node.id}
       transform={`translate(${node.x},${node.y})`}
       onClick={(event) => {
         event.stopPropagation();

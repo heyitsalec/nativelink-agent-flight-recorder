@@ -71,17 +71,35 @@ This is the recorder's first major path.
 
 What it does:
 
-1. Validates `--mode` (`cache-only` or `local-exec`).
-2. Resolves workspace, output directory, NativeLink config, run key, and run ID.
-3. Initializes SQLite at `<output-dir>/nlfr.sqlite`.
-4. Upserts a `runs` row with `source_kind=collectable_v1`.
-5. Creates a `NativeLinkRunner`.
-6. Creates a `BazelRunner`.
-7. Optionally starts NativeLink.
-8. Runs Bazel tests.
-9. Writes process artifacts and `run.json`.
-10. Upserts invocation/artifact rows.
-11. Returns `0` only if the terminal status is `completed`.
+1. Validates `--mode` (`cache-only`, `local-exec`, or `generic`).
+2. For Bazel modes: resolves workspace, output directory, NativeLink config, run key, and run ID.
+3. For `generic` mode: delegates to `generic_run.py` (see below).
+4. Initializes SQLite at `<output-dir>/nlfr.sqlite`.
+5. Upserts a `runs` row with `source_kind=collectable_v1`.
+6. Creates a `NativeLinkRunner`.
+7. Creates a `BazelRunner`.
+8. Optionally starts NativeLink.
+9. Runs Bazel tests.
+10. Writes process artifacts and `run.json`.
+11. Upserts invocation/artifact rows.
+12. Returns `0` only if the terminal status is `completed`.
+
+### `src/nlfr/commands/generic_run.py`
+
+Generic (non-Bazel) recording path for dogfooding NLFR on its own GUI build.
+
+What it does:
+
+1. Runs one or more `--command` strings via `ProcessRunner` (parsed with `shlex`).
+2. Optionally records `--change-path` before/after file hashes.
+3. Optionally copies `--artifact PATH:LABEL` outputs into the manifest.
+4. Writes failures for nonzero exit codes; leaves targets/actions/cache_events empty.
+5. Exports the same projection chain as Bazel runs: run → change → invocation → artifact.
+
+Proof scripts:
+
+- `scripts/record-proof.sh` — generic run self-test gate.
+- `scripts/record-canvas-build.sh` — records canvas build + publishes redacted default projections.
 
 The important objects:
 

@@ -13,6 +13,19 @@ Linear: [PER-1058](https://linear.app/gradschool/issue/PER-1058/nlfr-arch-archit
 
 Mirror: [architecture-track.md](architecture-track.md) · Spec: [../ARCHITECTURE_TRACK.md](../ARCHITECTURE_TRACK.md)
 
+## Active — Dogfood (GUI builder loop)
+
+Linear parent: [PER-1058](https://linear.app/gradschool/issue/PER-1058)
+
+| DAG | Linear | Scope |
+|-----|--------|-------|
+| A — Generic command recorder | PER-1063 | `nlfr run --mode generic` spine |
+| B — Canvas dogfood + diff | PER-1064 | screenshot diff, truth guard, real default projection |
+
+Mirrors: [dogfood-a-generic-recorder.md](dogfood-a-generic-recorder.md) · [dogfood-b-canvas-dogfood.md](dogfood-b-canvas-dogfood.md)
+
+Coordinator mode: **parallel** A + B; B dogfood leg blocked on A.
+
 ## Completed — Vision DAG
 
 Linear umbrella: [PER-1053](https://linear.app/gradschool/issue/PER-1053/nlfr-vision-product-vision-implementation-dag)

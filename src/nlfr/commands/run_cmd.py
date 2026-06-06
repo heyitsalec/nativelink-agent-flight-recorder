@@ -12,10 +12,14 @@ from nlfr.artifacts import ArtifactManifestEntry, write_artifact
 from nlfr.db import connect, initialize
 from nlfr.db.ingest import upsert_artifact, upsert_invocation, upsert_run
 from nlfr.ids import stable_id
+from nlfr.commands.generic_run import register_generic_args, run_generic
 from nlfr.runners import BazelRunner, NativeLinkRunner, ProcessResult
 
 
 def run(args: argparse.Namespace) -> int:
+    if args.mode == "generic":
+        return run_generic(args)
+
     if args.mode not in ("cache-only", "local-exec"):
         print(f"unsupported run mode: {args.mode}", file=sys.stderr)
         return 2
@@ -205,7 +209,7 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
     )
     parser.add_argument(
         "--mode",
-        choices=("cache-only", "local-exec"),
+        choices=("cache-only", "local-exec", "generic"),
         default="cache-only",
         help="recorder execution mode",
     )
@@ -274,6 +278,7 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         action="store_true",
         help="emit machine-readable run metadata",
     )
+    register_generic_args(parser)
     parser.add_argument("target", nargs="?", default="//...", help="Bazel target pattern")
     parser.set_defaults(handler=run)
 

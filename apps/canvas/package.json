@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "capture": "node scripts/capture-proof.mjs",
-    "preview": "vite preview"
+    "diff": "node scripts/diff-screenshots.mjs",
+    "test:truth": "node scripts/truth-guard.mjs",
+    "preview": "vite preview --host 127.0.0.1 --port 5174"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.1.1",
@@ -21,7 +23,9 @@
     "@types/d3": "^7.4.3",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
+    "pixelmatch": "^7.2.0",
     "playwright": "^1.60.0",
+    "pngjs": "^7.0.0",
     "typescript": "^5.9.3"
   }
 }

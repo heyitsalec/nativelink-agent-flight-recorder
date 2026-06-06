@@ -276,6 +276,10 @@ claims without the original builder's machine.
 
 Goal: close the demo/proof gap where the first screenshots are fixture-backed.
 
+Status: **partially delivered** — `apps/canvas/public/projections/` now ships a redacted
+`canvas-dev` generic-run projection (`collectable_v1`). Fixture fallbacks remain in
+`sampleProjection.ts` when fetch fails.
+
 Deliverables:
 
 - One committed redacted real projection under `apps/canvas/public/projections/`
