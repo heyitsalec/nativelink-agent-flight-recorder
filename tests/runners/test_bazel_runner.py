@@ -21,7 +21,7 @@ def test_bazel_runner_builds_cache_only_command_with_artifact_flags(tmp_path):
     assert f"--build_event_json_file={artifact_dir / 'bazel.bep.json'}" in command
     assert f"--profile={artifact_dir / 'bazel.profile.json'}" in command
     assert (
-        f"--experimental_execution_log_json_file={artifact_dir / 'bazel.execution-log.json'}"
+        f"--execution_log_json_file={artifact_dir / 'bazel.execution-log.json'}"
         in command
     )
     assert "--remote_cache=grpc://127.0.0.1:50051" in command

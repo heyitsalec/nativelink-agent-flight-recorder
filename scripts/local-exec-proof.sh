@@ -141,14 +141,16 @@ RUN_CMD=(
   --output-dir "$OUT/nlfr"
   --skip-nativelink
   --bazel-executable "$BAZEL_BIN"
-  --bazel-startup-arg "--output_base=$OUT/bazel-output-local-exec"
+  --bazel-startup-arg=--output_base="$OUT/bazel-output-local-exec"
   --remote-cache "$REMOTE_CACHE"
   --remote-executor "$REMOTE_EXECUTOR"
   --json
 )
-for arg in "${BAZEL_ARGS[@]}"; do
-  RUN_CMD+=("--bazel-arg=$arg")
-done
+if ((${#BAZEL_ARGS[@]} > 0)); then
+  for arg in "${BAZEL_ARGS[@]}"; do
+    RUN_CMD+=("--bazel-arg=$arg")
+  done
+fi
 RUN_CMD+=("$TARGET")
 PYTHONPATH=src "${RUN_CMD[@]}" >"$OUT/local-exec-run.json"
 

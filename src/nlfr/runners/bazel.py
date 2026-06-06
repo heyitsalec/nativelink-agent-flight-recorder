@@ -55,7 +55,7 @@ class BazelRunner:
             *target_args,
             f"--build_event_json_file={artifacts['bep']}",
             f"--profile={artifacts['profile']}",
-            f"--experimental_execution_log_json_file={artifacts['execution_log']}",
+            f"--execution_log_json_file={artifacts['execution_log']}",
         ]
         if self.remote_cache_url is not None:
             command.extend(
