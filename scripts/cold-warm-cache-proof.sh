@@ -155,6 +155,13 @@ import os
 from pathlib import Path
 
 root = Path(os.environ["SUMMARY_ROOT"])
+proof_path = root / "projections" / "proof.json"
+proof = json.loads(proof_path.read_text()) if proof_path.exists() else {}
+cache_economics = next(
+    (block for block in proof.get("blocks", []) if block.get("id") == "cache_economics"),
+    None,
+)
+
 summary = {}
 for leg in ("cold", "warm"):
     payload = json.loads((root / f"{leg}-run.json").read_text())
@@ -171,10 +178,24 @@ for leg in ("cold", "warm"):
             for item in payload["results"]
         ],
     }
+
+if cache_economics:
+    summary["cache_economics"] = {
+        "metrics": cache_economics.get("metrics", {}),
+        "comparison": (cache_economics.get("payload") or {}).get("comparison"),
+        "legs": (cache_economics.get("payload") or {}).get("legs"),
+    }
+
 summary["source_kind"] = "collectable_v1"
 summary["confidence"] = "high"
 summary["redaction_state"] = "safe"
-summary["evidence_refs"] = ["cold-run.json", "warm-run.json", "nativelink.stdout.txt", "nativelink.stderr.txt"]
+summary["evidence_refs"] = [
+    "cold-run.json",
+    "warm-run.json",
+    "projections/proof.json",
+    "nativelink.stdout.txt",
+    "nativelink.stderr.txt",
+]
 (root / "summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
 print(json.dumps(summary, indent=2, sort_keys=True))
 PY

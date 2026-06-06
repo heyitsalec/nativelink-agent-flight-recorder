@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from sqlite3 import Connection
 from typing import Any
 
@@ -50,6 +51,7 @@ def export_proof_packet(conn: Connection, *, run_group: str) -> dict[str, Any]:
             cache_events,
             metrics=_cache_metrics(cache_events),
         ),
+        *_cache_economics_blocks(runs, invocations, cache_events),
         _remote_execution_block(invocations),
         _block(
             "validation",
@@ -175,6 +177,173 @@ def _cache_metrics(cache_events: list[dict[str, Any]]) -> dict[str, Any]:
         "unknown": unknown,
         "hit_rate": hits / total_known if total_known else None,
     }
+
+
+def _cache_economics_blocks(
+    runs: list[dict[str, Any]],
+    invocations: list[dict[str, Any]],
+    cache_events: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    legs = _per_run_cache_legs(runs, invocations, cache_events)
+    if not legs:
+        return []
+
+    comparison = _cold_warm_comparison(legs)
+    summary = (
+        "Per-run cache economics from recorded Bazel evidence. "
+        "Durations come from run or invocation timestamps when present."
+    )
+    claims = [
+        "Hit rates and durations are derived from ingested cache events and run timestamps.",
+        "This block does not claim dollar savings or fleet-wide cache performance.",
+    ]
+    if comparison:
+        if comparison.get("warm_hit_rate_higher"):
+            claims.append(
+                "Warm leg recorded a higher cache hit_rate than the cold leg in this run_group."
+            )
+        if comparison.get("warm_duration_lower"):
+            claims.append(
+                "Warm leg recorded a lower duration than the cold leg in this run_group."
+            )
+        if not comparison.get("warm_hit_rate_higher") and not comparison.get("warm_duration_lower"):
+            claims.append(
+                "No collectable warm-over-cold improvement in hit_rate or duration for this run_group."
+            )
+
+    block = {
+        **_block(
+            "cache_economics",
+            "Cache Economics",
+            summary,
+            cache_events,
+            claims=claims,
+            metrics={
+                "legs": len(legs),
+                **(comparison or {}),
+            },
+        ),
+        "payload": {
+            "legs": legs,
+            "comparison": comparison,
+        },
+    }
+    return [block]
+
+
+def _per_run_cache_legs(
+    runs: list[dict[str, Any]],
+    invocations: list[dict[str, Any]],
+    cache_events: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    if len(runs) < 2:
+        return []
+
+    events_by_run: dict[str, list[dict[str, Any]]] = {}
+    for event in cache_events:
+        run_id = str(event.get("run_id") or "")
+        events_by_run.setdefault(run_id, []).append(event)
+
+    invocations_by_run: dict[str, list[dict[str, Any]]] = {}
+    for invocation in invocations:
+        run_id = str(invocation.get("run_id") or "")
+        invocations_by_run.setdefault(run_id, []).append(invocation)
+
+    legs: list[dict[str, Any]] = []
+    for run in runs:
+        run_id = str(run["id"])
+        leg_cache = _cache_metrics(events_by_run.get(run_id, []))
+        duration_seconds = _run_duration_seconds(run, invocations_by_run.get(run_id, []))
+        legs.append(
+            {
+                "run_id": run_id,
+                "scenario": run.get("scenario"),
+                "mode": run.get("mode"),
+                "status": run.get("status"),
+                "duration_seconds": duration_seconds,
+                **leg_cache,
+            }
+        )
+    return legs
+
+
+def _cold_warm_comparison(legs: list[dict[str, Any]]) -> dict[str, Any] | None:
+    by_scenario = {str(leg.get("scenario")): leg for leg in legs if leg.get("scenario")}
+    cold = by_scenario.get("cold-cache")
+    warm = by_scenario.get("warm-cache")
+    if not cold or not warm:
+        return None
+
+    cold_rate = cold.get("hit_rate")
+    warm_rate = warm.get("hit_rate")
+    cold_duration = cold.get("duration_seconds")
+    warm_duration = warm.get("duration_seconds")
+
+    warm_hit_rate_higher = (
+        cold_rate is not None
+        and warm_rate is not None
+        and warm_rate > cold_rate
+    )
+    warm_duration_lower = (
+        cold_duration is not None
+        and warm_duration is not None
+        and warm_duration < cold_duration
+    )
+    return {
+        "cold_scenario": "cold-cache",
+        "warm_scenario": "warm-cache",
+        "cold_hit_rate": cold_rate,
+        "warm_hit_rate": warm_rate,
+        "cold_duration_seconds": cold_duration,
+        "warm_duration_seconds": warm_duration,
+        "warm_hit_rate_higher": warm_hit_rate_higher,
+        "warm_duration_lower": warm_duration_lower,
+        "hit_rate_delta": (
+            warm_rate - cold_rate
+            if cold_rate is not None and warm_rate is not None
+            else None
+        ),
+        "duration_delta_seconds": (
+            warm_duration - cold_duration
+            if cold_duration is not None and warm_duration is not None
+            else None
+        ),
+    }
+
+
+def _run_duration_seconds(
+    run: dict[str, Any],
+    invocations: list[dict[str, Any]],
+) -> float | None:
+    run_duration = _duration_seconds(run.get("started_at"), run.get("ended_at"))
+    if run_duration is not None:
+        return run_duration
+
+    invocation_durations = [
+        value
+        for invocation in invocations
+        if (value := _duration_seconds(invocation.get("started_at"), invocation.get("ended_at")))
+        is not None
+    ]
+    if not invocation_durations:
+        return None
+    return max(invocation_durations)
+
+
+def _duration_seconds(started_at: str | None, ended_at: str | None) -> float | None:
+    if not started_at or not ended_at:
+        return None
+    try:
+        start = datetime.fromisoformat(str(started_at).replace("Z", "+00:00"))
+        end = datetime.fromisoformat(str(ended_at).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if start.tzinfo is None:
+        start = start.replace(tzinfo=UTC)
+    if end.tzinfo is None:
+        end = end.replace(tzinfo=UTC)
+    delta = (end - start).total_seconds()
+    return delta if delta >= 0 else None
 
 
 def _dominant_source_kind(rows_for_truth: list[dict[str, Any]]) -> str:

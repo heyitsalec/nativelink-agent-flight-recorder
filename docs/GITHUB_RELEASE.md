@@ -2,10 +2,8 @@
 
 ## Recommended default branch
 
-Point evaluators at a branch containing commit `635ee36` or later (NativeLink
-1.3.2 + Bazel 9 proof paths) plus vision DAG doc updates.
-
-Current integration branch: `codex/per-998-nlfr-mvp`.
+Point evaluators at `main` at tag `v0.1.0-tryout` or later (NativeLink 1.3.2 +
+Bazel 9 proof paths plus vision DAG doc updates).
 
 ## Pre-release checklist
 

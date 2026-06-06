@@ -241,6 +241,104 @@ def test_proof_packet_projection_summarizes_claim_boundaries(tmp_path):
     assert cache["metrics"]["hit_rate"] == 1.0
 
 
+def seed_cold_warm_db(tmp_path):
+    conn = initialize(connect(tmp_path / "nlfr.sqlite"))
+    cold_run_id = upsert_run(
+        conn,
+        stable_key="run:cold-cache",
+        run_group="cold-warm",
+        scenario="cold-cache",
+        mode="cache-only",
+        status="completed",
+        started_at="2026-06-06T12:00:00.000000Z",
+        ended_at="2026-06-06T12:00:30.000000Z",
+        source_kind="collectable_v1",
+        confidence="high",
+        evidence_refs=["artifact:cold-run.json"],
+        redaction_state="safe",
+    )
+    warm_run_id = upsert_run(
+        conn,
+        stable_key="run:warm-cache",
+        run_group="cold-warm",
+        scenario="warm-cache",
+        mode="cache-only",
+        status="completed",
+        started_at="2026-06-06T12:01:00.000000Z",
+        ended_at="2026-06-06T12:01:10.000000Z",
+        source_kind="collectable_v1",
+        confidence="high",
+        evidence_refs=["artifact:warm-run.json"],
+        redaction_state="safe",
+    )
+    for run_id, hits, misses in (
+        (cold_run_id, 1, 3),
+        (warm_run_id, 4, 0),
+    ):
+        for index in range(hits):
+            upsert_cache_event(
+                conn,
+                stable_key=f"cache:{run_id}:hit:{index}",
+                run_id=run_id,
+                event_key=f"hit-{index}",
+                event_kind="action_cache",
+                hit=True,
+                source_kind="derived_v1",
+                confidence="medium",
+                evidence_refs=["bep:cache"],
+                redaction_state="safe",
+            )
+        for index in range(misses):
+            upsert_cache_event(
+                conn,
+                stable_key=f"cache:{run_id}:miss:{index}",
+                run_id=run_id,
+                event_key=f"miss-{index}",
+                event_kind="action_cache",
+                hit=False,
+                source_kind="derived_v1",
+                confidence="medium",
+                evidence_refs=["bep:cache"],
+                redaction_state="safe",
+            )
+        upsert_invocation(
+            conn,
+            stable_key=f"invocation:{run_id}",
+            run_id=run_id,
+            invocation_kind="bazel",
+            command=["bazel", "test", "//tasks:priority_test"],
+            cwd=tmp_path,
+            exit_code=0,
+            started_at="2026-06-06T12:00:00.000000Z" if run_id == cold_run_id else "2026-06-06T12:01:00.000000Z",
+            ended_at="2026-06-06T12:00:30.000000Z" if run_id == cold_run_id else "2026-06-06T12:01:10.000000Z",
+            source_kind="collectable_v1",
+            confidence="high",
+            evidence_refs=["artifact:bazel.stdout.txt"],
+            redaction_state="safe",
+        )
+    return conn
+
+
+def test_proof_packet_emits_cache_economics_for_cold_warm_group(tmp_path):
+    proof = export_proof_packet(seed_cold_warm_db(tmp_path), run_group="cold-warm")
+
+    block = next(item for item in proof["blocks"] if item["id"] == "cache_economics")
+    assert block["source_kind"] == "derived_v1"
+    assert block["metrics"]["legs"] == 2
+    assert block["metrics"]["warm_hit_rate_higher"] is True
+    assert block["metrics"]["warm_duration_lower"] is True
+    assert block["payload"]["comparison"]["hit_rate_delta"] == 0.75
+    assert block["payload"]["comparison"]["duration_delta_seconds"] == -20.0
+    cold_leg = next(leg for leg in block["payload"]["legs"] if leg["scenario"] == "cold-cache")
+    warm_leg = next(leg for leg in block["payload"]["legs"] if leg["scenario"] == "warm-cache")
+    assert cold_leg["hit_rate"] == 0.25
+    assert warm_leg["hit_rate"] == 1.0
+    assert cold_leg["duration_seconds"] == 30.0
+    assert warm_leg["duration_seconds"] == 10.0
+    assert any("higher cache hit_rate" in claim for claim in block["claims"])
+    assert any("lower duration" in claim for claim in block["claims"])
+
+
 def test_proof_packet_bounds_remote_execution_claims(tmp_path):
     proof = export_proof_packet(seed_remote_exec_db(tmp_path), run_group="local-exec")
 
