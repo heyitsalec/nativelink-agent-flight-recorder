@@ -110,6 +110,27 @@ Visual proof artifacts:
 - `output/playwright/canvas-mobile.png`
 - `output/playwright/canvas-operator-flow.webm`
 
+## Coordinator Takeover (PER-1019)
+
+Date: 2026-06-06
+
+Cursor coordinator reconciled Git baseline (`e1e9070` on `codex/per-998-nlfr-mvp`),
+added Knowledge OS project pack (`knowledge-os/projects/nlfr/pack.md`), and armed
+Linear parent [PER-1019](https://linear.app/gradschool/issue/PER-1019) for real
+toolchain proof.
+
+Host toolchain assessment ([docs/TOOLCHAIN_ASSESSMENT.md](TOOLCHAIN_ASSESSMENT.md)):
+
+- Nix, Bazel/Bazelisk, NativeLink, and Docker are not on PATH on this Mac host.
+- `scripts/cold-warm-cache-proof.sh` recorded `environment_blocker` at
+  `data/cold-warm-proof/environment-blocker.json` (missing NativeLink).
+- `scripts/local-exec-proof.sh` recorded `worker-readiness.json` and
+  `environment_blocker` at `data/local-exec-proof/` (missing NativeLink).
+
+These blockers are valid collectable evidence. Real cache and local-exec proof
+require `nix develop` or the devcontainer on a toolchain-ready host. See
+[docs/REAL_TOOLCHAIN_DAG.md](REAL_TOOLCHAIN_DAG.md).
+
 ## What Remains Unproven
 
 These are explicit follow-ups, not implied claims:

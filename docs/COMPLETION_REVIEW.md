@@ -129,3 +129,25 @@ Host blockers remain explicit:
   pass, but this macOS host did not execute real NativeLink worker actions.
 
 The final tryout packet is [docs/TRYOUT_PACKET.md](docs/TRYOUT_PACKET.md).
+
+## PER-1019 Coordinator Takeover Addendum
+
+Date: 2026-06-06
+
+Coordinator actions:
+
+- Initial Git commit `e1e9070` on `codex/per-998-nlfr-mvp` (was fully untracked).
+- Knowledge OS project pack at `knowledge-os/projects/nlfr/pack.md`.
+- Linear parent [PER-1019](https://linear.app/gradschool/issue/PER-1019) armed
+  with children PER-1020 through PER-1024.
+- Repo-local DAG mirror: [docs/REAL_TOOLCHAIN_DAG.md](REAL_TOOLCHAIN_DAG.md).
+- Host assessment: [docs/TOOLCHAIN_ASSESSMENT.md](TOOLCHAIN_ASSESSMENT.md).
+
+Real toolchain proof on this host:
+
+- `scripts/cold-warm-cache-proof.sh` → `environment_blocker` (no NativeLink).
+- `scripts/local-exec-proof.sh` → `environment_blocker` (no NativeLink).
+
+PER-1019 remains open until a Nix/devcontainer or Linux host runs successful
+cold/warm and local-exec proof. Fixture-backed and blocker evidence on this Mac
+is honest and complete for the available toolchain boundary.
