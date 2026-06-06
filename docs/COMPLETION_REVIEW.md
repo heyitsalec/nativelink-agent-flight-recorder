@@ -128,7 +128,7 @@ Host blockers remain explicit:
   blockers here. The repo is ready for the Nix/devcontainer or Linux/WSL2 proof
   pass, but this macOS host did not execute real NativeLink worker actions.
 
-The final tryout packet is [docs/TRYOUT_PACKET.md](docs/TRYOUT_PACKET.md).
+The final tryout packet is [TRYOUT_PACKET.md](TRYOUT_PACKET.md).
 
 ## PER-1019 Coordinator Takeover Addendum
 

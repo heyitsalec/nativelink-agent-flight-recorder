@@ -120,7 +120,10 @@ canvas build. Use after either path above.
 Tryout narrative: [docs/TRYOUT_PACKET.md](docs/TRYOUT_PACKET.md) · One-pager:
 [docs/ONE_PAGER.md](docs/ONE_PAGER.md) · Demo script:
 [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) · Redacted proof samples:
-[docs/proof-samples/](docs/proof-samples/)
+[docs/proof-samples/](docs/proof-samples/) · Full walkthrough:
+[docs/WALKTHROUGH.md](docs/WALKTHROUGH.md) · Implementation walkthrough:
+[docs/IMPLEMENTATION_WALKTHROUGH.md](docs/IMPLEMENTATION_WALKTHROUGH.md) ·
+Usefulness roadmap: [docs/USEFULNESS_ROADMAP.md](docs/USEFULNESS_ROADMAP.md)
 
 ## CLI Flow
 
