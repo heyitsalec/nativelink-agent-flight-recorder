@@ -1,0 +1,29 @@
+.DS_Store
+.venv/
+.cache/
+__pycache__/
+.pytest_cache/
+*.pyc
+*.egg-info/
+*.tsbuildinfo
+
+# Local proof output
+data/
+artifacts/
+output/
+*.sqlite
+*.sqlite3
+
+# Frontend output
+node_modules/
+dist/
+build/
+.next/
+playwright-report/
+test-results/
+
+# Bazel output roots inside demo workspaces
+bazel-bin
+bazel-out
+bazel-testlogs
+bazel-*

@@ -1,0 +1,22 @@
+[
+  {
+    "spawnExec": {
+      "targetLabel": "//tasks:priority_test",
+      "mnemonic": "PyTest",
+      "runner": "remote cache hit",
+      "cacheHit": true,
+      "digest": "sha256:1111222233334444",
+      "listedOutputs": ["bazel-out/k8-fastbuild/testlogs/tasks/priority_test/test.log"]
+    }
+  },
+  {
+    "spawnExec": {
+      "targetLabel": "//tasks:flaky_test",
+      "mnemonic": "PyTest",
+      "runner": "local",
+      "cacheHit": false,
+      "digest": "sha256:aaaabbbbccccdddd",
+      "listedOutputs": ["bazel-out/k8-fastbuild/testlogs/tasks/flaky_test/test.log"]
+    }
+  }
+]

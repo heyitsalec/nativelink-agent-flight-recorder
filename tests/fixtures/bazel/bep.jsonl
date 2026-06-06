@@ -1,0 +1,9 @@
+{"id":{"started":{}},"started":{"command":"test","startTimeMillis":1710000000000}}
+{"id":{"targetConfigured":{"label":"//tasks:priority_test"}},"configured":{"targetKind":"py_test rule"}}
+{"id":{"actionCompleted":{"label":"//tasks:priority_test","configuration":"k8-fastbuild","id":"1","primaryOutput":"bazel-out/k8-fastbuild/bin/tasks/priority_test.runfiles_manifest"}},"action":{"success":true,"type":"PythonTestSetup","primaryOutput":"bazel-out/k8-fastbuild/bin/tasks/priority_test.runfiles_manifest"}}
+{"id":{"testResult":{"label":"//tasks:priority_test","configuration":"k8-fastbuild","run":1,"shard":1,"attempt":1}},"testResult":{"status":"PASSED","testActionOutput":[{"name":"test.log","uri":"file:///tmp/priority_test/test.log"}]}}
+{"id":{"targetCompleted":{"label":"//tasks:priority_test","configuration":"k8-fastbuild"}},"completed":{"success":true,"targetKind":"py_test rule"}}
+{"id":{"targetConfigured":{"label":"//tasks:flaky_test"}},"configured":{"targetKind":"py_test rule"}}
+{"id":{"testResult":{"label":"//tasks:flaky_test","configuration":"k8-fastbuild","run":1,"shard":1,"attempt":1}},"testResult":{"status":"FAILED","testActionOutput":[{"name":"test.log","uri":"file:///tmp/flaky_test/test.log"}]}}
+{"id":{"targetCompleted":{"label":"//tasks:flaky_test","configuration":"k8-fastbuild"}},"completed":{"success":false,"targetKind":"py_test rule","failureDetail":{"message":"//tasks:flaky_test failed: expected stable priority ordering","testAction":{"code":"TEST_FAILURE"}}}}
+{"id":{"buildFinished":{}},"finished":{"exitCode":{"name":"TESTS_FAILED","code":3},"finishTimeMillis":1710000001234}}

@@ -1,0 +1,58 @@
+{
+  "schema_version": "nlfr.demo.scenario.v1",
+  "scenario_id": "shared-module-change",
+  "title": "Shared policy module change",
+  "parent_issue": "PER-998",
+  "child_issue": "PER-1001",
+  "provenance_note": "Synthetic simulated-agent metadata for the NLFR demo. This is not captured real AI provenance.",
+  "simulated_agent": {
+    "kind": "simulated_v1",
+    "name": "demo-shared-worker",
+    "input_signal": "Retune the shared priority threshold used by downstream demo targets."
+  },
+  "change_class": "shared_module",
+  "workload": {
+    "repo_root": "demo/bazel-monorepo",
+    "bazel_targets": [
+      "//tasks:priority_test"
+    ],
+    "affected_paths": [
+      "tasks/policy.py"
+    ],
+    "blast_radius_hint": "Shared module imported by tasks/priority.py; proof should treat downstream targets as affected."
+  },
+  "patch": {
+    "format": "unified_diff",
+    "applies_to": "demo/bazel-monorepo",
+    "diff": "diff --git a/tasks/policy.py b/tasks/policy.py\n--- a/tasks/policy.py\n+++ b/tasks/policy.py\n@@ -1,2 +1,2 @@\n-URGENT_THRESHOLD = 90\n+URGENT_THRESHOLD = 85\n NORMAL_THRESHOLD = 50\n"
+  },
+  "expected_result": {
+    "run_expectation": "passes_current_tests_but_requires_broader_affected_target_reasoning",
+    "risk": "medium",
+    "why": "The visible test target should still pass, but the changed module is shared by the library and should not be presented as a leaf-only validation."
+  },
+  "proof_claims": [
+    {
+      "claim_id": "demo.patch.scope.shared-module",
+      "statement": "The candidate patch touched a shared module used by the demo library.",
+      "source_kind": "simulated_v1",
+      "confidence": "medium",
+      "evidence_refs": [
+        "scenario:shared-module-change",
+        "patch:tasks/policy.py"
+      ],
+      "redaction_state": "safe"
+    },
+    {
+      "claim_id": "demo.affected-target.reasoning-required",
+      "statement": "A real proof packet should separate the simulated patch label from collectable Bazel dependency and test evidence.",
+      "source_kind": "future",
+      "confidence": "unknown",
+      "evidence_refs": [
+        "future:bazel-query-or-aquery",
+        "future:bazel-test-result://tasks:priority_test"
+      ],
+      "redaction_state": "unknown"
+    }
+  ]
+}

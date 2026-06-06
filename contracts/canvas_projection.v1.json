@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nativelink-agent-flight-recorder.local/contracts/canvas_projection.v1.json",
+  "title": "NLFR Canvas Projection v1",
+  "type": "object",
+  "required": ["schema_version", "projection_kind", "generated_at", "run_group", "summary", "nodes", "edges"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "projection_kind": { "const": "action_graph" },
+    "generated_at": { "type": "string" },
+    "run_group": { "type": "string" },
+    "summary": { "type": "object" },
+    "nodes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/node" }
+    },
+    "edges": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/edge" }
+    }
+  },
+  "$defs": {
+    "truth": {
+      "type": "object",
+      "required": ["source_kind", "confidence", "evidence_refs", "redaction_state"],
+      "properties": {
+        "source_kind": {
+          "enum": ["collectable_v1", "derived_v1", "simulated_v1", "future", "unknown"]
+        },
+        "confidence": { "enum": ["high", "medium", "low", "unknown"] },
+        "evidence_refs": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "redaction_state": { "enum": ["safe", "redacted", "blocked", "unknown"] }
+      }
+    },
+    "node": {
+      "allOf": [
+        { "$ref": "#/$defs/truth" },
+        {
+          "type": "object",
+          "required": ["id", "kind", "label"],
+          "properties": {
+            "id": { "type": "string" },
+            "kind": { "type": "string" },
+            "label": { "type": "string" },
+            "status": {},
+            "payload": { "type": "object" }
+          }
+        }
+      ]
+    },
+    "edge": {
+      "allOf": [
+        { "$ref": "#/$defs/truth" },
+        {
+          "type": "object",
+          "required": ["id", "from", "to", "kind"],
+          "properties": {
+            "id": { "type": "string" },
+            "from": { "type": "string" },
+            "to": { "type": "string" },
+            "kind": { "type": "string" },
+            "payload": {}
+          }
+        }
+      ]
+    }
+  }
+}

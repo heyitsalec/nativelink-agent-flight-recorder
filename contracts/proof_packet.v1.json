@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nativelink-agent-flight-recorder.local/contracts/proof_packet.v1.json",
+  "title": "NLFR Proof Packet v1",
+  "type": "object",
+  "required": ["schema_version", "projection_kind", "generated_at", "run_group", "summary", "blocks"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "projection_kind": { "const": "proof_packet" },
+    "generated_at": { "type": "string" },
+    "run_group": { "type": "string" },
+    "summary": { "type": "object" },
+    "blocks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/block" }
+    }
+  },
+  "$defs": {
+    "block": {
+      "type": "object",
+      "required": ["id", "kind", "title", "summary", "source_kind", "confidence", "evidence_refs", "redaction_state"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "type": "string" },
+        "title": { "type": "string" },
+        "summary": { "type": ["string", "null"] },
+        "claims": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "metrics": { "type": "object" },
+        "payload": {},
+        "source_kind": {
+          "enum": ["collectable_v1", "derived_v1", "simulated_v1", "future", "unknown"]
+        },
+        "confidence": { "enum": ["high", "medium", "low", "unknown"] },
+        "evidence_refs": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "redaction_state": { "enum": ["safe", "redacted", "blocked", "unknown"] }
+      }
+    }
+  }
+}

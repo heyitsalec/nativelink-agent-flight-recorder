@@ -1,0 +1,62 @@
+{
+  "stores": {
+    "AC_MAIN_STORE": {
+      "filesystem": {
+        "content_path": "/tmp/nlfr-nativelink/cache-only/ac",
+        "temp_path": "/tmp/nlfr-nativelink/cache-only/tmp-ac",
+        "max_concurrent_writes": 8,
+        "eviction_policy": {
+          "max_bytes": 1000000000
+        }
+      }
+    },
+    "CAS_MAIN_STORE": {
+      "filesystem": {
+        "content_path": "/tmp/nlfr-nativelink/cache-only/cas",
+        "temp_path": "/tmp/nlfr-nativelink/cache-only/tmp-cas",
+        "max_concurrent_writes": 8,
+        "eviction_policy": {
+          "max_bytes": 5000000000
+        }
+      }
+    }
+  },
+  "servers": [
+    {
+      "name": "cache_only",
+      "listener": {
+        "http": {
+          "socket_address": "127.0.0.1:50051"
+        }
+      },
+      "services": {
+        "cas": [
+          {
+            "instance_name": "main",
+            "cas_store": "CAS_MAIN_STORE"
+          }
+        ],
+        "ac": [
+          {
+            "instance_name": "main",
+            "ac_store": "AC_MAIN_STORE"
+          }
+        ],
+        "capabilities": [
+          {
+            "instance_name": "main"
+          }
+        ],
+        "bytestream": [
+          {
+            "instance_name": "main",
+            "cas_store": "CAS_MAIN_STORE"
+          }
+        ]
+      }
+    }
+  ],
+  "global": {
+    "max_open_files": 8192
+  }
+}

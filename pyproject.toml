@@ -1,0 +1,18 @@
+[project]
+name = "nativelink-agent-flight-recorder"
+version = "0.1.0"
+description = "Local-first proof recorder for NativeLink-backed Bazel validation runs."
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+nlfr = "nlfr.cli:main"
+
+[dependency-groups]
+dev = [
+  "pytest>=8.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

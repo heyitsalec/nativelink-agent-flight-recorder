@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nativelink-agent-flight-recorder.local/contracts/artifact_manifest.v1.json",
+  "title": "NLFR Artifact Manifest v1",
+  "type": "object",
+  "required": ["schema_version", "artifacts"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "artifacts": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/artifact" }
+    }
+  },
+  "$defs": {
+    "artifact": {
+      "type": "object",
+      "required": [
+        "artifact_key",
+        "path",
+        "sha256",
+        "size_bytes",
+        "producer_command",
+        "config_hash",
+        "redaction_state",
+        "source_kind",
+        "confidence",
+        "evidence_refs"
+      ],
+      "properties": {
+        "artifact_key": { "type": "string" },
+        "path": { "type": "string" },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "producer_command": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "config_hash": {
+          "type": ["string", "null"]
+        },
+        "redaction_state": { "enum": ["safe", "redacted", "blocked", "unknown"] },
+        "source_kind": {
+          "enum": ["collectable_v1", "derived_v1", "simulated_v1", "future", "unknown"]
+        },
+        "confidence": { "enum": ["high", "medium", "low", "unknown"] },
+        "evidence_refs": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

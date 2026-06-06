@@ -1,0 +1,23 @@
+{
+  "traceEvents": [
+    {
+      "name": "remote cache hit",
+      "cat": "action processing",
+      "ts": 101,
+      "args": {
+        "label": "//tasks:priority_test",
+        "mnemonic": "PyTest",
+        "digest": "sha256:1111222233334444"
+      }
+    },
+    {
+      "name": "action completed",
+      "cat": "action processing",
+      "ts": 202,
+      "args": {
+        "label": "//tasks:flaky_test",
+        "mnemonic": "PyTest"
+      }
+    }
+  ]
+}

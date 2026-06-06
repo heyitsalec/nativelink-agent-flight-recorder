@@ -1,0 +1,56 @@
+{
+  "schema_version": "nlfr.demo.scenario.v1",
+  "scenario_id": "safe-leaf-change",
+  "title": "Safe leaf test change",
+  "parent_issue": "PER-998",
+  "child_issue": "PER-1001",
+  "provenance_note": "Synthetic simulated-agent metadata for the NLFR demo. This is not captured real AI provenance.",
+  "simulated_agent": {
+    "kind": "simulated_v1",
+    "name": "demo-leaf-worker",
+    "input_signal": "Add one low-risk leaf assertion for the existing priority library."
+  },
+  "change_class": "safe_leaf",
+  "workload": {
+    "repo_root": "demo/bazel-monorepo",
+    "bazel_targets": [
+      "//tasks:priority_test"
+    ],
+    "affected_paths": [
+      "tasks/priority_test.py"
+    ]
+  },
+  "patch": {
+    "format": "unified_diff",
+    "applies_to": "demo/bazel-monorepo",
+    "diff": "diff --git a/tasks/priority_test.py b/tasks/priority_test.py\n--- a/tasks/priority_test.py\n+++ b/tasks/priority_test.py\n@@ -7,3 +7,7 @@\n \n def test_describe_task_keeps_leaf_label_readable():\n     assert describe_task(\"NLFR-3\", 72) == \"NLFR-3: normal\"\n+\n+\n+def test_priority_band_marks_backlog_work():\n+    assert priority_band(10) == \"backlog\"\n"
+  },
+  "expected_result": {
+    "run_expectation": "passes_when_applied",
+    "risk": "low",
+    "why": "The patch edits only a leaf test and exercises behavior already provided by the library."
+  },
+  "proof_claims": [
+    {
+      "claim_id": "demo.patch.scope.leaf",
+      "statement": "The candidate patch touched only a leaf test file in the demo workload.",
+      "source_kind": "simulated_v1",
+      "confidence": "medium",
+      "evidence_refs": [
+        "scenario:safe-leaf-change",
+        "patch:tasks/priority_test.py"
+      ],
+      "redaction_state": "safe"
+    },
+    {
+      "claim_id": "demo.bazel.target.passed",
+      "statement": "A real recorder run may claim the target passed only after Bazel test evidence is captured.",
+      "source_kind": "future",
+      "confidence": "unknown",
+      "evidence_refs": [
+        "future:bazel-test-result://tasks:priority_test"
+      ],
+      "redaction_state": "unknown"
+    }
+  ]
+}
