@@ -55,7 +55,51 @@
         "upload_action_result": {
           "ac_store": "AC_MAIN_STORE"
         },
-        "work_directory": "/tmp/nlfr-nativelink/local-exec/work",
+        "work_directory": "/tmp/nlfr-nativelink/local-exec/work-1",
+        "platform_properties": {
+          "cpu_count": {
+            "values": [
+              "2"
+            ]
+          },
+          "memory_kb": {
+            "values": [
+              "2000000"
+            ]
+          },
+          "network_kbps": {
+            "values": [
+              "100000"
+            ]
+          },
+          "cpu_arch": {
+            "values": [
+              "x86_64"
+            ]
+          },
+          "OSFamily": {
+            "values": [
+              ""
+            ]
+          },
+          "container-image": {
+            "values": [
+              ""
+            ]
+          }
+        }
+      }
+    },
+    {
+      "local": {
+        "worker_api_endpoint": {
+          "uri": "grpc://127.0.0.1:50061"
+        },
+        "cas_fast_slow_store": "WORKER_FAST_SLOW_STORE",
+        "upload_action_result": {
+          "ac_store": "AC_MAIN_STORE"
+        },
+        "work_directory": "/tmp/nlfr-nativelink/local-exec/work-2",
         "platform_properties": {
           "cpu_count": {
             "values": [

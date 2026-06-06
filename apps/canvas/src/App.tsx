@@ -42,6 +42,7 @@ export function App() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [command, setCommand] = useState("");
   const [operatorNote, setOperatorNote] = useState("Ask for cache, failures, proof, runway, or reset.");
+  const [usingFixtureFallback, setUsingFixtureFallback] = useState(false);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const zoomRef = useRef<ReturnType<typeof zoom<SVGSVGElement, unknown>> | null>(null);
   const [transform, setTransform] = useState<ZoomTransform>(zoomIdentity);
@@ -54,10 +55,16 @@ export function App() {
         return response.json() as Promise<ActionGraphProjection>;
       })
       .then((payload) => {
-        if (active) setProjection(payload);
+        if (active) {
+          setProjection(payload);
+          setUsingFixtureFallback(false);
+        }
       })
       .catch(() => {
-        if (active) setProjection(sampleProjection);
+        if (active) {
+          setProjection(sampleProjection);
+          setUsingFixtureFallback(true);
+        }
       });
     return () => {
       active = false;
@@ -72,10 +79,16 @@ export function App() {
         return response.json() as Promise<ProofPacket>;
       })
       .then((payload) => {
-        if (active) setProofPacket(payload);
+        if (active) {
+          setProofPacket(payload);
+          setUsingFixtureFallback(false);
+        }
       })
       .catch(() => {
-        if (active) setProofPacket(sampleProofPacket);
+        if (active) {
+          setProofPacket(sampleProofPacket);
+          setUsingFixtureFallback(true);
+        }
       });
     return () => {
       active = false;
@@ -144,6 +157,11 @@ export function App() {
 
   return (
     <main className="app-shell" data-testid="nlfr-canvas-app">
+      {usingFixtureFallback && (
+        <p className="fixture-fallback-banner" role="status">
+          Fixture fallback active — projection fetch failed; showing simulated sample data.
+        </p>
+      )}
       <header className="topbar">
         <div className="brand-mark">
           <Network size={18} />
@@ -520,6 +538,10 @@ function ProofBlockView({ block }: { block: ProofBlock }) {
           <dt>Confidence</dt>
           <dd>{block.confidence}</dd>
         </div>
+        <div>
+          <dt>Redaction</dt>
+          <dd>{block.redaction_state}</dd>
+        </div>
       </dl>
       {metrics.length > 0 && (
         <div className="proof-block-metrics" aria-label={`${block.title} metrics`}>
@@ -597,26 +619,23 @@ function remoteLensModel(projection: ActionGraphProjection, packet: ProofPacket)
   const remoteMetrics = remoteBlock?.metrics ?? {};
   const remoteInvocations = numberMetric(remoteMetrics.remote_executor_invocations);
   const remoteEndpoints = numberMetric(remoteMetrics.remote_executor_endpoints);
-  const remoteNodes = projection.nodes.filter((node) => node.kind === "remote_execution_config");
   const workerPayload = payloadRecord(workerBlock?.payload);
   const workerStatus = stringValue(workerPayload?.status) ?? "not recorded";
   const sourceKind = workerBlock?.source_kind ?? remoteBlock?.source_kind ?? "future";
   const confidence = workerBlock?.confidence ?? remoteBlock?.confidence ?? "unknown";
-  const hasRemoteConfig = remoteInvocations > 0 || remoteNodes.length > 0;
-  const modeLabel = hasRemoteConfig ? "local-exec configured" : "cache-only or unconfigured";
+  const modeLabel =
+    remoteBlock?.summary ??
+    (remoteInvocations > 0
+      ? "Remote execution boundary recorded in proof packet."
+      : "No remote execution boundary in proof packet.");
   const statusLabel =
-    workerStatus === "worker_endpoints_ready"
-      ? "worker endpoints ready"
-      : hasRemoteConfig
-        ? "remote executor configured"
-        : "no remote executor evidence";
+    workerBlock?.summary ??
+    (workerStatus === "worker_endpoints_ready"
+      ? "Worker readiness boundary recorded in proof packet."
+      : remoteBlock?.summary ?? "Remote boundary evidence not recorded.");
   const unsupportedClaims = dedupe([
     ...unsupportedClaimsFromPayload(remoteBlock?.payload),
     ...unsupportedClaimsFromPayload(workerBlock?.payload),
-    "worker_identity",
-    "action_placement",
-    "queue_time",
-    "scheduler_assignment",
   ]);
   const boundaries = [remoteBlock, workerBlock]
     .filter((block): block is ProofBlock => Boolean(block))

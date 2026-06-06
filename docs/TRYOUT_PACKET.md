@@ -43,9 +43,9 @@ The current repo covers three NativeLink-adjacent layers:
   without claiming scheduler assignment, queue time, action placement, worker
   identity, or load distribution prematurely.
 
-On this host, Bazel/Bazelisk and NativeLink are not on PATH. That means the real
-tool paths produce truth-labeled `environment_blocker` evidence instead of fake
-success.
+Outside `nix develop`, Bazel/Bazelisk and NativeLink are not on PATH — real-tool
+scripts produce truth-labeled `environment_blocker` evidence instead of fake
+success. Inside Nix, PER-1019 proved exit 0 (see Real Toolchain Proof below).
 
 ## Zero-LLM Strategy
 
@@ -97,7 +97,8 @@ Observed result:
 - Python tests: 41 passed.
 - Canvas production build: passed.
 - Demo verifier: passed.
-- Host real-tool paths: recorded missing Bazel/NativeLink blockers.
+- Bare-host real-tool paths: `environment_blocker` when outside Nix (expected).
+- Nix real-tool paths (PER-1019): cold/warm + local-exec exit 0.
 - Browser QA: page identity, blank-page, framework overlay, console health,
   remote-lens interaction, operator command, and mobile viewport passed.
 

@@ -49,35 +49,55 @@ For the tryout-facing summary of the current worker-first proof, see
 
 ## Quick Start
 
-Requirements:
+Requirements: `uv`, Python 3.11+, Node/npm for the canvas app.
 
-- `uv`
-- Python 3.11+
-- Node/npm for the canvas app
-- Optional for real cache-only smoke: `bazel`/`bazelisk` and `nativelink`/`native-link`
+Bootstrap once:
+
+```bash
+uv sync
+npm --prefix apps/canvas install
+```
+
+### Path A — 5-minute evaluator (no Nix)
+
+Fixture-backed canvas demo without Bazel or NativeLink on PATH:
 
 ```bash
 uv run pytest tests -q
+npm --prefix apps/canvas run dev -- --host 127.0.0.1
+```
+
+Open the dev server and inspect Action Graph / Proof Packet from committed
+fixture projections under `apps/canvas/public/projections/`. This path uses
+`simulated_v1` evidence — not real NativeLink execution.
+
+### Path B — Real NativeLink proof (Nix)
+
+Outside `nix develop`, real-tool scripts record truth-labeled
+`environment_blocker` evidence. Inside Nix, PER-1019 proved cold/warm cache and
+one-process local-exec (`635ee36`, NativeLink 1.3.2, Bazel 9.1.1):
+
+```bash
+nix develop
+scripts/cold-warm-cache-proof.sh
+scripts/local-exec-proof.sh
+```
+
+See [docs/DEV_ENVIRONMENT.md](docs/DEV_ENVIRONMENT.md) for prerequisites (~82GB
+disk for first proof run, Nix with flakes).
+
+### Full verifier
+
+```bash
 scripts/verify-demo.sh
 ```
 
-`scripts/verify-demo.sh` runs the available proof path:
+Runs backend tests, doctor, real-tool smoke (blocker or success), cold/warm,
+local-exec, simulated-agent provenance, fixture ingest, projection exports, and
+canvas build. Use after either path above.
 
-1. backend tests;
-2. `nlfr doctor --mode cache-only`;
-3. a real-tool `nlfr run` smoke that records an `environment_blocker` if Bazel or NativeLink is missing;
-4. cold/warm NativeLink cache proof when tools are available, or a recorded blocker otherwise;
-5. simulated-agent provenance in a copied demo workspace;
-6. fixture-backed Bazel ingest;
-7. Action Graph, Validation Runway, and Proof Packet exports;
-8. canvas build.
-
-On this machine the real cache-only smoke is blocked because Bazel and
-NativeLink are not on PATH. That is recorded as evidence, not treated as a
-success.
-
-For the reproducible environment that installs Bazel/Bazelisk and NativeLink,
-use [docs/DEV_ENVIRONMENT.md](docs/DEV_ENVIRONMENT.md).
+Tryout narrative: [docs/TRYOUT_PACKET.md](docs/TRYOUT_PACKET.md) · One-pager:
+[docs/ONE_PAGER.md](docs/ONE_PAGER.md)
 
 ## CLI Flow
 

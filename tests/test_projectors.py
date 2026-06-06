@@ -246,7 +246,7 @@ def test_proof_packet_bounds_remote_execution_claims(tmp_path):
 
     block = next(item for item in proof["blocks"] if item["id"] == "remote_execution")
     assert block["title"] == "Remote Execution Boundary"
-    assert block["source_kind"] == "derived_v1"
+    assert block["source_kind"] == "collectable_v1"
     assert block["confidence"] == "high"
     assert block["metrics"]["remote_executor_invocations"] == 1
     assert block["metrics"]["worker_identity_observed"] is False
@@ -256,6 +256,8 @@ def test_proof_packet_bounds_remote_execution_claims(tmp_path):
     assert len(endpoint["fingerprint"]) == 16
     assert endpoint["redacted"] is False
     assert "scheduler_assignment" in block["payload"]["unsupported_claims"]
+    assert "action_placement" in block["payload"]["unsupported_claims"]
+    assert "load_distribution" in block["payload"]["unsupported_claims"]
     claim_text = " ".join(block["claims"])
     assert "configuration intent" in claim_text
     assert "worker identity" in claim_text

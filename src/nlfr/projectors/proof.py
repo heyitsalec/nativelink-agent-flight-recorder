@@ -115,7 +115,7 @@ def _block(
         "summary": summary,
         "claims": claims or [],
         "metrics": metrics or {},
-        "source_kind": "derived_v1" if rows_for_truth else "future",
+        "source_kind": _dominant_source_kind(rows_for_truth),
         "confidence": _confidence(rows_for_truth),
         "evidence_refs": _evidence_refs(rows_for_truth),
         "redaction_state": _redaction_state(rows_for_truth),
@@ -175,6 +175,26 @@ def _cache_metrics(cache_events: list[dict[str, Any]]) -> dict[str, Any]:
         "unknown": unknown,
         "hit_rate": hits / total_known if total_known else None,
     }
+
+
+def _dominant_source_kind(rows_for_truth: list[dict[str, Any]]) -> str:
+    if not rows_for_truth:
+        return "future"
+    kinds = [
+        str(row.get("source_kind"))
+        for row in rows_for_truth
+        if row.get("source_kind")
+    ]
+    if not kinds:
+        return "derived_v1"
+    priority = {
+        "collectable_v1": 0,
+        "derived_v1": 1,
+        "simulated_v1": 2,
+        "future": 3,
+        "unknown": 4,
+    }
+    return min(kinds, key=lambda kind: priority.get(kind, 99))
 
 
 def _confidence(rows_for_truth: list[dict[str, Any]]) -> str:

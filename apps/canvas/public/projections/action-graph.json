@@ -61,18 +61,6 @@
       "to": "actions_e77415194169644835c3225b"
     },
     {
-      "confidence": "high",
-      "evidence_refs": [
-        "simulated_v1:execution-log.json"
-      ],
-      "from": "targets_5658831dad78d6f0abdbd647",
-      "id": "observed_cache_event:targets_5658831dad78d6f0abdbd647:cache_events_5300f4c95786094dfcb9d7cb",
-      "kind": "observed_cache_event",
-      "redaction_state": "safe",
-      "source_kind": "simulated_v1",
-      "to": "cache_events_5300f4c95786094dfcb9d7cb"
-    },
-    {
       "confidence": "medium",
       "evidence_refs": [
         "simulated_v1:profile.json"
@@ -85,16 +73,16 @@
       "to": "cache_events_2c5aa3b32b68a25b478d4417"
     },
     {
-      "confidence": "low",
+      "confidence": "high",
       "evidence_refs": [
-        "simulated_v1:profile.json"
+        "simulated_v1:execution-log.json"
       ],
-      "from": "targets_3a7d039221663f4789b5510f",
-      "id": "observed_cache_event:targets_3a7d039221663f4789b5510f:cache_events_9aae150c5ae2c4bb9a8203a6",
+      "from": "targets_5658831dad78d6f0abdbd647",
+      "id": "observed_cache_event:targets_5658831dad78d6f0abdbd647:cache_events_5300f4c95786094dfcb9d7cb",
       "kind": "observed_cache_event",
       "redaction_state": "safe",
-      "source_kind": "derived_v1",
-      "to": "cache_events_9aae150c5ae2c4bb9a8203a6"
+      "source_kind": "simulated_v1",
+      "to": "cache_events_5300f4c95786094dfcb9d7cb"
     },
     {
       "confidence": "high",
@@ -107,6 +95,18 @@
       "redaction_state": "safe",
       "source_kind": "simulated_v1",
       "to": "cache_events_cd491628c2ce1a1744045ece"
+    },
+    {
+      "confidence": "low",
+      "evidence_refs": [
+        "simulated_v1:profile.json"
+      ],
+      "from": "targets_3a7d039221663f4789b5510f",
+      "id": "observed_cache_event:targets_3a7d039221663f4789b5510f:cache_events_9aae150c5ae2c4bb9a8203a6",
+      "kind": "observed_cache_event",
+      "redaction_state": "safe",
+      "source_kind": "derived_v1",
+      "to": "cache_events_9aae150c5ae2c4bb9a8203a6"
     },
     {
       "confidence": "high",
@@ -133,7 +133,7 @@
       "to": "failures_d157bd86959f2c75ddde1aef"
     }
   ],
-  "generated_at": "2026-06-06T19:44:54.221646Z",
+  "generated_at": "2026-06-06T21:45:21.733246Z",
   "nodes": [
     {
       "confidence": "high",
@@ -249,26 +249,6 @@
       "status": "FAILED"
     },
     {
-      "confidence": "high",
-      "evidence_refs": [
-        "simulated_v1:execution-log.json"
-      ],
-      "id": "cache_events_5300f4c95786094dfcb9d7cb",
-      "kind": "cache_event",
-      "label": "remote_cache_hit",
-      "payload": {
-        "digest": "sha256:1111222233334444",
-        "event_key": "//tasks:priority_test:PyTest:sha256:1111222233334444",
-        "event_kind": "remote_cache_hit",
-        "hit": 1,
-        "run_id": "runs_efd15c8fc1b784129fb7645c",
-        "target_id": "targets_5658831dad78d6f0abdbd647"
-      },
-      "redaction_state": "safe",
-      "source_kind": "simulated_v1",
-      "status": null
-    },
-    {
       "confidence": "medium",
       "evidence_refs": [
         "simulated_v1:profile.json"
@@ -289,21 +269,23 @@
       "status": null
     },
     {
-      "confidence": "low",
+      "confidence": "high",
       "evidence_refs": [
-        "simulated_v1:profile.json"
+        "simulated_v1:execution-log.json"
       ],
-      "id": "cache_events_9aae150c5ae2c4bb9a8203a6",
+      "id": "cache_events_5300f4c95786094dfcb9d7cb",
       "kind": "cache_event",
-      "label": "action_cache_observed",
+      "label": "remote_cache_hit",
       "payload": {
-        "event_key": "profile://tasks:flaky_test:PyTest:202",
-        "event_kind": "action_cache_observed",
+        "digest": "sha256:1111222233334444",
+        "event_key": "//tasks:priority_test:PyTest:sha256:1111222233334444",
+        "event_kind": "remote_cache_hit",
+        "hit": 1,
         "run_id": "runs_efd15c8fc1b784129fb7645c",
-        "target_id": "targets_3a7d039221663f4789b5510f"
+        "target_id": "targets_5658831dad78d6f0abdbd647"
       },
       "redaction_state": "safe",
-      "source_kind": "derived_v1",
+      "source_kind": "simulated_v1",
       "status": null
     },
     {
@@ -324,6 +306,24 @@
       },
       "redaction_state": "safe",
       "source_kind": "simulated_v1",
+      "status": null
+    },
+    {
+      "confidence": "low",
+      "evidence_refs": [
+        "simulated_v1:profile.json"
+      ],
+      "id": "cache_events_9aae150c5ae2c4bb9a8203a6",
+      "kind": "cache_event",
+      "label": "action_cache_observed",
+      "payload": {
+        "event_key": "profile://tasks:flaky_test:PyTest:202",
+        "event_kind": "action_cache_observed",
+        "run_id": "runs_efd15c8fc1b784129fb7645c",
+        "target_id": "targets_3a7d039221663f4789b5510f"
+      },
+      "redaction_state": "safe",
+      "source_kind": "derived_v1",
       "status": null
     },
     {

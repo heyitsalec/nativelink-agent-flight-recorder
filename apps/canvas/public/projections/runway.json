@@ -4,29 +4,6 @@
       "confidence": "high",
       "ended_at": null,
       "evidence_refs": [
-        "simulated_v1:execution-log.json"
-      ],
-      "id": "cache_events_5300f4c95786094dfcb9d7cb",
-      "label": "//tasks:priority_test:PyTest:sha256:1111222233334444",
-      "lane": "cache",
-      "payload": {
-        "digest": "sha256:1111222233334444",
-        "event_key": "//tasks:priority_test:PyTest:sha256:1111222233334444",
-        "event_kind": "remote_cache_hit",
-        "hit": 1,
-        "run_id": "runs_efd15c8fc1b784129fb7645c",
-        "stable_key": "fixture-run:cache-only:cache_event://tasks:priority_test:PyTest:sha256:1111222233334444",
-        "target_id": "targets_5658831dad78d6f0abdbd647"
-      },
-      "redaction_state": "safe",
-      "source_kind": "simulated_v1",
-      "started_at": "2026-06-06T19:44:54.166Z",
-      "status": "remote_cache_hit"
-    },
-    {
-      "confidence": "high",
-      "ended_at": null,
-      "evidence_refs": [
         "simulated_v1:bep.jsonl",
         "simulated_v1:execution-log.json",
         "simulated_v1:profile.json"
@@ -43,50 +20,8 @@
       },
       "redaction_state": "safe",
       "source_kind": "simulated_v1",
-      "started_at": "2026-06-06T19:44:54.166Z",
+      "started_at": "2026-06-06T21:45:21.673Z",
       "status": "ingested"
-    },
-    {
-      "confidence": "high",
-      "ended_at": null,
-      "evidence_refs": [
-        "simulated_v1:bep.jsonl"
-      ],
-      "id": "targets_3a7d039221663f4789b5510f",
-      "label": "//tasks:flaky_test",
-      "lane": "target",
-      "payload": {
-        "label": "//tasks:flaky_test",
-        "run_id": "runs_efd15c8fc1b784129fb7645c",
-        "stable_key": "fixture-run:cache-only:target://tasks:flaky_test",
-        "status": "FAILED",
-        "target_kind": "py_test rule"
-      },
-      "redaction_state": "safe",
-      "source_kind": "simulated_v1",
-      "started_at": "2026-06-06T19:44:54.166Z",
-      "status": "FAILED"
-    },
-    {
-      "confidence": "high",
-      "ended_at": null,
-      "evidence_refs": [
-        "simulated_v1:bep.jsonl"
-      ],
-      "id": "targets_5658831dad78d6f0abdbd647",
-      "label": "//tasks:priority_test",
-      "lane": "target",
-      "payload": {
-        "label": "//tasks:priority_test",
-        "run_id": "runs_efd15c8fc1b784129fb7645c",
-        "stable_key": "fixture-run:cache-only:target://tasks:priority_test",
-        "status": "PASSED",
-        "target_kind": "py_test rule"
-      },
-      "redaction_state": "safe",
-      "source_kind": "simulated_v1",
-      "started_at": "2026-06-06T19:44:54.166Z",
-      "status": "PASSED"
     },
     {
       "confidence": "medium",
@@ -108,29 +43,31 @@
       },
       "redaction_state": "safe",
       "source_kind": "derived_v1",
-      "started_at": "2026-06-06T19:44:54.167Z",
+      "started_at": "2026-06-06T21:45:21.674Z",
       "status": "remote_cache_hit"
     },
     {
-      "confidence": "low",
+      "confidence": "high",
       "ended_at": null,
       "evidence_refs": [
-        "simulated_v1:profile.json"
+        "simulated_v1:execution-log.json"
       ],
-      "id": "cache_events_9aae150c5ae2c4bb9a8203a6",
-      "label": "profile://tasks:flaky_test:PyTest:202",
+      "id": "cache_events_5300f4c95786094dfcb9d7cb",
+      "label": "//tasks:priority_test:PyTest:sha256:1111222233334444",
       "lane": "cache",
       "payload": {
-        "event_key": "profile://tasks:flaky_test:PyTest:202",
-        "event_kind": "action_cache_observed",
+        "digest": "sha256:1111222233334444",
+        "event_key": "//tasks:priority_test:PyTest:sha256:1111222233334444",
+        "event_kind": "remote_cache_hit",
+        "hit": 1,
         "run_id": "runs_efd15c8fc1b784129fb7645c",
-        "stable_key": "fixture-run:cache-only:cache_event:profile://tasks:flaky_test:PyTest:202",
-        "target_id": "targets_3a7d039221663f4789b5510f"
+        "stable_key": "fixture-run:cache-only:cache_event://tasks:priority_test:PyTest:sha256:1111222233334444",
+        "target_id": "targets_5658831dad78d6f0abdbd647"
       },
       "redaction_state": "safe",
-      "source_kind": "derived_v1",
-      "started_at": "2026-06-06T19:44:54.167Z",
-      "status": "action_cache_observed"
+      "source_kind": "simulated_v1",
+      "started_at": "2026-06-06T21:45:21.674Z",
+      "status": "remote_cache_hit"
     },
     {
       "confidence": "high",
@@ -152,8 +89,71 @@
       },
       "redaction_state": "safe",
       "source_kind": "simulated_v1",
-      "started_at": "2026-06-06T19:44:54.167Z",
+      "started_at": "2026-06-06T21:45:21.674Z",
       "status": "cache_miss"
+    },
+    {
+      "confidence": "high",
+      "ended_at": null,
+      "evidence_refs": [
+        "simulated_v1:bep.jsonl"
+      ],
+      "id": "targets_3a7d039221663f4789b5510f",
+      "label": "//tasks:flaky_test",
+      "lane": "target",
+      "payload": {
+        "label": "//tasks:flaky_test",
+        "run_id": "runs_efd15c8fc1b784129fb7645c",
+        "stable_key": "fixture-run:cache-only:target://tasks:flaky_test",
+        "status": "FAILED",
+        "target_kind": "py_test rule"
+      },
+      "redaction_state": "safe",
+      "source_kind": "simulated_v1",
+      "started_at": "2026-06-06T21:45:21.674Z",
+      "status": "FAILED"
+    },
+    {
+      "confidence": "high",
+      "ended_at": null,
+      "evidence_refs": [
+        "simulated_v1:bep.jsonl"
+      ],
+      "id": "targets_5658831dad78d6f0abdbd647",
+      "label": "//tasks:priority_test",
+      "lane": "target",
+      "payload": {
+        "label": "//tasks:priority_test",
+        "run_id": "runs_efd15c8fc1b784129fb7645c",
+        "stable_key": "fixture-run:cache-only:target://tasks:priority_test",
+        "status": "PASSED",
+        "target_kind": "py_test rule"
+      },
+      "redaction_state": "safe",
+      "source_kind": "simulated_v1",
+      "started_at": "2026-06-06T21:45:21.674Z",
+      "status": "PASSED"
+    },
+    {
+      "confidence": "low",
+      "ended_at": null,
+      "evidence_refs": [
+        "simulated_v1:profile.json"
+      ],
+      "id": "cache_events_9aae150c5ae2c4bb9a8203a6",
+      "label": "profile://tasks:flaky_test:PyTest:202",
+      "lane": "cache",
+      "payload": {
+        "event_key": "profile://tasks:flaky_test:PyTest:202",
+        "event_kind": "action_cache_observed",
+        "run_id": "runs_efd15c8fc1b784129fb7645c",
+        "stable_key": "fixture-run:cache-only:cache_event:profile://tasks:flaky_test:PyTest:202",
+        "target_id": "targets_3a7d039221663f4789b5510f"
+      },
+      "redaction_state": "safe",
+      "source_kind": "derived_v1",
+      "started_at": "2026-06-06T21:45:21.675Z",
+      "status": "action_cache_observed"
     },
     {
       "confidence": "high",
@@ -178,7 +178,7 @@
       },
       "redaction_state": "safe",
       "source_kind": "simulated_v1",
-      "started_at": "2026-06-06T19:44:54.167Z",
+      "started_at": "2026-06-06T21:45:21.675Z",
       "status": null
     },
     {
@@ -207,11 +207,11 @@
       },
       "redaction_state": "safe",
       "source_kind": "simulated_v1",
-      "started_at": "2026-06-06T19:44:54.167Z",
+      "started_at": "2026-06-06T21:45:21.675Z",
       "status": null
     }
   ],
-  "generated_at": "2026-06-06T19:44:54.275950Z",
+  "generated_at": "2026-06-06T21:45:21.789184Z",
   "lanes": [
     {
       "id": "run",
