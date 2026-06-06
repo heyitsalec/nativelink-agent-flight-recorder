@@ -148,6 +148,14 @@ Real toolchain proof on this host:
 - `scripts/cold-warm-cache-proof.sh` → `environment_blocker` (no NativeLink).
 - `scripts/local-exec-proof.sh` → `environment_blocker` (no NativeLink).
 
-PER-1019 remains open until a Nix/devcontainer or Linux host runs successful
-cold/warm and local-exec proof. Fixture-backed and blocker evidence on this Mac
-is honest and complete for the available toolchain boundary.
+PER-1019 closed 2026-06-06 with commit `635ee36`:
+
+- Nix/Determinate installed; disk cleanup freed ~82GB for first proof run
+- `nix develop` provides NativeLink 1.3.2 + Bazel 9.1.1
+- `scripts/cold-warm-cache-proof.sh` — cold + warm exit 0
+- `scripts/local-exec-proof.sh` — exit 0, `worker_endpoints_ready`
+- Summaries at `data/cold-warm-proof/summary.json` and
+  `data/local-exec-proof/summary.json`
+
+Unsupported claims (worker identity, scheduler assignment, queue time, action
+placement, load distribution) remain explicit in proof output.

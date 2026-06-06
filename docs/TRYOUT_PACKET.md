@@ -110,25 +110,26 @@ Visual proof artifacts:
 - `output/playwright/canvas-mobile.png`
 - `output/playwright/canvas-operator-flow.webm`
 
-## Coordinator Takeover (PER-1019)
+## Real Toolchain Proof (PER-1019)
 
 Date: 2026-06-06
 
-Cursor coordinator reconciled Git baseline (`e1e9070` on `codex/per-998-nlfr-mvp`),
-added Knowledge OS project pack (`knowledge-os/projects/nlfr/pack.md`), and armed
-Linear parent [PER-1019](https://linear.app/gradschool/issue/PER-1019) for real
-toolchain proof.
+Linear parent [PER-1019](https://linear.app/gradschool/issue/PER-1019) closed
+after real NativeLink proof inside `nix develop`.
 
-Host toolchain assessment ([docs/TOOLCHAIN_ASSESSMENT.md](TOOLCHAIN_ASSESSMENT.md)):
+Commit: `635ee36` — Unblock NativeLink 1.3.2 and Bazel 9 proof paths.
 
-- Nix, Bazel/Bazelisk, NativeLink, and Docker are not on PATH on this Mac host.
-- `scripts/cold-warm-cache-proof.sh` recorded `environment_blocker` at
-  `data/cold-warm-proof/environment-blocker.json` (missing NativeLink).
-- `scripts/local-exec-proof.sh` recorded `worker-readiness.json` and
-  `environment_blocker` at `data/local-exec-proof/` (missing NativeLink).
+| Proof | Result |
+|-------|--------|
+| `scripts/cold-warm-cache-proof.sh` | Exit 0 — cold + warm completed |
+| `scripts/local-exec-proof.sh` | Exit 0 — `worker_endpoints_ready` |
 
-These blockers are valid collectable evidence. Real cache and local-exec proof
-require `nix develop` or the devcontainer on a toolchain-ready host. See
+Summaries: `data/cold-warm-proof/summary.json`, `data/local-exec-proof/summary.json`.
+
+Toolchain: NativeLink 1.3.2, Bazel 9.1.1. Config fix: `cache-only.json` uses
+NativeLink 1.3.x `stores` array schema.
+
+See [docs/TOOLCHAIN_ASSESSMENT.md](TOOLCHAIN_ASSESSMENT.md) and
 [docs/REAL_TOOLCHAIN_DAG.md](REAL_TOOLCHAIN_DAG.md).
 
 ## What Remains Unproven
@@ -144,9 +145,8 @@ These are explicit follow-ups, not implied claims:
 - full NativeLink Local Remote Execution on a supported Linux/x86_64-style
   environment.
 
-The next best technical step is to run the Nix/devcontainer path on a host where
-Bazel/Bazelisk and NativeLink are installed, then capture a real cold/warm cache
-proof and a one-process local remote-executor smoke.
+The next best technical step is two-worker proof, full LRE on a Linux/x86_64-style
+host, and direct worker/admin/log evidence before expanding unsupported claims.
 
 ## Why It Fits NativeLink
 

@@ -9,26 +9,30 @@ local-exec proof on a host with Bazel and NativeLink installed.
 
 ## Children
 
-- PER-1020: Environment smoke (Nix/devcontainer). **Blocked** on this host — see
-  [TOOLCHAIN_ASSESSMENT.md](TOOLCHAIN_ASSESSMENT.md).
-- PER-1021: Cold/warm NativeLink cache proof. Blocked by PER-1020.
-- PER-1022: Local-exec smoke proof. Blocked by PER-1020.
-- PER-1023: Artifact preservation and tryout update.
-- PER-1024: Real toolchain completion review.
+- PER-1020: Environment smoke (Nix/devcontainer). **Done**
+- PER-1021: Cold/warm NativeLink cache proof. **Done**
+- PER-1022: Local-exec smoke proof. **Done**
+- PER-1023: Artifact preservation and tryout update. **Done**
+- PER-1024: Real toolchain completion review. **Done**
 
-## Current State
+## Result
 
-Coordinator takeover (2026-06-06):
+PER-1019 completed on 2026-06-06 with commit `635ee36` on `codex/per-998-nlfr-mvp`.
 
-- Git baseline reconciled: commit `e1e9070` on `codex/per-998-nlfr-mvp`.
-- Knowledge OS project pack: `knowledge-os/projects/nlfr/pack.md`.
-- This Mac host lacks Nix, Bazel, NativeLink, and Docker. Real toolchain proof
-  scripts record truth-labeled `environment_blocker` evidence.
+Proof pass (inside `nix develop`):
+
+- NativeLink 1.3.2 + Bazel 9.1.1
+- `scripts/cold-warm-cache-proof.sh` — cold + warm exit 0
+- `scripts/local-exec-proof.sh` — exit 0, `worker_endpoints_ready`
+- Summaries: `data/cold-warm-proof/summary.json`, `data/local-exec-proof/summary.json`
+
+Unsupported claims remain explicit: worker identity, scheduler assignment, queue
+time, action placement, load distribution.
 
 ## Proof Gates
 
 ```bash
-nix develop  # or devcontainer
+nix develop
 scripts/cold-warm-cache-proof.sh
 scripts/local-exec-proof.sh
 uv run pytest tests -q

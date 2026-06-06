@@ -1,44 +1,41 @@
 # Host Toolchain Assessment
 
-Date: 2026-06-06
+Date: 2026-06-06 (updated after PER-1019 proof pass)
 
-Coordinator: Cursor takeover session
-
-## This Host (macOS darwin 25.4.0)
+## Toolchain-Ready Host (Nix develop)
 
 | Tool | Status |
 |------|--------|
-| Nix | Not on PATH |
-| Bazel / Bazelisk | Not on PATH |
-| NativeLink / native-link | Not on PATH |
-| Docker | Not on PATH |
+| Nix (Determinate) | Installed; `nix develop` available |
+| NativeLink | 1.3.2 (from flake) |
+| Bazel | 9.1.1 via Bazelisk shim |
+| Disk | ~82GB free after cleanup (required for first proof run) |
 
-## Implication
+## Proof Results (commit `635ee36`)
 
-Phase B (real NativeLink toolchain proof) cannot execute on this host without
-installing Nix (recommended per `docs/DEV_ENVIRONMENT.md`), enabling Docker for
-the devcontainer path, or moving proof to a Linux/WSL2 machine with the toolchain
-installed.
+| Script | Result |
+|--------|--------|
+| `scripts/cold-warm-cache-proof.sh` | Exit 0 — cold + warm completed |
+| `scripts/local-exec-proof.sh` | Exit 0 — `worker_endpoints_ready` |
 
-Current proof remains fixture-backed and truth-labeled `environment_blocker`
-evidence. That is valid evidence, not a failed MVP.
+Summary artifacts (ignored under `data/`):
 
-## Recommended Next Host
+- `data/cold-warm-proof/summary.json`
+- `data/local-exec-proof/summary.json`
 
-1. **Nix with flakes** — `nix develop` in this repo provides pinned Bazelisk and
-   NativeLink from `flake.nix` (supports `aarch64-darwin`).
-2. **Devcontainer** — requires Docker; `.devcontainer/devcontainer.json` enters
-   `nix develop` automatically.
-3. **Linux/WSL2** — for full LRE and multi-worker experiments later.
+## Fixes in `635ee36`
 
-## Proof Commands When Ready
+- `demo/nativelink/cache-only.json` updated to NativeLink 1.3.x `stores` array schema
+- Bazel 9 runner/ingest compatibility fixes
 
-```bash
-nix develop
-uv sync
-npm --prefix apps/canvas install
-scripts/cold-warm-cache-proof.sh
-scripts/local-exec-proof.sh
-```
+## Outside Nix Shell
 
-See Linear parent **NLFR-20 Real NativeLink Toolchain Proof** for the armed DAG.
+Bazel/NativeLink are not on bare PATH outside `nix develop`. Run proof scripts
+inside the dev shell or devcontainer per `docs/DEV_ENVIRONMENT.md`.
+
+## Next Host Work
+
+- Two-worker gate (`NLFR_EXPECTED_WORKERS=2`) when config supports it
+- Full LRE on Linux/x86_64-style environment
+- Direct worker/admin/log evidence before claiming worker identity, queue time,
+  scheduler assignment, action placement, or load distribution
