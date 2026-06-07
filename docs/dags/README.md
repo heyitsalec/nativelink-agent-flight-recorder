@@ -1,49 +1,18 @@
 # NLFR DAG Mirrors
 
-## Active — Doc capture wave 2 (PER-1071)
-
-Tier1 hero GIF refresh: [nlfr-doc-capture-wave2.md](nlfr-doc-capture-wave2.md)  
-Handoffs: `docs/sessions/handoffs/nlfr-doc-capture/wave-2/`
-
 ## Active — Fleet evidence v1 (frontier wave)
 
-[fleet-evidence-v1.md](fleet-evidence-v1.md) · Handoffs: `docs/sessions/handoffs/fleet-evidence-v1/wave-0/`  
-Wave-0 ceiling: attach `nativelink.stdout.txt` pre-ingest on local-exec + worker-evidence paths; M7 `worker_identity` conditional on regex match. Agent-loop and cold-warm attach deferred.
+[fleet-evidence-v1.md](fleet-evidence-v1.md) · Handoffs: `docs/sessions/handoffs/fleet-evidence-v1/wave-1/` (wave-0: `wave-0/`)  
+Wave-1 ceiling: `stdout_ingest_breadth` — attach `nativelink.stdout.txt` pre-ingest on local-exec, worker-evidence, agent-loop, and cold-warm proof paths; M7 `worker_identity` conditional on regex match. **Committed today:** local-exec + worker-evidence only; agent-loop + cold-warm attach pending `fel-w1-agent-coldwarm-attach`. Local proof gates substitute for CI while GHA offline.
 
-## Active — Tier1 live Bazel (frontier wave)
+## Active — LRE proof (cache parity wired; CI deferred)
 
-[tier1-live-bazel.md](tier1-live-bazel.md) · Handoffs: `docs/sessions/handoffs/tier1-live-bazel/wave-1/`  
-Live Acts 1+2 via `tier1-agent-demo.sh` with real Bazel validation.
-
-## Active — CI Bazel tier1
-
-[ci-bazel-tier1.md](ci-bazel-tier1.md) · Handoffs: `docs/sessions/handoffs/ci-bazel-tier1/`
-
-## Active — LRE proof (substrate ready)
-
-[lre-proof.md](lre-proof.md) · Handoffs: `docs/sessions/handoffs/lre-proof/wave-3/`  
-Phase 2 ceiling: `lre_bazelrc_generated` (`collectable_v1`, `medium`) — Nix `lre.bazelrc` + Bazel consumer wiring + `lre-nix-toolchain-proof.sh`. Phase 1 `lre_substrate_ready` preserved via `lre-proof.sh`. Cache parity and fleet UI remain blocked.
+[lre-proof.md](lre-proof.md) · Handoffs: `docs/sessions/handoffs/lre-proof/wave-4/`  
+Phase 4 ceiling: `lre_cache_parity_observed` (`collectable_v1`, `medium`) — `lre-cold-warm-proof.sh` cold/warm cache economics on x86_64-linux. Phases 1–2 preserved via `lre-proof.sh` and `lre-nix-toolchain-proof.sh`. CI green deferred while GHA offline; fleet UI remains blocked.
 
 ## Future — execution ladder (blocker-gated)
 
 Fleet dashboards: [future-execution-ladder.md](future-execution-ladder.md) — research only, no UI DAG.
-
-## Active — Tier 1 Agent Vision (PER-TIER1-AGENT)
-
-Broker-coordinated DAG. Mirror: [tier1-agent-vision.md](tier1-agent-vision.md)  
-Handoffs: `docs/sessions/handoffs/tier1-agent-vision/`
-
-## Active — Doc capture (PER-1071)
-
-Linear: [PER-1071](https://linear.app/gradschool/issue/PER-1071/nlfr-doc-documentation-and-hero-media-capture-pass)
-
-| Workstream | Linear | Deliverable |
-|------------|--------|-------------|
-| DOC-A capture | PER-1072 | Capture scripts + `docs/media/*.gif` + `MEDIA_CAPTURE.md` |
-| DOC-B wiki | PER-1073 | `docs/INDEX.md` hub + cross-links + `CONTRIBUTING.md` |
-| DOC-C readme | PER-1074 | Harmony-style root `README.md` with embedded heroes |
-
-Mirror: [doc-capture-pass.md](doc-capture-pass.md) · Handoffs: `docs/sessions/handoffs/nlfr-doc-capture/wave-1/`
 
 ## Active — Architecture track
 
@@ -99,6 +68,29 @@ Linear parent: [PER-1058](https://linear.app/gradschool/issue/PER-1058)
 
 Umbrella: [m5-m9-umbrella.md](m5-m9-umbrella.md) · Review gates at Wave 1.5 and 2.5.
 
+## Completed — Frontier wave (2026-06-06)
+
+| DAG | Ceiling | Handoffs |
+|-----|---------|----------|
+| Tier1 live Bazel | live Acts 1+2 + Bazel validation | [tier1-live-bazel.md](tier1-live-bazel.md) · `tier1-live-bazel/wave-1/` |
+| CI Bazel tier1 | workflow job + local proof script | [ci-bazel-tier1.md](ci-bazel-tier1.md) · `ci-bazel-tier1/` |
+| Tier 1 Agent Vision | broker waves 0–6 shipped | [tier1-agent-vision.md](tier1-agent-vision.md) · `tier1-agent-vision/` |
+| Doc capture wave 2 | tier1-aligned hero GIF refresh | [nlfr-doc-capture-wave2.md](nlfr-doc-capture-wave2.md) · `nlfr-doc-capture/wave-2/` |
+
+Broker handoffs: `docs/sessions/handoffs/frontier-wave/wave-0/` · Wave-1 closeout: `frontier-wave/wave-1/`
+
+## Completed — Doc capture (PER-1071)
+
+Linear: [PER-1071](https://linear.app/gradschool/issue/PER-1071/nlfr-doc-documentation-and-hero-media-capture-pass)
+
+| Workstream | Linear | Deliverable |
+|------------|--------|-------------|
+| DOC-A capture | PER-1072 | Capture scripts + `docs/media/*.gif` + `MEDIA_CAPTURE.md` |
+| DOC-B wiki | PER-1073 | `docs/INDEX.md` hub + cross-links + `CONTRIBUTING.md` |
+| DOC-C readme | PER-1074 | Harmony-style root `README.md` with embedded heroes |
+
+Mirror: [doc-capture-pass.md](doc-capture-pass.md) · Handoffs: `docs/sessions/handoffs/nlfr-doc-capture/wave-1/`
+
 ## Completed — Vision DAG
 
 Linear umbrella: [PER-1053](https://linear.app/gradschool/issue/PER-1053/nlfr-vision-product-vision-implementation-dag)
@@ -122,3 +114,7 @@ Multi-DAG milestones ("Implement the plan") use **parent broker mode**:
 - NLFR pack: [knowledge-os/projects/nlfr/pack.md](/Users/alecbot/Documents/knowledge-os/projects/nlfr/pack.md) § Orchestration
 
 Parent spawns coordinator subagents per DAG; coordinators return `DispatchManifest` JSON; parent spawns workers and resumes coordinators until `completion-ritual`.
+
+### Parent proof gates (GHA offline — 2026-06-06)
+
+GitHub Actions workflows have been non-green ~1 month. Broker **must not block** on CI at ship. Local gates: `uv run pytest -q`, `bash -n scripts/*.sh`, optional Nix develop proofs on host. PR merge: local gates + review packet, not CI green. See [`frontier-wave/wave-1/gha-offline-proof-shift.md`](../sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md).

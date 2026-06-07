@@ -23,10 +23,9 @@ docs/sessions/handoffs/{dag-id}/wave-{n}/
 | `m5-m9-umbrella` | PER-1058 | [m5-m9-umbrella/](m5-m9-umbrella/) |
 | `nlfr-doc-capture` | PER-1071 | [nlfr-doc-capture/](nlfr-doc-capture/) |
 | `future-fleet-claims` | PER-1058 | [future-fleet-claims/wave-1/](future-fleet-claims/wave-1/) · DAG: [future-fleet-claims.md](../../dags/future-fleet-claims.md) |
-| `fleet-evidence-v1` | PER-1058 | [fleet-evidence-v1/wave-0/](fleet-evidence-v1/wave-0/) · DAG: [fleet-evidence-v1.md](../../dags/fleet-evidence-v1.md) |
+| `fleet-evidence-v1` | PER-1058 · frontier | [wave-0/](fleet-evidence-v1/wave-0/) · [wave-1/](fleet-evidence-v1/wave-1/) · DAG: [fleet-evidence-v1.md](../../dags/fleet-evidence-v1.md) |
 | `tier1-agent-vision` | PER-TIER1-AGENT | [tier1-agent-vision/](tier1-agent-vision/) · KOS: [KOS-startup-routing.md](tier1-agent-vision/KOS-startup-routing.md) |
 | `tier1-live-bazel` | frontier | [tier1-live-bazel/](tier1-live-bazel/) |
-| `fleet-evidence-v1` | frontier | [fleet-evidence-v1/](fleet-evidence-v1/) |
 | `frontier-wave` | broker | [frontier-wave/](frontier-wave/) |
 
 ## Templates

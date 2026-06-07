@@ -1,7 +1,8 @@
 # LRE proof — broker DAG (cache parity wired)
 
 **Parent:** PER-1058 architecture track Phase 3+  
-**Handoffs:** `docs/sessions/handoffs/lre-proof/wave-4/`
+**Handoffs (current):** `docs/sessions/handoffs/lre-proof/wave-4/`  
+**Handoffs (archived):** `docs/sessions/handoffs/lre-proof/wave-3/`
 
 ## Objective
 

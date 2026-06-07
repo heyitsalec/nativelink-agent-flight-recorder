@@ -1,0 +1,49 @@
+{
+  "wave": "wave-2.5",
+  "dag_id": "m5-m9-umbrella",
+  "branch": "feat/frontier-wave",
+  "status": "DONE_WITH_CONCERNS",
+  "workers": [
+    {
+      "worker_id": "vision-auditor",
+      "type": "explore",
+      "status": "DONE_WITH_CONCERNS",
+      "provenance": "provenance-vision-auditor.md",
+      "top_findings": [
+        "one-pager-worker-identity-stale",
+        "architecture-track-phase3-footer-stale",
+        "m5-ci-proof-samples-not-gha"
+      ]
+    },
+    {
+      "worker_id": "ticket-drift",
+      "type": "explore",
+      "status": "DONE",
+      "provenance": "provenance-ticket-drift.md",
+      "wave_3_code_blockers": []
+    },
+    {
+      "worker_id": "e2e-verifier",
+      "type": "shell",
+      "status": "DONE_WITH_CONCERNS",
+      "provenance": "provenance-e2e-verifier.md",
+      "matrix_pass": true,
+      "local_blockers": "cold-warm-cache-proof.sh exit 1 this session",
+      "deferred": "all GHA nlfr-proof.yml jobs — GHA offline"
+    },
+    {
+      "worker_id": "integration-reflector",
+      "type": "explore",
+      "status": "DONE",
+      "provenance": "integration-brief.md",
+      "brief": "M9 multi-run compare + retention + canvas lens"
+    }
+  ],
+  "wave_3_unblocked": true,
+  "concerns": [
+    "ONE_PAGER and ARCHITECTURE_TRACK need worker_identity conditional wording",
+    "CI proof-sample promotion DEFERRED until GHA green",
+    "M8 live agent E2E not proven — dry-run only",
+    "cold-warm Nix proof failed locally this review run"
+  ]
+}

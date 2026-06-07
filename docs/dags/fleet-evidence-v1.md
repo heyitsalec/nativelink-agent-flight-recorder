@@ -1,8 +1,8 @@
 # Fleet evidence v1 — broker DAG (stdout ingest breadth)
 
-**Status:** wave-0 done (local-exec + worker-evidence attach path)  
+**Status:** wave-1 handoffs done (`DONE_WITH_CONCERNS` — `fel-w1-agent-coldwarm-attach` pending)  
 **Parent:** [future-fleet-claims.md](future-fleet-claims.md) · PER-1058  
-**Handoffs:** `docs/sessions/handoffs/fleet-evidence-v1/wave-0/`
+**Handoffs:** `docs/sessions/handoffs/fleet-evidence-v1/wave-1/` · wave-0: `wave-0/`
 
 ## Objective
 
@@ -14,41 +14,50 @@ proof scripts, so the M7 `worker_admin_stdout` parser can promote
 Reject fleet dashboard cosplay, scheduler claims, and queue/placement correlation
 without new proof block kinds.
 
-## Wave-0 deliverables
+## Wave-1 deliverables
 
-| Item | Path |
-|------|------|
-| Local-exec attach | `scripts/local-exec-proof.sh` — `write_artifact` for stdout/stderr |
-| Worker-evidence live path | `scripts/worker-evidence-proof.sh` — no post-run stdout `cp` |
-| Research | `docs/sessions/handoffs/fleet-evidence-v1/wave-0/research-nativelink-stdout-formats.md` |
-| Parser (pre-existing) | `src/nlfr/ingest/worker_admin_stdout.py` |
-| Proof wrapper | `scripts/worker-evidence-proof.sh` → `data/worker-evidence-proof/summary.json` |
+| Item | Path | Status |
+|------|------|--------|
+| Local-exec attach | `scripts/local-exec-proof.sh` | **landed** (wave-0) |
+| Worker-evidence live path | `scripts/worker-evidence-proof.sh` | **landed** (wave-0) |
+| Agent-loop attach | `scripts/agent-loop-proof.sh` | **pending** (`fel-w1-agent-coldwarm-attach`) |
+| Cold-warm attach | `scripts/cold-warm-cache-proof.sh` | **pending** (`fel-w1-agent-coldwarm-attach`) |
+| Research | `docs/sessions/handoffs/fleet-evidence-v1/wave-0/research-nativelink-stdout-formats.md` | wave-0 |
+| Parser (pre-existing) | `src/nlfr/ingest/worker_admin_stdout.py` | unchanged |
+| Handoffs | `docs/sessions/handoffs/fleet-evidence-v1/wave-1/` | wave-1 closed |
 
-## Claim ceiling (wave-0)
+## Claim ceiling (wave-1 target)
 
-| Claim | Status after wave-0 |
-|-------|---------------------|
+| Claim | Status |
+|-------|--------|
 | `worker_endpoints_ready` | `collectable_v1` (unchanged — readiness probe) |
 | `worker_identity` | Conditional — when stdout attached **and** M7 regex matches |
+| stdout pre-ingest on four proof scripts | **Target:** local-exec + worker-evidence + agent-loop + cold-warm |
+| stdout pre-ingest on committed branch | **Today:** local-exec + worker-evidence only until attach worker lands |
 | `scheduler_assignment` | out_of_scope |
 | `queue_time` | out_of_scope |
 | `action_placement` | out_of_scope |
 | `load_distribution` | out_of_scope |
 
-## Proof commands
+Ceiling label: `stdout_ingest_breadth` (`collectable_v1`, `high`).
+
+## Proof commands (local — GHA offline)
 
 ```bash
 uv run pytest tests/test_worker_admin_stdout.py tests/test_worker_readiness.py -q
-bash -n scripts/local-exec-proof.sh scripts/worker-evidence-proof.sh
+bash -n scripts/local-exec-proof.sh scripts/worker-evidence-proof.sh \
+  scripts/agent-loop-proof.sh scripts/cold-warm-cache-proof.sh
 ./scripts/worker-evidence-proof.sh   # fixture replay when nativelink/bazel absent
 ```
 
-## Remaining breadth gaps (next waves)
+Parent proof gates substitute for CI while GHA is offline:
+[`frontier-wave/wave-1/gha-offline-proof-shift.md`](../sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md).
 
-| Priority | Script | Gap |
-|----------|--------|-----|
-| P1 | `scripts/agent-loop-proof.sh` | stdout listed in summary only; not in artifact_root pre-ingest |
-| P1 | `scripts/cold-warm-cache-proof.sh` | same |
+## Remaining breadth gaps (post wave-1)
+
+| Priority | Gap |
+|----------|-----|
+| P1 | Land `fel-w1-agent-coldwarm-attach` — commit agent-loop + cold-warm attach |
 | P2 | Real NativeLink stdout sample | validate M7 regex against production wording |
 | P3 | stderr triage playbook | provenance-only; no claim promotion |
 

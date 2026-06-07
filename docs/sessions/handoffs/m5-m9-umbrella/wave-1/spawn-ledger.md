@@ -2,7 +2,7 @@
 
 | id | type | scope | status |
 |----|------|-------|--------|
-| parent-broker | parent | orchestration | active |
+| parent-broker | parent | orchestration | done |
 | m5-w1-ci | parent inline | `.github/workflows/nlfr-proof.yml` | done |
 | m6-w1-docs | parent inline | README + WALKTHROUGH callouts | done |
 | wave-1.5-review | 3 subagents | provenance + integration-brief | done |
