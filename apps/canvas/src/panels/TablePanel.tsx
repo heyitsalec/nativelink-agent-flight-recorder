@@ -20,9 +20,26 @@ export function EvidenceInspectorPanel(_instance: ComponentInstance) {
   );
 }
 
+function failureMessage(node: PositionedNode): string | null {
+  if (node.kind !== "failure") return null;
+  const payloadMessage = node.payload?.message;
+  if (typeof payloadMessage === "string" && payloadMessage.trim()) {
+    return payloadMessage.trim();
+  }
+  if (typeof node.status === "string" && node.status.trim()) {
+    return node.status.trim();
+  }
+  return node.label.trim() || null;
+}
+
 function Inspector({ node, onClose }: { node: PositionedNode; onClose: () => void }) {
+  const message = failureMessage(node);
+
   return (
-    <aside className="inspector" aria-label="selected evidence">
+    <aside
+      className={`inspector ${node.kind === "failure" ? "inspector--failure" : ""}`}
+      aria-label="selected evidence"
+    >
       <button className="close-button" onClick={onClose} aria-label="Close inspector">
         <Maximize2 size={16} />
       </button>
@@ -31,6 +48,12 @@ function Inspector({ node, onClose }: { node: PositionedNode; onClose: () => voi
         <p>{labelKind(node.kind)}</p>
         <h2>{node.label}</h2>
       </div>
+      {message && (
+        <section className="failure-message-panel" aria-label="failure message">
+          <span className="failure-message-label">Failure message</span>
+          <p className="failure-message-body">{message}</p>
+        </section>
+      )}
       <dl className="truth-grid">
         <div>
           <dt>Source</dt>

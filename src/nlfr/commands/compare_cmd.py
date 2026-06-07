@@ -11,6 +11,7 @@ from nlfr.projectors.common import run_rows, write_or_print
 from nlfr.projectors.compare import (
     build_compare_projection,
     export_compare_projection,
+    export_history_projection,
     list_run_group_index,
 )
 from nlfr.projectors.proof import export_proof_packet
@@ -44,6 +45,15 @@ def export_compare(args: argparse.Namespace) -> int:
     else:
         conn = initialize(connect(args.db))
         payload = export_compare_projection(conn, args.left, args.right)
+    write_or_print(payload, args.output)
+    return 0
+
+
+def export_history(args: argparse.Namespace) -> int:
+    """Export a multi-run history projection from the retention index."""
+
+    conn = initialize(connect(args.db))
+    payload = export_history_projection(conn, limit=args.limit)
     write_or_print(payload, args.output)
     return 0
 
@@ -158,3 +168,25 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         help="return at most N run groups (index-only; no purge)",
     )
     index_parser.set_defaults(handler=index_run_groups)
+
+    history_parser = compare_subparsers.add_parser(
+        "history",
+        help="export multi-run history projection JSON",
+        description="Export derived_v1 run history from the retention index.",
+    )
+    history_parser.add_argument(
+        "--db",
+        default="data/nlfr/nlfr.sqlite",
+        help="SQLite database path",
+    )
+    history_parser.add_argument(
+        "--limit",
+        type=int,
+        metavar="N",
+        help="include at most N newest run groups (index-only; no purge)",
+    )
+    history_parser.add_argument(
+        "--output",
+        help="output path for run history projection JSON",
+    )
+    history_parser.set_defaults(handler=export_history)

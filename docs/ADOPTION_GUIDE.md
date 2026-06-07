@@ -4,6 +4,36 @@
 
 **Quadrant:** How-to · **Audience:** evaluators who are not on the author's Mac.
 
+## Init path (one-command record)
+
+Fastest way to scaffold NLFR in this repo and record a single Bazel target:
+
+```bash
+uv sync
+./scripts/record-this-target.sh
+# optional target override:
+./scripts/record-this-target.sh //tasks:priority_test
+```
+
+Under the hood:
+
+1. `nlfr init` writes `nlfr.toml` plus `data/.nlfr/init.json` with workspace,
+   database (`data/nlfr/nlfr.sqlite`), and run-group (`latest`) defaults.
+2. `nlfr run --mode cache-only` records `//tasks:priority_test` against
+   `demo/bazel-monorepo` into `data/nlfr/`.
+
+`init` is idempotent — re-running does not clobber an existing `nlfr.toml` unless
+you pass `--force`. When Bazel or NativeLink are absent, `run` still records an
+`environment_blocker` artifact (honest failure, not a silent skip).
+
+Adopting a **different** Bazel monorepo: [How-to: adopt existing Bazel monorepo](wiki/how-to/adopt-existing-bazel-monorepo.md).
+
+Proof:
+
+```bash
+uv run pytest tests/test_init_cmd.py -q
+```
+
 ## 5-minute path (no Nix, no NativeLink)
 
 ```bash

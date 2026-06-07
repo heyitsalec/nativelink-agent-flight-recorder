@@ -148,6 +148,63 @@ export function remoteLensModel(
   };
 }
 
+export const DEFAULT_MAX_VISIBLE_GRAPH_NODES = 8;
+
+const WORKER_GRAPH_KINDS = new Set(["worker", "worker_readiness", "remote_execution_config"]);
+const CACHE_GRAPH_KINDS = new Set(["cache_event"]);
+
+/** Lower priority values render first when the canvas caps visible nodes. */
+export function graphNodeRenderPriority(kind: string): number {
+  if (kind === "failure") return 0;
+  if (WORKER_GRAPH_KINDS.has(kind)) return 1;
+  if (CACHE_GRAPH_KINDS.has(kind)) return 2;
+  return 3;
+}
+
+export type VisibleGraphCapResult<T extends { id: string; kind: string }> = {
+  visible: T[];
+  hiddenCount: number;
+  overflow: number;
+};
+
+export function capVisibleGraphNodes<T extends { id: string; kind: string }>(
+  nodes: T[],
+  maxVisible: number = DEFAULT_MAX_VISIBLE_GRAPH_NODES,
+  ensureIds: string[] = [],
+): VisibleGraphCapResult<T> {
+  if (nodes.length <= maxVisible) {
+    return { visible: nodes, hiddenCount: 0, overflow: 0 };
+  }
+
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  const sorted = [...nodes].sort((left, right) => {
+    const priorityDelta = graphNodeRenderPriority(left.kind) - graphNodeRenderPriority(right.kind);
+    if (priorityDelta !== 0) return priorityDelta;
+    return left.id.localeCompare(right.id);
+  });
+
+  const visible: T[] = [];
+  const visibleIds = new Set<string>();
+
+  const pushVisible = (node: T | undefined) => {
+    if (!node || visibleIds.has(node.id)) return;
+    visible.push(node);
+    visibleIds.add(node.id);
+  };
+
+  for (const id of ensureIds) {
+    pushVisible(byId.get(id));
+  }
+
+  for (const node of sorted) {
+    if (visible.length >= maxVisible) break;
+    pushVisible(node);
+  }
+
+  const hiddenCount = nodes.length - visible.length;
+  return { visible, hiddenCount, overflow: hiddenCount };
+}
+
 export function laneIndex(kind: string): number {
   return [
     "run",

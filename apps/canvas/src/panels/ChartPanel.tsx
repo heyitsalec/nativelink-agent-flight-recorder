@@ -15,7 +15,14 @@ import {
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
-import { highlightedIds, labelKind, remoteLensModel, sortRunwayNodes } from "../pageModel";
+import {
+  capVisibleGraphNodes,
+  DEFAULT_MAX_VISIBLE_GRAPH_NODES,
+  highlightedIds,
+  labelKind,
+  remoteLensModel,
+  sortRunwayNodes,
+} from "../pageModel";
 import type { PositionedNode, SourceKind } from "../types";
 import type { ComponentInstance, ViewModeId } from "../view/types";
 import { useViewContext } from "../view/ViewContext";
@@ -130,7 +137,7 @@ function centerTransform(svg: SVGSVGElement): ZoomTransform {
 }
 
 export function ActionGraphCanvasPanel(instance: ComponentInstance) {
-  const { graph, route, routeActions } = useViewContext();
+  const { bindings, graph, route, routeActions } = useViewContext();
   const zoomRef = useOptionalZoomControllerRef();
   const svgRef = useRef<SVGSVGElement | null>(null);
   const behaviorRef = useRef<ReturnType<typeof zoom<SVGSVGElement, unknown>> | null>(null);
@@ -138,10 +145,36 @@ export function ActionGraphCanvasPanel(instance: ComponentInstance) {
 
   const minScale = typeof instance.props?.scale_extent_min === "number" ? instance.props.scale_extent_min : 0.55;
   const maxScale = typeof instance.props?.scale_extent_max === "number" ? instance.props.scale_extent_max : 2.35;
+  const summaryMaxVisible = bindings.actionGraph.summary.max_visible_nodes;
+  const maxVisibleNodes =
+    typeof summaryMaxVisible === "number" && Number.isFinite(summaryMaxVisible)
+      ? summaryMaxVisible
+      : DEFAULT_MAX_VISIBLE_GRAPH_NODES;
+
+  const { visible: visibleNodes, overflow } = useMemo(
+    () =>
+      capVisibleGraphNodes(
+        graph.nodes,
+        maxVisibleNodes,
+        route.selectedId ? [route.selectedId] : [],
+      ),
+    [graph.nodes, maxVisibleNodes, route.selectedId],
+  );
+  const visibleNodeIds = useMemo(
+    () => new Set(visibleNodes.map((node) => node.id)),
+    [visibleNodes],
+  );
+  const visibleEdges = useMemo(
+    () =>
+      graph.edges.filter(
+        (edge) => visibleNodeIds.has(edge.source.id) && visibleNodeIds.has(edge.target.id),
+      ),
+    [graph.edges, visibleNodeIds],
+  );
 
   const highlighted = useMemo(
-    () => highlightedIds(graph.nodes, route.focus),
-    [graph.nodes, route.focus],
+    () => highlightedIds(visibleNodes, route.focus),
+    [visibleNodes, route.focus],
   );
   const selectedId = route.selectedId;
 
@@ -199,7 +232,7 @@ export function ActionGraphCanvasPanel(instance: ComponentInstance) {
         <rect x="-5000" y="-5000" width="10000" height="10000" fill="url(#grid)" />
         <g transform={transform.toString()}>
           <g className="edge-layer">
-            {graph.edges.map((edge) => {
+            {visibleEdges.map((edge) => {
               const isActive =
                 selectedId === edge.source.id ||
                 selectedId === edge.target.id ||
@@ -219,7 +252,7 @@ export function ActionGraphCanvasPanel(instance: ComponentInstance) {
             })}
           </g>
           <g className="node-layer">
-            {graph.nodes.map((node) => (
+            {visibleNodes.map((node) => (
               <GraphNode
                 key={node.id}
                 node={node}
@@ -229,6 +262,20 @@ export function ActionGraphCanvasPanel(instance: ComponentInstance) {
               />
             ))}
           </g>
+          {overflow > 0 && (
+            <g
+              className="graph-overflow-chip"
+              data-testid="graph-overflow-chip"
+              transform="translate(360, 250)"
+              role="status"
+              aria-label={`${overflow} additional nodes hidden on canvas`}
+            >
+              <rect className="graph-overflow-chip-bg" x={-52} y={-16} width={104} height={32} rx={16} />
+              <text className="graph-overflow-chip-label" textAnchor="middle" y={5}>
+                +{overflow} more
+              </text>
+            </g>
+          )}
         </g>
       </svg>
     </section>

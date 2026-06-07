@@ -1,0 +1,87 @@
+{
+  "schema_version": "knowledge-os.worker_results.v1",
+  "dag_id": "gha-sustained-green",
+  "wave": "wave-10",
+  "phase": "integrate",
+  "status": "DONE_WITH_CONCERNS",
+  "claim_ceiling": "gha_readiness_local_only",
+  "host": "/Users/alecbot/Documents/nativelink-agent-flight-recorder",
+  "branch": "feat/docs-wiki-wave2",
+  "coordinator_id": "coord-gha-readiness",
+  "coordinators": [
+    {
+      "coordinator_id": "coord-gha-readiness",
+      "worker_id": "gha-sustained-green",
+      "kos_node": "W10-GHA-RESTORE",
+      "status": "SHIPPED",
+      "partial": true,
+      "artifacts": [
+        "scripts/verify-gha-readiness.sh",
+        "data/verify-gha-readiness/workflow-audit.json",
+        "data/verify-gha-readiness/summary.json"
+      ],
+      "open": [
+        "GHA offline — sustained green not observable",
+        "nlfr-proof.yml not exercised in Actions"
+      ]
+    },
+    {
+      "coordinator_id": "coord-gha-readiness",
+      "worker_id": "gha-sustained-green",
+      "kos_node": "W10-CI-PROMOTE",
+      "status": "BLOCKED",
+      "artifacts": [],
+      "open": [
+        "Proof-sample promotion requires sustained green per CI_PROMOTION_MATRIX.md"
+      ]
+    },
+    {
+      "coordinator_id": "coord-gha-ci-docs",
+      "worker_id": "gha-sustained-green",
+      "kos_node": "W10-CI-DOCS",
+      "status": "SHIPPED",
+      "artifacts": [
+        "docs/GHA_RESTORE_RUNBOOK.md",
+        "docs/CI_RECIPE.md",
+        "docs/proof-samples/ci-offline-blocker-sample.json"
+      ]
+    }
+  ],
+  "integrate_close": {
+    "worker_id": "w10-integrate",
+    "kos_node": "W10-INTEGRATE",
+    "status": "DONE",
+    "artifacts": [
+      "docs/sessions/handoffs/nlfr-kos-cutover/wave-10/integration-brief.md",
+      "docs/sessions/handoffs/nlfr-kos-cutover/wave-10/worker-results.json"
+    ]
+  },
+  "proof_gates": {
+    "verify_gha_readiness": {
+      "command": "./scripts/verify-gha-readiness.sh",
+      "status": "PASS_LOCAL_ONLY"
+    },
+    "cache_gate_script": {
+      "command": "./scripts/cache-only-ci-gate.sh",
+      "status": "PASS"
+    },
+    "pytest_full": {
+      "command": "uv run pytest -q",
+      "status": "PASS",
+      "detail": "131 passed, 3 skipped"
+    },
+    "gha_nlfr_proof_sustained_green": {
+      "status": "BLOCKED",
+      "note": "GHA offline ~1 month — cannot observe ≥3 consecutive green runs"
+    },
+    "gha_ci_promotion": {
+      "status": "BLOCKED",
+      "note": "Deferred until sustained green on nlfr-proof.yml"
+    }
+  },
+  "residual_concerns": [
+    "C-W10-1 GHA offline — no sustained green",
+    "C-W10-2 CI promotion deferred",
+    "C-W10-3 inherited W4/W7 full workflow badge"
+  ]
+}

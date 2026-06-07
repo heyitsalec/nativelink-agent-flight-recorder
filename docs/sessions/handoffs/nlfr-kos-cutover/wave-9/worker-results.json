@@ -1,0 +1,70 @@
+{
+  "schema_version": "knowledge-os.worker_results.v1",
+  "dag_id": "kos-operator-bridge",
+  "wave": "wave-9",
+  "phase": "integrate",
+  "status": "SHIPPED",
+  "claim_ceiling": "kos_operator_bridge_v1",
+  "host": "/Users/alecbot/Documents/nativelink-agent-flight-recorder",
+  "branch": "feat/docs-wiki-wave2",
+  "coordinator_id": "coord-kos-umbrella-integrate",
+  "coordinators": [
+    {
+      "coordinator_id": "coord-kos-cutover-manifest",
+      "worker_id": "kos-cutover-manifest",
+      "kos_node": "W9-CUTOVER-MANIFEST",
+      "status": "SHIPPED",
+      "artifacts": [
+        "docs/sessions/handoffs/nlfr-kos-cutover/wave-9/cutover-manifest.json",
+        "docs/sessions/handoffs/nlfr-kos-cutover/wave-9/KOS-startup-routing.md"
+      ]
+    },
+    {
+      "coordinator_id": "coord-kos-handoff-bridge",
+      "worker_id": "kos-handoff-bridge",
+      "kos_node": "W9-HANDOFF-BRIDGE",
+      "status": "SHIPPED",
+      "artifacts": [
+        "docs/sessions/handoffs/nlfr-kos-cutover/README.md"
+      ]
+    },
+    {
+      "coordinator_id": "coord-kos-gap-honesty",
+      "worker_id": "kos-gap-honesty",
+      "kos_node": "W9-GAP-HONESTY",
+      "status": "SHIPPED",
+      "artifacts": [
+        "docs/sessions/handoffs/nlfr-kos-cutover/wave-9/gap-honesty-packet.md",
+        "docs/dags/future-execution-ladder.md",
+        "docs/dags/README.md"
+      ]
+    }
+  ],
+  "integrate_close": {
+    "worker_id": "w9-integrate",
+    "kos_node": "W9-INTEGRATE",
+    "status": "DONE",
+    "artifacts": [
+      "docs/sessions/handoffs/nlfr-kos-cutover/wave-9/integration-brief.md",
+      "docs/sessions/handoffs/nlfr-kos-cutover/wave-9/spawn-ledger.md",
+      "docs/sessions/handoffs/nlfr-kos-cutover/wave-9/worker-results.json",
+      "docs/dags/nlfr-kos-roadmap-waves-10-13.md"
+    ]
+  },
+  "proof_gates": {
+    "pytest_full": {
+      "command": "uv run pytest -q",
+      "status": "PASS",
+      "detail": "126 passed, 3 skipped"
+    },
+    "cutover_manifest_json": {
+      "command": "python3 -m json.tool docs/sessions/handoffs/nlfr-kos-cutover/wave-9/cutover-manifest.json",
+      "status": "PASS"
+    }
+  },
+  "residual_concerns": [
+    "C-W9-1 GHA offline",
+    "C-W9-2 fleet parsers blocked",
+    "C-W9-3 M8/LRE live operator-host gated"
+  ]
+}

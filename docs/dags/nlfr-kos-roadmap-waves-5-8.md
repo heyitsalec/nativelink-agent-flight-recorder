@@ -1,9 +1,10 @@
 # NLFR flagship KOS roadmap — waves 5–8 (post cutover 1–4)
 
-**Status:** wave-5 PLANNED (broker ARM pending)  
+**Status:** SHIPPED (waves 5–8 integrate close 2026-06-06)  
 **Control plane:** `dag:nlfr-flagship` · `kos serve` · `linear_authority: false`  
-**Branch:** `feat/docs-wiki-wave2` → next `feat/nlfr-kos-waves-5-8` (spawn after waves 1–4 integrate or `DONE_WITH_CONCERNS`)  
-**Handoffs:** `docs/sessions/handoffs/nlfr-kos-cutover/wave-5/`  
+**Branch:** `feat/docs-wiki-wave2`  
+**Handoffs:** `docs/sessions/handoffs/nlfr-kos-cutover/wave-{5,6,7,8}/`  
+**Next:** wave 9 `kos-operator-bridge` (dag-gui coupling)  
 **Prior umbrella:** [nlfr-kos-roadmap.md](nlfr-kos-roadmap.md) (waves 1–4)  
 **Broker contract:** [knowledge-os/agent-os/harness/broker-dispatch-manifest.md](/Users/alecbot/Documents/knowledge-os/agent-os/harness/broker-dispatch-manifest.md)
 
@@ -496,10 +497,9 @@ when wave 4 or wave 7 workflow jobs go green.
 
 ---
 
-## Broker ARM checklist (wave-5)
+## Integrate close (waves 5–8)
 
-1. Confirm waves 1–4 `integration-brief.md` landed (or `DONE_WITH_CONCERNS` with blockers named).
-2. Spawn `feat/nlfr-kos-waves-5-8` from current flagship branch.
-3. Seed `dag:nlfr-flagship` nodes (`W5-*` … `W9-*`) via `seed_nlfr_flagship_waves_5_8.py`.
-4. Write `docs/sessions/handoffs/nlfr-kos-cutover/wave-5/broker-arm.md` + spawn ledger.
-5. Dispatch wave 5 coordinators in parallel — **do not** block on GHA green or fleet parsers.
+Closed 2026-06-06 by `waves-5-8-integrate-close`. Residual concerns: M8 Cursor CLI blocker,
+LRE Darwin blocker, GHA offline (cache-only gate + full proof deferred).
+
+**Next broker action:** ARM wave 9 `kos-operator-bridge` after `W8-INTEGRATE` KOS close.

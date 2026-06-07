@@ -1,0 +1,65 @@
+{
+  "schema_version": "knowledge-os.worker_results.v1",
+  "dag_id": "pr-proof-attachment",
+  "wave": "wave-8",
+  "phase": "integrate",
+  "status": "SHIPPED",
+  "claim_ceiling": "pr_proof_markdown_v1",
+  "host": "/Users/alecbot/Documents/nativelink-agent-flight-recorder",
+  "branch": "feat/docs-wiki-wave2",
+  "coordinator_id": "waves-5-8-integrate-close",
+  "coordinators": [
+    {
+      "coordinator_id": "coord-pr-markdown-exporter",
+      "worker_id": "pr-markdown-exporter",
+      "kos_node": "W8-PR-EXPORTER",
+      "status": "SHIPPED",
+      "artifacts": [
+        "src/nlfr/projectors/proof_markdown.py",
+        "src/nlfr/commands/export_cmds.py",
+        "scripts/export-pr-proof-comment.sh",
+        "tests/test_pr_proof_markdown.py"
+      ]
+    },
+    {
+      "coordinator_id": "coord-pr-sample-promote",
+      "worker_id": "pr-sample-promote",
+      "kos_node": "W8-PR-SAMPLE",
+      "status": "SHIPPED",
+      "artifacts": [
+        "docs/proof-samples/pr-proof-comment-sample.md",
+        "docs/proof-samples/README.md"
+      ]
+    },
+    {
+      "coordinator_id": "coord-pr-attachment-wiki",
+      "worker_id": "pr-attachment-wiki",
+      "kos_node": "W8-PR-RECIPE",
+      "status": "SHIPPED",
+      "artifacts": [
+        "docs/wiki/how-to/attach-proof-to-pr.md",
+        "docs/CI_RECIPE.md"
+      ]
+    }
+  ],
+  "integrate_close": {
+    "worker_id": "waves-5-8-integrate-close",
+    "kos_node": "W8-INTEGRATE",
+    "status": "DONE",
+    "artifacts": [
+      "docs/sessions/handoffs/nlfr-kos-cutover/wave-8/integration-brief.md",
+      "docs/sessions/handoffs/nlfr-kos-cutover/wave-8/spawn-ledger.md",
+      "docs/sessions/handoffs/nlfr-kos-cutover/wave-8/worker-results.json"
+    ]
+  },
+  "proof_gates": {
+    "pytest_pr_markdown": {
+      "command": "uv run pytest tests/test_pr_proof_markdown.py -q",
+      "status": "PASS"
+    },
+    "export_script": {
+      "command": "bash -n scripts/export-pr-proof-comment.sh",
+      "status": "PASS"
+    }
+  }
+}

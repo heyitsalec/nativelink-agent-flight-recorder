@@ -368,6 +368,20 @@ input {
   text-transform: uppercase;
 }
 
+.graph-overflow-chip-bg {
+  fill: rgba(255, 255, 255, 0.94);
+  stroke: rgba(17, 24, 39, 0.14);
+  stroke-width: 1.2;
+  filter: drop-shadow(0 10px 24px rgba(17, 24, 39, 0.1));
+}
+
+.graph-overflow-chip-label {
+  font-size: 12px;
+  font-weight: 760;
+  fill: #475467;
+  pointer-events: none;
+}
+
 .inspector {
   position: absolute;
   z-index: 5;
@@ -414,6 +428,32 @@ input {
   font-size: 22px;
   line-height: 1.14;
   letter-spacing: 0;
+}
+
+.inspector--failure .failure-message-panel {
+  margin: 16px 0 18px;
+  padding: 14px 16px;
+  border: 1px solid rgba(214, 75, 53, 0.22);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #fff8f5 0%, #fffdfb 100%);
+}
+
+.failure-message-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #b42318;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.failure-message-body {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #3f2b27;
+  overflow-wrap: anywhere;
 }
 
 .truth-dot {

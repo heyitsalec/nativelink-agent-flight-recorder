@@ -2,9 +2,13 @@
 
 **Quadrant:** How-to · **Audience:** operators restoring CI after the GHA offline period.
 
-**Status (2026-06-06):** GitHub Actions cannot be exercised from this repo right now —
-`nlfr-proof.yml` has been effectively non-green for ~1 month. This document is the
-**procedure to run when Actions return**, plus **local substitutes** until then.
+**Status (2026-06-07):** GitHub Actions cannot be exercised from this repo right now —
+`nlfr-proof.yml` has been effectively non-green for ~1 month. Wave 10 closed
+**`DONE_WITH_CONCERNS`**: workflow YAML audits and local substitutes pass; sustained
+green is **not** proven. This document is the **procedure to run when Actions return**,
+plus **local substitutes** until then.
+
+Committed blocker sample: [`proof-samples/ci-offline-blocker-sample.json`](proof-samples/ci-offline-blocker-sample.json).
 
 Policy context: [`sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md`](sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md).
 
@@ -20,6 +24,62 @@ Trigger when **any** of the following is true:
 
 Until then: **do not block** merge, ship, or doc review on CI green. Use local gates in
 [`CI_RECIPE.md`](CI_RECIPE.md#gha-offline-policy).
+
+---
+
+## Sustained-green criteria
+
+**Sustained green** on **`NLFR proof`** (`nlfr-proof.yml`) means **all** of:
+
+1. **Seven jobs** on a single workflow run complete without workflow failure (see §1.2).
+2. Toolchain jobs that support Linux/x86_64 claims upload **`summary.json`** (not only
+   `environment-blocker.json`) where the claim boundary requires success.
+3. **≥3 consecutive green runs** on `main` (or the branch under restore verification)
+   with no intervening workflow failure — dispatch or qualifying push is fine.
+4. At least one green run after any workflow YAML or proof-script change in the restore PR.
+
+**Not sustained green:**
+
+- Local substitutes only (`verify-gha-readiness.sh`, `cache-only-ci-gate.sh`, author Nix).
+- A single accidental green run followed by failures.
+- Jobs that finished with honest blockers where success was required for the claim
+  (e.g. promoting `lre_cache_parity_observed` from blocker-only `lre-cold-warm-ci`).
+
+**Cache-only gate** (`nlfr-cache-only-gate.yml`): one green run is sufficient for that
+workflow's PR-safe doctor contract; it does **not** satisfy sustained green for full
+`nlfr-proof.yml` or proof-sample promotion.
+
+Detail and operator checklist: [`CI_RECIPE.md`](CI_RECIPE.md#sustained-green-criteria).
+
+---
+
+## GHA offline blocker (wave 10 honest close)
+
+| Field | Value |
+|-------|-------|
+| **Observation** | GHA offline ~1 month; no sustained green run captured |
+| **Wave 10 status** | `DONE_WITH_CONCERNS` — readiness audit + local gates only |
+| **Truth label** | `collectable_v1` / `high` (negative) |
+| **Readiness script** | [`scripts/verify-gha-readiness.sh`](../scripts/verify-gha-readiness.sh) |
+| **Blocker sample** | [`proof-samples/ci-offline-blocker-sample.json`](proof-samples/ci-offline-blocker-sample.json) |
+| **Handoff** | [`sessions/handoffs/nlfr-kos-cutover/wave-10/integration-brief.md`](sessions/handoffs/nlfr-kos-cutover/wave-10/integration-brief.md) |
+
+**What we do not claim:** CI Linux green, seven-job artifact promotion, CI badge as merge gate.
+
+**Local substitute (run before merge while offline):**
+
+```bash
+chmod +x scripts/verify-gha-readiness.sh
+./scripts/verify-gha-readiness.sh
+# or individually:
+./scripts/cache-only-ci-gate.sh
+uv run pytest -q
+bash -n scripts/*.sh
+```
+
+Outputs: `data/verify-gha-readiness/workflow-audit.json`, `summary.json`.
+
+**Revisit trigger:** first run meeting sustained-green criteria above, or operator declares GHA restored.
 
 ---
 
@@ -156,6 +216,9 @@ Tag and release steps: [`GITHUB_RELEASE.md`](GITHUB_RELEASE.md#6-tag-and-release
 Use these to validate workflow **scripts** and keep shipping while Actions are offline.
 They do **not** substitute for Linux CI credibility on promotion — run Phase 1 on GHA
 before promoting samples.
+
+**One command (wave 10):** [`scripts/verify-gha-readiness.sh`](../scripts/verify-gha-readiness.sh)
+audits workflow YAML, lists jobs, and runs the fast substitute spine below.
 
 ### Fast spine (mirrors `unit` + `verify-demo-fixture`)
 

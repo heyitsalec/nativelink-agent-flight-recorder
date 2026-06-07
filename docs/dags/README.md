@@ -16,7 +16,43 @@ Wave-1 ceiling: broker diagram, ADR-lite, compare proof sample, contracts refere
 | 3 | [lre-proof.md](lre-proof.md) + ladder | **DONE_WITH_CONCERNS** | `wave-3/` — LRE Linux runbook; Darwin blocker sample |
 | 4 | [nlfr-kos-roadmap.md](nlfr-kos-roadmap.md) § Wave 4 | **DONE_WITH_CONCERNS** | `wave-4/` — GHA restore runbook; GHA offline |
 
-Branch: `feat/docs-wiki-wave2`. Local proof gates substitute for CI. **Next:** [nlfr-kos-roadmap-waves-5-8.md](nlfr-kos-roadmap-waves-5-8.md).
+Branch: `feat/docs-wiki-wave2`. Local proof gates substitute for CI.
+
+## Completed — NLFR flagship KOS roadmap (waves 5–8 SHIPPED)
+
+[nlfr-kos-roadmap-waves-5-8.md](nlfr-kos-roadmap-waves-5-8.md) · Handoffs: `docs/sessions/handoffs/nlfr-kos-cutover/wave-{5,6,7,8}/`
+
+| Wave | DAG mirror | Status | Handoffs |
+|------|------------|--------|----------|
+| 5 | [nlfr-kos-roadmap-waves-5-8.md](nlfr-kos-roadmap-waves-5-8.md) § Wave 5 | **DONE_WITH_CONCERNS** | `wave-5/` — M8/LRE residual; honest blockers |
+| 6 | [nlfr-kos-roadmap-waves-5-8.md](nlfr-kos-roadmap-waves-5-8.md) § Wave 6 | **SHIPPED** | `wave-6/` — retention-policy-v1, `compare index --limit` |
+| 7 | [nlfr-kos-roadmap-waves-5-8.md](nlfr-kos-roadmap-waves-5-8.md) § Wave 7 | **DONE_WITH_CONCERNS** | `wave-7/` — cache-only-ci-gate; GHA offline |
+| 8 | [nlfr-kos-roadmap-waves-5-8.md](nlfr-kos-roadmap-waves-5-8.md) § Wave 8 | **SHIPPED** | `wave-8/` — pr-proof-attachment markdown exporter |
+
+Branch: `feat/docs-wiki-wave2`.
+
+## Completed — NLFR flagship KOS roadmap (wave 9 SHIPPED)
+
+[nlfr-kos-roadmap-waves-5-8.md](nlfr-kos-roadmap-waves-5-8.md) § Wave 9 · Handoffs: `docs/sessions/handoffs/nlfr-kos-cutover/wave-9/`
+
+| Wave | DAG mirror | Status | Handoffs |
+|------|------------|--------|----------|
+| 9 | [nlfr-kos-roadmap-waves-5-8.md](nlfr-kos-roadmap-waves-5-8.md) § Wave 9 | **DONE_WITH_CONCERNS** | `wave-9/` — kos-operator-bridge; dag-gui manifest + gap honesty |
+
+Branch: `feat/docs-wiki-wave2`. KOS CP: `W9-*` nodes closed. Proof: 126 passed, 3 skipped.
+
+## Planned — NLFR flagship KOS roadmap (waves 10–13)
+
+[nlfr-kos-roadmap-waves-10-13.md](nlfr-kos-roadmap-waves-10-13.md) · Handoffs: `docs/sessions/handoffs/nlfr-kos-cutover/wave-{10,11,12,13}/` *(planned)*
+
+| Wave | `wave_id` | Status | Focus |
+|------|-----------|--------|-------|
+| 10 | `gha-sustained-green` | **PLANNED** | GHA restore + CI artifact promotion |
+| 11 | `adoption-init-path` | **PLANNED** | `nlfr init`, adapter pattern, one-command record |
+| 12 | `multi-run-history-v1` | **PLANNED** | History index + multi-run projection beyond M9 pairwise |
+| 13 | `operator-console-ergonomics` | **PLANNED** | 8-node canvas cap, lens ergonomics, failure messages |
+
+Branch: `feat/docs-wiki-wave2`. **Next:** ARM wave 10 after merge.
 
 ## Active — Docs excellence (wave-0 ARMED)
 

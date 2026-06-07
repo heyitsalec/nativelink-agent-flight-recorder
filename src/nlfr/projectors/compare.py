@@ -7,6 +7,7 @@ from typing import Any
 
 from nlfr.projectors.common import generated_at, row_to_dict, run_rows, status_counts, truth
 from nlfr.projectors.proof import export_proof_packet
+from nlfr.retention_policy import retention_policy_summary
 
 
 def export_compare_projection(
@@ -74,6 +75,65 @@ def build_compare_projection(
     }
 
 
+def export_history_projection(
+    conn: Connection,
+    *,
+    limit: int | None = None,
+) -> dict[str, Any]:
+    """Build a multi-run history projection from the retention index."""
+
+    index = list_run_group_index(conn)
+    return build_history_projection(conn, index, limit=limit)
+
+
+def build_history_projection(
+    conn: Connection,
+    index_rows: list[dict[str, Any]],
+    *,
+    limit: int | None = None,
+) -> dict[str, Any]:
+    """Assemble multi-run history from preloaded index rows."""
+
+    total = len(index_rows)
+    rows = index_rows[:limit] if limit is not None else index_rows
+    entries = [_history_run_group_entry(conn, row) for row in rows]
+    evidence_refs = [f"run_group:{item['run_group']}" for item in entries]
+    evidence_refs.append("projection:run-history")
+    total_runs = sum(int(item.get("run_count") or 0) for item in entries)
+
+    summary: dict[str, Any] = {
+        "run_groups": len(entries),
+        "total_runs": total_runs,
+    }
+    if limit is not None:
+        summary["limit"] = limit
+        summary["total_indexed"] = total
+
+    claims = [
+        "Run history is derived from the retention index and proof packet summaries only.",
+        f"Indexed {len(entries)} run group(s) with {total_runs} total run(s).",
+        "This projection does not claim scheduler assignment, queue time, or fleet trends.",
+    ]
+    if limit is not None and total > limit:
+        claims.append(
+            f"History export is limited to the newest {limit} of {total} indexed run group(s)."
+        )
+
+    return {
+        "schema_version": 1,
+        "projection_kind": "run_history",
+        "generated_at": generated_at(),
+        "retention_policy": retention_policy_summary(),
+        "summary": summary,
+        "claims": claims,
+        "run_groups": entries,
+        "source_kind": "derived_v1",
+        "confidence": "medium",
+        "evidence_refs": evidence_refs,
+        "redaction_state": "safe",
+    }
+
+
 def list_run_group_index(conn: Connection) -> list[dict[str, Any]]:
     """Return run-group retention index rows from SQLite."""
 
@@ -98,6 +158,44 @@ def list_run_group_index(conn: Connection) -> list[dict[str, Any]]:
         }
         for item in (row_to_dict(row) for row in rows)
     ]
+
+
+def _history_run_group_entry(
+    conn: Connection,
+    index_row: dict[str, Any],
+) -> dict[str, Any]:
+    run_group = str(index_row["run_group"])
+    proof = export_proof_packet(conn, run_group=run_group)
+    runs = run_rows(conn, run_group)
+    proof_summary = proof.get("summary") if isinstance(proof.get("summary"), dict) else {}
+    latest_run = runs[-1] if runs else {}
+    agent_blocks = _agent_provenance_blocks(proof)
+
+    return {
+        "run_group": run_group,
+        "run_count": index_row.get("run_count"),
+        "first_started_at": index_row.get("first_started_at"),
+        "last_started_at": index_row.get("last_started_at"),
+        "scenario": latest_run.get("scenario"),
+        "mode": latest_run.get("mode"),
+        "status_counts": status_counts(runs),
+        "proof_summary": {
+            "runs": int(proof_summary.get("runs") or 0),
+            "artifacts": int(proof_summary.get("artifacts") or 0),
+            "targets": int(proof_summary.get("targets") or 0),
+            "actions": int(proof_summary.get("actions") or 0),
+            "cache_events": int(proof_summary.get("cache_events") or 0),
+            "failures": int(proof_summary.get("failures") or 0),
+        },
+        "cache_metrics": _block_metrics(proof, "cache"),
+        "worker_identity_observed": _worker_identity_observed(proof),
+        "agent_provenance_present": len(agent_blocks) > 0,
+        "agent_provenance_block_count": len(agent_blocks),
+        "source_kind": "derived_v1",
+        "confidence": "medium",
+        "evidence_refs": [f"run_group:{run_group}"],
+        "redaction_state": "safe",
+    }
 
 
 def _derived_dimension(

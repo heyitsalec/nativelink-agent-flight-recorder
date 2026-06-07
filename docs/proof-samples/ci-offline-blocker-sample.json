@@ -1,0 +1,43 @@
+{
+  "status": "environment_blocker",
+  "reason": "GitHub Actions workflows non-green / effectively offline (~1 month as of 2026-06-07); sustained green on nlfr-proof.yml not observable",
+  "next_step": "Run scripts/verify-gha-readiness.sh for local substitutes; when Actions return follow docs/GHA_RESTORE_RUNBOOK.md Phase 1 (≥3 consecutive green runs) then Phase 2 promotion",
+  "proof_script": "verify-gha-readiness.sh",
+  "nlfr_gha_offline": true,
+  "workflows": [
+    {
+      "file": ".github/workflows/nlfr-proof.yml",
+      "workflow_name": "NLFR proof",
+      "job_count": 7,
+      "sustained_green_required": true
+    },
+    {
+      "file": ".github/workflows/nlfr-cache-only-gate.yml",
+      "workflow_name": "NLFR cache-only gate",
+      "job_count": 1,
+      "sustained_green_required": false
+    }
+  ],
+  "source_kind": "collectable_v1",
+  "confidence": "high",
+  "redaction_state": "safe",
+  "evidence_refs": [
+    "script:verify-gha-readiness.sh",
+    "docs/GHA_RESTORE_RUNBOOK.md",
+    "docs/CI_RECIPE.md#sustained-green-criteria",
+    "docs/sessions/handoffs/nlfr-kos-cutover/wave-10/integration-brief.md"
+  ],
+  "claim_boundary": {
+    "supported": [
+      "honest negative: GHA sustained green not proven",
+      "local substitute gates (pytest, cache-only-ci-gate, bash -n scripts)",
+      "workflow YAML audit on operator host"
+    ],
+    "unsupported_until_gha_green": [
+      "nlfr-proof.yml all seven jobs green on Linux CI",
+      "proof-samples promotion from CI artifacts",
+      "lre_cache_parity_observed from CI job lre-cold-warm-ci",
+      "CI badge as merge gate"
+    ]
+  }
+}

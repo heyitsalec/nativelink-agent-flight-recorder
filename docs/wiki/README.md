@@ -32,7 +32,9 @@ for overlapping evaluator paths.
 
 | Page | Milestone |
 |------|-----------|
+| [Adopt existing Bazel monorepo](how-to/adopt-existing-bazel-monorepo.md) | Wave 11 — `nlfr init` + one-command record |
 | [Export and compare run groups](how-to/export-and-compare-run-groups.md) | M9 — `derived_v1` compare projection |
+| [Browse run history](how-to/browse-run-history.md) | W12 — multi-run `run_history` projection |
 | [Compare runs](compare-runs.md) | Alias → export and compare (README entry point) |
 | [Run tier1 live Bazel demo](how-to/run-tier1-live-bazel-demo.md) | Tier1 Acts 1+2 with live Bazel |
 

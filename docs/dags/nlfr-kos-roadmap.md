@@ -1,9 +1,11 @@
 # NLFR flagship KOS roadmap — four waves post docs-wiki-wave2
 
-**Status:** wave-0 PLANNED (broker ARM pending)  
+**Status:** waves 1–4 SHIPPED (`DONE_WITH_CONCERNS`); continuation waves 5–9 planned  
 **Control plane:** `dag:nlfr-flagship` · `kos serve` · `linear_authority: false`  
-**Branch:** `feat/nlfr-kos-cutover` (spawn from merged `feat/docs-wiki-wave2`)  
-**Handoffs:** `docs/sessions/handoffs/nlfr-kos-cutover/wave-0/`  
+**Branch:** `feat/docs-wiki-wave2`  
+**Handoffs:** `docs/sessions/handoffs/nlfr-kos-cutover/` · index [`README.md`](../sessions/handoffs/nlfr-kos-cutover/README.md)  
+**Continuation (waves 5–9):** [nlfr-kos-roadmap-waves-5-8.md](nlfr-kos-roadmap-waves-5-8.md)  
+**dag-gui bridge:** [`wave-9/cutover-manifest.json`](../sessions/handoffs/nlfr-kos-cutover/wave-9/cutover-manifest.json)  
 **Broker contract:** [knowledge-os/agent-os/harness/broker-dispatch-manifest.md](/Users/alecbot/Documents/knowledge-os/agent-os/harness/broker-dispatch-manifest.md)
 
 Linear PER-* tickets are **reference mirrors only** for this umbrella. Wave authority,
@@ -412,6 +414,10 @@ Revisit offline shift when wave 4 closes or operator declares GHA restored.
 
 | Artifact | Path |
 |----------|------|
+| **KOS node → handoff index** | [`nlfr-kos-cutover/README.md`](../sessions/handoffs/nlfr-kos-cutover/README.md) |
+| **Continuation waves 5–9** | [`nlfr-kos-roadmap-waves-5-8.md`](nlfr-kos-roadmap-waves-5-8.md) |
+| **dag-gui cutover manifest** | [`wave-9/cutover-manifest.json`](../sessions/handoffs/nlfr-kos-cutover/wave-9/cutover-manifest.json) |
+| **Gap honesty packet** | [`wave-9/gap-honesty-packet.md`](../sessions/handoffs/nlfr-kos-cutover/wave-9/gap-honesty-packet.md) |
 | Wave-0 four-wave plan (KOS mirror) | [`four-wave-plan.md`](../sessions/handoffs/nlfr-kos-cutover/wave-0/four-wave-plan.md) |
 | Prior human design brief | [`human-design-handoff.md`](../sessions/handoffs/m5-m9-umbrella/wave-4/human-design-handoff.md) |
 | Usefulness priorities | [`USEFULNESS_ROADMAP.md`](../USEFULNESS_ROADMAP.md) |

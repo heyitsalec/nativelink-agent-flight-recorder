@@ -35,6 +35,7 @@ The canvas reads JSON under `public/projections/`:
 | `runway.json` | Runway timeline lens |
 | `compare-projection.json` | Compare lens (`derived_v1` deltas between run groups) |
 | `compare-index.json` | Run-group index for composer selector (`run_group_index`, `derived_v1`) |
+| `run-history.json` | Multi-run history projection (`run_history`, `derived_v1`) |
 
 Regenerate with:
 
@@ -108,7 +109,9 @@ Load order:
 
 1. **`compare-index.json`** — preferred `run_group_index` fixture with per-group
    truth labels (`derived_v1`, `medium`, `safe`).
-2. **`compare-projection.json`** — fallback: derives group names from
+2. **`run-history.json`** — multi-run history with per-group proof summaries
+   (`compare history` export).
+3. **`compare-projection.json`** — fallback: derives group names from
    `left_run_group`, `right_run_group`, dimension sides, and `run_group:*`
    `evidence_refs`.
 

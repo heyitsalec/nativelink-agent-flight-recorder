@@ -28,6 +28,26 @@ Handoff: [GHA offline proof shift](sessions/handoffs/frontier-wave/wave-1/gha-of
 
 Full restore procedure when Actions return: [GHA_RESTORE_RUNBOOK.md](GHA_RESTORE_RUNBOOK.md).
 
+## Sustained-green criteria
+
+Wave 10 documents the bar for closing the GHA offline residual. **Sustained green** means:
+
+| Criterion | `NLFR proof` (`nlfr-proof.yml`) | `NLFR cache-only gate` |
+|-----------|--------------------------------|------------------------|
+| Jobs green on one run | All **seven** parallel jobs | `cache-only-gate` only |
+| Consecutive greens | **≥3** on `main` (no intervening failure) | **1** green sufficient for doctor contract |
+| Artifact promotion | Required before `proof-samples/` Linux CI provenance | Not a promotion source |
+| Local substitute | [`verify-gha-readiness.sh`](../scripts/verify-gha-readiness.sh) | [`cache-only-ci-gate.sh`](../scripts/cache-only-ci-gate.sh) |
+
+While GHA is offline, wave 10 closes **`DONE_WITH_CONCERNS`**: run the readiness script and
+treat [`ci-offline-blocker-sample.json`](proof-samples/ci-offline-blocker-sample.json) as the
+committed negative evidence. Do **not** tick the [restore checklist](#gha-restore-checklist)
+until a real workflow run meets the table above.
+
+```bash
+./scripts/verify-gha-readiness.sh
+```
+
 ## Cache-only gate (PR-safe)
 
 Minimal gate independent of full `nlfr-proof.yml` restore. Validates the
@@ -67,11 +87,14 @@ Use when operator declares GHA restored or the first sustained green `nlfr-proof
 lands. **Cannot be completed while Actions are offline** — tick locally only after a real
 workflow run. Promotion steps follow [`GITHUB_RELEASE.md`](GITHUB_RELEASE.md#gha-offline--promotion-runbook).
 
-### Pre-restore (local smoke — optional today)
+### Pre-restore (local smoke — required while GHA offline)
 
 ```bash
+./scripts/verify-gha-readiness.sh
+# equivalent spine:
 uv run pytest -q
 bash -n scripts/*.sh
+./scripts/cache-only-ci-gate.sh
 ```
 
 Nix hosts may additionally run the per-job substitutes in [Local substitutes (by job)](#local-substitutes-by-job).
