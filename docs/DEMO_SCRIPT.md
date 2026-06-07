@@ -110,6 +110,35 @@ trust story if you narrate labels.
 
 ---
 
+## Tier 1 Agent Vision — "AI wrote it; here's proof" (~5 min)
+
+Broker DAG: [`dags/tier1-agent-vision.md`](dags/tier1-agent-vision.md)
+
+```bash
+# Plan all three acts + compare triple (no SQLite writes)
+./scripts/tier1-agent-demo.sh --dry-run --json
+
+# Act 1 — bounded bugfix (collectable_v1 cursor adapter)
+NLFR_SKIP_BAZEL=1 ./scripts/tier1-bugfix-setup.sh --state broken --check   # expect fail
+NLFR_SKIP_BAZEL=1 ./scripts/tier1-bugfix-setup.sh --state fixed
+NLFR_SKIP_BAZEL=1 ./scripts/tier1-agent-demo.sh --act 1
+
+# Act 2 — feature slice (shared policy module)
+NLFR_SKIP_BAZEL=1 ./scripts/tier1-feature-setup.sh --state feature
+NLFR_SKIP_BAZEL=1 ./scripts/tier1-agent-demo.sh --act 2
+
+# Act 3 — three-way compare narrative (derived_v1)
+./scripts/compare-agent-runs.sh
+```
+
+**Say aloud:** Act 1+2 summaries are **`collectable_v1`** (`agent-bugfix-summary.json`,
+`agent-feature-summary.json`). Compare lens is **`derived_v1`** — no worker correlation.
+Contrast with `agent-loop-summary.json` where the agent leg is **`simulated_v1`**.
+
+Canvas: view-spec substrate — `?view=graph-only` or `?view=proof-review` on preview.
+
+---
+
 ## Step 1 — Doctor: the environment is honest (~30s)
 
 ```bash

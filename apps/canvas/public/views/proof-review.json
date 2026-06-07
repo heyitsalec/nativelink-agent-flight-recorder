@@ -1,0 +1,135 @@
+{
+  "schema_version": "nlfr.view-spec.v1",
+  "view_id": "proof-review",
+  "title": "Proof Review",
+  "description": "Proof drawer and constellation primary; action graph remains mounted but dimmed for context.",
+  "generated_at": "2026-06-06T18:00:00.000Z",
+  "run_group": "canvas-dev",
+  "layout": {
+    "kind": "grid_shell_v1",
+    "columns": "minmax(0,1fr) 440px",
+    "rows": "auto auto minmax(0,1fr) auto",
+    "regions": {
+      "notice": { "grid_area": "notice", "slot": "banner" },
+      "header": { "grid_area": "header", "slot": "topbar" },
+      "primary": { "grid_area": "primary", "slot": "canvas" },
+      "rail": { "grid_area": "rail", "slot": "inspector", "width_px": 440 },
+      "operator": { "grid_area": "operator", "slot": "command_bar" }
+    },
+    "responsive": {
+      "breakpoint_px": 720,
+      "collapse_rail": "bottom_sheet"
+    }
+  },
+  "components": [
+    {
+      "instance_id": "notice",
+      "component_kind": "projection_notice",
+      "region": "notice",
+      "projection_binding": "binding.action_graph",
+      "props": { "tones": "fallback,collectable,simulated,mixed" },
+      "data_testid": "projection-notice"
+    },
+    {
+      "instance_id": "topbar",
+      "component_kind": "topbar_summary",
+      "region": "header",
+      "projection_binding": "binding.action_graph",
+      "props": { "show_remote_label": false },
+      "data_testid": "topbar-summary"
+    },
+    {
+      "instance_id": "modes",
+      "component_kind": "mode_rail",
+      "region": "header",
+      "props": { "modes": "proof" },
+      "data_testid": "canvas-mode-rail"
+    },
+    {
+      "instance_id": "graph-main",
+      "component_kind": "action_graph_canvas",
+      "region": "primary",
+      "projection_binding": "binding.action_graph",
+      "props": {
+        "show_truth_legend": false,
+        "zoom_controls": false,
+        "dimmed": true,
+        "highlight_focus": "all"
+      },
+      "data_testid": "action-graph-svg"
+    },
+    {
+      "instance_id": "proof-constellation",
+      "component_kind": "proof_constellation",
+      "region": "primary",
+      "projection_binding": "binding.proof_packet",
+      "props": { "scope_block_id": "scope" },
+      "visible_when": { "mode": ["proof"] },
+      "data_testid": "proof-constellation"
+    },
+    {
+      "instance_id": "proof-drawer",
+      "component_kind": "proof_drawer",
+      "region": "rail",
+      "projection_binding": "binding.proof_packet",
+      "props": { "render_blocks_as": "proof_block_card" },
+      "visible_when": { "mode": ["proof"] },
+      "data_testid": "proof-drawer"
+    },
+    {
+      "instance_id": "proof-block-scope",
+      "component_kind": "proof_block_card",
+      "region": "rail",
+      "projection_binding": "binding.proof_packet",
+      "props": { "block_id": "scope" },
+      "visible_when": { "mode": ["proof"] },
+      "data_testid": "proof-block-scope"
+    },
+    {
+      "instance_id": "operator",
+      "component_kind": "operator_command_bar",
+      "region": "operator",
+      "props": {
+        "placeholder": "focus proof blocks",
+        "commands": "proof,reset"
+      },
+      "data_testid": "operator-chat"
+    }
+  ],
+  "bindings": {
+    "binding.action_graph": {
+      "projection_kind": "action_graph",
+      "path": "/projections/action-graph.json",
+      "required": true,
+      "fallback": "fixture:sampleProjection",
+      "refresh": "on_run_group_change",
+      "notes": "Dimmed background context for proof review."
+    },
+    "binding.proof_packet": {
+      "projection_kind": "proof_packet",
+      "path": "/projections/proof.json",
+      "required": true,
+      "fallback": "fixture:sampleProofPacket",
+      "refresh": "on_run_group_change"
+    }
+  },
+  "modes": [
+    {
+      "mode_id": "proof",
+      "label": "Proof Packet",
+      "icon": "file-check-2",
+      "primary_component": "proof-constellation",
+      "rail_component": "proof-drawer",
+      "default_focus": "all",
+      "requires_binding": "binding.proof_packet",
+      "data_testid": "canvas-mode-proof"
+    }
+  ],
+  "source_kind": "derived_v1",
+  "confidence": "high",
+  "evidence_refs": [
+    "view-spec:proof-review",
+    "docs/design/view-composer-protocol.md"
+  ],
+  "redaction_state": "safe"
+}

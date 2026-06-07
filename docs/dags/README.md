@@ -1,5 +1,10 @@
 # NLFR DAG Mirrors
 
+## Active — Tier 1 Agent Vision (PER-TIER1-AGENT)
+
+Broker-coordinated DAG. Mirror: [tier1-agent-vision.md](tier1-agent-vision.md)  
+Handoffs: `docs/sessions/handoffs/tier1-agent-vision/`
+
 ## Active — Doc capture (PER-1071)
 
 Linear: [PER-1071](https://linear.app/gradschool/issue/PER-1071/nlfr-doc-documentation-and-hero-media-capture-pass)

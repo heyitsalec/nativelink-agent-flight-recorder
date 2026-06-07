@@ -1,0 +1,123 @@
+{
+  "schema_version": "knowledge-os.worker_results.v1",
+  "dag_id": "tier1-agent-vision",
+  "wave": "wave-1",
+  "coordinator_ids": ["coord-t1-spine", "coord-t3-research"],
+  "phase": "research",
+  "status": "DONE",
+  "workers": [
+    {
+      "worker_id": "t1-spine-r-adapter-scenario",
+      "coordinator_id": "coord-t1-spine",
+      "status": "DONE",
+      "provenance": {
+        "artifact": "docs/sessions/handoffs/tier1-agent-vision/wave-1/provenance-t1-spine-audit-adapter-scenario.md",
+        "files_read": [
+          "scripts/record-agent-change.sh",
+          "src/nlfr/commands/generic_run.py",
+          "tests/test_record_agent_change.py",
+          "adapters/cursor/README.md",
+          "demo/scenarios/llm-bounded-patch.json",
+          "demo/scenarios/README.md"
+        ],
+        "commands_run": [],
+        "key_findings": [
+          "M8 adapter + generic provenance spine landed and test-backed",
+          "Demo scenarios use bounded_llm_v1; adapter uses cursor_adapter_v1",
+          "Missing tier1-agent-demo.sh, demo/scenarios/tier1/, test_tier1_agent_demo.py"
+        ],
+        "assumptions": [],
+        "drift_notes": []
+      }
+    },
+    {
+      "worker_id": "t1-spine-r-compare-retention",
+      "coordinator_id": "coord-t1-spine",
+      "status": "DONE",
+      "provenance": {
+        "artifact": "docs/sessions/handoffs/tier1-agent-vision/wave-1/provenance-t1-spine-audit-compare-retention.md",
+        "files_read": [
+          "src/nlfr/projectors/compare.py",
+          "src/nlfr/commands/compare_cmd.py",
+          "scripts/compare-proof.sh",
+          "data/compare-agent-runs/summary.json",
+          "docs/dags/tier1-agent-vision.md"
+        ],
+        "commands_run": [],
+        "key_findings": [
+          "Five-dimension compare projector and CLI landed (M9)",
+          "compare-agent-runs.sh missing; partial output at data/compare-agent-runs/",
+          "Triple compare missing record-proof vs agent-bugfix-1 pairwise"
+        ],
+        "assumptions": [],
+        "drift_notes": []
+      }
+    },
+    {
+      "worker_id": "t3-r-harmony",
+      "coordinator_id": "coord-t3-research",
+      "status": "DONE",
+      "provenance": {
+        "artifact": "docs/sessions/handoffs/tier1-agent-vision/wave-1/provenance-t3-harmony-patterns.md",
+        "files_read": [
+          "harmony/cockpit/docs/four-page-cockpit-research.md",
+          "harmony/cockpit/apps/desktop/src/renderer/App.tsx",
+          "apps/canvas/src/App.tsx"
+        ],
+        "commands_run": [],
+        "key_findings": [
+          "Harmony shell + inspector rail patterns portable to NLFR",
+          "Reject fake provider loop, four-tab product surface, static graph edges",
+          "Adopt preview-gating semantics, stable data-testid contract, pageModel purity"
+        ],
+        "assumptions": ["Harmony repo readable at sibling path on host"],
+        "drift_notes": []
+      }
+    },
+    {
+      "worker_id": "t3-r-canvas-audit",
+      "coordinator_id": "coord-t3-research",
+      "status": "DONE",
+      "provenance": {
+        "artifact": "docs/sessions/handoffs/tier1-agent-vision/wave-1/provenance-t3-canvas-audit.md",
+        "files_read": [
+          "apps/canvas/src/App.tsx",
+          "apps/canvas/src/layout.ts",
+          "apps/canvas/src/types.ts",
+          "apps/canvas/scripts/truth-guard.mjs",
+          "apps/canvas/public/projections/"
+        ],
+        "commands_run": [],
+        "key_findings": [
+          "App.tsx monolith ~947 LOC with 11 embedded components",
+          "truth-guard validates graph parity + optional compare schema only",
+          "runway.json committed but not loaded by App.tsx"
+        ],
+        "assumptions": [],
+        "drift_notes": []
+      }
+    },
+    {
+      "worker_id": "t3-r-view-systems",
+      "coordinator_id": "coord-t3-research",
+      "status": "DONE",
+      "provenance": {
+        "artifact": "docs/sessions/handoffs/tier1-agent-vision/wave-1/provenance-t3-view-systems.md",
+        "files_read": [
+          "apps/canvas/src/App.tsx",
+          "apps/canvas/src/types.ts",
+          "docs/sessions/handoffs/tier1-agent-vision/wave-0/coordinator-charters.md"
+        ],
+        "commands_run": [],
+        "key_findings": [
+          "nlfr.view-spec.v1 outline with grid_shell, modes, bindings",
+          "component_kind catalog mapped from current lenses",
+          "projection_binding contract + composer sketch for T3-I4"
+        ],
+        "assumptions": [],
+        "drift_notes": []
+      }
+    }
+  ],
+  "broker_notes": "Wave-1 research complete. Broker integration worker synthesized explore outputs into provenance docs, worker-results.json, and integration-brief-t3-design-inputs.md. No src/ or scripts/ mutations."
+}

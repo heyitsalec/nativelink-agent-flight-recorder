@@ -1165,3 +1165,144 @@ input {
     white-space: normal;
   }
 }
+
+/* Grid shell (view-spec layout) */
+.grid-shell {
+  display: grid;
+}
+
+.grid-region {
+  min-width: 0;
+}
+
+.grid-region-notice {
+  position: relative;
+  z-index: 5;
+}
+
+.grid-region-notice .projection-notice {
+  position: relative;
+  top: auto;
+  left: auto;
+  right: auto;
+}
+
+.grid-region-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 24px 8px;
+  z-index: 4;
+}
+
+.grid-region-header .topbar {
+  position: static;
+  flex: 1 1 100%;
+  pointer-events: auto;
+}
+
+.grid-region-header .mode-rail {
+  position: static;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.grid-region-primary {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.grid-region-primary .grid-slot {
+  height: 100%;
+  width: 100%;
+}
+
+.grid-region-primary .grid-slot-action_graph_canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.grid-region-primary .canvas-stage {
+  position: absolute;
+  inset: 0;
+}
+
+.grid-region-primary .truth-legend {
+  position: absolute;
+  left: 24px;
+  bottom: 24px;
+}
+
+.grid-region-primary .runway-overlay {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 24px;
+}
+
+.grid-region-primary .proof-constellation-overlay {
+  position: absolute;
+  z-index: 3;
+  top: 24px;
+  left: 24px;
+}
+
+.grid-region-rail {
+  position: relative;
+  overflow: auto;
+  padding: 16px;
+}
+
+.grid-region-rail .inspector,
+.grid-region-rail .proof-drawer,
+.grid-region-rail .remote-lens,
+.grid-region-rail .compare-lens {
+  position: relative;
+  top: auto;
+  right: auto;
+  left: auto;
+  width: 100%;
+  max-height: none;
+}
+
+.grid-region-operator {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  padding: 12px 24px 20px;
+  z-index: 6;
+}
+
+.grid-region-operator .operator {
+  position: static;
+  transform: none;
+  width: min(520px, 100%);
+}
+
+.grid-slot {
+  min-width: 0;
+}
+
+@media (max-width: 720px) {
+  .grid-region-header {
+    padding: 12px 12px 8px;
+  }
+
+  .grid-region-header .mode-rail {
+    flex-direction: column;
+  }
+
+  .grid-region-primary .truth-legend {
+    left: 12px;
+    bottom: 12px;
+  }
+
+  .grid-region-primary .runway-overlay {
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+  }
+}

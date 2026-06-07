@@ -1,0 +1,152 @@
+{
+  "schema_version": "nlfr.view-spec.v1",
+  "view_id": "graph-only",
+  "title": "Action Graph Only",
+  "description": "Graph and validation runway lenses with evidence inspector; no proof, remote, or compare rails.",
+  "generated_at": "2026-06-06T18:00:00.000Z",
+  "run_group": "canvas-dev",
+  "layout": {
+    "kind": "grid_shell_v1",
+    "columns": "minmax(0,1fr) 440px",
+    "rows": "auto auto minmax(0,1fr) auto",
+    "regions": {
+      "notice": { "grid_area": "notice", "slot": "banner" },
+      "header": { "grid_area": "header", "slot": "topbar" },
+      "primary": { "grid_area": "primary", "slot": "canvas" },
+      "rail": { "grid_area": "rail", "slot": "inspector", "width_px": 440 },
+      "operator": { "grid_area": "operator", "slot": "command_bar" }
+    },
+    "responsive": {
+      "breakpoint_px": 720,
+      "collapse_rail": "bottom_sheet"
+    }
+  },
+  "components": [
+    {
+      "instance_id": "notice",
+      "component_kind": "projection_notice",
+      "region": "notice",
+      "projection_binding": "binding.action_graph",
+      "props": { "tones": "fallback,collectable,simulated,mixed" },
+      "data_testid": "projection-notice"
+    },
+    {
+      "instance_id": "topbar",
+      "component_kind": "topbar_summary",
+      "region": "header",
+      "projection_binding": "binding.action_graph",
+      "props": { "show_remote_label": false },
+      "data_testid": "topbar-summary"
+    },
+    {
+      "instance_id": "modes",
+      "component_kind": "mode_rail",
+      "region": "header",
+      "props": { "modes": "graph,runway" },
+      "data_testid": "canvas-mode-rail"
+    },
+    {
+      "instance_id": "zoom",
+      "component_kind": "zoom_controls",
+      "region": "header",
+      "props": {
+        "target_instance_id": "graph-main",
+        "scale_extent_min": 0.55,
+        "scale_extent_max": 2.35
+      },
+      "visible_when": { "prop_truthy": "zoom_controls" },
+      "data_testid": "zoom-controls"
+    },
+    {
+      "instance_id": "graph-main",
+      "component_kind": "action_graph_canvas",
+      "region": "primary",
+      "projection_binding": "binding.action_graph",
+      "props": {
+        "show_truth_legend": true,
+        "zoom_controls": true,
+        "highlight_focus": "{focus}"
+      },
+      "data_testid": "action-graph-svg"
+    },
+    {
+      "instance_id": "legend",
+      "component_kind": "truth_legend",
+      "region": "primary",
+      "props": {
+        "items": "collectable_v1,derived_v1,simulated_v1,future"
+      },
+      "visible_when": { "prop_truthy": "show_truth_legend" },
+      "data_testid": "truth-legend"
+    },
+    {
+      "instance_id": "runway-overlay",
+      "component_kind": "validation_runway",
+      "region": "primary",
+      "projection_binding": "binding.action_graph",
+      "props": {
+        "lane_order": "run,invocation,target,action,cache_event,failure,artifact"
+      },
+      "visible_when": { "mode": ["runway"] },
+      "data_testid": "validation-runway"
+    },
+    {
+      "instance_id": "inspector-selected-node",
+      "component_kind": "evidence_inspector",
+      "region": "rail",
+      "projection_binding": "binding.action_graph",
+      "props": { "close_on_mode_change": true },
+      "visible_when": {
+        "mode": ["graph", "runway"],
+        "selected_node": true
+      },
+      "data_testid": "evidence-inspector"
+    },
+    {
+      "instance_id": "operator",
+      "component_kind": "operator_command_bar",
+      "region": "operator",
+      "props": {
+        "placeholder": "focus cache misses",
+        "commands": "cache,fail,runway,reset"
+      },
+      "data_testid": "operator-chat"
+    }
+  ],
+  "bindings": {
+    "binding.action_graph": {
+      "projection_kind": "action_graph",
+      "path": "/projections/action-graph.json",
+      "required": true,
+      "fallback": "fixture:sampleProjection",
+      "refresh": "on_run_group_change"
+    }
+  },
+  "modes": [
+    {
+      "mode_id": "graph",
+      "label": "Action Graph",
+      "icon": "git-branch",
+      "primary_component": "graph-main",
+      "rail_component": "inspector-selected-node",
+      "default_focus": "all",
+      "data_testid": "canvas-mode-graph"
+    },
+    {
+      "mode_id": "runway",
+      "label": "Validation Runway",
+      "icon": "route",
+      "primary_component": "graph-main",
+      "rail_component": "inspector-selected-node",
+      "default_focus": "all",
+      "data_testid": "canvas-mode-runway"
+    }
+  ],
+  "source_kind": "derived_v1",
+  "confidence": "high",
+  "evidence_refs": [
+    "view-spec:graph-only",
+    "docs/design/view-composer-protocol.md"
+  ],
+  "redaction_state": "safe"
+}

@@ -1,0 +1,38 @@
+{
+  "agent": {
+    "kind": "cursor_adapter_v1",
+    "model": "composer-2.5",
+    "name": "tier1-bugfix-agent",
+    "prompt_sha256": "a0c42719429deb3badd19b9baa0016b08abf08fb282db95f39a817024852ac58"
+  },
+  "build_status": "completed",
+  "chain_complete": true,
+  "confidence": "high",
+  "contrast_note": "Live cursor_adapter_v1 collectable record for Act 1; unlike agent-loop-summary.json which uses simulated_v1 bounded_llm_v1 for the agent leg.",
+  "evidence_refs": [
+    "run.json",
+    "agent-provenance.json",
+    "projections/action-graph.json",
+    "projections/proof.json"
+  ],
+  "proof_claims": [
+    {
+      "claim_id": "tier1.bugfix.provenance.hashed",
+      "statement": "Agent provenance carries model + prompt_sha256; raw prompt withheld.",
+      "source_kind": "collectable_v1",
+      "confidence": "high",
+      "evidence_refs": ["artifact:agent-provenance.json"],
+      "redaction_state": "redacted"
+    }
+  ],
+  "redaction_state": "safe",
+  "run_group": "agent-bugfix-1",
+  "run_id": "run_a62deac46fa9ee8f15c3415a",
+  "scenario_id": "agent-bugfix-1",
+  "source_kind": "collectable_v1",
+  "validation_source_kind": "collectable_v1",
+  "workload": {
+    "change_paths": ["demo/bazel-monorepo/tasks/priority_test.py"],
+    "output_dir": "<repo>/data/agent-bugfix-1"
+  }
+}

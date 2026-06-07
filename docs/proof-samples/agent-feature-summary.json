@@ -1,0 +1,49 @@
+{
+  "agent": {
+    "kind": "cursor_adapter_v1",
+    "model": "composer-2.5",
+    "name": "tier1-feature-agent",
+    "prompt_sha256": "cbf1f7214dded715cc38cdd2b2646e9d36601580ec4f5a94cc13763ba6916528"
+  },
+  "build_status": "completed",
+  "chain_complete": true,
+  "confidence": "high",
+  "contrast_note": "Act 2 feature slice with shared-module policy retune; compare narrative pairs with agent-bugfix-1.",
+  "evidence_refs": [
+    "run.json",
+    "agent-provenance.json",
+    "projections/action-graph.json",
+    "projections/proof.json"
+  ],
+  "proof_claims": [
+    {
+      "claim_id": "tier1.feature.provenance.hashed",
+      "statement": "Feature-slice agent provenance carries model + prompt_sha256; raw prompt withheld.",
+      "source_kind": "collectable_v1",
+      "confidence": "high",
+      "evidence_refs": ["artifact:agent-provenance.json"],
+      "redaction_state": "redacted"
+    },
+    {
+      "claim_id": "tier1.feature.scope.shared-module",
+      "statement": "Feature slice may touch shared module paths; compare narrative pairs with bugfix baseline.",
+      "source_kind": "collectable_v1",
+      "confidence": "medium",
+      "evidence_refs": ["artifact:agent-provenance.json"],
+      "redaction_state": "safe"
+    }
+  ],
+  "redaction_state": "safe",
+  "run_group": "agent-feature-compare",
+  "run_id": "run_aed862e1e654d2691b65e89c",
+  "scenario_id": "agent-feature-compare",
+  "source_kind": "collectable_v1",
+  "validation_source_kind": "collectable_v1",
+  "workload": {
+    "change_paths": [
+      "demo/bazel-monorepo/tasks/policy.py",
+      "demo/bazel-monorepo/tasks/priority.py"
+    ],
+    "output_dir": "<repo>/data/agent-feature-compare"
+  }
+}

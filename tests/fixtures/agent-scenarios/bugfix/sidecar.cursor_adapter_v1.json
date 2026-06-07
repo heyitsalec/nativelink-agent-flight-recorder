@@ -1,0 +1,18 @@
+{
+  "schema_version": "nlfr.agent_provenance.sidecar.v1",
+  "adapter": "record-agent-change.sh",
+  "agent": {
+    "kind": "cursor_adapter_v1",
+    "name": "tier1-bugfix-agent",
+    "model": "composer-2.5",
+    "prompt_sha256": "a0c42719429deb3badd19b9baa0016b08abf08fb282db95f39a817024852ac58"
+  },
+  "change": {
+    "change_class": "safe_leaf",
+    "change_paths": ["demo/bazel-monorepo/tasks/priority_test.py"]
+  },
+  "source_kind": "collectable_v1",
+  "confidence": "high",
+  "evidence_refs": ["artifact:agent-provenance.json"],
+  "redaction_state": "redacted"
+}
