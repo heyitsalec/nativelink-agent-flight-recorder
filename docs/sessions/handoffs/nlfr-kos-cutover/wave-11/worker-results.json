@@ -1,0 +1,77 @@
+{
+  "schema_version": "knowledge-os.worker_results.v1",
+  "dag_id": "adoption-init-path",
+  "wave": "wave-11",
+  "phase": "integrate",
+  "status": "SHIPPED",
+  "claim_ceiling": "adoption_init_path_v1",
+  "host": "/Users/alecbot/Documents/nativelink-agent-flight-recorder",
+  "branch": "feat/docs-wiki-wave2",
+  "coordinator_id": "coord-w11-integrate",
+  "coordinators": [
+    {
+      "coordinator_id": "coord-nlfr-init",
+      "worker_id": "nlfr-init",
+      "kos_node": "W11-NLFR-INIT",
+      "status": "SHIPPED",
+      "artifacts": [
+        "src/nlfr/commands/init_cmd.py",
+        "src/nlfr/config.py",
+        "docs/ADOPTION_GUIDE.md",
+        "tests/test_init_cmd.py"
+      ]
+    },
+    {
+      "coordinator_id": "coord-adapter-pattern",
+      "worker_id": "adapter-pattern",
+      "kos_node": "W11-ADAPTER-PATTERN",
+      "status": "SHIPPED",
+      "artifacts": [
+        "docs/wiki/how-to/adopt-existing-bazel-monorepo.md",
+        "docs/wiki/reference/cli.md"
+      ]
+    },
+    {
+      "coordinator_id": "coord-one-command",
+      "worker_id": "one-command",
+      "kos_node": "W11-ONE-COMMAND",
+      "status": "SHIPPED",
+      "artifacts": [
+        "scripts/record-this-target.sh",
+        "scripts/record-proof.sh"
+      ]
+    }
+  ],
+  "integrate_close": {
+    "worker_id": "w11-integrate",
+    "kos_node": "W11-INTEGRATE",
+    "status": "DONE",
+    "artifacts": [
+      "docs/sessions/handoffs/nlfr-kos-cutover/wave-11/integration-brief.md",
+      "docs/sessions/handoffs/nlfr-kos-cutover/wave-11/spawn-ledger.md",
+      "docs/sessions/handoffs/nlfr-kos-cutover/wave-11/worker-results.json"
+    ]
+  },
+  "proof_gates": {
+    "init_help": {
+      "command": "PYTHONPATH=src uv run python -m nlfr init --help",
+      "status": "PASS"
+    },
+    "init_tests": {
+      "command": "uv run pytest tests/test_init_cmd.py -q",
+      "status": "PASS"
+    },
+    "record_this_target": {
+      "command": "./scripts/record-this-target.sh",
+      "status": "PASS"
+    },
+    "pytest_full": {
+      "command": "uv run pytest -q",
+      "status": "PASS",
+      "detail": "140 passed, 3 skipped"
+    }
+  },
+  "residual_concerns": [
+    "C-W11-1 live NativeLink/Bazel still environment-gated for non-cache-only proof"
+  ]
+}
