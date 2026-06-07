@@ -7,6 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "capture": "node scripts/capture-proof.mjs",
+    "capture:tour": "node scripts/capture-demo-tour.mjs",
+    "capture:evidence": "node scripts/capture-evidence-loop.mjs",
+    "capture:heroes": "node scripts/capture-demo-tour.mjs && node scripts/capture-evidence-loop.mjs",
     "diff": "node scripts/diff-screenshots.mjs",
     "test:truth": "node scripts/truth-guard.mjs",
     "preview": "vite preview --host 127.0.0.1 --port 5174"
