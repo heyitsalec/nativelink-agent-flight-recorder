@@ -8,10 +8,11 @@ from typing import Any
 
 from nlfr.projectors.common import generated_at, rows, run_rows, status_counts, truth
 from nlfr.projectors.remote_execution import (
-    UNSUPPORTED_REMOTE_EXECUTION_CLAIMS,
     remote_execution_endpoint_summaries,
     remote_execution_invocations,
     remote_execution_metrics,
+    unsupported_claims_for_group,
+    worker_identity_events_for_run,
 )
 
 
@@ -52,7 +53,7 @@ def export_proof_packet(conn: Connection, *, run_group: str) -> dict[str, Any]:
             metrics=_cache_metrics(cache_events),
         ),
         *_cache_economics_blocks(runs, invocations, cache_events),
-        _remote_execution_block(invocations),
+        _remote_execution_block(invocations, stored_blocks),
         _block(
             "validation",
             "Validation Surface",
@@ -124,19 +125,38 @@ def _block(
     }
 
 
-def _remote_execution_block(invocations: list[dict[str, Any]]) -> dict[str, Any]:
+def _remote_execution_block(
+    invocations: list[dict[str, Any]],
+    proof_blocks: list[dict[str, Any]],
+) -> dict[str, Any]:
     remote_items = remote_execution_invocations(invocations)
     evidence_rows = [item["invocation"] for item in remote_items]
+    worker_identity_observed = any(
+        worker_identity_events_for_run(str(item["invocation"].get("run_id") or ""), proof_blocks)
+        for item in remote_items
+    )
     if remote_items:
-        summary = (
-            "Bazel invocation evidence shows remote execution was configured. "
-            "Worker identity, queue time, and scheduler assignment remain unproven."
-        )
-        claims = [
-            f"Observed Bazel --remote_executor on {len(remote_items)} invocation(s).",
-            "This proves configuration intent, not successful worker execution.",
-            "This packet does not claim worker identity, queue timing, or scheduler assignment.",
-        ]
+        if worker_identity_observed:
+            summary = (
+                "Bazel invocation evidence shows remote execution was configured and "
+                "direct worker admin stdout records worker identity. Queue time and "
+                "scheduler assignment remain unproven."
+            )
+            claims = [
+                f"Observed Bazel --remote_executor on {len(remote_items)} invocation(s).",
+                "Direct worker admin stdout evidence records worker identity for this run group.",
+                "This packet does not claim queue timing or scheduler assignment.",
+            ]
+        else:
+            summary = (
+                "Bazel invocation evidence shows remote execution was configured. "
+                "Worker identity, queue time, and scheduler assignment remain unproven."
+            )
+            claims = [
+                f"Observed Bazel --remote_executor on {len(remote_items)} invocation(s).",
+                "This proves configuration intent, not successful worker execution.",
+                "This packet does not claim worker identity, queue timing, or scheduler assignment.",
+            ]
     else:
         summary = "No Bazel remote execution configuration was observed in recorded invocations."
         claims = [
@@ -150,11 +170,11 @@ def _remote_execution_block(invocations: list[dict[str, Any]]) -> dict[str, Any]
             summary,
             evidence_rows,
             claims=claims,
-            metrics=remote_execution_metrics(invocations),
+            metrics=remote_execution_metrics(invocations, proof_blocks),
         ),
         "payload": {
             "remote_executor_endpoints": remote_execution_endpoint_summaries(invocations),
-            "unsupported_claims": list(UNSUPPORTED_REMOTE_EXECUTION_CLAIMS),
+            "unsupported_claims": unsupported_claims_for_group(invocations, proof_blocks),
         },
     }
 

@@ -1,5 +1,7 @@
 # NativeLink Agent Flight Recorder — One Pager
 
+← [Docs index](INDEX.md)
+
 ## Thesis
 
 When AI writes the code, NativeLink makes validating it fast, and NLFR makes
@@ -21,7 +23,7 @@ NLFR is a local-first black-box recorder for agent validation loops:
 4. A sparse canvas renders Action Graph, Proof Packet, and Remote Boundary only
    from recorded projections.
 
-## What is proven today (Nix, `635ee36`)
+## What is proven today (Nix, tag `v0.2.0-mvp`)
 
 - Cold/warm NativeLink cache proof (exit 0; cold `hit_rate` 0.0 / 8.17s vs warm
   `hit_rate` 1.0 / 5.48s — `collectable_v1`).
@@ -31,7 +33,7 @@ NLFR is a local-first black-box recorder for agent validation loops:
   `collectable_v1`). This is two workers configured AND endpoints opened live —
   not work distributed across two workers.
 - Deterministic simulated-agent provenance (zero LLM tokens).
-- Agent loop closure: a bounded LLM patch validates through the chain
+- Agent loop closure: a deterministic bounded-agent patch validates through the chain
   `agent → change → run → target → action → cache_event`
   (`scripts/agent-loop-proof.sh`, `chain_complete=true`). The validation/cache
   leg is `collectable_v1` (ingested Bazel evidence); the `agent` and `change`
@@ -58,5 +60,7 @@ agentic validation infrastructure.
 
 ## Repo
 
-`/Users/alecbot/Documents/nativelink-agent-flight-recorder` · Branch
-`codex/per-998-nlfr-mvp` · Linear PER-1053 vision DAG
+`/Users/alecbot/Documents/nativelink-agent-flight-recorder` · Branch `main` ·
+Tag `v0.2.0-mvp` · Linear PER-1058 architecture track
+
+← [Docs index](INDEX.md)

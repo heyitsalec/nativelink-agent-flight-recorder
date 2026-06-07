@@ -7,9 +7,10 @@ from typing import Any
 
 from nlfr.projectors.common import generated_at, rows, run_rows, status_counts, truth
 from nlfr.projectors.remote_execution import (
-    UNSUPPORTED_REMOTE_EXECUTION_CLAIMS,
     remote_execution_invocations,
     sanitize_remote_endpoint_args,
+    unsupported_claims_for_run,
+    worker_identity_events_for_run,
 )
 
 
@@ -53,6 +54,8 @@ def export_action_graph(conn: Connection, *, run_group: str) -> dict[str, Any]:
         edges.append(_edge(item["run_id"], item["id"], "recorded_invocation", item))
     for item in remote_execution_invocations(invocations):
         invocation = item["invocation"]
+        run_id = str(invocation.get("run_id") or "")
+        worker_events = worker_identity_events_for_run(run_id, proof_blocks)
         config_id = f"remote_execution_config:{invocation['id']}"
         config_row = {
             "status": "configured",
@@ -66,7 +69,8 @@ def export_action_graph(conn: Connection, *, run_group: str) -> dict[str, Any]:
             "remote_executor_arg_present": True,
             "remote_executor_arg_count": item["remote_executor_arg_count"],
             "configured_only": True,
-            "unsupported_claims": list(UNSUPPORTED_REMOTE_EXECUTION_CLAIMS),
+            "worker_identity_observed": bool(worker_events),
+            "unsupported_claims": unsupported_claims_for_run(run_id, proof_blocks),
         }
         nodes.append(
             _node(config_id, "remote_execution_config", item["endpoint_label"], config_row)
@@ -79,6 +83,27 @@ def export_action_graph(conn: Connection, *, run_group: str) -> dict[str, Any]:
                 config_row,
             )
         )
+        for event in worker_events:
+            worker_name = str(event["worker_name"])
+            worker_id = f"worker:{invocation['id']}:{worker_name}"
+            worker_row = {
+                "status": "observed",
+                "source_kind": "collectable_v1",
+                "confidence": "high",
+                "evidence_refs": [str(event.get("evidence_ref") or "")],
+                "redaction_state": invocation.get("redaction_state") or "safe",
+                "worker_name": worker_name,
+                "line_number": event.get("line_number"),
+            }
+            nodes.append(_node(worker_id, "worker", worker_name, worker_row))
+            edges.append(
+                _edge(
+                    config_id,
+                    worker_id,
+                    "observed_worker_identity",
+                    worker_row,
+                )
+            )
     for item in artifacts:
         nodes.append(_node(item["id"], "artifact", item.get("artifact_key") or item["id"], item))
         edges.append(_edge(item["run_id"], item["id"], "recorded_artifact", item))

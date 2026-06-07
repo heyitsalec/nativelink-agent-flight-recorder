@@ -18,7 +18,7 @@
       },
       "redaction_state": "safe",
       "source_kind": "simulated_v1",
-      "started_at": "2026-06-06T22:37:55.645Z",
+      "started_at": "2026-06-07T00:24:34.965Z",
       "status": "simulated_only"
     },
     {
@@ -46,13 +46,13 @@
           "llm-bounded-patch"
         ],
         "run_id": "runs_9bf331740a74989f379808da",
-        "sha256": "da86e3e82dc0a17069b9e61815f259abe36c0eb7fca99eb45e7cfb3e5c105577",
+        "sha256": "d8ce9763fb48bda27373f69b2dfd21bfdc125c28e24f2c296c00de7501206545",
         "size_bytes": 3595,
         "stable_key": "simulation:llm-bounded-patch:cache-only:artifact:agent-provenance"
       },
       "redaction_state": "safe",
       "source_kind": "simulated_v1",
-      "started_at": "2026-06-06T22:37:55.646Z",
+      "started_at": "2026-06-07T00:24:34.967Z",
       "status": null
     },
     {
@@ -75,7 +75,7 @@
       },
       "redaction_state": "safe",
       "source_kind": "simulated_v1",
-      "started_at": "2026-06-06T22:37:55.704Z",
+      "started_at": "2026-06-07T00:24:35.073Z",
       "status": "remote_cache_hit"
     },
     {
@@ -96,7 +96,7 @@
       },
       "redaction_state": "safe",
       "source_kind": "simulated_v1",
-      "started_at": "2026-06-06T22:37:55.704Z",
+      "started_at": "2026-06-07T00:24:35.073Z",
       "status": "FAILED"
     },
     {
@@ -117,7 +117,7 @@
       },
       "redaction_state": "safe",
       "source_kind": "simulated_v1",
-      "started_at": "2026-06-06T22:37:55.704Z",
+      "started_at": "2026-06-07T00:24:35.073Z",
       "status": "PASSED"
     },
     {
@@ -140,7 +140,7 @@
       },
       "redaction_state": "safe",
       "source_kind": "derived_v1",
-      "started_at": "2026-06-06T22:37:55.705Z",
+      "started_at": "2026-06-07T00:24:35.074Z",
       "status": "remote_cache_hit"
     },
     {
@@ -161,7 +161,7 @@
       },
       "redaction_state": "safe",
       "source_kind": "derived_v1",
-      "started_at": "2026-06-06T22:37:55.705Z",
+      "started_at": "2026-06-07T00:24:35.074Z",
       "status": "action_cache_observed"
     },
     {
@@ -184,7 +184,7 @@
       },
       "redaction_state": "safe",
       "source_kind": "simulated_v1",
-      "started_at": "2026-06-06T22:37:55.705Z",
+      "started_at": "2026-06-07T00:24:35.074Z",
       "status": "cache_miss"
     },
     {
@@ -213,7 +213,7 @@
       },
       "redaction_state": "safe",
       "source_kind": "simulated_v1",
-      "started_at": "2026-06-06T22:37:55.705Z",
+      "started_at": "2026-06-07T00:24:35.074Z",
       "status": null
     },
     {
@@ -239,11 +239,11 @@
       },
       "redaction_state": "safe",
       "source_kind": "simulated_v1",
-      "started_at": "2026-06-06T22:37:55.705Z",
+      "started_at": "2026-06-07T00:24:35.074Z",
       "status": null
     }
   ],
-  "generated_at": "2026-06-06T22:37:55.815357Z",
+  "generated_at": "2026-06-07T00:24:35.306374Z",
   "lanes": [
     {
       "id": "run",

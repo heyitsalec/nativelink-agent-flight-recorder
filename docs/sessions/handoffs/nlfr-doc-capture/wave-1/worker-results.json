@@ -1,0 +1,17 @@
+{
+  "wave": "wave-1",
+  "dag_id": "nlfr-doc-capture",
+  "linear_parent": "PER-1071",
+  "status": "DONE",
+  "workers": [
+    {"worker_id": "doc-a-capture", "linear": "PER-1072", "status": "DONE", "commit": "f8fa296"},
+    {"worker_id": "doc-b-wiki", "linear": "PER-1073", "status": "DONE"},
+    {"worker_id": "doc-c-readme", "linear": "PER-1074", "status": "DONE", "commit": "7c43f76"}
+  ],
+  "artifacts": {
+    "gifs": ["docs/media/nlfr-canvas-tour.gif", "docs/media/nlfr-evidence-loop.gif"],
+    "readme": "README.md",
+    "index": "docs/INDEX.md",
+    "media_guide": "docs/MEDIA_CAPTURE.md"
+  }
+}

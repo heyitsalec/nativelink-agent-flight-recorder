@@ -1,0 +1,28 @@
+{
+  "artifact_root": "<repo>/data/local-exec-proof-2w/nlfr/runs/run_92927aadd5f2587e178f4948/artifacts",
+  "confidence": "high",
+  "evidence_refs": [
+    "local-exec-run.json",
+    "local-exec-ingest.json",
+    "worker-readiness.json",
+    "nativelink.stdout.txt",
+    "nativelink.stderr.txt"
+  ],
+  "mode": "local-exec",
+  "redaction_state": "safe",
+  "run_id": "run_92927aadd5f2587e178f4948",
+  "source_kind": "collectable_v1",
+  "status": "completed",
+  "worker_readiness": {
+    "configured_workers": 2,
+    "expected_workers": 2,
+    "status": "worker_endpoints_ready",
+    "unsupported_claims": [
+      "worker_identity",
+      "action_placement",
+      "queue_time",
+      "scheduler_assignment",
+      "load_distribution"
+    ]
+  }
+}

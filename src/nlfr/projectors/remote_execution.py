@@ -41,19 +41,69 @@ def remote_execution_invocations(invocations: list[dict[str, Any]]) -> list[dict
     return items
 
 
-def remote_execution_metrics(invocations: list[dict[str, Any]]) -> dict[str, Any]:
+def worker_identity_events_for_run(
+    run_id: str,
+    proof_blocks: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Return direct worker identity rows stored for a run."""
+
+    events: list[dict[str, Any]] = []
+    for block in proof_blocks:
+        if block.get("block_kind") != "worker_admin_identity_v1":
+            continue
+        if block.get("run_id") != run_id:
+            continue
+        payload = block.get("payload") if isinstance(block.get("payload"), dict) else {}
+        for row in payload.get("events") or []:
+            if isinstance(row, dict) and row.get("worker_name"):
+                events.append(row)
+    return events
+
+
+def unsupported_claims_for_run(
+    run_id: str,
+    proof_blocks: list[dict[str, Any]],
+) -> list[str]:
+    claims = list(UNSUPPORTED_REMOTE_EXECUTION_CLAIMS)
+    if worker_identity_events_for_run(run_id, proof_blocks):
+        claims = [claim for claim in claims if claim != "worker_identity"]
+    return claims
+
+
+def remote_execution_metrics(
+    invocations: list[dict[str, Any]],
+    proof_blocks: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     remote_items = remote_execution_invocations(invocations)
     endpoints = sorted({item["endpoint"] for item in remote_items})
+    worker_identity_observed = False
+    if proof_blocks:
+        for invocation in invocations:
+            if worker_identity_events_for_run(str(invocation.get("run_id") or ""), proof_blocks):
+                worker_identity_observed = True
+                break
     return {
         "remote_executor_invocations": len(remote_items),
         "remote_executor_endpoints": len(endpoints),
         "remote_executor_overrides": sum(
             max(0, item["remote_executor_arg_count"] - 1) for item in remote_items
         ),
-        "worker_identity_observed": False,
+        "worker_identity_observed": worker_identity_observed,
         "queue_time_observed": False,
         "scheduler_assignment_observed": False,
     }
+
+
+def unsupported_claims_for_group(
+    invocations: list[dict[str, Any]],
+    proof_blocks: list[dict[str, Any]],
+) -> list[str]:
+    claims = list(UNSUPPORTED_REMOTE_EXECUTION_CLAIMS)
+    for invocation in invocations:
+        if worker_identity_events_for_run(str(invocation.get("run_id") or ""), proof_blocks):
+            claims = [claim for claim in claims if claim != "worker_identity"]
+            break
+    return claims
 
 
 def remote_execution_endpoint_summaries(

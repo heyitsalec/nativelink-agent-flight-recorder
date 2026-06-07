@@ -1,0 +1,95 @@
+{
+  "cache_economics": {
+    "comparison": {
+      "cold_duration_seconds": 8.172704,
+      "cold_hit_rate": 0.0,
+      "cold_scenario": "cold-cache",
+      "duration_delta_seconds": -2.6889069999999995,
+      "hit_rate_delta": 1.0,
+      "warm_duration_lower": true,
+      "warm_duration_seconds": 5.483797,
+      "warm_hit_rate": 1.0,
+      "warm_hit_rate_higher": true,
+      "warm_scenario": "warm-cache"
+    },
+    "legs": [
+      {
+        "duration_seconds": 8.172704,
+        "hit_rate": 0.0,
+        "hits": 0,
+        "misses": 2,
+        "mode": "cache-only",
+        "run_id": "runs_09a4ef2e9bc2c6944a92d61e",
+        "scenario": "cold-cache",
+        "status": "completed",
+        "unknown": 0
+      },
+      {
+        "duration_seconds": 5.483797,
+        "hit_rate": 1.0,
+        "hits": 2,
+        "misses": 0,
+        "mode": "cache-only",
+        "run_id": "runs_a20c36b609aac894a173cd49",
+        "scenario": "warm-cache",
+        "status": "completed",
+        "unknown": 0
+      }
+    ],
+    "metrics": {
+      "cold_duration_seconds": 8.172704,
+      "cold_hit_rate": 0.0,
+      "cold_scenario": "cold-cache",
+      "duration_delta_seconds": -2.6889069999999995,
+      "hit_rate_delta": 1.0,
+      "legs": 2,
+      "warm_duration_lower": true,
+      "warm_duration_seconds": 5.483797,
+      "warm_hit_rate": 1.0,
+      "warm_hit_rate_higher": true,
+      "warm_scenario": "warm-cache"
+    }
+  },
+  "cold": {
+    "artifact_root": "<repo>/data/cold-warm-proof/nlfr/runs/run_e62f8cc65ffd5866a3635b7c/artifacts",
+    "results": [
+      {
+        "command": [
+          "<bazel>/bin/bazel",
+          "--output_base=<repo>/data/cold-warm-proof/bazel-output-cold",
+          "test"
+        ],
+        "exit_code": 0,
+        "status": "completed"
+      }
+    ],
+    "run_id": "run_e62f8cc65ffd5866a3635b7c",
+    "status": "completed"
+  },
+  "confidence": "high",
+  "evidence_refs": [
+    "cold-run.json",
+    "warm-run.json",
+    "projections/proof.json",
+    "nativelink.stdout.txt",
+    "nativelink.stderr.txt"
+  ],
+  "redaction_state": "safe",
+  "source_kind": "collectable_v1",
+  "warm": {
+    "artifact_root": "<repo>/data/cold-warm-proof/nlfr/runs/run_266bc86ea3f643d4703e566b/artifacts",
+    "results": [
+      {
+        "command": [
+          "<bazel>/bin/bazel",
+          "--output_base=<repo>/data/cold-warm-proof/bazel-output-warm",
+          "test"
+        ],
+        "exit_code": 0,
+        "status": "completed"
+      }
+    ],
+    "run_id": "run_266bc86ea3f643d4703e566b",
+    "status": "completed"
+  }
+}

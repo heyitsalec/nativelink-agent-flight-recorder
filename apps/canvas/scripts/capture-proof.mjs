@@ -1,13 +1,31 @@
 import { chromium } from "playwright";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const canvasRoot = path.resolve(__dirname, "..");
+const repoRoot = path.resolve(canvasRoot, "../..");
 
 const url = process.env.CANVAS_URL ?? "http://127.0.0.1:5174/";
 const outputRoot =
-  process.env.NLFR_PLAYWRIGHT_OUTPUT ??
-  "/Users/alecbot/Documents/nativelink-agent-flight-recorder/output/playwright";
+  process.env.NLFR_PLAYWRIGHT_OUTPUT ?? path.join(repoRoot, "output", "playwright");
+const baselineRoot =
+  process.env.NLFR_SCREENSHOT_BASELINES ??
+  path.join(canvasRoot, "baselines", "screenshots");
+const updateBaselines = process.env.UPDATE_BASELINES === "1";
+
+const shots = [
+  "canvas-desktop.png",
+  "canvas-proof.png",
+  "canvas-remote-boundary.png",
+  "canvas-failure-focus.png",
+  "canvas-agent-loop.png",
+  "canvas-mobile.png",
+];
 
 await fs.mkdir(outputRoot, { recursive: true });
+await fs.mkdir(baselineRoot, { recursive: true });
 
 const browser = await chromium.launch();
 const context = await browser.newContext({
@@ -50,15 +68,19 @@ await mobilePage.screenshot({ path: path.join(outputRoot, "canvas-mobile.png"), 
 await mobile.close();
 await browser.close();
 
+if (updateBaselines) {
+  for (const name of shots) {
+    await fs.copyFile(path.join(outputRoot, name), path.join(baselineRoot, name));
+  }
+}
+
 console.log(
   JSON.stringify(
     {
-      desktop: path.join(outputRoot, "canvas-desktop.png"),
-      proof: path.join(outputRoot, "canvas-proof.png"),
-      remote: path.join(outputRoot, "canvas-remote-boundary.png"),
-      failure: path.join(outputRoot, "canvas-failure-focus.png"),
-      agentLoop: path.join(outputRoot, "canvas-agent-loop.png"),
-      mobile: path.join(outputRoot, "canvas-mobile.png"),
+      outputRoot,
+      baselineRoot,
+      updateBaselines,
+      shots: Object.fromEntries(shots.map((name) => [name, path.join(outputRoot, name)])),
       video: path.join(outputRoot, "canvas-operator-flow.webm"),
     },
     null,

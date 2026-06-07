@@ -179,7 +179,7 @@
           "run_expectation": "passes_when_applied",
           "why": "The bounded LLM patch adds a single leaf assertion exercising existing library behavior."
         },
-        "generated_at": "2026-06-06T22:37:55.645409Z",
+        "generated_at": "2026-06-07T00:24:34.965356Z",
         "mode": "cache-only",
         "proof_claims": [
           {
@@ -230,7 +230,7 @@
       "title": "Agent Provenance: demo-bounded-llm-worker"
     }
   ],
-  "generated_at": "2026-06-06T22:37:55.872770Z",
+  "generated_at": "2026-06-07T00:24:35.389962Z",
   "projection_kind": "proof_packet",
   "run_group": "latest",
   "schema_version": 1,

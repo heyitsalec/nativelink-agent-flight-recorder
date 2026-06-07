@@ -73,5 +73,25 @@ export type PositionedEdge = ProjectionEdge & {
   target: PositionedNode;
 };
 
-export type CanvasMode = "graph" | "runway" | "proof" | "remote";
+export type CanvasMode = "graph" | "runway" | "proof" | "remote" | "compare";
 export type FocusFilter = "all" | "cache" | "failures" | "derived" | "remote" | "agent";
+
+export type CompareDimension = TruthLabels & {
+  id: string;
+  title: string;
+  summary: string;
+  left: Record<string, unknown>;
+  right: Record<string, unknown>;
+  delta: Record<string, unknown>;
+  claims: string[];
+};
+
+export type CompareProjection = TruthLabels & {
+  schema_version: 1;
+  projection_kind: "compare";
+  generated_at: string;
+  left_run_group: string;
+  right_run_group: string;
+  summary: Record<string, unknown>;
+  dimensions: CompareDimension[];
+};

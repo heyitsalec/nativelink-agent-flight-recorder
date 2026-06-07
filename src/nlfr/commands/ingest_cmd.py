@@ -16,6 +16,7 @@ from nlfr.ingest.bazel import (
 )
 from nlfr.ingest.models import EvidenceBundle
 from nlfr.ingest.sqlite import ingest_evidence_bundle
+from nlfr.ingest.worker_admin_stdout import parse_worker_admin_stdout
 
 
 def run(args: argparse.Namespace) -> int:
@@ -85,11 +86,20 @@ def run(args: argparse.Namespace) -> int:
     )
     readiness_path = _worker_readiness_path(args.path)
     if readiness_path is not None:
-        counts["proof_blocks"] = _ingest_worker_readiness(
+        counts["proof_blocks"] = counts.get("proof_blocks", 0) + _ingest_worker_readiness(
             conn,
             run_id=run_id,
             run_stable_key=run_stable_key,
             path=readiness_path,
+        )
+    worker_stdout_path = _worker_admin_stdout_path(args.path)
+    if worker_stdout_path is not None:
+        counts["proof_blocks"] = counts.get("proof_blocks", 0) + _ingest_worker_admin_stdout(
+            conn,
+            run_id=run_id,
+            run_stable_key=run_stable_key,
+            path=worker_stdout_path,
+            source_kind=args.source_kind,
         )
 
     payload = {
@@ -213,6 +223,63 @@ def _worker_readiness_path(path: str | None) -> Path | None:
         return None
     candidate = root / "worker-readiness.json"
     return candidate if candidate.exists() else None
+
+
+def _worker_admin_stdout_path(path: str | None) -> Path | None:
+    if path is None:
+        return None
+    root = Path(path)
+    if not root.is_dir():
+        return None
+    candidate = root / "nativelink.stdout.txt"
+    return candidate if candidate.exists() else None
+
+
+def _ingest_worker_admin_stdout(
+    conn,
+    *,
+    run_id: str,
+    run_stable_key: str,
+    path: Path,
+    source_kind: str,
+) -> int:
+    evidence_ref = _evidence_ref(source_kind, path)
+    events = parse_worker_admin_stdout(path, evidence_ref=evidence_ref)
+    if not events:
+        return 0
+
+    payload = {
+        "events": [
+            {
+                "worker_name": event.worker_name,
+                "line_number": event.line_number,
+                "evidence_ref": event.evidence_ref,
+            }
+            for event in events
+        ],
+        "source_kind": source_kind,
+        "confidence": "high",
+        "redaction_state": "safe",
+    }
+    worker_names = sorted({event.worker_name for event in events})
+    upsert_proof_block(
+        conn,
+        stable_key=f"{run_stable_key}:proof:worker-admin-identity",
+        run_id=run_id,
+        block_key="worker-admin-identity",
+        block_kind="worker_admin_identity_v1",
+        title="Worker Admin Identity",
+        summary=(
+            f"NativeLink admin stdout records {len(events)} worker identity line(s) "
+            f"for {', '.join(worker_names)}."
+        ),
+        payload=payload,
+        source_kind=source_kind,
+        confidence="high",
+        evidence_refs=_dedupe([evidence_ref, f"artifact:{path.name}"]),
+        redaction_state="safe",
+    )
+    return 1
 
 
 def _ingest_worker_readiness(

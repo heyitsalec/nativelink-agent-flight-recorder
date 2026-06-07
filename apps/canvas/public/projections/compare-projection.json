@@ -1,0 +1,185 @@
+{
+  "confidence": "medium",
+  "dimensions": [
+    {
+      "claims": [
+        "Left run group recorded 4 run(s).",
+        "Right run group recorded 3 run(s).",
+        "Run count delta is -1."
+      ],
+      "confidence": "medium",
+      "delta": {
+        "runs": -1
+      },
+      "evidence_refs": [
+        "run_group:record-proof",
+        "run_group:canvas-dev"
+      ],
+      "id": "run_counts",
+      "left": {
+        "run_group": "record-proof",
+        "runs": 4
+      },
+      "redaction_state": "safe",
+      "right": {
+        "run_group": "canvas-dev",
+        "runs": 3
+      },
+      "source_kind": "derived_v1",
+      "summary": "Recorded run counts from proof packet summaries.",
+      "title": "Run Counts"
+    },
+    {
+      "claims": [
+        "Cache metrics are derived from proof packet cache blocks only.",
+        "Left: 0 hit(s), 0 miss(es).",
+        "Right: 0 hit(s), 0 miss(es)."
+      ],
+      "confidence": "medium",
+      "delta": {
+        "hit_rate": null,
+        "hits": 0,
+        "misses": 0
+      },
+      "evidence_refs": [
+        "run_group:record-proof",
+        "run_group:canvas-dev"
+      ],
+      "id": "cache_metrics",
+      "left": {
+        "metrics": {
+          "hit_rate": null,
+          "hits": 0,
+          "misses": 0,
+          "unknown": 0
+        }
+      },
+      "redaction_state": "safe",
+      "right": {
+        "metrics": {
+          "hit_rate": null,
+          "hits": 0,
+          "misses": 0,
+          "unknown": 0
+        }
+      },
+      "source_kind": "derived_v1",
+      "summary": "Cache hit/miss counts and hit rates from recorded Bazel evidence.",
+      "title": "Cache Metrics"
+    },
+    {
+      "claims": [
+        "Worker identity is true only when direct worker admin evidence exists in the proof packet.",
+        "Left worker identity observed: False.",
+        "Right worker identity observed: False.",
+        "Worker identity observation matches between run groups."
+      ],
+      "confidence": "medium",
+      "delta": {
+        "worker_identity_observed_changed": false
+      },
+      "evidence_refs": [
+        "run_group:record-proof",
+        "run_group:canvas-dev"
+      ],
+      "id": "worker_identity",
+      "left": {
+        "worker_identity_observed": false
+      },
+      "redaction_state": "safe",
+      "right": {
+        "worker_identity_observed": false
+      },
+      "source_kind": "derived_v1",
+      "summary": "Whether direct worker identity evidence was observed in each proof packet.",
+      "title": "Worker Identity"
+    },
+    {
+      "claims": [
+        "Agent provenance presence is derived from agent_provenance proof blocks.",
+        "Left agent provenance block(s): 0.",
+        "Right agent provenance block(s): 0."
+      ],
+      "confidence": "medium",
+      "delta": {
+        "block_count_delta": 0,
+        "present_changed": false
+      },
+      "evidence_refs": [
+        "run_group:record-proof",
+        "run_group:canvas-dev"
+      ],
+      "id": "agent_provenance",
+      "left": {
+        "block_count": 0,
+        "blocks": [],
+        "present": false
+      },
+      "redaction_state": "safe",
+      "right": {
+        "block_count": 0,
+        "blocks": [],
+        "present": false
+      },
+      "source_kind": "derived_v1",
+      "summary": "Presence of bounded agent provenance blocks (model + prompt hash only).",
+      "title": "Agent Provenance"
+    },
+    {
+      "claims": [
+        "Status deltas are derived from recorded run rows in SQLite.",
+        "Left statuses: {'completed': 4}.",
+        "Right statuses: {'completed': 3}.",
+        "At least one run status count differs between run groups."
+      ],
+      "confidence": "medium",
+      "delta": {
+        "by_status": {
+          "completed": {
+            "delta": -1,
+            "left": 4,
+            "right": 3
+          }
+        },
+        "changed": true
+      },
+      "evidence_refs": [
+        "run_group:record-proof",
+        "run_group:canvas-dev"
+      ],
+      "id": "status_deltas",
+      "left": {
+        "status_counts": {
+          "completed": 4
+        }
+      },
+      "redaction_state": "safe",
+      "right": {
+        "status_counts": {
+          "completed": 3
+        }
+      },
+      "source_kind": "derived_v1",
+      "summary": "Per-status run counts compared between run groups.",
+      "title": "Status Deltas"
+    }
+  ],
+  "evidence_refs": [
+    "run_group:record-proof",
+    "run_group:canvas-dev"
+  ],
+  "generated_at": "2026-06-07T00:50:12.895965Z",
+  "left_run_group": "record-proof",
+  "projection_kind": "compare",
+  "redaction_state": "safe",
+  "right_run_group": "canvas-dev",
+  "schema_version": 1,
+  "source_kind": "derived_v1",
+  "summary": {
+    "dimensions": 5,
+    "left_artifacts": 12,
+    "left_runs": 4,
+    "right_artifacts": 18,
+    "right_runs": 3
+  }
+}
