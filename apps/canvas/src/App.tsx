@@ -118,6 +118,38 @@ export function App() {
   }, []);
 
   const graph = useMemo(() => layoutProjection(projection), [projection]);
+
+  const projectionNotice = useMemo(() => {
+    if (usingFixtureFallback) {
+      return {
+        tone: "fallback" as const,
+        message:
+          "Fixture fallback active — projection fetch failed; showing simulated sample data.",
+      };
+    }
+    const kinds = projection.nodes.map((node) => node.source_kind);
+    const simulatedCount = kinds.filter((kind) => kind === "simulated_v1").length;
+    const collectableCount = kinds.filter((kind) => kind === "collectable_v1").length;
+    if (projection.run_group === "canvas-dev" && collectableCount > 0 && simulatedCount === 0) {
+      return {
+        tone: "collectable" as const,
+        message: `canvas-dev run group — collectable_v1 dogfood projection (${collectableCount} nodes).`,
+      };
+    }
+    if (projection.run_group === "latest" || simulatedCount > collectableCount) {
+      return {
+        tone: "simulated" as const,
+        message: `simulated_v1 fixture chain (run_group=${projection.run_group}) — not live NativeLink proof.`,
+      };
+    }
+    if (simulatedCount > 0 && collectableCount > 0) {
+      return {
+        tone: "mixed" as const,
+        message: `Mixed projection — collectable_v1 and simulated_v1 nodes; read labels per node.`,
+      };
+    }
+    return null;
+  }, [projection, usingFixtureFallback]);
   const selectedNode = graph.nodes.find((node) => node.id === selectedId) ?? null;
   const highlighted = useMemo(() => highlightedIds(graph.nodes, focus), [graph.nodes, focus]);
   const remoteLens = useMemo(() => remoteLensModel(projection, proofPacket), [projection, proofPacket]);
@@ -193,9 +225,13 @@ export function App() {
 
   return (
     <main className="app-shell" data-testid="nlfr-canvas-app">
-      {usingFixtureFallback && (
-        <p className="fixture-fallback-banner" role="status">
-          Fixture fallback active — projection fetch failed; showing simulated sample data.
+      {projectionNotice && (
+        <p
+          className={`projection-notice projection-notice-${projectionNotice.tone}`}
+          role="status"
+          data-testid="projection-notice"
+        >
+          {projectionNotice.message}
         </p>
       )}
       <header className="topbar">

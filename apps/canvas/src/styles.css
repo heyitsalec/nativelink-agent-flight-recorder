@@ -35,7 +35,8 @@ input {
     linear-gradient(140deg, #fbfcfd 0%, #f4f7f8 54%, #f8faf9 100%);
 }
 
-.fixture-fallback-banner {
+.fixture-fallback-banner,
+.projection-notice {
   position: absolute;
   z-index: 5;
   top: 0;
@@ -43,10 +44,33 @@ input {
   right: 0;
   margin: 0;
   padding: 0.55rem 1rem;
+  font-size: 0.85rem;
+  border-bottom: 1px solid transparent;
+}
+
+.fixture-fallback-banner,
+.projection-notice-fallback {
   background: #3d2e00;
   color: #ffe8a3;
-  font-size: 0.85rem;
-  border-bottom: 1px solid #6b5200;
+  border-bottom-color: #6b5200;
+}
+
+.projection-notice-simulated {
+  background: #3d2e00;
+  color: #ffe8a3;
+  border-bottom-color: #6b5200;
+}
+
+.projection-notice-mixed {
+  background: #2a3140;
+  color: #dbeafe;
+  border-bottom-color: #475569;
+}
+
+.projection-notice-collectable {
+  background: #0f2f22;
+  color: #b8f5d4;
+  border-bottom-color: #1f6b4a;
 }
 
 .topbar {

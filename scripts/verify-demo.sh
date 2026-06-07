@@ -7,7 +7,7 @@ DB="$OUT/nlfr.sqlite"
 PROJECTIONS="$OUT/projections"
 
 cd "$ROOT"
-mkdir -p "$OUT" "$PROJECTIONS" "$ROOT/apps/canvas/public/projections"
+mkdir -p "$OUT" "$PROJECTIONS"
 
 echo "== NLFR backend tests =="
 uv run pytest tests -q
@@ -82,7 +82,7 @@ PYTHONPATH=src uv run python -m nlfr ingest \
   --source-kind simulated_v1 \
   --json >"$OUT/fixture-ingest.json"
 
-echo "== NLFR projection exports =="
+echo "== NLFR projection exports (demo-proof only) =="
 PYTHONPATH=src uv run python -m nlfr graph export \
   --db "$DB" \
   --run-group latest \
@@ -95,9 +95,9 @@ PYTHONPATH=src uv run python -m nlfr proof export \
   --db "$DB" \
   --run-group latest \
   --output "$PROJECTIONS/proof.json"
-cp "$PROJECTIONS/action-graph.json" "$ROOT/apps/canvas/public/projections/action-graph.json"
-cp "$PROJECTIONS/runway.json" "$ROOT/apps/canvas/public/projections/runway.json"
-cp "$PROJECTIONS/proof.json" "$ROOT/apps/canvas/public/projections/proof.json"
+
+echo "demo fixture projections: $PROJECTIONS (simulated_v1 agent-loop chain)"
+echo "default canvas uses apps/canvas/public/projections/ from record-canvas-build.sh — not overwritten here"
 
 echo "== NLFR canvas build =="
 if command -v npm >/dev/null 2>&1; then
@@ -109,4 +109,4 @@ fi
 echo "== NLFR proof output =="
 echo "database: $DB"
 echo "projections: $PROJECTIONS"
-echo "canvas projection: $ROOT/apps/canvas/public/projections/action-graph.json"
+echo "committed canvas default: $ROOT/apps/canvas/public/projections/ (canvas-dev collectable_v1)"

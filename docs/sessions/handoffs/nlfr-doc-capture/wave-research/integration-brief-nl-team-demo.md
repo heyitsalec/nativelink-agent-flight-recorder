@@ -91,9 +91,9 @@ NLFR is a **real, evidence-first recorder** with a working spine (CLI → hashed
 
 | Priority | Gap | Fix | Effort |
 |----------|-----|-----|--------|
-| P0 | M6 drift: docs say canvas-dev `collectable_v1` default; committed `public/projections/` is `simulated_v1` | Either commit `record-canvas-build.sh` output OR update ADOPTION_GUIDE/README to say "fixture default by design" and add visible banner when `simulated_v1` | Low |
+| P0 | M6 drift: docs say canvas-dev `collectable_v1` default; committed `public/projections/` is `simulated_v1` | **Fixed** — `record-canvas-build.sh` output committed; `verify-demo.sh` no longer overwrites public projections; canvas shows projection-notice banner | Done |
 | P0 | Presenter may accidentally call fixtures "live proof" | Add demo script cue cards / `docs/DEMO_SCRIPT.md` Tier 2 section with mandatory `source_kind` narration | Low |
-| P1 | `verify-demo.sh` overwrites public projections with fixtures after canvas dogfood | Document order-of-operations in demo prep; or split verify-demo publish step | Low |
+| P1 | `verify-demo.sh` overwrites public projections with fixtures after canvas dogfood | **Fixed** — fixture exports stay under `data/demo-proof/projections/` | Done |
 | P1 | `docs/proof-samples/` from author Mac, not Linux CI artifact | Promote first green GHA `linux-nix-toolchain` summary to proof-samples before demo | Medium |
 
 ### OK to show (with honest labels)

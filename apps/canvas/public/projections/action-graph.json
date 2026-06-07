@@ -1,524 +1,1539 @@
 {
   "edges": [
     {
-      "confidence": "medium",
+      "confidence": "high",
       "evidence_refs": [
-        "scenario:llm-bounded-patch",
-        "agent:demo-bounded-llm-worker",
-        "patch:sha256:856871f76606d071644921e408592cc65d4f348442e8712815b88bac7e527e98",
-        "prompt:sha256:5f787e73d6d3f8b65082f2d922e670104c580461abff1185780c76ed13a300a6",
-        "run:runs_9bf331740a74989f379808da"
+        "run:run_4d3e7b3a82e13bccbdd16b5e",
+        "path:apps/canvas/src/App.tsx"
       ],
-      "from": "agent:proof_blocks_41b28bb488d97ae1794cf264",
-      "id": "authored_change:agent:proof_blocks_41b28bb488d97ae1794cf264:changes_d16636ae11e890c114031219",
-      "kind": "authored_change",
-      "redaction_state": "safe",
-      "source_kind": "simulated_v1",
-      "to": "changes_d16636ae11e890c114031219"
-    },
-    {
-      "confidence": "medium",
-      "evidence_refs": [
-        "scenario:llm-bounded-patch",
-        "agent:demo-bounded-llm-worker",
-        "patch:sha256:856871f76606d071644921e408592cc65d4f348442e8712815b88bac7e527e98",
-        "prompt:sha256:5f787e73d6d3f8b65082f2d922e670104c580461abff1185780c76ed13a300a6",
-        "run:runs_9bf331740a74989f379808da"
-      ],
-      "from": "changes_d16636ae11e890c114031219",
-      "id": "validated_by:changes_d16636ae11e890c114031219:runs_9bf331740a74989f379808da",
+      "from": "changes_39f2c10ff2aa411c22b5d923",
+      "id": "validated_by:changes_39f2c10ff2aa411c22b5d923:runs_36750ab4f943a870ac624345",
       "kind": "validated_by",
       "redaction_state": "safe",
-      "source_kind": "simulated_v1",
-      "to": "runs_9bf331740a74989f379808da"
+      "source_kind": "collectable_v1",
+      "to": "runs_36750ab4f943a870ac624345"
     },
     {
-      "confidence": "medium",
+      "confidence": "high",
       "evidence_refs": [
-        "scenario:llm-bounded-patch",
-        "agent:demo-bounded-llm-worker",
-        "patch:sha256:856871f76606d071644921e408592cc65d4f348442e8712815b88bac7e527e98",
-        "prompt:sha256:5f787e73d6d3f8b65082f2d922e670104c580461abff1185780c76ed13a300a6",
-        "run:runs_9bf331740a74989f379808da"
+        "run:run_9fdec126c4e1d72366a0a5ca",
+        "path:apps/canvas/src/App.tsx"
       ],
-      "from": "runs_9bf331740a74989f379808da",
-      "id": "recorded_artifact:runs_9bf331740a74989f379808da:artifacts_b611de9d50de27b5c231578d",
+      "from": "changes_74c1532966df0658343459a3",
+      "id": "validated_by:changes_74c1532966df0658343459a3:runs_0490cf555e81990b0074ae45",
+      "kind": "validated_by",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "runs_0490cf555e81990b0074ae45"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_79565ee53498a70158fcb2a6",
+        "path:apps/canvas/src/App.tsx"
+      ],
+      "from": "changes_0d0f5b5d7064fbd20dab49ee",
+      "id": "validated_by:changes_0d0f5b5d7064fbd20dab49ee:runs_d027f4c33561212d0573aa47",
+      "kind": "validated_by",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "runs_d027f4c33561212d0573aa47"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_07f2f7db4e9d56ae22847d4b",
+        "path:apps/canvas/src/App.tsx"
+      ],
+      "from": "changes_cd9ce62ef2000cf58603e35d",
+      "id": "validated_by:changes_cd9ce62ef2000cf58603e35d:runs_c4160ae6fab779a1e77ca1a0",
+      "kind": "validated_by",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "runs_c4160ae6fab779a1e77ca1a0"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_4d3e7b3a82e13bccbdd16b5e",
+        "command:0"
+      ],
+      "from": "runs_36750ab4f943a870ac624345",
+      "id": "recorded_invocation:runs_36750ab4f943a870ac624345:invocations_c97620f6d371a2ebdd1909ec",
+      "kind": "recorded_invocation",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "invocations_c97620f6d371a2ebdd1909ec"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_4d3e7b3a82e13bccbdd16b5e",
+        "command:1"
+      ],
+      "from": "runs_36750ab4f943a870ac624345",
+      "id": "recorded_invocation:runs_36750ab4f943a870ac624345:invocations_a6659a1313197c2d229d08b1",
+      "kind": "recorded_invocation",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "invocations_a6659a1313197c2d229d08b1"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_9fdec126c4e1d72366a0a5ca",
+        "command:0"
+      ],
+      "from": "runs_0490cf555e81990b0074ae45",
+      "id": "recorded_invocation:runs_0490cf555e81990b0074ae45:invocations_9db16b3577fc4f051fbfa84d",
+      "kind": "recorded_invocation",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "invocations_9db16b3577fc4f051fbfa84d"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_9fdec126c4e1d72366a0a5ca",
+        "command:1"
+      ],
+      "from": "runs_0490cf555e81990b0074ae45",
+      "id": "recorded_invocation:runs_0490cf555e81990b0074ae45:invocations_ea91247b2182fbd032c25404",
+      "kind": "recorded_invocation",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "invocations_ea91247b2182fbd032c25404"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_79565ee53498a70158fcb2a6",
+        "command:0"
+      ],
+      "from": "runs_d027f4c33561212d0573aa47",
+      "id": "recorded_invocation:runs_d027f4c33561212d0573aa47:invocations_aede02831151cdc3c268a68f",
+      "kind": "recorded_invocation",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "invocations_aede02831151cdc3c268a68f"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_79565ee53498a70158fcb2a6",
+        "command:1"
+      ],
+      "from": "runs_d027f4c33561212d0573aa47",
+      "id": "recorded_invocation:runs_d027f4c33561212d0573aa47:invocations_b1057664006c9bbfebac3cd7",
+      "kind": "recorded_invocation",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "invocations_b1057664006c9bbfebac3cd7"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_07f2f7db4e9d56ae22847d4b",
+        "command:0"
+      ],
+      "from": "runs_c4160ae6fab779a1e77ca1a0",
+      "id": "recorded_invocation:runs_c4160ae6fab779a1e77ca1a0:invocations_6c72947a51527d4f6e4d18ac",
+      "kind": "recorded_invocation",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "invocations_6c72947a51527d4f6e4d18ac"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_07f2f7db4e9d56ae22847d4b",
+        "command:1"
+      ],
+      "from": "runs_c4160ae6fab779a1e77ca1a0",
+      "id": "recorded_invocation:runs_c4160ae6fab779a1e77ca1a0:invocations_858e87cd0b33185f83e19b98",
+      "kind": "recorded_invocation",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "invocations_858e87cd0b33185f83e19b98"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "invocation:invocations_c97620f6d371a2ebdd1909ec"
+      ],
+      "from": "runs_36750ab4f943a870ac624345",
+      "id": "recorded_artifact:runs_36750ab4f943a870ac624345:artifacts_966b8533dfccad5a24017b50",
       "kind": "recorded_artifact",
       "redaction_state": "safe",
-      "source_kind": "simulated_v1",
-      "to": "artifacts_b611de9d50de27b5c231578d"
+      "source_kind": "collectable_v1",
+      "to": "artifacts_966b8533dfccad5a24017b50"
     },
     {
       "confidence": "high",
       "evidence_refs": [
-        "simulated_v1:bep.jsonl"
+        "invocation:invocations_c97620f6d371a2ebdd1909ec"
       ],
-      "from": "runs_9bf331740a74989f379808da",
-      "id": "evaluated_target:runs_9bf331740a74989f379808da:targets_aecefec8b0d2148629b024c4",
-      "kind": "evaluated_target",
+      "from": "runs_36750ab4f943a870ac624345",
+      "id": "recorded_artifact:runs_36750ab4f943a870ac624345:artifacts_9a345fc23d562727f6a5584f",
+      "kind": "recorded_artifact",
       "redaction_state": "safe",
-      "source_kind": "simulated_v1",
-      "to": "targets_aecefec8b0d2148629b024c4"
+      "source_kind": "collectable_v1",
+      "to": "artifacts_9a345fc23d562727f6a5584f"
     },
     {
       "confidence": "high",
       "evidence_refs": [
-        "simulated_v1:bep.jsonl"
+        "invocation:invocations_a6659a1313197c2d229d08b1"
       ],
-      "from": "runs_9bf331740a74989f379808da",
-      "id": "evaluated_target:runs_9bf331740a74989f379808da:targets_c0fe8bbfbbcee268433849e3",
-      "kind": "evaluated_target",
+      "from": "runs_36750ab4f943a870ac624345",
+      "id": "recorded_artifact:runs_36750ab4f943a870ac624345:artifacts_1d886afd8f0ae5770b9bea50",
+      "kind": "recorded_artifact",
       "redaction_state": "safe",
-      "source_kind": "simulated_v1",
-      "to": "targets_c0fe8bbfbbcee268433849e3"
+      "source_kind": "collectable_v1",
+      "to": "artifacts_1d886afd8f0ae5770b9bea50"
     },
     {
       "confidence": "high",
       "evidence_refs": [
-        "simulated_v1:bep.jsonl"
+        "run:run_4d3e7b3a82e13bccbdd16b5e"
       ],
-      "from": "targets_c0fe8bbfbbcee268433849e3",
-      "id": "produced_action:targets_c0fe8bbfbbcee268433849e3:actions_1649ba3bcd71a4c1bca7889c",
-      "kind": "produced_action",
+      "from": "runs_36750ab4f943a870ac624345",
+      "id": "recorded_artifact:runs_36750ab4f943a870ac624345:artifacts_599e82089f94990534920740",
+      "kind": "recorded_artifact",
       "redaction_state": "safe",
-      "source_kind": "simulated_v1",
-      "to": "actions_1649ba3bcd71a4c1bca7889c"
+      "source_kind": "collectable_v1",
+      "to": "artifacts_599e82089f94990534920740"
     },
     {
       "confidence": "high",
       "evidence_refs": [
-        "simulated_v1:bep.jsonl"
+        "run:run_4d3e7b3a82e13bccbdd16b5e",
+        "artifact:canvas-dist"
       ],
-      "from": "targets_aecefec8b0d2148629b024c4",
-      "id": "produced_action:targets_aecefec8b0d2148629b024c4:actions_3ff6fcddb284148d684d57c5",
-      "kind": "produced_action",
+      "from": "runs_36750ab4f943a870ac624345",
+      "id": "recorded_artifact:runs_36750ab4f943a870ac624345:artifacts_68fb4c0355ee22b1794fa183",
+      "kind": "recorded_artifact",
       "redaction_state": "safe",
-      "source_kind": "simulated_v1",
-      "to": "actions_3ff6fcddb284148d684d57c5"
+      "source_kind": "collectable_v1",
+      "to": "artifacts_68fb4c0355ee22b1794fa183"
     },
     {
       "confidence": "high",
       "evidence_refs": [
-        "simulated_v1:bep.jsonl"
+        "invocation:invocations_a6659a1313197c2d229d08b1"
       ],
-      "from": "targets_c0fe8bbfbbcee268433849e3",
-      "id": "produced_action:targets_c0fe8bbfbbcee268433849e3:actions_dcf05812ab20689f3108483f",
-      "kind": "produced_action",
+      "from": "runs_36750ab4f943a870ac624345",
+      "id": "recorded_artifact:runs_36750ab4f943a870ac624345:artifacts_c7c3f67ecd42bf09b12c4331",
+      "kind": "recorded_artifact",
       "redaction_state": "safe",
-      "source_kind": "simulated_v1",
-      "to": "actions_dcf05812ab20689f3108483f"
+      "source_kind": "collectable_v1",
+      "to": "artifacts_c7c3f67ecd42bf09b12c4331"
     },
     {
       "confidence": "high",
       "evidence_refs": [
-        "simulated_v1:execution-log.json"
+        "invocation:invocations_9db16b3577fc4f051fbfa84d"
       ],
-      "from": "targets_c0fe8bbfbbcee268433849e3",
-      "id": "observed_cache_event:targets_c0fe8bbfbbcee268433849e3:cache_events_7436531115a20e86a59bc00b",
-      "kind": "observed_cache_event",
+      "from": "runs_0490cf555e81990b0074ae45",
+      "id": "recorded_artifact:runs_0490cf555e81990b0074ae45:artifacts_59afda906ace67b2eb5b8b03",
+      "kind": "recorded_artifact",
       "redaction_state": "safe",
-      "source_kind": "simulated_v1",
-      "to": "cache_events_7436531115a20e86a59bc00b"
-    },
-    {
-      "confidence": "medium",
-      "evidence_refs": [
-        "simulated_v1:profile.json"
-      ],
-      "from": "targets_c0fe8bbfbbcee268433849e3",
-      "id": "observed_cache_event:targets_c0fe8bbfbbcee268433849e3:cache_events_8a5988733feeee06ba389854",
-      "kind": "observed_cache_event",
-      "redaction_state": "safe",
-      "source_kind": "derived_v1",
-      "to": "cache_events_8a5988733feeee06ba389854"
-    },
-    {
-      "confidence": "low",
-      "evidence_refs": [
-        "simulated_v1:profile.json"
-      ],
-      "from": "targets_aecefec8b0d2148629b024c4",
-      "id": "observed_cache_event:targets_aecefec8b0d2148629b024c4:cache_events_d4d32866770093896742c2ab",
-      "kind": "observed_cache_event",
-      "redaction_state": "safe",
-      "source_kind": "derived_v1",
-      "to": "cache_events_d4d32866770093896742c2ab"
+      "source_kind": "collectable_v1",
+      "to": "artifacts_59afda906ace67b2eb5b8b03"
     },
     {
       "confidence": "high",
       "evidence_refs": [
-        "simulated_v1:execution-log.json"
+        "invocation:invocations_9db16b3577fc4f051fbfa84d"
       ],
-      "from": "targets_aecefec8b0d2148629b024c4",
-      "id": "observed_cache_event:targets_aecefec8b0d2148629b024c4:cache_events_e55a33a312d157da4f58d38d",
-      "kind": "observed_cache_event",
+      "from": "runs_0490cf555e81990b0074ae45",
+      "id": "recorded_artifact:runs_0490cf555e81990b0074ae45:artifacts_d7632ee20141c288fc5f151e",
+      "kind": "recorded_artifact",
       "redaction_state": "safe",
-      "source_kind": "simulated_v1",
-      "to": "cache_events_e55a33a312d157da4f58d38d"
+      "source_kind": "collectable_v1",
+      "to": "artifacts_d7632ee20141c288fc5f151e"
     },
     {
       "confidence": "high",
       "evidence_refs": [
-        "simulated_v1:bep.jsonl"
+        "invocation:invocations_ea91247b2182fbd032c25404"
       ],
-      "from": "runs_9bf331740a74989f379808da",
-      "id": "observed_failure:runs_9bf331740a74989f379808da:failures_63f9ef6937b97907cc6b775d",
-      "kind": "observed_failure",
+      "from": "runs_0490cf555e81990b0074ae45",
+      "id": "recorded_artifact:runs_0490cf555e81990b0074ae45:artifacts_255526a763c736a9af96224f",
+      "kind": "recorded_artifact",
       "redaction_state": "safe",
-      "source_kind": "simulated_v1",
-      "to": "failures_63f9ef6937b97907cc6b775d"
+      "source_kind": "collectable_v1",
+      "to": "artifacts_255526a763c736a9af96224f"
     },
     {
       "confidence": "high",
       "evidence_refs": [
-        "simulated_v1:bep.jsonl"
+        "invocation:invocations_ea91247b2182fbd032c25404"
       ],
-      "from": "runs_9bf331740a74989f379808da",
-      "id": "observed_failure:runs_9bf331740a74989f379808da:failures_7a6c04fae39ea2dd90d15afa",
-      "kind": "observed_failure",
+      "from": "runs_0490cf555e81990b0074ae45",
+      "id": "recorded_artifact:runs_0490cf555e81990b0074ae45:artifacts_338774eac1c1adc0c940ac34",
+      "kind": "recorded_artifact",
       "redaction_state": "safe",
-      "source_kind": "simulated_v1",
-      "to": "failures_7a6c04fae39ea2dd90d15afa"
+      "source_kind": "collectable_v1",
+      "to": "artifacts_338774eac1c1adc0c940ac34"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_9fdec126c4e1d72366a0a5ca"
+      ],
+      "from": "runs_0490cf555e81990b0074ae45",
+      "id": "recorded_artifact:runs_0490cf555e81990b0074ae45:artifacts_b126147841d3feb1eaae2dfb",
+      "kind": "recorded_artifact",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "artifacts_b126147841d3feb1eaae2dfb"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_9fdec126c4e1d72366a0a5ca",
+        "artifact:canvas-dist"
+      ],
+      "from": "runs_0490cf555e81990b0074ae45",
+      "id": "recorded_artifact:runs_0490cf555e81990b0074ae45:artifacts_fd6e261b1ce9d35e5acd3431",
+      "kind": "recorded_artifact",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "artifacts_fd6e261b1ce9d35e5acd3431"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "invocation:invocations_b1057664006c9bbfebac3cd7"
+      ],
+      "from": "runs_d027f4c33561212d0573aa47",
+      "id": "recorded_artifact:runs_d027f4c33561212d0573aa47:artifacts_01bb8aa4ff4dcc1e362fab1e",
+      "kind": "recorded_artifact",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "artifacts_01bb8aa4ff4dcc1e362fab1e"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "invocation:invocations_aede02831151cdc3c268a68f"
+      ],
+      "from": "runs_d027f4c33561212d0573aa47",
+      "id": "recorded_artifact:runs_d027f4c33561212d0573aa47:artifacts_65eb9ca86f920ec5d38d6fac",
+      "kind": "recorded_artifact",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "artifacts_65eb9ca86f920ec5d38d6fac"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "invocation:invocations_aede02831151cdc3c268a68f"
+      ],
+      "from": "runs_d027f4c33561212d0573aa47",
+      "id": "recorded_artifact:runs_d027f4c33561212d0573aa47:artifacts_7a50720c83ed54da6ad862ff",
+      "kind": "recorded_artifact",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "artifacts_7a50720c83ed54da6ad862ff"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "invocation:invocations_b1057664006c9bbfebac3cd7"
+      ],
+      "from": "runs_d027f4c33561212d0573aa47",
+      "id": "recorded_artifact:runs_d027f4c33561212d0573aa47:artifacts_98b9b8e2538438fbe29ec8a4",
+      "kind": "recorded_artifact",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "artifacts_98b9b8e2538438fbe29ec8a4"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_79565ee53498a70158fcb2a6"
+      ],
+      "from": "runs_d027f4c33561212d0573aa47",
+      "id": "recorded_artifact:runs_d027f4c33561212d0573aa47:artifacts_4b0ca7d120ad44eb5aa85030",
+      "kind": "recorded_artifact",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "artifacts_4b0ca7d120ad44eb5aa85030"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_79565ee53498a70158fcb2a6",
+        "artifact:canvas-dist"
+      ],
+      "from": "runs_d027f4c33561212d0573aa47",
+      "id": "recorded_artifact:runs_d027f4c33561212d0573aa47:artifacts_6ee6244b19fc7c568ff125fc",
+      "kind": "recorded_artifact",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "artifacts_6ee6244b19fc7c568ff125fc"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "invocation:invocations_858e87cd0b33185f83e19b98"
+      ],
+      "from": "runs_c4160ae6fab779a1e77ca1a0",
+      "id": "recorded_artifact:runs_c4160ae6fab779a1e77ca1a0:artifacts_5ef8ecba99ec8c205d7e5860",
+      "kind": "recorded_artifact",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "artifacts_5ef8ecba99ec8c205d7e5860"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "invocation:invocations_858e87cd0b33185f83e19b98"
+      ],
+      "from": "runs_c4160ae6fab779a1e77ca1a0",
+      "id": "recorded_artifact:runs_c4160ae6fab779a1e77ca1a0:artifacts_a6f2cce43396f6f6b8e3b780",
+      "kind": "recorded_artifact",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "artifacts_a6f2cce43396f6f6b8e3b780"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "invocation:invocations_6c72947a51527d4f6e4d18ac"
+      ],
+      "from": "runs_c4160ae6fab779a1e77ca1a0",
+      "id": "recorded_artifact:runs_c4160ae6fab779a1e77ca1a0:artifacts_adf478006491b29512f4584f",
+      "kind": "recorded_artifact",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "artifacts_adf478006491b29512f4584f"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "invocation:invocations_6c72947a51527d4f6e4d18ac"
+      ],
+      "from": "runs_c4160ae6fab779a1e77ca1a0",
+      "id": "recorded_artifact:runs_c4160ae6fab779a1e77ca1a0:artifacts_c3879bfe7aeebd804cfabaa9",
+      "kind": "recorded_artifact",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "artifacts_c3879bfe7aeebd804cfabaa9"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_07f2f7db4e9d56ae22847d4b",
+        "artifact:canvas-dist"
+      ],
+      "from": "runs_c4160ae6fab779a1e77ca1a0",
+      "id": "recorded_artifact:runs_c4160ae6fab779a1e77ca1a0:artifacts_e4a9156eafc6a5b56c7fc1da",
+      "kind": "recorded_artifact",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "artifacts_e4a9156eafc6a5b56c7fc1da"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_07f2f7db4e9d56ae22847d4b"
+      ],
+      "from": "runs_c4160ae6fab779a1e77ca1a0",
+      "id": "recorded_artifact:runs_c4160ae6fab779a1e77ca1a0:artifacts_f44bccc9638a8e41e55245f4",
+      "kind": "recorded_artifact",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "artifacts_f44bccc9638a8e41e55245f4"
     }
   ],
-  "generated_at": "2026-06-07T00:24:35.230331Z",
+  "generated_at": "2026-06-07T02:04:14.802371Z",
   "nodes": [
     {
-      "confidence": "medium",
+      "confidence": "high",
       "evidence_refs": [
-        "scenario:llm-bounded-patch"
+        "artifact:run.json"
       ],
-      "id": "runs_9bf331740a74989f379808da",
+      "id": "runs_36750ab4f943a870ac624345",
       "kind": "run",
-      "label": "llm-bounded-patch",
+      "label": "canvas-build",
       "payload": {
-        "mode": "cache-only",
-        "run_group": "latest",
-        "scenario": "llm-bounded-patch",
-        "status": "simulated_only"
+        "ended_at": "2026-06-06T23:31:48.161556Z",
+        "mode": "generic",
+        "run_group": "canvas-dev",
+        "scenario": "canvas-build",
+        "started_at": "2026-06-06T23:31:42.804274Z",
+        "status": "completed"
       },
       "redaction_state": "safe",
-      "source_kind": "simulated_v1",
-      "status": "simulated_only"
+      "source_kind": "collectable_v1",
+      "status": "completed"
     },
     {
-      "confidence": "medium",
+      "confidence": "high",
       "evidence_refs": [
-        "scenario:llm-bounded-patch",
-        "agent:demo-bounded-llm-worker",
-        "patch:sha256:856871f76606d071644921e408592cc65d4f348442e8712815b88bac7e527e98",
-        "prompt:sha256:5f787e73d6d3f8b65082f2d922e670104c580461abff1185780c76ed13a300a6",
-        "run:runs_9bf331740a74989f379808da"
+        "artifact:run.json"
       ],
-      "id": "agent:proof_blocks_41b28bb488d97ae1794cf264",
-      "kind": "agent",
-      "label": "demo-bounded-llm-worker",
+      "id": "runs_0490cf555e81990b0074ae45",
+      "kind": "run",
+      "label": "canvas-build",
       "payload": {
-        "agent_kind": "bounded_llm_v1",
-        "agent_name": "demo-bounded-llm-worker",
-        "change_class": "safe_leaf",
-        "input_signal": "redacted: one-line code task; raw prompt withheld, hash retained",
-        "model": "demo-bounded-llm",
-        "patch_sha256": "856871f76606d071644921e408592cc65d4f348442e8712815b88bac7e527e98",
-        "prompt_sha256": "5f787e73d6d3f8b65082f2d922e670104c580461abff1185780c76ed13a300a6",
-        "scenario_id": "llm-bounded-patch",
-        "status": "simulated_only"
+        "ended_at": "2026-06-06T23:32:34.323131Z",
+        "mode": "generic",
+        "run_group": "canvas-dev",
+        "scenario": "canvas-build",
+        "started_at": "2026-06-06T23:32:31.271308Z",
+        "status": "completed"
       },
       "redaction_state": "safe",
-      "source_kind": "simulated_v1",
-      "status": "simulated_only"
+      "source_kind": "collectable_v1",
+      "status": "completed"
     },
     {
-      "confidence": "medium",
+      "confidence": "high",
       "evidence_refs": [
-        "scenario:llm-bounded-patch",
-        "agent:demo-bounded-llm-worker",
-        "patch:sha256:856871f76606d071644921e408592cc65d4f348442e8712815b88bac7e527e98",
-        "prompt:sha256:5f787e73d6d3f8b65082f2d922e670104c580461abff1185780c76ed13a300a6",
-        "run:runs_9bf331740a74989f379808da"
+        "artifact:run.json"
       ],
-      "id": "changes_d16636ae11e890c114031219",
+      "id": "runs_d027f4c33561212d0573aa47",
+      "kind": "run",
+      "label": "canvas-build",
+      "payload": {
+        "ended_at": "2026-06-07T00:24:25.708717Z",
+        "mode": "generic",
+        "run_group": "canvas-dev",
+        "scenario": "canvas-build",
+        "started_at": "2026-06-07T00:24:22.960561Z",
+        "status": "completed"
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": "completed"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "artifact:run.json"
+      ],
+      "id": "runs_c4160ae6fab779a1e77ca1a0",
+      "kind": "run",
+      "label": "canvas-build",
+      "payload": {
+        "ended_at": "2026-06-07T02:04:14.740729Z",
+        "mode": "generic",
+        "run_group": "canvas-dev",
+        "scenario": "canvas-build",
+        "started_at": "2026-06-07T02:04:11.691988Z",
+        "status": "completed"
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": "completed"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_4d3e7b3a82e13bccbdd16b5e",
+        "path:apps/canvas/src/App.tsx"
+      ],
+      "id": "changes_39f2c10ff2aa411c22b5d923",
       "kind": "change",
-      "label": "tasks/priority_test.py",
+      "label": "apps/canvas/src/App.tsx",
       "payload": {
-        "after_hash": "6c456a81ba3a67cd4c3c148b0d8871318ef49bf0f55e3e42c9dbea7376590721",
-        "before_hash": "6c456a81ba3a67cd4c3c148b0d8871318ef49bf0f55e3e42c9dbea7376590721",
-        "change_kind": "safe_leaf",
-        "path": "tasks/priority_test.py",
-        "run_id": "runs_9bf331740a74989f379808da",
-        "summary": "llm-bounded-patch touched tasks/priority_test.py"
+        "after_hash": "916cca354f54c018fa7dff230d14e0856b76ba95f8496e22de5c6c0fe7bd4f09",
+        "before_hash": "916cca354f54c018fa7dff230d14e0856b76ba95f8496e22de5c6c0fe7bd4f09",
+        "change_kind": "generic_path",
+        "path": "apps/canvas/src/App.tsx",
+        "run_id": "runs_36750ab4f943a870ac624345",
+        "summary": "generic run touched apps/canvas/src/App.tsx"
       },
       "redaction_state": "safe",
-      "source_kind": "simulated_v1",
+      "source_kind": "collectable_v1",
       "status": null
     },
     {
-      "confidence": "medium",
+      "confidence": "high",
       "evidence_refs": [
-        "scenario:llm-bounded-patch",
-        "agent:demo-bounded-llm-worker",
-        "patch:sha256:856871f76606d071644921e408592cc65d4f348442e8712815b88bac7e527e98",
-        "prompt:sha256:5f787e73d6d3f8b65082f2d922e670104c580461abff1185780c76ed13a300a6",
-        "run:runs_9bf331740a74989f379808da"
+        "run:run_9fdec126c4e1d72366a0a5ca",
+        "path:apps/canvas/src/App.tsx"
       ],
-      "id": "artifacts_b611de9d50de27b5c231578d",
-      "kind": "artifact",
-      "label": "agent-provenance.json",
+      "id": "changes_74c1532966df0658343459a3",
+      "kind": "change",
+      "label": "apps/canvas/src/App.tsx",
       "payload": {
-        "artifact_key": "agent-provenance.json",
-        "artifact_path": "agent-provenance.json",
+        "after_hash": "916cca354f54c018fa7dff230d14e0856b76ba95f8496e22de5c6c0fe7bd4f09",
+        "before_hash": "916cca354f54c018fa7dff230d14e0856b76ba95f8496e22de5c6c0fe7bd4f09",
+        "change_kind": "generic_path",
+        "path": "apps/canvas/src/App.tsx",
+        "run_id": "runs_0490cf555e81990b0074ae45",
+        "summary": "generic run touched apps/canvas/src/App.tsx"
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": null
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_79565ee53498a70158fcb2a6",
+        "path:apps/canvas/src/App.tsx"
+      ],
+      "id": "changes_0d0f5b5d7064fbd20dab49ee",
+      "kind": "change",
+      "label": "apps/canvas/src/App.tsx",
+      "payload": {
+        "after_hash": "916cca354f54c018fa7dff230d14e0856b76ba95f8496e22de5c6c0fe7bd4f09",
+        "before_hash": "916cca354f54c018fa7dff230d14e0856b76ba95f8496e22de5c6c0fe7bd4f09",
+        "change_kind": "generic_path",
+        "path": "apps/canvas/src/App.tsx",
+        "run_id": "runs_d027f4c33561212d0573aa47",
+        "summary": "generic run touched apps/canvas/src/App.tsx"
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": null
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_07f2f7db4e9d56ae22847d4b",
+        "path:apps/canvas/src/App.tsx"
+      ],
+      "id": "changes_cd9ce62ef2000cf58603e35d",
+      "kind": "change",
+      "label": "apps/canvas/src/App.tsx",
+      "payload": {
+        "after_hash": "f9d48fe0e13523e08168c4edd441f4b0464e8e9f1170190b76516c46f9948f02",
+        "before_hash": "f9d48fe0e13523e08168c4edd441f4b0464e8e9f1170190b76516c46f9948f02",
+        "change_kind": "generic_path",
+        "path": "apps/canvas/src/App.tsx",
+        "run_id": "runs_c4160ae6fab779a1e77ca1a0",
+        "summary": "generic run touched apps/canvas/src/App.tsx"
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": null
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_4d3e7b3a82e13bccbdd16b5e",
+        "command:0"
+      ],
+      "id": "invocations_c97620f6d371a2ebdd1909ec",
+      "kind": "invocation",
+      "label": "npm",
+      "payload": {
+        "command": [
+          "npm",
+          "--prefix",
+          "apps/canvas",
+          "run",
+          "build"
+        ],
+        "cwd": "${HOME}/Documents/nativelink-agent-flight-recorder",
+        "ended_at": "2026-06-06T23:31:46.339023Z",
+        "exit_code": 0,
+        "invocation_kind": "npm",
+        "run_id": "runs_36750ab4f943a870ac624345",
+        "started_at": "2026-06-06T23:31:42.804585Z"
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": 0
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_4d3e7b3a82e13bccbdd16b5e",
+        "command:1"
+      ],
+      "id": "invocations_a6659a1313197c2d229d08b1",
+      "kind": "invocation",
+      "label": "uv",
+      "payload": {
+        "command": [
+          "uv",
+          "run",
+          "pytest",
+          "tests/test_generic_run.py",
+          "-q",
+          "--tb=no"
+        ],
+        "cwd": "${HOME}/Documents/nativelink-agent-flight-recorder",
+        "ended_at": "2026-06-06T23:31:48.157965Z",
+        "exit_code": 0,
+        "invocation_kind": "uv",
+        "run_id": "runs_36750ab4f943a870ac624345",
+        "started_at": "2026-06-06T23:31:46.340529Z"
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": 0
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_9fdec126c4e1d72366a0a5ca",
+        "command:0"
+      ],
+      "id": "invocations_9db16b3577fc4f051fbfa84d",
+      "kind": "invocation",
+      "label": "npm",
+      "payload": {
+        "command": [
+          "npm",
+          "--prefix",
+          "apps/canvas",
+          "run",
+          "build"
+        ],
+        "cwd": "${HOME}/Documents/nativelink-agent-flight-recorder",
+        "ended_at": "2026-06-06T23:32:33.857748Z",
+        "exit_code": 0,
+        "invocation_kind": "npm",
+        "run_id": "runs_0490cf555e81990b0074ae45",
+        "started_at": "2026-06-06T23:32:31.271708Z"
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": 0
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_9fdec126c4e1d72366a0a5ca",
+        "command:1"
+      ],
+      "id": "invocations_ea91247b2182fbd032c25404",
+      "kind": "invocation",
+      "label": "uv",
+      "payload": {
+        "command": [
+          "uv",
+          "run",
+          "pytest",
+          "tests/test_generic_run.py",
+          "-q",
+          "--tb=no"
+        ],
+        "cwd": "${HOME}/Documents/nativelink-agent-flight-recorder",
+        "ended_at": "2026-06-06T23:32:34.319306Z",
+        "exit_code": 0,
+        "invocation_kind": "uv",
+        "run_id": "runs_0490cf555e81990b0074ae45",
+        "started_at": "2026-06-06T23:32:33.858238Z"
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": 0
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_79565ee53498a70158fcb2a6",
+        "command:0"
+      ],
+      "id": "invocations_aede02831151cdc3c268a68f",
+      "kind": "invocation",
+      "label": "npm",
+      "payload": {
+        "command": [
+          "npm",
+          "--prefix",
+          "apps/canvas",
+          "run",
+          "build"
+        ],
+        "cwd": "${HOME}/Documents/nativelink-agent-flight-recorder",
+        "ended_at": "2026-06-07T00:24:25.121040Z",
+        "exit_code": 0,
+        "invocation_kind": "npm",
+        "run_id": "runs_d027f4c33561212d0573aa47",
+        "started_at": "2026-06-07T00:24:22.960978Z"
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": 0
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_79565ee53498a70158fcb2a6",
+        "command:1"
+      ],
+      "id": "invocations_b1057664006c9bbfebac3cd7",
+      "kind": "invocation",
+      "label": "uv",
+      "payload": {
+        "command": [
+          "uv",
+          "run",
+          "pytest",
+          "tests/test_generic_run.py",
+          "-q",
+          "--tb=no"
+        ],
+        "cwd": "${HOME}/Documents/nativelink-agent-flight-recorder",
+        "ended_at": "2026-06-07T00:24:25.705564Z",
+        "exit_code": 0,
+        "invocation_kind": "uv",
+        "run_id": "runs_d027f4c33561212d0573aa47",
+        "started_at": "2026-06-07T00:24:25.121366Z"
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": 0
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_07f2f7db4e9d56ae22847d4b",
+        "command:0"
+      ],
+      "id": "invocations_6c72947a51527d4f6e4d18ac",
+      "kind": "invocation",
+      "label": "npm",
+      "payload": {
+        "command": [
+          "npm",
+          "--prefix",
+          "apps/canvas",
+          "run",
+          "build"
+        ],
+        "cwd": "${HOME}/Documents/nativelink-agent-flight-recorder",
+        "ended_at": "2026-06-07T02:04:14.160753Z",
+        "exit_code": 0,
+        "invocation_kind": "npm",
+        "run_id": "runs_c4160ae6fab779a1e77ca1a0",
+        "started_at": "2026-06-07T02:04:11.692513Z"
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": 0
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_07f2f7db4e9d56ae22847d4b",
+        "command:1"
+      ],
+      "id": "invocations_858e87cd0b33185f83e19b98",
+      "kind": "invocation",
+      "label": "uv",
+      "payload": {
+        "command": [
+          "uv",
+          "run",
+          "pytest",
+          "tests/test_generic_run.py",
+          "-q",
+          "--tb=no"
+        ],
+        "cwd": "${HOME}/Documents/nativelink-agent-flight-recorder",
+        "ended_at": "2026-06-07T02:04:14.731170Z",
+        "exit_code": 0,
+        "invocation_kind": "uv",
+        "run_id": "runs_c4160ae6fab779a1e77ca1a0",
+        "started_at": "2026-06-07T02:04:14.161124Z"
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": 0
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "invocation:invocations_c97620f6d371a2ebdd1909ec"
+      ],
+      "id": "artifacts_966b8533dfccad5a24017b50",
+      "kind": "artifact",
+      "label": "npm-0.stderr.txt",
+      "payload": {
+        "artifact_key": "npm-0.stderr.txt",
+        "artifact_path": "npm-0.stderr.txt",
+        "content_type": "text/plain",
+        "manifest_path": "artifact_manifest.json",
+        "producer_command": [
+          "npm",
+          "--prefix",
+          "apps/canvas",
+          "run",
+          "build"
+        ],
+        "run_id": "runs_36750ab4f943a870ac624345",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": null
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "invocation:invocations_c97620f6d371a2ebdd1909ec"
+      ],
+      "id": "artifacts_9a345fc23d562727f6a5584f",
+      "kind": "artifact",
+      "label": "npm-0.stdout.txt",
+      "payload": {
+        "artifact_key": "npm-0.stdout.txt",
+        "artifact_path": "npm-0.stdout.txt",
+        "content_type": "text/plain",
+        "manifest_path": "artifact_manifest.json",
+        "producer_command": [
+          "npm",
+          "--prefix",
+          "apps/canvas",
+          "run",
+          "build"
+        ],
+        "run_id": "runs_36750ab4f943a870ac624345",
+        "sha256": "8f081cd3feb4b0ce8b15afd001fa2a0981f237050c79c066eacc235be9f21a63",
+        "size_bytes": 400
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": null
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "invocation:invocations_a6659a1313197c2d229d08b1"
+      ],
+      "id": "artifacts_1d886afd8f0ae5770b9bea50",
+      "kind": "artifact",
+      "label": "uv-1.stderr.txt",
+      "payload": {
+        "artifact_key": "uv-1.stderr.txt",
+        "artifact_path": "uv-1.stderr.txt",
+        "content_type": "text/plain",
+        "manifest_path": "artifact_manifest.json",
+        "producer_command": [
+          "uv",
+          "run",
+          "pytest",
+          "tests/test_generic_run.py",
+          "-q",
+          "--tb=no"
+        ],
+        "run_id": "runs_36750ab4f943a870ac624345",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": null
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_4d3e7b3a82e13bccbdd16b5e"
+      ],
+      "id": "artifacts_599e82089f94990534920740",
+      "kind": "artifact",
+      "label": "run.json",
+      "payload": {
+        "artifact_key": "run.json",
+        "artifact_path": "run.json",
         "content_type": "application/json",
         "manifest_path": "artifact_manifest.json",
         "producer_command": [
           "nlfr",
-          "simulate",
-          "--scenario",
-          "llm-bounded-patch"
+          "run",
+          "--mode",
+          "generic"
         ],
-        "run_id": "runs_9bf331740a74989f379808da",
-        "sha256": "d8ce9763fb48bda27373f69b2dfd21bfdc125c28e24f2c296c00de7501206545",
-        "size_bytes": 3595
+        "run_id": "runs_36750ab4f943a870ac624345",
+        "sha256": "e573c7a2e1fa0ce63b21c3c3c7e3015a65ea624697f0be419f6585ec6dcb1718",
+        "size_bytes": 5320
       },
       "redaction_state": "safe",
-      "source_kind": "simulated_v1",
+      "source_kind": "collectable_v1",
       "status": null
     },
     {
       "confidence": "high",
       "evidence_refs": [
-        "simulated_v1:bep.jsonl"
+        "run:run_4d3e7b3a82e13bccbdd16b5e",
+        "artifact:canvas-dist"
       ],
-      "id": "targets_aecefec8b0d2148629b024c4",
-      "kind": "target",
-      "label": "//tasks:flaky_test",
+      "id": "artifacts_68fb4c0355ee22b1794fa183",
+      "kind": "artifact",
+      "label": "outputs/canvas-dist.html",
       "payload": {
-        "label": "//tasks:flaky_test",
-        "run_id": "runs_9bf331740a74989f379808da",
-        "status": "FAILED",
-        "target_kind": "py_test rule"
+        "artifact_key": "outputs/canvas-dist.html",
+        "artifact_path": "outputs/canvas-dist.html",
+        "content_type": "application/octet-stream",
+        "manifest_path": "artifact_manifest.json",
+        "producer_command": [
+          "nlfr",
+          "run",
+          "--mode",
+          "generic"
+        ],
+        "run_id": "runs_36750ab4f943a870ac624345",
+        "sha256": "8928080087fd5a1a6e43382df5afd78f302f998315a83026ac174f7f5b3eddc8",
+        "size_bytes": 417
       },
       "redaction_state": "safe",
-      "source_kind": "simulated_v1",
-      "status": "FAILED"
-    },
-    {
-      "confidence": "high",
-      "evidence_refs": [
-        "simulated_v1:bep.jsonl"
-      ],
-      "id": "targets_c0fe8bbfbbcee268433849e3",
-      "kind": "target",
-      "label": "//tasks:priority_test",
-      "payload": {
-        "label": "//tasks:priority_test",
-        "run_id": "runs_9bf331740a74989f379808da",
-        "status": "PASSED",
-        "target_kind": "py_test rule"
-      },
-      "redaction_state": "safe",
-      "source_kind": "simulated_v1",
-      "status": "PASSED"
-    },
-    {
-      "confidence": "high",
-      "evidence_refs": [
-        "simulated_v1:bep.jsonl"
-      ],
-      "id": "actions_1649ba3bcd71a4c1bca7889c",
-      "kind": "action",
-      "label": "PythonTestSetup",
-      "payload": {
-        "action_key": "//tasks:priority_test:action:1",
-        "mnemonic": "PythonTestSetup",
-        "run_id": "runs_9bf331740a74989f379808da",
-        "status": "SUCCESS",
-        "target_id": "targets_c0fe8bbfbbcee268433849e3"
-      },
-      "redaction_state": "safe",
-      "source_kind": "simulated_v1",
-      "status": "SUCCESS"
-    },
-    {
-      "confidence": "high",
-      "evidence_refs": [
-        "simulated_v1:bep.jsonl"
-      ],
-      "id": "actions_3ff6fcddb284148d684d57c5",
-      "kind": "action",
-      "label": "BazelTest",
-      "payload": {
-        "action_key": "//tasks:flaky_test:test:run=1:shard=1:attempt=1",
-        "mnemonic": "BazelTest",
-        "run_id": "runs_9bf331740a74989f379808da",
-        "status": "FAILED",
-        "target_id": "targets_aecefec8b0d2148629b024c4"
-      },
-      "redaction_state": "safe",
-      "source_kind": "simulated_v1",
-      "status": "FAILED"
-    },
-    {
-      "confidence": "high",
-      "evidence_refs": [
-        "simulated_v1:bep.jsonl"
-      ],
-      "id": "actions_dcf05812ab20689f3108483f",
-      "kind": "action",
-      "label": "BazelTest",
-      "payload": {
-        "action_key": "//tasks:priority_test:test:run=1:shard=1:attempt=1",
-        "mnemonic": "BazelTest",
-        "run_id": "runs_9bf331740a74989f379808da",
-        "status": "PASSED",
-        "target_id": "targets_c0fe8bbfbbcee268433849e3"
-      },
-      "redaction_state": "safe",
-      "source_kind": "simulated_v1",
-      "status": "PASSED"
-    },
-    {
-      "confidence": "high",
-      "evidence_refs": [
-        "simulated_v1:execution-log.json"
-      ],
-      "id": "cache_events_7436531115a20e86a59bc00b",
-      "kind": "cache_event",
-      "label": "remote_cache_hit",
-      "payload": {
-        "digest": "sha256:1111222233334444",
-        "event_key": "//tasks:priority_test:PyTest:sha256:1111222233334444",
-        "event_kind": "remote_cache_hit",
-        "hit": 1,
-        "run_id": "runs_9bf331740a74989f379808da",
-        "target_id": "targets_c0fe8bbfbbcee268433849e3"
-      },
-      "redaction_state": "safe",
-      "source_kind": "simulated_v1",
-      "status": null
-    },
-    {
-      "confidence": "medium",
-      "evidence_refs": [
-        "simulated_v1:profile.json"
-      ],
-      "id": "cache_events_8a5988733feeee06ba389854",
-      "kind": "cache_event",
-      "label": "remote_cache_hit",
-      "payload": {
-        "digest": "sha256:1111222233334444",
-        "event_key": "profile://tasks:priority_test:PyTest:sha256:1111222233334444",
-        "event_kind": "remote_cache_hit",
-        "hit": 1,
-        "run_id": "runs_9bf331740a74989f379808da",
-        "target_id": "targets_c0fe8bbfbbcee268433849e3"
-      },
-      "redaction_state": "safe",
-      "source_kind": "derived_v1",
-      "status": null
-    },
-    {
-      "confidence": "low",
-      "evidence_refs": [
-        "simulated_v1:profile.json"
-      ],
-      "id": "cache_events_d4d32866770093896742c2ab",
-      "kind": "cache_event",
-      "label": "action_cache_observed",
-      "payload": {
-        "event_key": "profile://tasks:flaky_test:PyTest:202",
-        "event_kind": "action_cache_observed",
-        "run_id": "runs_9bf331740a74989f379808da",
-        "target_id": "targets_aecefec8b0d2148629b024c4"
-      },
-      "redaction_state": "safe",
-      "source_kind": "derived_v1",
+      "source_kind": "collectable_v1",
       "status": null
     },
     {
       "confidence": "high",
       "evidence_refs": [
-        "simulated_v1:execution-log.json"
+        "invocation:invocations_a6659a1313197c2d229d08b1"
       ],
-      "id": "cache_events_e55a33a312d157da4f58d38d",
-      "kind": "cache_event",
-      "label": "cache_miss",
+      "id": "artifacts_c7c3f67ecd42bf09b12c4331",
+      "kind": "artifact",
+      "label": "uv-1.stdout.txt",
       "payload": {
-        "digest": "sha256:aaaabbbbccccdddd",
-        "event_key": "//tasks:flaky_test:PyTest:sha256:aaaabbbbccccdddd",
-        "event_kind": "cache_miss",
-        "hit": 0,
-        "run_id": "runs_9bf331740a74989f379808da",
-        "target_id": "targets_aecefec8b0d2148629b024c4"
+        "artifact_key": "uv-1.stdout.txt",
+        "artifact_path": "uv-1.stdout.txt",
+        "content_type": "text/plain",
+        "manifest_path": "artifact_manifest.json",
+        "producer_command": [
+          "uv",
+          "run",
+          "pytest",
+          "tests/test_generic_run.py",
+          "-q",
+          "--tb=no"
+        ],
+        "run_id": "runs_36750ab4f943a870ac624345",
+        "sha256": "bc9507cf730567da3d80c9df14fc5d069992b9bda90f54ce5b21db23cc23d1b1",
+        "size_bytes": 98
       },
       "redaction_state": "safe",
-      "source_kind": "simulated_v1",
+      "source_kind": "collectable_v1",
       "status": null
     },
     {
       "confidence": "high",
       "evidence_refs": [
-        "simulated_v1:bep.jsonl"
+        "invocation:invocations_9db16b3577fc4f051fbfa84d"
       ],
-      "id": "failures_63f9ef6937b97907cc6b775d",
-      "kind": "failure",
-      "label": "target_completed",
+      "id": "artifacts_59afda906ace67b2eb5b8b03",
+      "kind": "artifact",
+      "label": "npm-0.stdout.txt",
       "payload": {
-        "failure_kind": "target_completed",
-        "message": "//tasks:flaky_test failed: expected stable priority ordering",
-        "run_id": "runs_9bf331740a74989f379808da",
-        "span": {
-          "event_index": 8,
-          "id": {
-            "targetCompleted": {
-              "configuration": "k8-fastbuild",
-              "label": "//tasks:flaky_test"
-            }
-          }
-        }
+        "artifact_key": "npm-0.stdout.txt",
+        "artifact_path": "npm-0.stdout.txt",
+        "content_type": "text/plain",
+        "manifest_path": "artifact_manifest.json",
+        "producer_command": [
+          "npm",
+          "--prefix",
+          "apps/canvas",
+          "run",
+          "build"
+        ],
+        "run_id": "runs_0490cf555e81990b0074ae45",
+        "sha256": "ed88da6baef125279f141e83b276c123d92db4987e5e16761e3156db721a5820",
+        "size_bytes": 400
       },
       "redaction_state": "safe",
-      "source_kind": "simulated_v1",
+      "source_kind": "collectable_v1",
       "status": null
     },
     {
       "confidence": "high",
       "evidence_refs": [
-        "simulated_v1:bep.jsonl"
+        "invocation:invocations_9db16b3577fc4f051fbfa84d"
       ],
-      "id": "failures_7a6c04fae39ea2dd90d15afa",
-      "kind": "failure",
-      "label": "build_finished",
+      "id": "artifacts_d7632ee20141c288fc5f151e",
+      "kind": "artifact",
+      "label": "npm-0.stderr.txt",
       "payload": {
-        "failure_kind": "build_finished",
-        "message": "Bazel finished with TESTS_FAILED (exit code 3)",
-        "run_id": "runs_9bf331740a74989f379808da",
-        "span": {
-          "event_index": 9,
-          "id": {
-            "buildFinished": {}
-          }
-        }
+        "artifact_key": "npm-0.stderr.txt",
+        "artifact_path": "npm-0.stderr.txt",
+        "content_type": "text/plain",
+        "manifest_path": "artifact_manifest.json",
+        "producer_command": [
+          "npm",
+          "--prefix",
+          "apps/canvas",
+          "run",
+          "build"
+        ],
+        "run_id": "runs_0490cf555e81990b0074ae45",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
       },
       "redaction_state": "safe",
-      "source_kind": "simulated_v1",
+      "source_kind": "collectable_v1",
+      "status": null
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "invocation:invocations_ea91247b2182fbd032c25404"
+      ],
+      "id": "artifacts_255526a763c736a9af96224f",
+      "kind": "artifact",
+      "label": "uv-1.stderr.txt",
+      "payload": {
+        "artifact_key": "uv-1.stderr.txt",
+        "artifact_path": "uv-1.stderr.txt",
+        "content_type": "text/plain",
+        "manifest_path": "artifact_manifest.json",
+        "producer_command": [
+          "uv",
+          "run",
+          "pytest",
+          "tests/test_generic_run.py",
+          "-q",
+          "--tb=no"
+        ],
+        "run_id": "runs_0490cf555e81990b0074ae45",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": null
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "invocation:invocations_ea91247b2182fbd032c25404"
+      ],
+      "id": "artifacts_338774eac1c1adc0c940ac34",
+      "kind": "artifact",
+      "label": "uv-1.stdout.txt",
+      "payload": {
+        "artifact_key": "uv-1.stdout.txt",
+        "artifact_path": "uv-1.stdout.txt",
+        "content_type": "text/plain",
+        "manifest_path": "artifact_manifest.json",
+        "producer_command": [
+          "uv",
+          "run",
+          "pytest",
+          "tests/test_generic_run.py",
+          "-q",
+          "--tb=no"
+        ],
+        "run_id": "runs_0490cf555e81990b0074ae45",
+        "sha256": "e4bc44d3c5f85cc9898efcc86c7ca16ae983811829513a75e6f3a364232aa1de",
+        "size_bytes": 98
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": null
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_9fdec126c4e1d72366a0a5ca"
+      ],
+      "id": "artifacts_b126147841d3feb1eaae2dfb",
+      "kind": "artifact",
+      "label": "run.json",
+      "payload": {
+        "artifact_key": "run.json",
+        "artifact_path": "run.json",
+        "content_type": "application/json",
+        "manifest_path": "artifact_manifest.json",
+        "producer_command": [
+          "nlfr",
+          "run",
+          "--mode",
+          "generic"
+        ],
+        "run_id": "runs_0490cf555e81990b0074ae45",
+        "sha256": "682596b2606f69c233e346ec19b73fc893209bf8a15fdcfa9a8b2428a781b17c",
+        "size_bytes": 5320
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": null
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_9fdec126c4e1d72366a0a5ca",
+        "artifact:canvas-dist"
+      ],
+      "id": "artifacts_fd6e261b1ce9d35e5acd3431",
+      "kind": "artifact",
+      "label": "outputs/canvas-dist.html",
+      "payload": {
+        "artifact_key": "outputs/canvas-dist.html",
+        "artifact_path": "outputs/canvas-dist.html",
+        "content_type": "application/octet-stream",
+        "manifest_path": "artifact_manifest.json",
+        "producer_command": [
+          "nlfr",
+          "run",
+          "--mode",
+          "generic"
+        ],
+        "run_id": "runs_0490cf555e81990b0074ae45",
+        "sha256": "8928080087fd5a1a6e43382df5afd78f302f998315a83026ac174f7f5b3eddc8",
+        "size_bytes": 417
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": null
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "invocation:invocations_b1057664006c9bbfebac3cd7"
+      ],
+      "id": "artifacts_01bb8aa4ff4dcc1e362fab1e",
+      "kind": "artifact",
+      "label": "uv-1.stdout.txt",
+      "payload": {
+        "artifact_key": "uv-1.stdout.txt",
+        "artifact_path": "uv-1.stdout.txt",
+        "content_type": "text/plain",
+        "manifest_path": "artifact_manifest.json",
+        "producer_command": [
+          "uv",
+          "run",
+          "pytest",
+          "tests/test_generic_run.py",
+          "-q",
+          "--tb=no"
+        ],
+        "run_id": "runs_d027f4c33561212d0573aa47",
+        "sha256": "af0016b6a7804ed794847e0b6ff79861c3d4b7aadb21b46c39218574de15bb84",
+        "size_bytes": 98
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": null
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "invocation:invocations_aede02831151cdc3c268a68f"
+      ],
+      "id": "artifacts_65eb9ca86f920ec5d38d6fac",
+      "kind": "artifact",
+      "label": "npm-0.stderr.txt",
+      "payload": {
+        "artifact_key": "npm-0.stderr.txt",
+        "artifact_path": "npm-0.stderr.txt",
+        "content_type": "text/plain",
+        "manifest_path": "artifact_manifest.json",
+        "producer_command": [
+          "npm",
+          "--prefix",
+          "apps/canvas",
+          "run",
+          "build"
+        ],
+        "run_id": "runs_d027f4c33561212d0573aa47",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": null
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "invocation:invocations_aede02831151cdc3c268a68f"
+      ],
+      "id": "artifacts_7a50720c83ed54da6ad862ff",
+      "kind": "artifact",
+      "label": "npm-0.stdout.txt",
+      "payload": {
+        "artifact_key": "npm-0.stdout.txt",
+        "artifact_path": "npm-0.stdout.txt",
+        "content_type": "text/plain",
+        "manifest_path": "artifact_manifest.json",
+        "producer_command": [
+          "npm",
+          "--prefix",
+          "apps/canvas",
+          "run",
+          "build"
+        ],
+        "run_id": "runs_d027f4c33561212d0573aa47",
+        "sha256": "23dd27ec8d98b95c64fd694aae385ad03b93540f33a589f9c98ab14cef04213a",
+        "size_bytes": 400
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": null
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "invocation:invocations_b1057664006c9bbfebac3cd7"
+      ],
+      "id": "artifacts_98b9b8e2538438fbe29ec8a4",
+      "kind": "artifact",
+      "label": "uv-1.stderr.txt",
+      "payload": {
+        "artifact_key": "uv-1.stderr.txt",
+        "artifact_path": "uv-1.stderr.txt",
+        "content_type": "text/plain",
+        "manifest_path": "artifact_manifest.json",
+        "producer_command": [
+          "uv",
+          "run",
+          "pytest",
+          "tests/test_generic_run.py",
+          "-q",
+          "--tb=no"
+        ],
+        "run_id": "runs_d027f4c33561212d0573aa47",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": null
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_79565ee53498a70158fcb2a6"
+      ],
+      "id": "artifacts_4b0ca7d120ad44eb5aa85030",
+      "kind": "artifact",
+      "label": "run.json",
+      "payload": {
+        "artifact_key": "run.json",
+        "artifact_path": "run.json",
+        "content_type": "application/json",
+        "manifest_path": "artifact_manifest.json",
+        "producer_command": [
+          "nlfr",
+          "run",
+          "--mode",
+          "generic"
+        ],
+        "run_id": "runs_d027f4c33561212d0573aa47",
+        "sha256": "68b624fb45a157b780c0e90538cc94be4c08699f05a2624249dc0926d4d9149c",
+        "size_bytes": 5320
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": null
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_79565ee53498a70158fcb2a6",
+        "artifact:canvas-dist"
+      ],
+      "id": "artifacts_6ee6244b19fc7c568ff125fc",
+      "kind": "artifact",
+      "label": "outputs/canvas-dist.html",
+      "payload": {
+        "artifact_key": "outputs/canvas-dist.html",
+        "artifact_path": "outputs/canvas-dist.html",
+        "content_type": "application/octet-stream",
+        "manifest_path": "artifact_manifest.json",
+        "producer_command": [
+          "nlfr",
+          "run",
+          "--mode",
+          "generic"
+        ],
+        "run_id": "runs_d027f4c33561212d0573aa47",
+        "sha256": "8928080087fd5a1a6e43382df5afd78f302f998315a83026ac174f7f5b3eddc8",
+        "size_bytes": 417
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": null
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "invocation:invocations_858e87cd0b33185f83e19b98"
+      ],
+      "id": "artifacts_5ef8ecba99ec8c205d7e5860",
+      "kind": "artifact",
+      "label": "uv-1.stdout.txt",
+      "payload": {
+        "artifact_key": "uv-1.stdout.txt",
+        "artifact_path": "uv-1.stdout.txt",
+        "content_type": "text/plain",
+        "manifest_path": "artifact_manifest.json",
+        "producer_command": [
+          "uv",
+          "run",
+          "pytest",
+          "tests/test_generic_run.py",
+          "-q",
+          "--tb=no"
+        ],
+        "run_id": "runs_c4160ae6fab779a1e77ca1a0",
+        "sha256": "497a48836ebe8250efd6a2be95e6a182ee7675b4430e9b23644291fbc0f99632",
+        "size_bytes": 98
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": null
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "invocation:invocations_858e87cd0b33185f83e19b98"
+      ],
+      "id": "artifacts_a6f2cce43396f6f6b8e3b780",
+      "kind": "artifact",
+      "label": "uv-1.stderr.txt",
+      "payload": {
+        "artifact_key": "uv-1.stderr.txt",
+        "artifact_path": "uv-1.stderr.txt",
+        "content_type": "text/plain",
+        "manifest_path": "artifact_manifest.json",
+        "producer_command": [
+          "uv",
+          "run",
+          "pytest",
+          "tests/test_generic_run.py",
+          "-q",
+          "--tb=no"
+        ],
+        "run_id": "runs_c4160ae6fab779a1e77ca1a0",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": null
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "invocation:invocations_6c72947a51527d4f6e4d18ac"
+      ],
+      "id": "artifacts_adf478006491b29512f4584f",
+      "kind": "artifact",
+      "label": "npm-0.stdout.txt",
+      "payload": {
+        "artifact_key": "npm-0.stdout.txt",
+        "artifact_path": "npm-0.stdout.txt",
+        "content_type": "text/plain",
+        "manifest_path": "artifact_manifest.json",
+        "producer_command": [
+          "npm",
+          "--prefix",
+          "apps/canvas",
+          "run",
+          "build"
+        ],
+        "run_id": "runs_c4160ae6fab779a1e77ca1a0",
+        "sha256": "9c947890b147c1817d840b9e1e3b04b1eadc75c4568567f49c83e46bb6b9a27e",
+        "size_bytes": 400
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": null
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "invocation:invocations_6c72947a51527d4f6e4d18ac"
+      ],
+      "id": "artifacts_c3879bfe7aeebd804cfabaa9",
+      "kind": "artifact",
+      "label": "npm-0.stderr.txt",
+      "payload": {
+        "artifact_key": "npm-0.stderr.txt",
+        "artifact_path": "npm-0.stderr.txt",
+        "content_type": "text/plain",
+        "manifest_path": "artifact_manifest.json",
+        "producer_command": [
+          "npm",
+          "--prefix",
+          "apps/canvas",
+          "run",
+          "build"
+        ],
+        "run_id": "runs_c4160ae6fab779a1e77ca1a0",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": null
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_07f2f7db4e9d56ae22847d4b",
+        "artifact:canvas-dist"
+      ],
+      "id": "artifacts_e4a9156eafc6a5b56c7fc1da",
+      "kind": "artifact",
+      "label": "outputs/canvas-dist.html",
+      "payload": {
+        "artifact_key": "outputs/canvas-dist.html",
+        "artifact_path": "outputs/canvas-dist.html",
+        "content_type": "application/octet-stream",
+        "manifest_path": "artifact_manifest.json",
+        "producer_command": [
+          "nlfr",
+          "run",
+          "--mode",
+          "generic"
+        ],
+        "run_id": "runs_c4160ae6fab779a1e77ca1a0",
+        "sha256": "bf288b5d0569877845d4e44e56ff8c53e879eec66f972a55ae726c448d86542b",
+        "size_bytes": 417
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": null
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_07f2f7db4e9d56ae22847d4b"
+      ],
+      "id": "artifacts_f44bccc9638a8e41e55245f4",
+      "kind": "artifact",
+      "label": "run.json",
+      "payload": {
+        "artifact_key": "run.json",
+        "artifact_path": "run.json",
+        "content_type": "application/json",
+        "manifest_path": "artifact_manifest.json",
+        "producer_command": [
+          "nlfr",
+          "run",
+          "--mode",
+          "generic"
+        ],
+        "run_id": "runs_c4160ae6fab779a1e77ca1a0",
+        "sha256": "b12788d35058dc09ad8be4acf90e6af6ecf8759797700e2642c73ee4285b523a",
+        "size_bytes": 5320
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
       "status": null
     }
   ],
   "projection_kind": "action_graph",
-  "run_group": "latest",
+  "run_group": "canvas-dev",
   "schema_version": 1,
   "summary": {
-    "agents": 1,
-    "cache_events": 4,
-    "changes": 1,
-    "edges": 14,
-    "failures": 2,
-    "invocation_statuses": {},
-    "nodes": 15,
-    "runs": 1,
-    "target_statuses": {
-      "FAILED": 1,
-      "PASSED": 1
-    }
+    "agents": 0,
+    "cache_events": 0,
+    "changes": 4,
+    "edges": 36,
+    "failures": 0,
+    "invocation_statuses": {
+      "unknown": 8
+    },
+    "nodes": 40,
+    "runs": 4,
+    "target_statuses": {}
   }
 }

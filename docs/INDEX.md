@@ -31,6 +31,7 @@ architecture, adoption paths, proof artifacts, and orchestration mirrors.
   reproduction.
 - [Media capture](MEDIA_CAPTURE.md) — hero GIF capture scripts, truth-label
   visibility checks, and regeneration commands.
+- [Demo script](DEMO_SCRIPT.md) — Tier 1/2/3 rehearsal paths (Tier 2 for NativeLink team)
 - [Usefulness roadmap](USEFULNESS_ROADMAP.md) — what the MVP does today, what
   makes it useful, and what to build next.
 - Root [README](../README.md) — product framing, quick start, and release
