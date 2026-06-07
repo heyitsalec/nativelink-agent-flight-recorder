@@ -1,0 +1,345 @@
+{
+  "schema_version": "nlfr.view-spec.v1",
+  "view_id": "tier1-demo",
+  "title": "Tier 1 Agent Vision Demo",
+  "description": "Tier 1 demo view: canvas-dev projections with compare lens (derived_v1). Narrate collectable_v1 agent acts vs simulated_v1 agent-loop.",
+  "generated_at": "2026-06-06T18:00:00.000Z",
+  "run_group": "canvas-dev",
+  "layout": {
+    "kind": "grid_shell_v1",
+    "columns": "minmax(0,1fr) 440px",
+    "rows": "auto auto minmax(0,1fr) auto",
+    "regions": {
+      "notice": {
+        "grid_area": "notice",
+        "slot": "banner"
+      },
+      "header": {
+        "grid_area": "header",
+        "slot": "topbar"
+      },
+      "primary": {
+        "grid_area": "primary",
+        "slot": "canvas"
+      },
+      "rail": {
+        "grid_area": "rail",
+        "slot": "inspector",
+        "width_px": 440
+      },
+      "operator": {
+        "grid_area": "operator",
+        "slot": "command_bar"
+      }
+    },
+    "responsive": {
+      "breakpoint_px": 720,
+      "collapse_rail": "bottom_sheet"
+    }
+  },
+  "components": [
+    {
+      "instance_id": "notice",
+      "component_kind": "projection_notice",
+      "region": "notice",
+      "projection_binding": "binding.action_graph",
+      "props": {
+        "tones": "fallback,collectable,simulated,mixed"
+      },
+      "data_testid": "projection-notice"
+    },
+    {
+      "instance_id": "topbar",
+      "component_kind": "topbar_summary",
+      "region": "header",
+      "projection_binding": "binding.action_graph",
+      "props": {
+        "show_remote_label": true
+      },
+      "data_testid": "topbar-summary"
+    },
+    {
+      "instance_id": "modes",
+      "component_kind": "mode_rail",
+      "region": "header",
+      "props": {
+        "modes": "graph,runway,proof,remote,compare"
+      },
+      "data_testid": "canvas-mode-rail"
+    },
+    {
+      "instance_id": "zoom",
+      "component_kind": "zoom_controls",
+      "region": "header",
+      "props": {
+        "target_instance_id": "graph-main",
+        "scale_extent_min": 0.55,
+        "scale_extent_max": 2.35,
+        "always_visible": true
+      },
+      "visible_when": {
+        "prop_truthy": "zoom_controls"
+      },
+      "data_testid": "zoom-controls"
+    },
+    {
+      "instance_id": "graph-main",
+      "component_kind": "action_graph_canvas",
+      "region": "primary",
+      "projection_binding": "binding.action_graph",
+      "props": {
+        "show_truth_legend": true,
+        "zoom_controls": true,
+        "highlight_focus": "{focus}"
+      },
+      "data_testid": "action-graph-svg"
+    },
+    {
+      "instance_id": "legend",
+      "component_kind": "truth_legend",
+      "region": "primary",
+      "props": {
+        "items": "collectable_v1,derived_v1,simulated_v1,future"
+      },
+      "visible_when": {
+        "prop_truthy": "show_truth_legend"
+      },
+      "data_testid": "truth-legend"
+    },
+    {
+      "instance_id": "runway-overlay",
+      "component_kind": "validation_runway",
+      "region": "primary",
+      "projection_binding": "binding.action_graph",
+      "props": {
+        "lane_order": "run,invocation,target,action,remote_execution_config,worker_readiness,cache_event,failure,artifact"
+      },
+      "visible_when": {
+        "mode": [
+          "runway"
+        ]
+      },
+      "data_testid": "validation-runway"
+    },
+    {
+      "instance_id": "proof-constellation",
+      "component_kind": "proof_constellation",
+      "region": "primary",
+      "projection_binding": "binding.proof_packet",
+      "props": {
+        "scope_block_id": "scope"
+      },
+      "visible_when": {
+        "mode": [
+          "proof"
+        ]
+      },
+      "data_testid": "proof-constellation"
+    },
+    {
+      "instance_id": "inspector-selected-node",
+      "component_kind": "evidence_inspector",
+      "region": "rail",
+      "projection_binding": "binding.action_graph",
+      "props": {
+        "close_on_mode_change": true
+      },
+      "visible_when": {
+        "mode": [
+          "graph",
+          "runway"
+        ],
+        "mode_not": [
+          "proof",
+          "remote",
+          "compare"
+        ],
+        "selected_node": true
+      },
+      "data_testid": "evidence-inspector"
+    },
+    {
+      "instance_id": "proof-drawer",
+      "component_kind": "proof_drawer",
+      "region": "rail",
+      "projection_binding": "binding.proof_packet",
+      "props": {
+        "render_blocks_as": "proof_block_card"
+      },
+      "visible_when": {
+        "mode": [
+          "proof"
+        ]
+      },
+      "data_testid": "proof-drawer"
+    },
+    {
+      "instance_id": "proof-block-scope",
+      "component_kind": "proof_block_card",
+      "region": "rail",
+      "projection_binding": "binding.proof_packet",
+      "props": {
+        "block_id": "scope"
+      },
+      "visible_when": {
+        "mode": [
+          "proof"
+        ]
+      },
+      "data_testid": "proof-block-scope"
+    },
+    {
+      "instance_id": "remote-lens",
+      "component_kind": "remote_boundary_lens",
+      "region": "rail",
+      "projection_binding": {
+        "kind": "join_v1",
+        "sources": [
+          "binding.action_graph",
+          "binding.proof_packet"
+        ],
+        "join_fn": "remote_lens_model",
+        "source_kind": "derived_v1",
+        "confidence": "medium",
+        "evidence_refs": [
+          "join:remote_lens_model"
+        ],
+        "redaction_state": "safe"
+      },
+      "props": {
+        "remote_block_id": "remote_execution",
+        "worker_block_title": "Worker Readiness Boundary"
+      },
+      "visible_when": {
+        "mode": [
+          "remote"
+        ]
+      },
+      "data_testid": "remote-execution-lens"
+    },
+    {
+      "instance_id": "compare-lens",
+      "component_kind": "compare_lens",
+      "region": "rail",
+      "projection_binding": "binding.compare",
+      "props": {
+        "empty_state_path_hint": "/projections/compare-projection.json"
+      },
+      "visible_when": {
+        "mode": [
+          "compare"
+        ],
+        "binding_missing_ok": "binding.compare"
+      },
+      "data_testid": "compare-lens"
+    },
+    {
+      "instance_id": "compare-dimension-agent",
+      "component_kind": "compare_dimension_card",
+      "region": "rail",
+      "projection_binding": "binding.compare",
+      "props": {
+        "dimension_id": "agent_provenance"
+      },
+      "visible_when": {
+        "mode": [
+          "compare"
+        ],
+        "binding_present": "binding.compare"
+      },
+      "data_testid": "compare-dimension-agent-provenance"
+    },
+    {
+      "instance_id": "operator",
+      "component_kind": "operator_command_bar",
+      "region": "operator",
+      "props": {
+        "placeholder": "focus cache misses",
+        "commands": "cache,fail,proof,remote,agent,compare,runway,reset"
+      },
+      "data_testid": "operator-chat"
+    }
+  ],
+  "bindings": {
+    "binding.action_graph": {
+      "projection_kind": "action_graph",
+      "path": "/projections/action-graph.json",
+      "required": true,
+      "fallback": "fixture:sampleProjection",
+      "refresh": "on_run_group_change",
+      "notes": "Primary action graph projection; drives graph canvas, topbar, and graph-derived runway."
+    },
+    "binding.proof_packet": {
+      "projection_kind": "proof_packet",
+      "path": "/projections/proof.json",
+      "required": true,
+      "fallback": "fixture:sampleProofPacket",
+      "refresh": "on_run_group_change",
+      "notes": "Proof packet for proof drawer, constellation, and remote lens join."
+    },
+    "binding.compare": {
+      "projection_kind": "compare",
+      "path": "/projections/compare-projection.json",
+      "required": false,
+      "fallback": "none",
+      "notes": "Optional compare projection; compare lens shows honest empty state when absent."
+    }
+  },
+  "modes": [
+    {
+      "mode_id": "compare",
+      "label": "Compare Runs",
+      "icon": "git-compare",
+      "primary_component": "graph-main",
+      "rail_component": "compare-lens",
+      "default_focus": "derived",
+      "requires_binding": "binding.compare",
+      "data_testid": "canvas-mode-compare"
+    },
+    {
+      "mode_id": "graph",
+      "label": "Action Graph",
+      "icon": "git-branch",
+      "primary_component": "graph-main",
+      "rail_component": "inspector-selected-node",
+      "default_focus": "all",
+      "data_testid": "canvas-mode-graph"
+    },
+    {
+      "mode_id": "runway",
+      "label": "Validation Runway",
+      "icon": "route",
+      "primary_component": "graph-main",
+      "rail_component": "inspector-selected-node",
+      "default_focus": "all",
+      "data_testid": "canvas-mode-runway"
+    },
+    {
+      "mode_id": "proof",
+      "label": "Proof Packet",
+      "icon": "file-check-2",
+      "primary_component": "graph-main",
+      "rail_component": "proof-drawer",
+      "default_focus": "all",
+      "requires_binding": "binding.proof_packet",
+      "data_testid": "canvas-mode-proof"
+    },
+    {
+      "mode_id": "remote",
+      "label": "Remote Boundary",
+      "icon": "network",
+      "primary_component": "graph-main",
+      "rail_component": "remote-lens",
+      "default_focus": "remote",
+      "requires_binding": "binding.proof_packet",
+      "data_testid": "canvas-mode-remote"
+    }
+  ],
+  "source_kind": "derived_v1",
+  "confidence": "medium",
+  "evidence_refs": [
+    "view-spec:tier1-demo",
+    "compare:canvas-dev-vs-agent-bugfix-1"
+  ],
+  "redaction_state": "safe"
+}

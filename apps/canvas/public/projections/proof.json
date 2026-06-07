@@ -26,12 +26,14 @@
         "command:1",
         "run:run_9fdec126c4e1d72366a0a5ca",
         "run:run_79565ee53498a70158fcb2a6",
-        "run:run_07f2f7db4e9d56ae22847d4b"
+        "run:run_07f2f7db4e9d56ae22847d4b",
+        "run:run_378a464862dd903287231693",
+        "run:run_5c9b5472e287aa101be5fb2f"
       ],
       "id": "invocations",
       "kind": "derived_summary",
       "metrics": {
-        "unknown": 8
+        "unknown": 12
       },
       "redaction_state": "safe",
       "source_kind": "collectable_v1",
@@ -65,7 +67,7 @@
       "id": "cache_economics",
       "kind": "derived_summary",
       "metrics": {
-        "legs": 4
+        "legs": 6
       },
       "payload": {
         "comparison": null,
@@ -110,6 +112,28 @@
             "misses": 0,
             "mode": "generic",
             "run_id": "runs_c4160ae6fab779a1e77ca1a0",
+            "scenario": "canvas-build",
+            "status": "completed",
+            "unknown": 0
+          },
+          {
+            "duration_seconds": 2.880745,
+            "hit_rate": null,
+            "hits": 0,
+            "misses": 0,
+            "mode": "generic",
+            "run_id": "runs_39e508a28a54e483ec95ae56",
+            "scenario": "canvas-build",
+            "status": "completed",
+            "unknown": 0
+          },
+          {
+            "duration_seconds": 5.62588,
+            "hit_rate": null,
+            "hits": 0,
+            "misses": 0,
+            "mode": "generic",
+            "run_id": "runs_dc11c7d27472a3f63e0a486c",
             "scenario": "canvas-build",
             "status": "completed",
             "unknown": 0
@@ -185,12 +209,18 @@
         "run:run_79565ee53498a70158fcb2a6",
         "invocation:invocations_858e87cd0b33185f83e19b98",
         "invocation:invocations_6c72947a51527d4f6e4d18ac",
-        "run:run_07f2f7db4e9d56ae22847d4b"
+        "run:run_07f2f7db4e9d56ae22847d4b",
+        "invocation:invocations_3fe794440108b4b2e087a046",
+        "invocation:invocations_413efdd196edc6226618d1b2",
+        "run:run_378a464862dd903287231693",
+        "invocation:invocations_5663b2c212ac33d2b88932fd",
+        "invocation:invocations_ad1b6656674bc166bfbfc033",
+        "run:run_5c9b5472e287aa101be5fb2f"
       ],
       "id": "artifacts",
       "kind": "derived_summary",
       "metrics": {
-        "artifacts": 24
+        "artifacts": 36
       },
       "redaction_state": "safe",
       "source_kind": "collectable_v1",
@@ -198,16 +228,16 @@
       "title": "Artifact Chain"
     }
   ],
-  "generated_at": "2026-06-07T02:04:14.919869Z",
+  "generated_at": "2026-06-07T03:55:07.777561Z",
   "projection_kind": "proof_packet",
   "run_group": "canvas-dev",
   "schema_version": 1,
   "summary": {
     "actions": 0,
-    "artifacts": 24,
+    "artifacts": 36,
     "cache_events": 0,
     "failures": 0,
-    "runs": 4,
+    "runs": 6,
     "targets": 0
   }
 }

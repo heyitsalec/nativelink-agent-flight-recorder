@@ -1,17 +1,27 @@
+import { useState } from "react";
 import { MessageCircle, Search } from "lucide-react";
+import { ComposerDrawer } from "./ComposerDrawer";
 import type { ComponentInstance } from "../view/types";
 import { useViewContext } from "../view/ViewContext";
 import { useOptionalZoomControllerRef } from "./shared/ZoomContext";
 import { stringProp } from "./shared/props";
 
 export function OperatorCommandBarPanel(instance: ComponentInstance) {
-  const { graph, bindings, route, routeActions } = useViewContext();
+  const { graph, bindings, route, routeActions, spec } = useViewContext();
   const zoomRef = useOptionalZoomControllerRef();
   const placeholder = stringProp(instance.props, "placeholder", "focus cache misses");
+  const [composerOpen, setComposerOpen] = useState(false);
 
   function runOperatorCommand() {
     const value = route.command.trim().toLowerCase();
     if (!value) return;
+
+    if (value.includes("composer") || value.includes("layout")) {
+      setComposerOpen(true);
+      routeActions.setOperatorNote("View composer open — export layout JSON only; no collectable claims.");
+      routeActions.setCommand("");
+      return;
+    }
 
     if (value.includes("cache")) {
       routeActions.setFocus("cache");
@@ -63,6 +73,7 @@ export function OperatorCommandBarPanel(instance: ComponentInstance) {
 
   return (
     <div className="operator">
+      <ComposerDrawer open={composerOpen} onClose={() => setComposerOpen(false)} initialSpec={spec} />
       <MessageCircle size={18} />
       <div className="operator-copy">
         <span>{route.operatorNote}</span>

@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-06  
 **Broker:** parent  
-**Status:** DONE
+**Status:** DONE (wave 5 close-out 2026-06-06)
 
 ## North star delivered
 
@@ -35,8 +35,8 @@
 | coord-t3-research | T3-R | DONE |
 | coord-t3-design | T3-D | DONE |
 | coord-t3-implement | T3-I1–I4 | DONE (composer wave 4) |
-| coord-t1-integrate | T1-INTEGRATE | partial — compare triple live; DEMO_SCRIPT tier1 hook below |
-| coord-t3-dogfood | T3-INTEGRATE | partial — canvas-dev + view-spec dogfood via refactor |
+| coord-t1-integrate | T1-INTEGRATE | DONE — promote-tier1-compare, tier1-demo view, act 3 record |
+| coord-t3-dogfood | T3-INTEGRATE | DONE — record-canvas-build refresh + wave-5 provenance |
 
 ## Operator quick path
 

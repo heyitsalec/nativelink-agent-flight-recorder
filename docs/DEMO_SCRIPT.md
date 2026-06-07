@@ -129,13 +129,15 @@ NLFR_SKIP_BAZEL=1 ./scripts/tier1-agent-demo.sh --act 2
 
 # Act 3 — three-way compare narrative (derived_v1)
 ./scripts/compare-agent-runs.sh
+./scripts/promote-tier1-compare.sh
 ```
 
 **Say aloud:** Act 1+2 summaries are **`collectable_v1`** (`agent-bugfix-summary.json`,
 `agent-feature-summary.json`). Compare lens is **`derived_v1`** — no worker correlation.
 Contrast with `agent-loop-summary.json` where the agent leg is **`simulated_v1`**.
 
-Canvas: view-spec substrate — `?view=graph-only` or `?view=proof-review` on preview.
+Canvas: `npm --prefix apps/canvas run preview` — `?view=tier1-demo` (Compare lens) or `?view=graph-only`.
+Operator: type `composer` for view-spec export drawer.
 
 ---
 

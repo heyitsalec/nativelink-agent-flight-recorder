@@ -22,6 +22,7 @@ import { useViewContext } from "../view/ViewContext";
 import { IconButton } from "./shared/IconButton";
 import { boolProp, parseListProp, stringProp } from "./shared/props";
 import { useOptionalZoomControllerRef } from "./shared/ZoomContext";
+import { ViewTemplateSelector } from "./shared/ViewTemplateSelector";
 
 const MODE_ICONS: Record<ViewModeId, React.ReactNode> = {
   graph: <GitBranch size={18} />,
@@ -59,6 +60,7 @@ export function TopbarSummaryPanel(instance: ComponentInstance) {
         <Network size={18} />
         <span>NativeLink Agent Flight Recorder</span>
       </div>
+      <ViewTemplateSelector />
       <div className="run-strip" aria-label="projection summary">
         <span>{String(projection.summary.runs ?? 0)} run</span>
         <span>{String(projection.summary.nodes ?? projection.nodes.length)} nodes</span>
