@@ -1,0 +1,21 @@
+{
+  "status": "environment_blocker",
+  "reason": "LRE config not present at demo/nativelink/lre.json5 — NLFR demo kit stops at local-exec smoke (see scripts/local-exec-proof.sh)",
+  "next_step": "add TraceMachina LRE json5 + Nix toolchain wiring per demo/nativelink/README.md Future full-LRE section, then re-run lre-proof.sh",
+  "source_kind": "collectable_v1",
+  "confidence": "high",
+  "redaction_state": "safe",
+  "evidence_refs": ["script:lre-proof.sh", "docs/dags/lre-proof.md"],
+  "claim_boundary": {
+    "supported": [
+      "cache-only proof",
+      "local-exec remote_executor smoke",
+      "two-worker endpoints ready"
+    ],
+    "unsupported_until_lre_config": [
+      "hermetic Nix toolchain parity across local and remote",
+      "LRE cache hit rates across repos",
+      "fleet scheduler dashboards"
+    ]
+  }
+}

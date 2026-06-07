@@ -3,7 +3,7 @@
 | id | type | scope | status |
 |----|------|-------|--------|
 | parent-broker | parent | tier1-aligned media | DONE |
-| doc-a-tier1-capture | verify | Re-run capture with view-spec + compare lens | pending host |
+| doc-a-tier1-capture | verify | Re-run capture with view-spec + compare lens | DONE |
 
 Wave 1 landed heroes (`docs/media/*.gif`). Wave 2: re-capture after tier1 canvas (`?view=tier1-demo`, Compare lens populated).
 
