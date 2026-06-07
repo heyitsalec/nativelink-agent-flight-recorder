@@ -1,9 +1,22 @@
 # NLFR DAG Mirrors
 
+## Active — Doc capture wave 2 (PER-1071)
+
+Tier1 hero GIF refresh: [nlfr-doc-capture-wave2.md](nlfr-doc-capture-wave2.md)  
+Handoffs: `docs/sessions/handoffs/nlfr-doc-capture/wave-2/`
+
+## Active — CI Bazel tier1
+
+[ci-bazel-tier1.md](ci-bazel-tier1.md) · Handoffs: `docs/sessions/handoffs/ci-bazel-tier1/`
+
+## Active — LRE proof (blocker-gated)
+
+[lre-proof.md](lre-proof.md) · Handoffs: `docs/sessions/handoffs/lre-proof/`  
+Records honest `environment-blocker.json` until `demo/nativelink/lre.json5` exists.
+
 ## Future — execution ladder (blocker-gated)
 
-LRE proof, Bazel tier1 CI, fleet dashboards: [future-execution-ladder.md](future-execution-ladder.md)  
-**Broker when unblocked** — not active implement DAGs.
+Fleet dashboards: [future-execution-ladder.md](future-execution-ladder.md) — research only, no UI DAG.
 
 ## Active — Tier 1 Agent Vision (PER-TIER1-AGENT)
 

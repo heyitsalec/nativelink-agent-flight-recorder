@@ -41,15 +41,13 @@ Shared helpers live in `apps/canvas/scripts/lib/gif-capture.mjs`:
 # 1. Ensure projections (once per host refresh)
 ./scripts/record-canvas-build.sh
 
-# 2. Compare export if compare lens should appear in tour
-PYTHONPATH=src uv run python -m nlfr compare export \
-  --left-db data/record-proof/nlfr.sqlite --left record-proof \
-  --right-db data/canvas-dev/nlfr.sqlite --right canvas-dev \
-  --output apps/canvas/public/projections/compare-projection.json
+# 2. Tier1 compare lens (wave 2 default)
+./scripts/compare-agent-runs.sh
+./scripts/promote-tier1-compare.sh
 
-# 3. Build + capture both hero GIFs
+# 3. Build + capture both hero GIFs (tier1-demo view)
 npm --prefix apps/canvas run build
-npm --prefix apps/canvas run capture:heroes
+CANVAS_URL='http://127.0.0.1:5174/?view=tier1-demo' npm --prefix apps/canvas run capture:heroes
 ```
 
 The tour script auto-starts preview on `http://127.0.0.1:5174/` unless it is already running. To manage preview yourself:

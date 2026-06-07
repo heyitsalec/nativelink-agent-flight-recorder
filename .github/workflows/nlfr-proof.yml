@@ -93,6 +93,64 @@ jobs:
             data/agent-loop-proof/environment-blocker.json
           if-no-files-found: warn
 
+  tier1-bazel:
+    name: Tier1 Bazel validation (Nix)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: DeterminateSystems/nix-installer-action@main
+
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Tier1 bugfix + feature bazel tests
+        run: |
+          nix develop --command bash -lc '
+            set -euo pipefail
+            uv sync
+            ./scripts/tier1-bazel-ci-proof.sh
+          '
+
+      - name: Upload tier1-bazel artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tier1-bazel-ci
+          path: |
+            data/tier1-bazel-ci/summary.json
+            data/tier1-bazel-ci/environment-blocker.json
+          if-no-files-found: warn
+
+  lre-proof-probe:
+    name: LRE proof probe (honest blocker)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: DeterminateSystems/nix-installer-action@main
+
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: LRE probe records blocker until lre.json5 exists
+        run: |
+          nix develop --command bash -lc '
+            set -euo pipefail
+            uv sync
+            ./scripts/lre-proof.sh || test -f data/lre-proof/environment-blocker.json
+          '
+
+      - name: Upload LRE probe artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lre-proof-probe
+          path: |
+            data/lre-proof/probe.json
+            data/lre-proof/environment-blocker.json
+          if-no-files-found: warn
+
   verify-demo-fixture:
     name: Fixture demo path
     runs-on: ubuntu-latest

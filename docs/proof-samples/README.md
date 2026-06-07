@@ -16,6 +16,7 @@ raw prompts, logs, environment variables, or credentials are included.
 | `agent-loop-summary.json` | `scripts/agent-loop-proof.sh` | mixed: `collectable_v1` validation/cache; `simulated_v1` agent/change | Deterministic bounded-agent patch validates through `agent → change → run → target → action → cache_event` (`chain_complete=true`). Carries a `model` label and `prompt_sha256` only — never the raw prompt; no live LLM call. |
 | `agent-bugfix-summary.json` | `scripts/tier1-agent-demo.sh --act 1` | `collectable_v1` | Tier 1 Act 1 live `cursor_adapter_v1` bugfix record (`agent-bugfix-1`). Validation via pytest fallback when Bazel skipped. |
 | `agent-feature-summary.json` | `scripts/tier1-agent-demo.sh --act 2` | `collectable_v1` | Tier 1 Act 2 feature slice (`agent-feature-compare`) with shared-module policy retune. |
+| `lre-proof-blocker-sample.json` | `scripts/lre-proof.sh` | `collectable_v1` | Honest blocker until `demo/nativelink/lre.json5` exists; documents claim ceiling vs fleet dashboards. |
 
 To regenerate the originals (under ignored `data/`), run the scripts above
 inside `nix develop`. See [`../DEV_ENVIRONMENT.md`](../DEV_ENVIRONMENT.md).
