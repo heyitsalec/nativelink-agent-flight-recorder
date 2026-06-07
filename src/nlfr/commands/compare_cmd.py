@@ -7,13 +7,40 @@ import json
 import sys
 
 from nlfr.db import connect, initialize
-from nlfr.projectors.common import write_or_print
-from nlfr.projectors.compare import export_compare_projection, list_run_group_index
+from nlfr.projectors.common import run_rows, write_or_print
+from nlfr.projectors.compare import (
+    build_compare_projection,
+    export_compare_projection,
+    list_run_group_index,
+)
+from nlfr.projectors.proof import export_proof_packet
 
 
 def export_compare(args: argparse.Namespace) -> int:
-    conn = initialize(connect(args.db))
-    payload = export_compare_projection(conn, args.left, args.right)
+    if args.left_db or args.right_db:
+        if not (args.left_db and args.right_db):
+            print(
+                "error: --left-db and --right-db must both be set",
+                file=sys.stderr,
+            )
+            return 2
+        left_conn = initialize(connect(args.left_db))
+        right_conn = initialize(connect(args.right_db))
+        left_proof = export_proof_packet(left_conn, run_group=args.left)
+        right_proof = export_proof_packet(right_conn, run_group=args.right)
+        left_runs = run_rows(left_conn, args.left)
+        right_runs = run_rows(right_conn, args.right)
+        payload = build_compare_projection(
+            left_proof,
+            right_proof,
+            args.left,
+            args.right,
+            left_runs=left_runs,
+            right_runs=right_runs,
+        )
+    else:
+        conn = initialize(connect(args.db))
+        payload = export_compare_projection(conn, args.left, args.right)
     write_or_print(payload, args.output)
     return 0
 
@@ -62,7 +89,15 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
     export_parser.add_argument(
         "--db",
         default="data/nlfr/nlfr.sqlite",
-        help="SQLite database path",
+        help="SQLite database path when both run groups live in one DB",
+    )
+    export_parser.add_argument(
+        "--left-db",
+        help="SQLite database path for the left run group",
+    )
+    export_parser.add_argument(
+        "--right-db",
+        help="SQLite database path for the right run group",
     )
     export_parser.add_argument(
         "--left",
