@@ -15,6 +15,8 @@ from nlfr.commands import simulate_cmd
 
 
 def register_commands(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    """Register all nlfr CLI subcommands on ``subparsers``."""
+
     init_cmd.register(subparsers)
     doctor.register(subparsers)
     run_cmd.register(subparsers)

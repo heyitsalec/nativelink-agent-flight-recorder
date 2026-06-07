@@ -45,9 +45,11 @@ bazel test //... \
 This is for proof-path development, not production deployment or a full
 NativeLink LRE setup. NLFR may claim that Bazel was configured for remote
 execution, that the config declares one local worker, that smoke endpoints
-opened, and that collectable artifacts were captured. It must not claim exact
-queue time, worker identity, action placement, load distribution, or fleet
-scheduling behavior until those facts are captured directly.
+opened, and that collectable artifacts were captured. Worker identity is
+**conditional** (M7): only when NativeLink admin stdout is attached pre-ingest
+and the M7 parser matches (`worker_admin_stdout`). Queue time, action placement,
+load distribution, and fleet scheduling behavior remain unsupported until those
+facts are captured directly.
 
 `scripts/local-exec-proof.sh` writes `worker-readiness.json` for this boundary.
 With this one-worker config, requesting two workers stops at
@@ -61,8 +63,9 @@ A two-worker config has since been proven live in Nix
 (`worker_endpoints_ready`, `expected_workers=2`, `configured_workers=2`,
 `collectable_v1`; see `data/local-exec-proof-2w/summary.json`). That proves two
 workers configured AND endpoints opened live — not work distributed across two
-workers. Worker identity, scheduler assignment, queue time, action placement,
-and load distribution stay unsupported.
+workers. Worker identity is conditional on M7 admin stdout (see above).
+Scheduler assignment, queue time, action placement, and load distribution stay
+unsupported.
 
 ## LRE Substrate (phase 1)
 

@@ -1,5 +1,10 @@
 # Implementation DAG
 
+> **Historical planning artifact.** This DAG records the original MVP workstream
+> sequencing (PER-998). For current milestones, execution-ladder boundaries, and
+> M5–M9 status, use **[ARCHITECTURE_TRACK.md](ARCHITECTURE_TRACK.md)** and
+> **[USEFULNESS_ROADMAP.md](USEFULNESS_ROADMAP.md)**.
+
 Source planning issue: [PER-998](https://linear.app/gradschool/issue/PER-998/nlfr-0-implement-nativelink-agent-flight-recorder-mvp)
 
 ## Parent Objective
@@ -71,3 +76,9 @@ Then:
 - Artifact manifest cannot enforce no-overwrite/idempotent ingest.
 - Projection JSON lacks source/confidence/evidence labels.
 - Implementation drifts into SaaS/dashboard scope.
+
+## Related docs
+
+- [ARCHITECTURE_TRACK.md](ARCHITECTURE_TRACK.md) — current phase map and M1–M9 ladder
+- [USEFULNESS_ROADMAP.md](USEFULNESS_ROADMAP.md) — product usefulness gaps and next work
+- [CONTRIBUTING.md](CONTRIBUTING.md) — proof scripts and contributor gates

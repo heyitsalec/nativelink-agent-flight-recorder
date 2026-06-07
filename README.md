@@ -17,8 +17,14 @@ that projection only — never from invented backend state.
 </p>
 
 The public repo is credential-free and fixture-safe. Hero GIFs are generated from
-committed projections; the Nix proof path produces `collectable_v1` evidence when
-NativeLink and Bazel are available on the host.
+committed projections with truth labels visible. If `docs/media/*.gif` is missing
+locally, regenerate after building the canvas:
+
+```bash
+npm --prefix apps/canvas run capture:heroes
+```
+
+See [docs/MEDIA_CAPTURE.md](docs/MEDIA_CAPTURE.md) for tier1-demo view and scene design.
 
 ## The Loop
 
@@ -38,7 +44,7 @@ that scattered work into one loop:
    Graph, Proof Packet, Remote Boundary, failure focus, and agent-loop chain.
 5. **Compare.** Export compare projections across run groups to contrast cold
    vs warm cache, fixture vs dogfood, or successive proof runs without
-   re-running the workload.
+   re-running the workload. See [Compare runs (M9)](docs/wiki/compare-runs.md).
 
 ## What You Get
 
@@ -48,20 +54,9 @@ that scattered work into one loop:
 | SQLite evidence spine | Immutable artifact manifest, idempotent ingest, Bazel/NativeLink parsers, and truth-labeled rows. |
 | Projection JSON | Action Graph, proof packet, compare lens, and runway exports consumed by the canvas and proof scripts. |
 | Sparse canvas | Vite/React app under `apps/canvas/` that renders projection JSON only — no invented scheduler or worker state. |
-| Public demo media | Hero GIFs and still frames under `docs/media/` and `docs/images/` generated from fixture or dogfood projections. |
-| Unified docs | Architecture track, adoption paths, proof samples, CI recipe, media capture, and reviewer routes. |
-| Proof lane | `pytest`, `./scripts/verify-demo.sh`, Nix proof scripts, and GitHub Actions on Linux/x86_64. |
+| Proof lane | `pytest`, `./scripts/verify-demo.sh`, Nix proof scripts, and local gates (CI deferred while GHA offline). |
 
-Still frames from the same projection sources as the tour GIF:
-
-- [Desktop Action Graph](docs/images/canvas-desktop.png)
-- [Agent-loop focus](docs/images/canvas-agent-loop.png)
-- [Proof Packet](docs/images/canvas-proof.png)
-- [Failure focus](docs/images/canvas-failure-focus.png)
-- [Remote boundary](docs/images/canvas-remote-boundary.png)
-- [Mobile layout](docs/images/canvas-mobile.png)
-
-See [docs/media/README.md](docs/media/README.md) for GIF and still-frame inventory.
+Still frames from the same projection sources: [docs/media/README.md](docs/media/README.md).
 
 ## Run Locally
 
@@ -88,41 +83,16 @@ Open the dev server and inspect Action Graph / Proof Packet from committed
 fixture projections under `apps/canvas/public/projections/`. This path uses
 `simulated_v1` evidence — not real NativeLink execution.
 
-Fixture-backed ingest and export:
-
-```bash
-PYTHONPATH=src uv run python -m nlfr ingest \
-  --database data/demo-proof/nlfr.sqlite \
-  --run-key fixture-run:cache-only \
-  --run-group latest \
-  --bep tests/fixtures/bazel/bep.jsonl \
-  --execution-log tests/fixtures/bazel/execution-log.json \
-  --profile tests/fixtures/bazel/profile.json \
-  --source-kind simulated_v1 \
-  --json
-
-PYTHONPATH=src uv run python -m nlfr graph export \
-  --db data/demo-proof/nlfr.sqlite \
-  --run-group latest \
-  --output apps/canvas/public/projections/action-graph.json
-```
-
-Simulated-agent provenance (no source workspace mutation):
-
-```bash
-PYTHONPATH=src uv run python -m nlfr simulate \
-  --scenario safe-leaf-change \
-  --output-dir data/agent-sim \
-  --skip-run \
-  --json
-```
+Full fixture ingest, export, and simulated-agent commands:
+[docs/ADOPTION_GUIDE.md](docs/ADOPTION_GUIDE.md) (5-minute path).
 
 ### Path B — Real NativeLink proof (Nix)
 
 Outside `nix develop`, real-tool scripts record truth-labeled
 `environment_blocker` evidence. Inside Nix (NativeLink 1.3.2, Bazel 9.1.1) the
 recorder has proven cold/warm cache, one-process local-exec, live two-worker
-endpoint readiness, and agent-loop closure:
+endpoint readiness, worker admin stdout (M7), agent-loop closure, tier1 live
+Bazel, and LRE readiness probes:
 
 ```bash
 nix develop
@@ -130,54 +100,57 @@ scripts/cold-warm-cache-proof.sh
 scripts/local-exec-proof.sh
 NLFR_EXPECTED_WORKERS=2 NLFR_LOCAL_EXEC_OUTPUT=$PWD/data/local-exec-proof-2w \
   scripts/local-exec-proof.sh
+scripts/worker-evidence-proof.sh
 scripts/agent-loop-proof.sh
+./scripts/tier1-live-bazel-proof.sh
+./scripts/lre-proof.sh
+./scripts/lre-cold-warm-proof.sh
+./scripts/lre-nix-toolchain-proof.sh
 ```
 
 These write `summary.json` evidence under `data/cold-warm-proof/`,
-`data/local-exec-proof/`, `data/local-exec-proof-2w/`, and
-`data/agent-loop-proof/`. The two-worker run proves two workers configured AND
-endpoints opened live (`worker_endpoints_ready`, `expected_workers=2`) — not
-work distributed across two workers.
+`data/local-exec-proof/`, `data/worker-evidence-proof/`, `data/agent-loop-proof/`,
+`data/tier1-live-bazel/`, and `data/lre-proof/`. The two-worker run proves two
+workers configured AND endpoints opened live (`worker_endpoints_ready`,
+`expected_workers=2`) — not work distributed across two workers.
 
-Real local cache-only smoke, when tools are installed:
-
-```bash
-PYTHONPATH=src uv run python -m nlfr run \
-  --scenario local-tool-check \
-  --run-group tool-check \
-  --workspace demo/bazel-monorepo \
-  --output-dir data/tool-check \
-  //tasks:priority_test
-```
+**M7 worker identity (conditional):** when admin stdout rows are attached and
+match the parser, projections promote `worker_identity` as `collectable_v1` with
+`high` confidence (`worker-evidence-proof.sh` → `worker_identity_observed:
+true`). Without direct stdout evidence, worker identity is not claimed.
 
 On hosts without Bazel or NativeLink, real-tool paths record durable
 `environment_blocker` evidence. That is a valid host readiness result, not a
 successful worker-execution claim.
 
-See [docs/DEV_ENVIRONMENT.md](docs/DEV_ENVIRONMENT.md) for prerequisites (~82GB
-disk for first proof run, Nix with flakes).
+Prerequisites (~82GB disk for first proof run): [docs/DEV_ENVIRONMENT.md](docs/DEV_ENVIRONMENT.md).
 
-### Canvas dev
+### Tier 1 canvas preview
 
-Default dev projection is `canvas-dev` (`collectable_v1` dogfood). Fixture
-fallback banner appears when projections are missing.
+After `promote-tier1-compare.sh` or committed tier1 projections:
 
 ```bash
-npm --prefix apps/canvas install
-npm --prefix apps/canvas run dev -- --host 127.0.0.1
+npm --prefix apps/canvas run preview
 ```
 
-### Full verifier
+Open `http://127.0.0.1:4173/?view=tier1-demo` for the Compare lens with
+`collectable_v1` dogfood pairs.
+
+### Full verifier (local proof gates)
+
+Local proof gates are primary while GitHub Actions has been offline (~1 month).
+Do not block on CI green for doc-only or local-proof workflows.
 
 ```bash
 scripts/verify-demo.sh
 ```
 
 Runs backend tests, doctor, real-tool smoke (blocker or success), cold/warm,
-local-exec, simulated-agent provenance, fixture ingest, projection exports, and
-canvas build. Use after either path above.
+local-exec, worker-evidence, simulated-agent provenance, fixture ingest,
+projection exports, and canvas build. Optional Nix scripts above extend the
+same spine.
 
-Proof commands (canonical spine):
+Canonical spine:
 
 ```bash
 python3 -m pytest
@@ -187,39 +160,9 @@ python3 -m nlfr graph export --run-group latest
 python3 -m nlfr proof export --run-group latest
 ```
 
-Visual proof capture, with the canvas server running:
+CI reproduction when GHA is restored: [docs/CI_RECIPE.md](docs/CI_RECIPE.md).
 
-```bash
-CANVAS_URL=http://127.0.0.1:5174/ npm --prefix apps/canvas run capture
-```
-
-Regenerate hero GIFs:
-
-```bash
-npm --prefix apps/canvas run capture:heroes
-```
-
-See [docs/MEDIA_CAPTURE.md](docs/MEDIA_CAPTURE.md) for capture prerequisites and
-scene design.
-
-## Architecture
-
-NLFR ships as one repo because the evidence path only makes sense together:
-
-- [`src/nlfr/`](src/nlfr/) is the Python recorder: artifact manifest, SQLite
-  ingest, Bazel/NativeLink parsers, projectors, and CLI.
-- [`apps/canvas/`](apps/canvas/) is the sparse Action Graph canvas. It consumes
-  projection JSON only and must not invent backend state.
-- [`docs/`](docs/) is the review spine: architecture track, adoption paths,
-  proof samples, CI recipe, and reviewer routes.
-- [`scripts/`](scripts/) are the proof lane: cold/warm, local-exec, agent-loop,
-  verify-demo, and canvas build helpers.
-
-See [docs/INDEX.md](docs/INDEX.md) for the two-hop review map and
-[docs/ONE_PAGER.md](docs/ONE_PAGER.md) for thesis, proven claims, and explicit
-unproven boundaries.
-
-## Truth Labels And Public-Safe Guarantees
+## Truth Labels
 
 Every normalized evidence row and projection object carries:
 
@@ -230,62 +173,55 @@ Every normalized evidence row and projection object carries:
 - `redaction_state`: `safe`, `redacted`, `blocked`, or `unknown`
 
 Fixture-backed records use `simulated_v1`. Profile-derived cache observations
-use `derived_v1` with medium or low confidence. Real local process outputs from
-`nlfr run` and Nix proof scripts use `collectable_v1`.
+use `derived_v1`. Real local process outputs from `nlfr run` and Nix proof
+scripts use `collectable_v1`.
 
-Real:
+V1 does **not** claim remote worker assignment, queue time, action placement,
+scheduler assignment, load distribution, or full remote-execution fleet behavior.
+Worker identity is **conditional** on M7 stdout capture — not a wholesale fleet
+claim. Compare projections are `derived_v1` summaries across ingested run groups.
 
-- the Python recorder, SQLite schema, and projection projectors;
-- the sparse canvas rendering projection JSON only;
-- Nix proof scripts and redacted `summary.json` samples under `docs/proof-samples/`;
-- truth-label enforcement on every exported node, edge, metric, and claim.
+Privacy boundary, proof samples, and explicit unproven claims:
+[docs/ONE_PAGER.md](docs/ONE_PAGER.md).
 
-Fixture or simulated:
+## Documentation
 
-- committed canvas projections used for the 5-minute evaluator path;
-- hero GIFs and still frames generated from fixture or dogfood projections;
-- deterministic simulated-agent scenarios (`llm-bounded-patch` carries a model
-  label and `prompt_sha256` only — raw prompts are never stored or exported).
+Start at the [documentation hub](docs/INDEX.md) for the two-hop review map
+(tutorial, how-to, reference, explanation).
 
-Excluded from this repo:
+| Intent | Where to go |
+| --- | --- |
+| First guided tour | [Walkthrough](docs/WALKTHROUGH.md) |
+| Adoption paths (fixture + Nix) | [Adoption guide](docs/ADOPTION_GUIDE.md) |
+| Architecture + milestones | [Architecture track](docs/ARCHITECTURE_TRACK.md) |
+| Compare lens + M9 proof | [Compare runs](docs/wiki/compare-runs.md) |
+| Proof samples + tryout | [proof-samples/](docs/proof-samples/README.md) |
+| Contributor rules | [Contributing](docs/CONTRIBUTING.md) |
 
-- secrets, credentials, raw private logs, environment variables, raw prompts,
-  customer data, and private legacy GUI/source material.
-
-V1 does not claim remote worker assignment, queue time, action placement,
-worker identity, scheduler assignment, load distribution, full remote execution
-fleet behavior, opaque SaaS telemetry, or exact BEP action correlation when the
-source artifact does not contain it.
-
-## Review Path
-
-1. Start with the [docs index](docs/INDEX.md) for the two-hop review map.
-2. Read [docs/ONE_PAGER.md](docs/ONE_PAGER.md) for thesis, proven vs unproven
-   claims, and evaluator paths.
-3. Read [docs/WALKTHROUGH.md](docs/WALKTHROUGH.md) for the guided tour from
-   commands to canvas and proof artifacts.
-4. Read [docs/ADOPTION_GUIDE.md](docs/ADOPTION_GUIDE.md) for the 5-minute fixture
-   path and 30-minute Nix proof path on an independent host.
-5. Review [docs/ARCHITECTURE_TRACK.md](docs/ARCHITECTURE_TRACK.md) for milestone
-   gates and the evidence-before-narrative rule.
+Depth pages live under [`docs/wiki/`](docs/wiki/) (evidence loop, truth labels,
+broker model, ADR-lite decisions). DAG mirrors for broker handoffs:
+[`docs/dags/`](docs/dags/README.md).
 
 ## Status And Limits
 
 NLFR v1 is an evidence-first recorder MVP, not a hosted SaaS, multi-tenant
 control plane, or full remote-execution fleet dashboard.
 
-In scope: Python recorder CLI, SQLite evidence spine, artifact manifest, Bazel
-BEP/stdout/profile/execution-log ingestion, NativeLink config/log capture,
-projection JSON, proof packet export, controlled simulated-agent provenance, and
-sparse canvas consuming projection JSON.
+**M5–M9 (landed):**
 
-Out of scope for v1: SaaS/auth/billing/multi-tenancy, full remote execution
-fleet story, worker/scheduler dashboard, OTLP/Jaeger clone, persistent worker
-security claims, production AI-agent identity/auth integrations, and unsupported
-worker/action/queue-time correlation.
+| Milestone | Delivers |
+| --- | --- |
+| M5 | Linux CI workflow + adoption docs (`nlfr-proof.yml`; proof samples author-Nix until GHA promotes) |
+| M6 | Real default projection (`canvas-dev` `collectable_v1`) + fixture fallback banner |
+| M7 | `worker_admin_stdout` parser + `worker-evidence-proof.sh` (conditional `worker_identity`) |
+| M8 | Agent adapter (`record-agent-change.sh`; model + `prompt_sha256` only) |
+| M9 | `compare export` / `compare index`, compare lens, `compare-proof.sh` |
+
+Out of scope for v1: SaaS/auth/billing/multi-tenancy, fleet scheduler dashboards,
+OTLP/Jaeger clone, persistent worker security claims, and unsupported
+worker/action/queue-time correlation beyond direct artifact evidence.
 
 Implementation plan: [docs/IMPLEMENTATION_DAG.md](docs/IMPLEMENTATION_DAG.md).
-Tryout narrative: [docs/TRYOUT_PACKET.md](docs/TRYOUT_PACKET.md).
 
 ## Contributing
 

@@ -43,7 +43,7 @@ unproven" list; confirm committed projections are `canvas-dev` `collectable_v1`
 | 1:30–5:30 | Live canvas | `npm --prefix apps/canvas run preview` | Green banner: **canvas-dev collectable_v1**. Mode rail: Proof Packet → Remote Boundary → Compare Runs. Truth legend bottom-left. |
 | 5:30–8:30 | Evidence spine | Terminal walkthrough (below) | Point at `source_kind` and `evidence_refs` in exported JSON. |
 | 8:30–11:30 | Real proof samples | Open `docs/proof-samples/cold-warm-summary.json`, `two-worker-summary.json`, `agent-loop-summary.json` | Cold/warm: **collectable_v1**. Two-worker: endpoints ready, **not** distributed work. Agent-loop: **mixed** labels. |
-| 11:30–13:30 | Honesty slide | ONE_PAGER unsupported claims | Queue time, scheduler assignment, action placement, fleet ops — unproven or fixture-only. |
+| 11:30–13:30 | Honesty slide | ONE_PAGER unsupported claims | Worker identity **conditional** (M7 stdout); queue time, scheduler assignment, action placement, fleet ops — unproven. Compare is **`derived_v1`** via `compare export` (M9 landed). |
 | 13:30–14:30 | NativeLink fit | No Rust | "NLFR is a recorder around your stack — we don't patch NativeLink. We make cache/RBE outcomes auditable for agent loops." |
 | 14:30–15:00 | Close | Offer Tier 3 | Invite live `nix develop` + cold-warm if they want exit codes. |
 
@@ -107,7 +107,9 @@ trust story if you narrate labels.
 | proof-samples agent-loop | **Mixed** — validation leg collectable, agent/change simulated |
 | proof-samples agent-bugfix / agent-feature | **collectable_v1** — live agent record, `bazel_validated: true` via `tier1-live-bazel-proof.sh` |
 | Compare lens | **derived_v1** — diff across run groups, no worker correlation |
-| Remote Boundary | Configured remote execution — placement unproven |
+| Remote Boundary | Configured remote execution — worker identity conditional on M7 stdout; placement unproven |
+| M7 worker evidence | **collectable_v1** when stdout regex matches — `./scripts/worker-evidence-proof.sh` |
+| M9 compare export | **derived_v1** — `nlfr compare export`, not a shell stub |
 
 ---
 
@@ -220,12 +222,14 @@ through a real NativeLink cache.
 
 ```bash
 scripts/agent-loop-proof.sh
+./scripts/worker-evidence-proof.sh   # M7 — fixture replay or live stdout
 ```
 
 Show: `data/agent-loop-proof/summary.json` with `chain_complete=true`. **Point:**
 validation/cache leg is **collectable_v1**; agent/change provenance stays
 **simulated_v1** (deterministic patch, zero LLM tokens). That distinction is the
-product.
+product. Worker identity is separate: M7 promotes only when admin stdout matches
+(`data/worker-evidence-proof/summary.json`).
 
 ---
 

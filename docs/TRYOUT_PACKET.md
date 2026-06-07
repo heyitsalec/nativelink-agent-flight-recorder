@@ -1,6 +1,6 @@
 # NLFR Tryout Packet
 
-Date: 2026-06-06
+Date: 2026-06-06 · Tag: `v0.2.0-mvp` · Branch: `main`
 
 Linear parent: [PER-1013](https://linear.app/gradschool/issue/PER-1013/nlfr-14-local-remote-execution-worker-proof)
 
@@ -34,18 +34,29 @@ substrate before spending tokens on many real LLM agents.
 
 The current repo covers three NativeLink-adjacent layers:
 
-- Cache-only baseline: prove repeated validation can reuse prior work when
+- **Cache-only baseline:** prove repeated validation can reuse prior work when
   NativeLink/Bazel are installed, or record a durable blocker when they are not.
-- Local remote-executor smoke: prove Bazel was configured with
+- **Local remote-executor smoke:** prove Bazel was configured with
   `--remote_executor`, capture NativeLink config/readiness evidence, and export
   remote-execution proof blocks.
-- Future worker fleet path: keep the model ready for direct worker evidence
+- **Future worker fleet path:** keep the model ready for direct worker evidence
   without claiming scheduler assignment, queue time, action placement, worker
-  identity, or load distribution prematurely.
+  identity globally, or load distribution prematurely.
 
 Outside `nix develop`, Bazel/Bazelisk and NativeLink are not on PATH — real-tool
 scripts produce truth-labeled `environment_blocker` evidence instead of fake
 success. Inside Nix, PER-1019 proved exit 0 (see Real Toolchain Proof below).
+
+## Milestone proof spine (M7 · M8 · M9 · Tier 1)
+
+| Milestone | Script / artifact | Truth label | Claim boundary |
+|-----------|-------------------|-------------|----------------|
+| **M7** worker parser | `scripts/worker-evidence-proof.sh` → `data/worker-evidence-proof/summary.json` | `collectable_v1`, `high` when stdout matches | `worker_identity` is **conditional** — promoted only when `nativelink.stdout.txt` is attached pre-ingest and M7 regex matches. Not scheduler, queue, placement, or distribution. |
+| **M8** agent adapter | `scripts/record-agent-change.sh`, `scripts/agent-loop-proof.sh` | mixed: `collectable_v1` validation; `simulated_v1` agent leg in bounded loop | `model` + `prompt_sha256` only — never raw prompts. Dry-run and pytest proven; live Cursor session is an operator path, not a ship gate. |
+| **M9** multi-run compare | `scripts/compare-proof.sh`, `nlfr compare export` | `derived_v1` | Five-dimension compare across run groups (e.g. record-proof vs canvas-dev). No new fleet claims. |
+| **Tier 1** live Bazel | `scripts/tier1-live-bazel-proof.sh` | `collectable_v1`, `high` | Acts 1+2 (`agent-bugfix-1`, `agent-feature-compare`) with `bazel_validated: true` via `cursor_adapter_v1` — not pytest fallback. Samples: [`proof-samples/agent-bugfix-summary.json`](proof-samples/agent-bugfix-summary.json), [`proof-samples/agent-feature-summary.json`](proof-samples/agent-feature-summary.json). |
+
+Redacted JSON for evaluators without Nix: [`proof-samples/README.md`](proof-samples/README.md).
 
 ## Zero-LLM Strategy
 
@@ -60,6 +71,8 @@ backbone:
 
 One real LLM-generated patch can be added later as a narrative spark, after the
 NativeLink worker proof is stable. It should not be the backbone of the demo.
+Tier 1 live Bazel acts demonstrate the `collectable_v1` adapter path when the
+room needs a real agent record — still with hashed prompt provenance only.
 
 ## Operator Experience
 
@@ -68,35 +81,49 @@ operator command surface.
 
 The important views are:
 
-- Action Graph: runs, invocations, artifacts, cache/execution evidence, and
+- **Action Graph:** runs, invocations, artifacts, cache/execution evidence, and
   proof blocks.
-- Validation Runway: which validations are proven, blocked, failed, or future.
-- Proof Packet: claim-by-claim evidence, source kind, confidence, refs, and
+- **Validation Runway:** which validations are proven, blocked, failed, or future.
+- **Proof Packet:** claim-by-claim evidence, source kind, confidence, refs, and
   redaction state.
-- Remote Boundary: whether remote execution was configured and which worker
+- **Remote Boundary:** whether remote execution was configured and which worker
   claims remain unsupported.
+- **Compare lens (M9):** `derived_v1` deltas across run groups — projection-only.
 
 The Remote Boundary lens is deliberately conservative. It can show that a Bazel
 invocation used remote execution configuration and that a NativeLink config
-declared worker readiness, but it does not claim direct worker execution until
-direct evidence exists.
+declared worker readiness, and — when M7 evidence exists — observed worker names.
+It does not claim direct scheduler assignment, queue time, or action placement
+until direct evidence exists.
 
 ## Current Proof
 
-Fresh commands from the PER-1018 review pass:
+Fresh commands from the PER-1018 review pass (no hardcoded test counts — run and
+verify locally):
 
 ```bash
-uv run pytest tests -q
+uv run pytest -q
 npm --prefix apps/canvas run build
 scripts/verify-demo.sh
 npm --prefix apps/canvas run capture
 ```
 
-Observed result:
+Optional milestone proofs (fixture or Nix):
 
-- Python tests: 41 passed.
-- Canvas production build: passed.
-- Demo verifier: passed.
+```bash
+NLFR_WORKER_EVIDENCE_FIXTURE_ONLY=1 ./scripts/worker-evidence-proof.sh   # M7
+./scripts/compare-proof.sh   # M9; needs record-proof + canvas-dev DBs
+nix develop --command ./scripts/tier1-live-bazel-proof.sh   # Tier 1
+```
+
+**GHA offline:** GitHub Actions may be non-green. Local gates above substitute
+for CI until workflows recover. Do not block evaluation on CI green — see
+[`sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md`](sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md).
+
+Observed expectations (not a substitute for running commands):
+
+- `uv run pytest -q` — all tests pass.
+- Canvas production build and demo verifier — pass.
 - Bare-host real-tool paths: `environment_blocker` when outside Nix (expected).
 - Nix real-tool paths (PER-1019): cold/warm + local-exec exit 0.
 - Browser QA: page identity, blank-page, framework overlay, console health,
@@ -134,6 +161,8 @@ proves two workers configured AND endpoints opened live — not work distributed
 across workers. The agent-loop patch stores a SHA-256 prompt hash only; the raw
 prompt is never stored or exported.
 
+Redacted copies: [`proof-samples/`](proof-samples/).
+
 Toolchain: NativeLink 1.3.2, Bazel 9.1.1. Config fix: `cache-only.json` uses
 NativeLink 1.3.x `stores` array schema.
 
@@ -144,19 +173,27 @@ See [docs/TOOLCHAIN_ASSESSMENT.md](TOOLCHAIN_ASSESSMENT.md) and
 
 These are explicit follow-ups, not implied claims:
 
-- direct worker identity;
 - scheduler assignment;
 - queue time;
 - action placement;
 - load distribution;
 - multi-machine worker execution;
-- full NativeLink Local Remote Execution on a supported Linux/x86_64-style
-  environment.
+- org-scale history;
+- full NativeLink Local Remote Execution on every host shape (see LRE blocker
+  samples in [`proof-samples/`](proof-samples/)).
 
-The next best technical step is full LRE on a Linux/x86_64-style host and direct
-worker/admin/log evidence (identity, placement, scheduler, queue time, load)
-before expanding unsupported claims. The two-worker live endpoint proof and
-agent-loop closure are now done (see proof table above).
+**Worker identity** is not globally proven. It is **conditional** when M7 stdout
+is attached and regex matches (`collectable_v1`, `high`). Runs without captured
+stdout do not carry this claim.
+
+The next best technical step is full LRE on a supported Linux/x86_64-style host
+and direct worker/admin/log evidence (placement, scheduler, queue time, load)
+before expanding unsupported claims. The two-worker live endpoint proof,
+agent-loop closure, M7 fixture path, M9 compare, and Tier 1 live Bazel acts are
+documented above.
+
+Fleet research matrix: [`dags/future-fleet-claims.md`](dags/future-fleet-claims.md) ·
+[`proof-samples/fleet-claims-matrix-sample.json`](proof-samples/fleet-claims-matrix-sample.json).
 
 ## Why It Fits NativeLink
 
@@ -171,3 +208,14 @@ The end-state sentence:
 
 > When AI writes the code, NativeLink makes validating it fast, and NLFR makes
 > validating it trustworthy.
+
+## Evaluator quick paths
+
+| Path | Time | What you see |
+|------|------|--------------|
+| Proof samples only | ~5 min | Redacted `collectable_v1` / `derived_v1` JSON — [`proof-samples/README.md`](proof-samples/README.md) |
+| Fixture canvas (no Nix) | ~5 min | Action Graph + Proof Drawer from `simulated_v1` fixtures |
+| Real proof (Nix) | ~30+ min | Cold/warm + local-exec + optional Tier 1 summaries under `data/` |
+
+Release hygiene: [`GITHUB_RELEASE.md`](GITHUB_RELEASE.md) · One pager:
+[`ONE_PAGER.md`](ONE_PAGER.md).

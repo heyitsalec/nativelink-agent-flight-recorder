@@ -12,6 +12,8 @@ WORKER_NAME_KV = re.compile(r"worker_name=(\S+)", re.IGNORECASE)
 
 @dataclass(frozen=True, slots=True)
 class WorkerIdentityEvent:
+    """One worker identity line parsed from NativeLink admin stdout."""
+
     worker_name: str
     line_number: int
     evidence_ref: str

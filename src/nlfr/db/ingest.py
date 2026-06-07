@@ -56,46 +56,68 @@ def upsert_record(
 
 
 def upsert_run(conn: sqlite3.Connection, *, stable_key: str, **values: Any) -> str:
+    """Insert or return an existing run row id."""
+
     return upsert_record(conn, "runs", stable_key=stable_key, values=values)
 
 
 def upsert_change(conn: sqlite3.Connection, *, stable_key: str, **values: Any) -> str:
+    """Insert or return an existing change row id."""
+
     return upsert_record(conn, "changes", stable_key=stable_key, values=values)
 
 
 def upsert_invocation(conn: sqlite3.Connection, *, stable_key: str, **values: Any) -> str:
+    """Insert or return an existing invocation row id."""
+
     return upsert_record(conn, "invocations", stable_key=stable_key, values=values)
 
 
 def upsert_artifact(conn: sqlite3.Connection, *, stable_key: str, **values: Any) -> str:
+    """Insert or return an existing artifact row id."""
+
     return upsert_record(conn, "artifacts", stable_key=stable_key, values=values)
 
 
 def upsert_target(conn: sqlite3.Connection, *, stable_key: str, **values: Any) -> str:
+    """Insert or return an existing target row id."""
+
     return upsert_record(conn, "targets", stable_key=stable_key, values=values)
 
 
 def upsert_action(conn: sqlite3.Connection, *, stable_key: str, **values: Any) -> str:
+    """Insert or return an existing action row id."""
+
     return upsert_record(conn, "actions", stable_key=stable_key, values=values)
 
 
 def upsert_cache_event(conn: sqlite3.Connection, *, stable_key: str, **values: Any) -> str:
+    """Insert or return an existing cache event row id."""
+
     return upsert_record(conn, "cache_events", stable_key=stable_key, values=values)
 
 
 def upsert_failure(conn: sqlite3.Connection, *, stable_key: str, **values: Any) -> str:
+    """Insert or return an existing failure row id."""
+
     return upsert_record(conn, "failures", stable_key=stable_key, values=values)
 
 
 def upsert_graph_node(conn: sqlite3.Connection, *, stable_key: str, **values: Any) -> str:
+    """Insert or return an existing graph node row id."""
+
     return upsert_record(conn, "graph_nodes", stable_key=stable_key, values=values)
 
 
 def upsert_graph_edge(conn: sqlite3.Connection, *, stable_key: str, **values: Any) -> str:
+    """Insert or return an existing graph edge row id."""
+
     return upsert_record(conn, "graph_edges", stable_key=stable_key, values=values)
 
 
 def upsert_proof_block(conn: sqlite3.Connection, *, stable_key: str, **values: Any) -> str:
+    """Insert or return an existing proof block row id."""
+
     return upsert_record(conn, "proof_blocks", stable_key=stable_key, values=values)
 
 

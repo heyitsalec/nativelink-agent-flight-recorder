@@ -6,8 +6,8 @@ import hashlib
 import json
 import os
 from dataclasses import asdict, dataclass
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
 MANIFEST_FILENAME = "artifact_manifest.json"
 MANIFEST_SCHEMA_VERSION = 1
@@ -31,6 +31,8 @@ class ArtifactManifestEntry:
     evidence_refs: list[str]
 
     def to_manifest(self) -> dict[str, object]:
+        """Serialize this entry for ``artifact_manifest.json``."""
+
         return asdict(self)
 
 

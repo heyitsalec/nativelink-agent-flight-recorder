@@ -1,5 +1,11 @@
 # Completion Review
 
+> **Historical snapshot.** This completion review records PER-998 / PER-1013 /
+> PER-1019 / PER-1053 milestone closure evidence as of 2026-06-06.
+> For current product truth and milestone status, use **[ONE_PAGER.md](ONE_PAGER.md)**
+> and **[ARCHITECTURE_TRACK.md](ARCHITECTURE_TRACK.md)**.
+> Deep dives: **[Wiki hub](wiki/README.md)**.
+
 Date: 2026-06-06
 
 Linear parent: [PER-998](https://linear.app/gradschool/issue/PER-998/nlfr-0-implement-nativelink-agent-flight-recorder-mvp)
@@ -44,7 +50,7 @@ scripts/verify-demo.sh
 
 Latest results:
 
-- Backend tests: `41 passed`
+- Backend tests: passed (run `uv run pytest -q` for current count)
 - Canvas build: passed
 - Demo verifier: passed
 - `doctor --mode cache-only`: recorded missing Bazel/NativeLink blocker on this host
@@ -93,8 +99,9 @@ Visual artifacts captured with Playwright:
 - Run `scripts/local-exec-proof.sh` in a Linux-like environment with Bazel and
   NativeLink installed, then preserve the resulting `worker-readiness.json`,
   BEP/profile/execution-log, and projection artifacts.
-- Add direct worker/admin/log evidence before claiming worker identity,
-  scheduler assignment, queue time, action placement, or load distribution.
+- Add M7 admin stdout attachment before claiming worker identity; scheduler
+  assignment, queue time, action placement, and load distribution still need
+  direct evidence beyond M7.
 - Add one real LLM-generated patch as a bounded narrative spark after the
   deterministic worker proof is stable.
 
@@ -112,7 +119,7 @@ Completed children:
 
 Fresh review evidence:
 
-- `uv run pytest tests -q` -> 41 passed.
+- `uv run pytest tests -q` -> passed (run for current count).
 - `npm --prefix apps/canvas run build` -> passed.
 - `scripts/verify-demo.sh` -> passed.
 - `npm --prefix apps/canvas run capture` -> wrote desktop, proof,
@@ -157,8 +164,9 @@ PER-1019 closed 2026-06-06 with commit `635ee36`:
 - Summaries at `data/cold-warm-proof/summary.json` and
   `data/local-exec-proof/summary.json`
 
-Unsupported claims (worker identity, scheduler assignment, queue time, action
-placement, load distribution) remain explicit in proof output.
+Unsupported claims remain explicit: worker identity is **conditional** on M7
+admin stdout (`collectable_v1` when attached and regex matches); scheduler
+assignment, queue time, action placement, and load distribution stay unsupported.
 
 ## PER-1053 Vision DAG Addendum
 
@@ -172,9 +180,9 @@ A→B→C→D in single coordinator session.
 | A Tryout | README dual-path, ONE_PAGER, GITHUB_RELEASE, TRYOUT_PACKET fix |
 | B Truth | Remote lens proof-faithful; redaction in drawer; source_kind fix |
 | C Remote Wave 1 | Two-worker config; `NLFR_EXPECTED_WORKERS=2` config gate passes |
-| D Integration | 42 pytest, verify-demo, capture; framing distance table |
+| D Integration | pytest green, verify-demo, capture; framing distance table |
 
-Proof: `uv run pytest tests -q` → 42 passed; canvas build + capture passed.
+Proof: `uv run pytest tests -q` → passed; canvas build + capture passed.
 
 Nix live two-worker full proof: run `NLFR_EXPECTED_WORKERS=2 scripts/local-exec-proof.sh`
 inside `nix develop` (not run this session — Nix not on coordinator PATH).
@@ -210,6 +218,7 @@ Three milestone proofs ran live inside `nix develop` and produced durable
   cache_event`. The patch carries a `model` label and a SHA-256 prompt hash
   only; the raw prompt is never stored or exported.
 
-Still unsupported (no direct evidence captured): worker identity, scheduler
-assignment, queue time, action placement, load distribution, and production
-AI-agent identity/auth.
+Still unsupported (no direct evidence captured): scheduler assignment, queue
+time, action placement, load distribution, and production AI-agent identity/auth.
+Worker identity is **conditional** on M7 admin stdout attachment and regex match
+— not globally proven across all runs.

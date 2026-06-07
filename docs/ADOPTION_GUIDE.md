@@ -1,8 +1,8 @@
-# Adoption guide (M5)
+# Adoption guide (M5+)
 
-← [Docs index](INDEX.md)
+← [Docs index](INDEX.md) · [Wiki hub](wiki/README.md)
 
-For evaluators who are not on the author's Mac.
+**Quadrant:** How-to · **Audience:** evaluators who are not on the author's Mac.
 
 ## 5-minute path (no Nix, no NativeLink)
 
@@ -19,23 +19,35 @@ npm --prefix apps/canvas run preview   # http://127.0.0.1:5174/
 
 What you get:
 
-- Fixture-backed `simulated_v1` canvas projections via `verify-demo.sh`
+- Fixture-backed `simulated_v1` demo projections under `data/demo-proof/projections/`
+- Committed default canvas: **`canvas-dev`** `collectable_v1` dogfood record (not overwritten by `verify-demo.sh`)
 - Truth labels on every node; fixture fallback banner if projection fetch fails
 
 What you do **not** get:
 
 - Live NativeLink cache proof
-- `collectable_v1` Bazel validation chain
+- Live Bazel validation chain (`collectable_v1` cold/warm, tier1 acts)
+
+Optional M9 compare smoke (fixture DBs from `record-proof` + `canvas-dev`):
+
+```bash
+./scripts/record-proof.sh
+./scripts/record-canvas-build.sh
+./scripts/compare-proof.sh
+```
+
+See [Export and compare run groups](wiki/how-to/export-and-compare-run-groups.md) (wiki) · DAG mirror: [`dags/m9-multi-run-compare.md`](dags/m9-multi-run-compare.md).
 
 ## 30-minute path (Nix, real toolchain)
 
-Requires Nix with flakes enabled (~82GB disk for first Bazel fetch).
+Requires Nix with flakes enabled (~82GB disk for the first Bazel fetch).
 
 ```bash
 nix develop
 uv sync
 ./scripts/cold-warm-cache-proof.sh
 ./scripts/agent-loop-proof.sh
+./scripts/worker-evidence-proof.sh
 npm --prefix apps/canvas run capture
 ```
 
@@ -43,37 +55,78 @@ Evidence locations:
 
 - `data/cold-warm-proof/summary.json`
 - `data/agent-loop-proof/summary.json`
+- `data/worker-evidence-proof/summary.json` — M7 `worker_identity_observed` when stdout regex matches
 
-See [`DEV_ENVIRONMENT.md`](DEV_ENVIRONMENT.md) and [`TRYOUT_PACKET.md`](TRYOUT_PACKET.md).
+Tier1 Acts 1+2 with live Bazel (optional):
+
+```bash
+nix develop --command ./scripts/tier1-live-bazel-proof.sh
+```
+
+See [`DEV_ENVIRONMENT.md`](DEV_ENVIRONMENT.md), [`TRYOUT_PACKET.md`](TRYOUT_PACKET.md), and [First Nix proof](wiki/tutorial/first-nix-proof.md).
 
 ## Skeptic path (CI artifacts)
 
-1. Open latest GitHub Actions run for workflow `NLFR proof`.
-2. Download artifact `linux-nix-toolchain-proof`.
-3. Verify `summary.json` files have `source_kind: collectable_v1`.
+GitHub Actions may be **non-green** (~1 month offline as of 2026-06-06). Do not block evaluation on a green workflow badge. Prefer local gates from [GHA offline proof shift](sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md).
+
+When workflows run, workflow **`NLFR proof`** (`.github/workflows/nlfr-proof.yml`) has **seven parallel jobs**. See [`CI_RECIPE.md`](CI_RECIPE.md) for the full matrix.
+
+Quick artifact map:
+
+| Artifact name | Job | Primary claim |
+|---------------|-----|---------------|
+| `record-proof` | `unit` | Generic record + canvas dogfood (`collectable_v1`) |
+| `nix-toolchain-proof` | `linux-nix-toolchain` | Cold/warm + agent-loop cache economics |
+| `tier1-bazel-ci` | `tier1-bazel` | Tier1 Act 1+2 Bazel validation |
+| `lre-proof-probe` | `lre-proof-probe` | LRE substrate (`lre_substrate_ready`) |
+| `lre-nix-toolchain-proof` | `lre-nix-ci` | Nix-generated `lre.bazelrc` |
+| `lre-cold-warm-proof` | `lre-cold-warm-ci` | LRE cold/warm cache parity (x86_64-linux) |
+| `demo-proof` | `verify-demo-fixture` | Fixture demo path (`simulated_v1` projections) |
+
+1. Open the latest GitHub Actions run for workflow `NLFR proof`.
+2. Download the artifact that matches the claim you want to verify.
+3. Confirm `summary.json` has the expected `source_kind` and `claim_boundary` (if present).
 4. Compare redacted samples in [`proof-samples/`](proof-samples/) with your download (paths redacted).
 
-If toolchain job failed with `environment_blocker.json`, the honest claim is "CI recorded a blocker" — not "proof passed on Linux."
+If a toolchain job failed with `environment-blocker.json`, the honest claim is "CI recorded a blocker" — not "proof passed on Linux."
 
 ## Default canvas projection
 
 Committed under `apps/canvas/public/projections/` is a redacted **`canvas-dev`** generic-run projection (`collectable_v1`). It records NLFR building its own GUI — not the Bazel demo fixtures.
 
-Regenerate locally:
+`verify-demo.sh` writes **fixture** projections to `data/demo-proof/projections/` only; it does **not** overwrite committed `canvas-dev` files.
+
+Regenerate dogfood locally:
 
 ```bash
 ./scripts/record-canvas-build.sh
 ```
 
+Walkthrough screenshots in [`images/`](images/) are **fixture-backed** `simulated_v1` renders for teaching the UI shape; the preview default banner should read **canvas-dev collectable_v1**.
+
+## Landed milestones (M7–M9)
+
+| Milestone | What landed | Proof / wiki |
+|-----------|-------------|--------------|
+| **M7** worker identity | `worker_admin_stdout` parser promotes `worker_identity` when admin stdout is attached and regex matches | `./scripts/worker-evidence-proof.sh` · [Wiki § M7](wiki/README.md#frontier-tracks-pointers) · [`dags/m7-worker-parser.md`](dags/m7-worker-parser.md) |
+| **M8** agent adapter | `record-agent-change.sh` + `adapters/cursor/` — `model` + `prompt_sha256` only | [`adapters/cursor/README.md`](../adapters/cursor/README.md) · [`dags/m8-agent-adapter.md`](dags/m8-agent-adapter.md) |
+| **M9** compare | `nlfr compare export` + `compare index`, `derived_v1` compare projection, canvas Compare lens | `./scripts/compare-proof.sh` · [Wiki § M9](wiki/how-to/export-and-compare-run-groups.md) · [`dags/m9-multi-run-compare.md`](dags/m9-multi-run-compare.md) |
+
+M9 is **not** a shell stub — use `compare export`, not a placeholder CLI.
+
 ## What remains unsupported
 
-Until M7–M9 land:
+Per [`future-fleet-claims.md`](dags/future-fleet-claims.md) and [`ONE_PAGER.md`](ONE_PAGER.md):
 
-- Worker identity, queue time, action placement, scheduler assignment
-- Multi-run compare (`nlfr compare` is a shell)
-- Real external agent adapter (M8)
+| Claim | Status |
+|-------|--------|
+| `worker_identity` | **Conditional** — `collectable_v1` when M7 stdout attached + regex matches; otherwise `future` |
+| `worker_endpoints_ready` | `collectable_v1` when local-exec proof observes endpoints |
+| Scheduler assignment, queue time, action placement, load distribution | **Out of scope** — no direct evidence parsers |
+| Multi-machine fleet ops dashboards | **Out of scope** |
+| Live Cursor→Bazel E2E in every proof script | M8 dry-run + tier1-live-bazel proven; generic agent-loop still `simulated_v1` on agent leg |
 
-See [`USEFULNESS_ROADMAP.md`](USEFULNESS_ROADMAP.md).
+LRE ceiling: substrate + Nix toolchain + optional cold/warm parity on x86_64-linux — not hermetic container-image parity. See [`dags/lre-proof.md`](dags/lre-proof.md).
 
 ## Questions the MVP answers today
 
@@ -82,14 +135,16 @@ See [`USEFULNESS_ROADMAP.md`](USEFULNESS_ROADMAP.md).
 | What ran? | `nlfr run` + SQLite + projections |
 | Did it pass? | `summary.json` status |
 | Cache behavior? | cold/warm proof (Nix) |
-| What changed? | `changes` table / generic `--change-path` |
-| Agent provenance? | agent-loop proof (deterministic patch; M8 adds real adapter) |
+| What changed? | `changes` table / generic `--change-path` / M8 `record-agent-change.sh` |
+| Agent provenance? | M8 adapter (`collectable_v1`) or bounded simulate (`simulated_v1`) |
+| Worker identity? | M7 parser when stdout captured — `worker-evidence-proof.sh` |
+| Compare two run groups? | M9 `compare export` (`derived_v1`) |
 | Real vs simulated? | truth labels on every node |
 
-## Next milestones (umbrella)
+## Milestone mirror
 
-M5 CI → M6 polish → **Wave 1.5 review** → M7 parser → M8 adapter → **Wave 2.5 review** → M9 compare → Wave 4 handoff.
+M5 CI → M6 polish → M7 parser → M8 adapter → M9 compare → LRE phases → fleet-evidence-v1 stdout breadth.
 
-Mirror: [`dags/m5-m9-umbrella.md`](dags/m5-m9-umbrella.md)
+Mirror: [`dags/m5-m9-umbrella.md`](dags/m5-m9-umbrella.md) · [Wiki hub](wiki/README.md)
 
 ← [Docs index](INDEX.md)

@@ -1,5 +1,11 @@
 # Host Toolchain Assessment
 
+> **Historical snapshot.** This host toolchain assessment records the PER-1019
+> Nix proof pass at commit `635ee36`.
+> For current product truth and milestone status, use **[ONE_PAGER.md](ONE_PAGER.md)**
+> and **[ARCHITECTURE_TRACK.md](ARCHITECTURE_TRACK.md)**.
+> Deep dives: **[Wiki hub](wiki/README.md)**.
+
 Date: 2026-06-06 (updated after PER-1019 proof pass)
 
 ## Toolchain-Ready Host (Nix develop)
@@ -37,5 +43,5 @@ inside the dev shell or devcontainer per `docs/DEV_ENVIRONMENT.md`.
 
 - Two-worker gate (`NLFR_EXPECTED_WORKERS=2`) when config supports it
 - Full LRE on Linux/x86_64-style environment
-- Direct worker/admin/log evidence before claiming worker identity, queue time,
-  scheduler assignment, action placement, or load distribution
+- M7 conditional worker identity via attached admin stdout; scheduler assignment,
+  queue time, action placement, and load distribution still need direct evidence

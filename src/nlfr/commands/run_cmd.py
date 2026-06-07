@@ -1,4 +1,4 @@
-"""Run a Bazel workload and record local evidence."""
+"""Run Bazel or generic workloads and record local evidence."""
 
 from __future__ import annotations
 
@@ -17,6 +17,8 @@ from nlfr.runners import BazelRunner, NativeLinkRunner, ProcessResult
 
 
 def run(args: argparse.Namespace) -> int:
+    """Execute a recorder run and persist artifacts plus SQLite rows."""
+
     if args.mode == "generic":
         return run_generic(args)
 
@@ -196,6 +198,8 @@ def run(args: argparse.Namespace) -> int:
 
 
 def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    """Register the ``run`` command on ``subparsers``."""
+
     parser = subparsers.add_parser(
         "run",
         help="run a Bazel workload through a recorder mode",

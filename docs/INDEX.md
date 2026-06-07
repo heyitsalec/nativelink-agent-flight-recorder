@@ -1,91 +1,169 @@
-# NLFR Docs Index
+# NLFR documentation index
 
-Start here when reviewing the NativeLink Agent Flight Recorder. The root
-[README](../README.md) explains the product; this index routes reviewers to
-architecture, adoption paths, proof artifacts, and orchestration mirrors.
+**Quadrant:** Reference (router) · **Audience:** evaluators, operators, contributors
 
-## Fast Review Path
+Start here to route by intent. The root [README](../README.md) is the product
+entry; this index is the Diátaxis hub. Deep pages live under
+[`docs/wiki/`](wiki/README.md).
 
-1. Read the root [README](../README.md) for the product story and local run
-   commands.
-2. Read [One pager](ONE_PAGER.md) for thesis, proven claims, and explicit
-   unproven boundaries.
-3. Read [Walkthrough](WALKTHROUGH.md) for the guided tour from commands to
-   canvas and proof artifacts.
-4. Read [Adoption guide](ADOPTION_GUIDE.md) for the 5-minute fixture path and
-   30-minute Nix proof path on an independent host.
-5. Drop into [Architecture track](ARCHITECTURE_TRACK.md) or
-   [DAG mirrors](dags/README.md) when you need milestone scope, review gates,
-   or broker handoffs.
+## Choose your path
 
-## Core Docs
+| I want to… | Go to |
+|------------|-------|
+| Run my first fixture-backed evidence loop (~5 min) | [Tutorial: first evidence loop](wiki/tutorial/first-evidence-loop.md) |
+| Run real Nix proof on an independent host (~30+ min) | [Tutorial: first Nix proof](wiki/tutorial/first-nix-proof.md) |
+| Export projections or compare run groups (M9) | [How-to: export and compare](wiki/how-to/export-and-compare-run-groups.md) |
+| Run the tier1 live Bazel demo | [How-to: tier1 live Bazel](wiki/how-to/run-tier1-live-bazel-demo.md) |
+| Look up CLI flags or truth-label fields | [Reference: CLI](wiki/reference/cli.md) · [Truth labels](wiki/reference/truth-labels.md) |
+| See which proof script proves what | [Reference: proof scripts matrix](wiki/reference/proof-scripts-matrix.md) |
+| Understand why evidence comes before the canvas | [Explanation: evidence-first architecture](wiki/explanation/evidence-first-architecture.md) |
+| Understand projection-only canvas rules | [Explanation: projection-only canvas](wiki/explanation/projection-only-canvas.md) |
+| See architecture as mermaid diagrams | [Architecture diagrams](diagrams/README.md) |
 
-- [One pager](ONE_PAGER.md) — thesis, proven vs unproven claims, evaluator paths.
-- [Architecture track](ARCHITECTURE_TRACK.md) — L0–L2 evidence spine, milestone
-  gates, and product-shape fork rules.
-- [Walkthrough](WALKTHROUGH.md) — guided tour from Bazel/NativeLink run to
-  SQLite ingest, projection JSON, and canvas.
-- [Adoption guide](ADOPTION_GUIDE.md) — no-Nix fixture path and Nix toolchain
-  path for evaluators off the author's machine.
-- [CI recipe](CI_RECIPE.md) — GitHub Actions proof jobs and local Linux
-  reproduction.
-- [Media capture](MEDIA_CAPTURE.md) — hero GIF capture scripts, truth-label
-  visibility checks, and regeneration commands.
-- [Demo script](DEMO_SCRIPT.md) — Tier 1/2/3 rehearsal paths (Tier 2 for NativeLink team)
-- [Usefulness roadmap](USEFULNESS_ROADMAP.md) — what the MVP does today, what
-  makes it useful, and what to build next.
-- Root [README](../README.md) — product framing, quick start, and release
-  boundary.
+## Diátaxis quadrants
 
-## DAG Mirrors
+### Tutorial — learning-oriented, first success
 
-Orchestration mirrors live under [`docs/dags/`](dags/README.md). Use them for
-Linear ticket scope, wave boundaries, and broker handoff contracts.
+Guided paths that assume little context. Goal: one honest win end-to-end.
 
-| Track | Mirror | Spec |
-|-------|--------|------|
-| Architecture (M1–M9) | [dags/architecture-track.md](dags/architecture-track.md) | [ARCHITECTURE_TRACK.md](ARCHITECTURE_TRACK.md) |
-| M5–M9 umbrella | [dags/m5-m9-umbrella.md](dags/m5-m9-umbrella.md) | [CI_RECIPE.md](CI_RECIPE.md) |
-| Doc capture (PER-1071) | [dags/doc-capture-pass.md](dags/doc-capture-pass.md) | this index + [MEDIA_CAPTURE.md](MEDIA_CAPTURE.md) |
-| Dogfood A — generic recorder | [dags/dogfood-a-generic-recorder.md](dags/dogfood-a-generic-recorder.md) | — |
-| Dogfood B — canvas dogfood | [dags/dogfood-b-canvas-dogfood.md](dags/dogfood-b-canvas-dogfood.md) | — |
-| Review gates | [dags/review-gates.md](dags/review-gates.md) | — |
-| Vision (completed) | [dags/vision-a-tryout.md](dags/vision-a-tryout.md) … [vision-d-integration.md](dags/vision-d-integration.md) | — |
+- [First evidence loop](wiki/tutorial/first-evidence-loop.md) — fixture canvas, no Nix
+- [First Nix proof](wiki/tutorial/first-nix-proof.md) — cold/warm cache economics
+- [Walkthrough](WALKTHROUGH.md) — legacy guided tour (adoption paths may overlap)
+- [Tryout packet](TRYOUT_PACKET.md) — evaluator quick path when present
 
-Full index: [dags/README.md](dags/README.md).
+### How-to — task-oriented recipes
 
-## Proof & Media
+Solve a specific problem when you already know the goal.
 
-Use these when validating claims or refreshing public-safe artifacts.
+- [Export and compare run groups](wiki/how-to/export-and-compare-run-groups.md) — M9 compare lens
+- [Run tier1 live Bazel demo](wiki/how-to/run-tier1-live-bazel-demo.md)
+- [Adoption guide](ADOPTION_GUIDE.md) — 5-minute fixture vs 30-minute Nix paths
+- [CI recipe](CI_RECIPE.md) — GitHub Actions proof jobs (see GHA offline note below)
+- [Demo script](DEMO_SCRIPT.md) — Tier 1/2/3 rehearsal paths
+- [Dev environment](DEV_ENVIRONMENT.md) — local toolchain setup
+- [Media capture](MEDIA_CAPTURE.md) — hero GIF regeneration
 
-| Resource | Purpose |
-|----------|---------|
-| [proof-samples/](proof-samples/README.md) | Redacted `summary.json` excerpts (`collectable_v1` / `simulated_v1`) without running Nix |
-| [CI recipe](CI_RECIPE.md) | Linux/x86_64 GitHub Actions proof lane |
-| [Media capture](MEDIA_CAPTURE.md) | Hero GIF regeneration (`capture:tour`, `capture:evidence`, `test:truth`) |
-| `scripts/cold-warm-cache-proof.sh` | Cold/warm cache economics proof |
-| `scripts/agent-loop-proof.sh` | Agent → change → validation chain proof |
-| `scripts/verify-demo.sh` | Fixture-backed canvas path (no NativeLink) |
+### Reference — accurate, complete, constraint-focused
 
-Proof commands (full local spine):
+Lookup tables and contracts. No narrative detours.
+
+- [CLI reference](wiki/reference/cli.md)
+- [Truth labels](wiki/reference/truth-labels.md)
+- [Proof scripts matrix](wiki/reference/proof-scripts-matrix.md)
+- [One pager](ONE_PAGER.md) — proven vs unproven claims
+- [Design: view routing](design/routing.md) · [view spec schema](design/view-spec.v1.schema.json)
+- [Design: component catalog](design/component-catalog.md) · [view composer protocol](design/view-composer-protocol.md)
+- [Proof samples](proof-samples/README.md) — redacted `summary.json` excerpts
+- [Cursor adapter](../adapters/cursor/README.md) — bounded agent change recording (M8)
+
+### Explanation — understanding-oriented background
+
+Why the system is shaped this way. Not step-by-step commands.
+
+- [Evidence-first architecture](wiki/explanation/evidence-first-architecture.md)
+- [Projection-only canvas](wiki/explanation/projection-only-canvas.md)
+- [Architecture track](ARCHITECTURE_TRACK.md) — L0–L2 spine, milestone gates
+- [Usefulness roadmap](USEFULNESS_ROADMAP.md) — MVP scope and next bets
+- [Contributing](CONTRIBUTING.md) · [Implementation DAG](IMPLEMENTATION_DAG.md)
+- [Architecture diagrams](diagrams/README.md) — mermaid maps with honest `source_kind` captions
+
+## Architecture diagrams
+
+Visual maps of the evidence-first spine and projection boundaries. Pair with
+[Explanation](wiki/explanation/evidence-first-architecture.md) pages; diagrams
+do not imply live scheduler or fleet state.
+
+| Diagram | Topic |
+|---------|-------|
+| [Evidence loop](diagrams/evidence-loop.md) | record → ingest → export → canvas |
+| [Truth label ladder](diagrams/truth-label-ladder.md) | `source_kind` × confidence × redaction |
+| [Execution ladder](diagrams/execution-ladder.md) | cache-only through LRE ceiling |
+| [Agent loop provenance](diagrams/agent-loop-provenance.md) | M8 bounded provenance chain |
+| [Compare projection flow](diagrams/compare-projection-flow.md) | M9 `derived_v1` compare |
+| [Canvas projection boundary](diagrams/canvas-projection-boundary.md) | projection JSON only |
+| [CI proof lane](diagrams/ci-proof-lane.md) | local gates when GHA offline |
+
+Index: [diagrams/README.md](diagrams/README.md).
+
+## Product anchors
+
+| Doc | Role |
+|-----|------|
+| [One pager](ONE_PAGER.md) | Thesis, proven claims, explicit unproven boundaries |
+| [Architecture track](ARCHITECTURE_TRACK.md) | M1–M4 done; M7/M8/M9 ladder; execution ceiling |
+| [AGENTS.md](../AGENTS.md) | Canonical evidence flow and truth-label rules |
+
+## Milestone and frontier pointers
+
+| Track | What it proves | Where to read |
+|-------|----------------|---------------|
+| **M7** worker identity | Conditional `worker_identity` when admin stdout attached pre-ingest + M7 regex | [Architecture track § Phase 3](ARCHITECTURE_TRACK.md), `scripts/worker-evidence-proof.sh` |
+| **M8** agent adapter | Bounded provenance (`model` + `prompt_sha256` only) | [Cursor adapter](../adapters/cursor/README.md), `scripts/record-agent-change.sh` |
+| **M9** multi-run compare | `derived_v1` deltas across run groups; compare lens | [How-to: export and compare](wiki/how-to/export-and-compare-run-groups.md), `scripts/compare-proof.sh` |
+| **Tier1 live Bazel** | Acts 1+2 with real Bazel via `tier1-agent-demo.sh` | [How-to: tier1](wiki/how-to/run-tier1-live-bazel-demo.md), [DAG mirror](dags/tier1-live-bazel.md) |
+| **LRE proof** | LRE substrate, Nix toolchain, cold/warm parity (x86_64-linux) | [DAG mirror](dags/lre-proof.md), `scripts/lre-cold-warm-proof.sh` |
+| **Fleet evidence v1** | Stdout ingest breadth for M7 parser; not fleet dashboards | [DAG mirror](dags/fleet-evidence-v1.md), [future fleet claims](dags/future-fleet-claims.md) |
+
+## Canonical evidence flow
+
+Every operator-facing doc should preserve this order (from [AGENTS.md](../AGENTS.md)):
+
+1. Run a Bazel workload through a NativeLink-backed mode.
+2. Capture immutable artifacts with SHA-256 hashes.
+3. Ingest evidence into SQLite.
+4. Export versioned projection JSON.
+5. Render the canvas from projection JSON only.
+
+## Local proof gates (GHA offline)
+
+GitHub Actions may be **non-green**. Do not block doc review or local work on CI
+green. Use host-local gates instead:
 
 ```bash
-python3 -m pytest
-python3 -m nlfr doctor --mode cache-only
-./scripts/verify-demo.sh
+uv run pytest -q
+bash -n scripts/*.sh
 ```
 
-See [Contributing](CONTRIBUTING.md) for contributor proof expectations.
+Optional when Nix is available: `nix develop --command ./scripts/lre-proof.sh`.
 
-## Handoffs
+Policy and merge rules:
+[sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md](sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md).
+
+## DAG mirrors (orchestration scope)
+
+Linear ticket scope and wave boundaries:
+[`docs/dags/`](dags/README.md).
+
+| Track | Mirror |
+|-------|--------|
+| Architecture (M1–M9) | [dags/architecture-track.md](dags/architecture-track.md) |
+| M5–M9 umbrella | [dags/m5-m9-umbrella.md](dags/m5-m9-umbrella.md) |
+| Docs excellence | [dags/docs-excellence.md](dags/docs-excellence.md) |
+| Tier1 live Bazel | [dags/tier1-live-bazel.md](dags/tier1-live-bazel.md) |
+| LRE proof | [dags/lre-proof.md](dags/lre-proof.md) |
+| Fleet evidence v1 | [dags/fleet-evidence-v1.md](dags/fleet-evidence-v1.md) |
+
+## Maintainer-only: broker handoffs
+
+> **Operators and evaluators:** skip this section. You do not need broker
+> handoffs to run proofs or read the wiki.
 
 Broker-coordinated sessions write rich artifacts under
 [`docs/sessions/handoffs/`](sessions/handoffs/README.md). Parent chats carry
-JSON summaries and paths only.
+JSON summaries and paths only — not full handoff bodies in chat.
 
-| DAG | Handoff dir |
-|-----|-------------|
+| DAG | Handoff directory |
+|-----|-------------------|
 | M5–M9 umbrella | [sessions/handoffs/m5-m9-umbrella/](sessions/handoffs/m5-m9-umbrella/) |
-| Doc capture (PER-1071) | [sessions/handoffs/nlfr-doc-capture/wave-1/](sessions/handoffs/nlfr-doc-capture/wave-1/) |
+| Frontier / GHA offline | [sessions/handoffs/frontier-wave/](sessions/handoffs/frontier-wave/) |
+| LRE proof | [sessions/handoffs/lre-proof/](sessions/handoffs/lre-proof/) |
+| Fleet evidence v1 | [sessions/handoffs/fleet-evidence-v1/](sessions/handoffs/fleet-evidence-v1/) |
+| Tier1 live Bazel | [sessions/handoffs/tier1-live-bazel/](sessions/handoffs/tier1-live-bazel/) |
+| Doc capture | [sessions/handoffs/nlfr-doc-capture/](sessions/handoffs/nlfr-doc-capture/) |
 
-Templates: [HANDOFF_TEMPLATE.md](sessions/handoffs/HANDOFF_TEMPLATE.md).
+Template: [HANDOFF_TEMPLATE.md](sessions/handoffs/HANDOFF_TEMPLATE.md).
+
+## Wiki hub
+
+Full quadrant map and cross-links:
+[`docs/wiki/README.md`](wiki/README.md).
