@@ -108,7 +108,7 @@ print(hashlib.sha256(path.read_bytes()).hexdigest())
 PY
 )"
 
-SIDECAR="$(mktemp "${TMPDIR:-/tmp}/nlfr-agent-provenance.XXXXXX.json")"
+SIDECAR="$(mktemp "${TMPDIR:-/tmp}/nlfr-agent-provenance.XXXXXX").json"
 cleanup() {
   rm -f "$SIDECAR"
 }
