@@ -1,5 +1,11 @@
 # NativeLink Agent Flight Recorder Product Framing
 
+> **Historical snapshot.** This product framing essay records the original
+> NativeLink + NLFR thesis and showcase narrative.
+> For current product truth and milestone status, use **[ONE_PAGER.md](ONE_PAGER.md)**
+> and **[ARCHITECTURE_TRACK.md](ARCHITECTURE_TRACK.md)**.
+> Deep dives: **[Wiki hub](wiki/README.md)**.
+
 ## Core Thesis
 
 AI will make code generation abundant. The scarce thing becomes trustworthy

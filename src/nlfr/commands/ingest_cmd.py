@@ -20,6 +20,8 @@ from nlfr.ingest.worker_admin_stdout import parse_worker_admin_stdout
 
 
 def run(args: argparse.Namespace) -> int:
+    """Parse Bazel evidence files and ingest them into SQLite."""
+
     try:
         run_metadata = _run_metadata(args.path)
     except ValueError as exc:
@@ -130,6 +132,8 @@ def run(args: argparse.Namespace) -> int:
 
 
 def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    """Register the ``ingest`` command on ``subparsers``."""
+
     parser = subparsers.add_parser(
         "ingest",
         help="ingest recorded evidence into SQLite",

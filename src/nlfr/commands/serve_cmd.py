@@ -8,10 +8,14 @@ from nlfr.commands.common import not_implemented
 
 
 def run(args: argparse.Namespace) -> int:
+    """Placeholder handler until the local projection server is implemented."""
+
     return not_implemented(args, "local projection server is pending the canvas consumer workstream")
 
 
 def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    """Register the ``serve`` command on ``subparsers``."""
+
     parser = subparsers.add_parser(
         "serve",
         help="serve exported projection JSON locally",

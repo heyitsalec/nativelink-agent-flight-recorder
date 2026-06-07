@@ -34,6 +34,8 @@ class BazelRunner:
         self.process_runner = process_runner or ProcessRunner(self.artifact_dir)
 
     def describe_artifacts(self) -> dict[str, Path]:
+        """Return artifact paths emitted by NLFR Bazel flags."""
+
         return {
             "bep": self.artifact_dir / "bazel.bep.json",
             "profile": self.artifact_dir / "bazel.profile.json",
@@ -46,6 +48,8 @@ class BazelRunner:
         *,
         extra_args: Sequence[str] = (),
     ) -> list[str]:
+        """Construct a ``bazel test`` command with recorder artifact flags."""
+
         target_args = [targets] if isinstance(targets, str) else list(targets)
         artifacts = self.describe_artifacts()
         command = [
@@ -81,6 +85,8 @@ class BazelRunner:
         extra_args: Sequence[str] = (),
         evidence_refs: Sequence[str] = (),
     ) -> ProcessResult:
+        """Run Bazel tests and record stdout, stderr, and metadata."""
+
         command = self.build_command(targets, extra_args=extra_args)
         if not self._executable_available():
             return self.process_runner.environment_blocker(

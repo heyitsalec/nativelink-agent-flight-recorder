@@ -14,6 +14,8 @@ def export_compare_projection(
     left_run_group: str,
     right_run_group: str,
 ) -> dict[str, Any]:
+    """Build a compare projection from two run groups in one database."""
+
     left_proof = export_proof_packet(conn, run_group=left_run_group)
     right_proof = export_proof_packet(conn, run_group=right_run_group)
     left_runs = run_rows(conn, left_run_group)
@@ -37,6 +39,8 @@ def build_compare_projection(
     left_runs: list[dict[str, Any]],
     right_runs: list[dict[str, Any]],
 ) -> dict[str, Any]:
+    """Assemble compare dimensions from preloaded proof packets and run rows."""
+
     left_refs = [f"run_group:{left_run_group}"]
     right_refs = [f"run_group:{right_run_group}"]
     evidence_refs = [*left_refs, *right_refs]
@@ -71,6 +75,8 @@ def build_compare_projection(
 
 
 def list_run_group_index(conn: Connection) -> list[dict[str, Any]]:
+    """Return run-group retention index rows from SQLite."""
+
     rows = conn.execute(
         """
         SELECT

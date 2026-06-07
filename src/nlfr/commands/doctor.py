@@ -18,6 +18,8 @@ class Check:
 
 
 def find_any(names: tuple[str, ...]) -> str | None:
+    """Return the first executable found on PATH from ``names``."""
+
     for name in names:
         found = shutil.which(name)
         if found is not None:
@@ -26,6 +28,8 @@ def find_any(names: tuple[str, ...]) -> str | None:
 
 
 def tool_checks(mode: str) -> list[Check]:
+    """Build environment checks for the requested proof mode."""
+
     python_ok = sys.version_info >= (3, 11)
     bazel_path = find_any(("bazel", "bazelisk"))
     nativelink_path = find_any(("nativelink", "native-link"))
@@ -53,6 +57,8 @@ def tool_checks(mode: str) -> list[Check]:
 
 
 def emit_text(mode: str, checks: list[Check]) -> None:
+    """Print human-readable doctor results to stdout and stderr."""
+
     print(f"nlfr doctor ({mode})")
     for check in checks:
         status = "ok" if check.ok else "missing"
@@ -68,6 +74,8 @@ def emit_text(mode: str, checks: list[Check]) -> None:
 
 
 def emit_json(mode: str, checks: list[Check]) -> None:
+    """Print machine-readable doctor results as JSON."""
+
     payload = {
         "mode": mode,
         "ok": all(check.ok for check in checks),
@@ -84,6 +92,8 @@ def emit_json(mode: str, checks: list[Check]) -> None:
 
 
 def run(args: argparse.Namespace) -> int:
+    """Run environment checks and return a process exit code."""
+
     checks = tool_checks(args.mode)
     if args.json:
         emit_json(args.mode, checks)
@@ -93,6 +103,8 @@ def run(args: argparse.Namespace) -> int:
 
 
 def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    """Register the ``doctor`` command on ``subparsers``."""
+
     parser = subparsers.add_parser(
         "doctor",
         help="check local tool availability",

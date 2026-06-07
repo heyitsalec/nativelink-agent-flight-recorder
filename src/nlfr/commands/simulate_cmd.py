@@ -24,6 +24,8 @@ from nlfr.db.ingest import (
 
 
 def run(args: argparse.Namespace) -> int:
+    """Apply demo agent patches and record simulated provenance."""
+
     try:
         scenario_paths = _scenario_paths(args)
     except ValueError as exc:
@@ -60,6 +62,8 @@ def run(args: argparse.Namespace) -> int:
 
 
 def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    """Register the ``simulate`` command on ``subparsers``."""
+
     parser = subparsers.add_parser(
         "simulate",
         help="simulate agent patches and record agent-to-build provenance",

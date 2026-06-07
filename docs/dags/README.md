@@ -1,5 +1,10 @@
 # NLFR DAG Mirrors
 
+## Active — Docs excellence (wave-0 ARMED)
+
+[docs-excellence.md](docs-excellence.md) · Handoffs: `docs/sessions/handoffs/docs-excellence/wave-0/`  
+Wave-0 ceiling: flagship OSS documentation — Diátaxis wiki hub, Harmony README, adoption paths, mermaid diagrams under `docs/diagrams/`, proof-samples hub, contributor cross-links. Parallel coordinators: `coord-readme-flagship`, `coord-wiki-hub`, `coord-adoption-paths`, `coord-diagrams`, `coord-proof-samples-hub`, `coord-code-polish`, `coord-contributing`. Branch: `feat/docs-excellence`. GHA offline tolerated; local proof gates at ship.
+
 ## Active — Fleet evidence v1 (frontier wave)
 
 [fleet-evidence-v1.md](fleet-evidence-v1.md) · Handoffs: `docs/sessions/handoffs/fleet-evidence-v1/wave-1/` (wave-0: `wave-0/`)  

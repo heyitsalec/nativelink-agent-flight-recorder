@@ -14,18 +14,24 @@ from nlfr.projectors.common import write_or_print
 
 
 def export_graph(args: argparse.Namespace) -> int:
+    """Export an action graph projection for a run group."""
+
     conn = initialize(connect(args.db))
     write_or_print(export_action_graph(conn, run_group=args.run_group), args.output)
     return 0
 
 
 def export_runway(args: argparse.Namespace) -> int:
+    """Export a validation runway projection for a run group."""
+
     conn = initialize(connect(args.db))
     write_or_print(export_validation_runway(conn, run_group=args.run_group), args.output)
     return 0
 
 
 def export_proof(args: argparse.Namespace) -> int:
+    """Export a proof packet projection for a run group."""
+
     conn = initialize(connect(args.db))
     write_or_print(export_proof_packet(conn, run_group=args.run_group), args.output)
     return 0
@@ -37,6 +43,8 @@ def add_export_command(
     handler: object,
     help_text: str,
 ) -> None:
+    """Add a shared ``export`` subcommand with run-group and DB flags."""
+
     parser = subparsers.add_parser(
         name,
         help=help_text,
@@ -60,6 +68,8 @@ def add_export_command(
 
 
 def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    """Register graph, runway, and proof export command groups."""
+
     graph = subparsers.add_parser(
         "graph",
         help="graph projection commands",

@@ -16,10 +16,13 @@ TRUTH_DEFAULTS = {
 
 
 def generated_at() -> str:
+    """Return an ISO-8601 UTC timestamp for projection metadata."""
+
     return datetime.now(UTC).isoformat(timespec="microseconds").replace("+00:00", "Z")
 
 
 def rows(conn: Connection, table: str, run_ids: list[str]) -> list[dict[str, Any]]:
+    """Load normalized rows from ``table`` for the given run ids."""
     if not run_ids:
         return []
     placeholders = ", ".join("?" for _ in run_ids)
@@ -31,6 +34,8 @@ def rows(conn: Connection, table: str, run_ids: list[str]) -> list[dict[str, Any
 
 
 def run_rows(conn: Connection, run_group: str) -> list[dict[str, Any]]:
+    """Load normalized run rows for a run group."""
+
     result = conn.execute(
         """
         SELECT * FROM runs
@@ -43,6 +48,8 @@ def run_rows(conn: Connection, run_group: str) -> list[dict[str, Any]]:
 
 
 def row_to_dict(row: Row) -> dict[str, Any]:
+    """Convert a SQLite row and decode JSON-backed columns."""
+
     value = dict(row)
     for key in ("command", "evidence_refs", "payload", "producer_command", "span"):
         if key in value and isinstance(value[key], str):
@@ -51,6 +58,8 @@ def row_to_dict(row: Row) -> dict[str, Any]:
 
 
 def parse_json(value: str) -> Any:
+    """Parse JSON text, returning the original string on decode failure."""
+
     try:
         return json.loads(value)
     except json.JSONDecodeError:
@@ -58,6 +67,8 @@ def parse_json(value: str) -> Any:
 
 
 def truth(row: dict[str, Any]) -> dict[str, Any]:
+    """Extract truth-label fields from a normalized row."""
+
     return {
         "source_kind": row.get("source_kind") or TRUTH_DEFAULTS["source_kind"],
         "confidence": row.get("confidence") or TRUTH_DEFAULTS["confidence"],
@@ -67,6 +78,8 @@ def truth(row: dict[str, Any]) -> dict[str, Any]:
 
 
 def status_counts(items: list[dict[str, Any]]) -> dict[str, int]:
+    """Count items by ``status`` or ``event_kind``."""
+
     counts: dict[str, int] = {}
     for item in items:
         status = str(item.get("status") or item.get("event_kind") or "unknown")
@@ -75,6 +88,8 @@ def status_counts(items: list[dict[str, Any]]) -> dict[str, int]:
 
 
 def write_or_print(payload: dict[str, Any], output: str | None) -> None:
+    """Write projection JSON to ``output`` or print it to stdout."""
+
     text = json.dumps(payload, indent=2, sort_keys=True) + "\n"
     if output:
         from pathlib import Path

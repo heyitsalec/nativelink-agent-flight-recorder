@@ -27,6 +27,7 @@ docs/sessions/handoffs/{dag-id}/wave-{n}/
 | `tier1-agent-vision` | PER-TIER1-AGENT | [tier1-agent-vision/](tier1-agent-vision/) · KOS: [KOS-startup-routing.md](tier1-agent-vision/KOS-startup-routing.md) |
 | `tier1-live-bazel` | frontier | [tier1-live-bazel/](tier1-live-bazel/) |
 | `frontier-wave` | broker | [frontier-wave/](frontier-wave/) |
+| `docs-excellence` | broker | [docs-excellence/](docs-excellence/) · DAG: [docs-excellence.md](../../dags/docs-excellence.md) |
 
 ## Templates
 

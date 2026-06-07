@@ -1,4 +1,4 @@
-"""NativeLink subprocess runner for the cache-only proof path."""
+"""NativeLink subprocess runner for recorder proof paths."""
 
 from __future__ import annotations
 
@@ -27,13 +27,19 @@ class NativeLinkRunner:
 
     @property
     def stdout_path(self) -> Path:
+        """Path where NativeLink stdout is recorded."""
+
         return self.artifact_dir / "nativelink.stdout.txt"
 
     @property
     def stderr_path(self) -> Path:
+        """Path where NativeLink stderr is recorded."""
+
         return self.artifact_dir / "nativelink.stderr.txt"
 
     def build_command(self) -> list[str]:
+        """Construct the NativeLink server command for the configured file."""
+
         return [self.executable, str(self.config_path)]
 
     def run_cache_server(
@@ -43,6 +49,8 @@ class NativeLinkRunner:
         timeout_seconds: float | None = None,
         evidence_refs: Sequence[str] = (),
     ) -> ProcessResult:
+        """Start NativeLink with the configured file and record process evidence."""
+
         command = self.build_command()
         if not self._executable_available():
             return self.process_runner.environment_blocker(

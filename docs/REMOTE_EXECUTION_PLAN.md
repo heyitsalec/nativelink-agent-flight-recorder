@@ -1,5 +1,11 @@
 # Remote Execution Expansion Plan
 
+> **Historical snapshot.** This expansion plan records the zero-LLM
+> remote-execution phase strategy predating M5–M9.
+> For current product truth and milestone status, use **[ONE_PAGER.md](ONE_PAGER.md)**
+> and **[ARCHITECTURE_TRACK.md](ARCHITECTURE_TRACK.md)**.
+> Deep dives: **[Wiki hub](wiki/README.md)**.
+
 ## Why This Matters
 
 The cache-only proof shows the first part of the thesis: repeated validation can
@@ -124,8 +130,9 @@ The demo claim should stay conservative:
 > Bazel was configured to use a NativeLink remote execution endpoint, and NLFR
 > recorded the evidence path.
 
-Do not claim exact queue time, worker identity, or fleet scheduling behavior
-until NLFR captures direct worker evidence for it.
+Do not claim exact queue time, fleet scheduling behavior, or worker identity
+without M7 admin stdout attachment until NLFR captures direct worker evidence
+for scheduler assignment, placement, and load distribution.
 
 ## What The Operator Should See
 

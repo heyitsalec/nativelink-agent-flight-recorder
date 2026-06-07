@@ -17,6 +17,8 @@ from nlfr.projectors.proof import export_proof_packet
 
 
 def export_compare(args: argparse.Namespace) -> int:
+    """Export a compare projection for two run groups."""
+
     if args.left_db or args.right_db:
         if not (args.left_db and args.right_db):
             print(
@@ -46,6 +48,8 @@ def export_compare(args: argparse.Namespace) -> int:
 
 
 def index_run_groups(args: argparse.Namespace) -> int:
+    """List distinct run groups and run counts from SQLite."""
+
     conn = initialize(connect(args.db))
     groups = list_run_group_index(conn)
     payload = {
@@ -71,6 +75,8 @@ def index_run_groups(args: argparse.Namespace) -> int:
 
 
 def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    """Register ``compare`` subcommands on ``subparsers``."""
+
     parser = subparsers.add_parser(
         "compare",
         help="compare recorded run groups",

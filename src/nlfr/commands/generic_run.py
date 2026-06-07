@@ -26,6 +26,8 @@ from nlfr.runners import ProcessResult, ProcessRunner
 
 
 def run_generic(args: argparse.Namespace) -> int:
+    """Record arbitrary shell commands and optional agent provenance."""
+
     if not args.command:
         print("generic mode requires at least one --command", file=sys.stderr)
         return 2
@@ -169,6 +171,8 @@ def run_generic(args: argparse.Namespace) -> int:
 
 
 def register_generic_args(parser: argparse.ArgumentParser) -> None:
+    """Attach CLI flags used by ``nlfr run --mode generic``."""
+
     parser.add_argument(
         "--command",
         action="append",

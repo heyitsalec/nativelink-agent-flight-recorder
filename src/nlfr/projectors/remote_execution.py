@@ -64,6 +64,8 @@ def unsupported_claims_for_run(
     run_id: str,
     proof_blocks: list[dict[str, Any]],
 ) -> list[str]:
+    """Return remote-execution claims that remain unsupported for one run."""
+
     claims = list(UNSUPPORTED_REMOTE_EXECUTION_CLAIMS)
     if worker_identity_events_for_run(run_id, proof_blocks):
         claims = [claim for claim in claims if claim != "worker_identity"]
@@ -74,6 +76,8 @@ def remote_execution_metrics(
     invocations: list[dict[str, Any]],
     proof_blocks: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
+    """Summarize observed remote-execution configuration and identity evidence."""
+
     remote_items = remote_execution_invocations(invocations)
     endpoints = sorted({item["endpoint"] for item in remote_items})
     worker_identity_observed = False
@@ -98,6 +102,8 @@ def unsupported_claims_for_group(
     invocations: list[dict[str, Any]],
     proof_blocks: list[dict[str, Any]],
 ) -> list[str]:
+    """Return remote-execution claims unsupported across a run group."""
+
     claims = list(UNSUPPORTED_REMOTE_EXECUTION_CLAIMS)
     for invocation in invocations:
         if worker_identity_events_for_run(str(invocation.get("run_id") or ""), proof_blocks):

@@ -10,6 +10,8 @@ from nlfr.projectors.remote_execution import sanitize_remote_endpoint_args
 
 
 def export_validation_runway(conn: Connection, *, run_group: str) -> dict[str, Any]:
+    """Build the validation runway projection for a run group."""
+
     runs = run_rows(conn, run_group)
     run_ids = [run["id"] for run in runs]
     invocations = rows(conn, "invocations", run_ids)

@@ -26,6 +26,8 @@ class ProcessResult:
     detail: str | None = None
 
     def to_metadata(self) -> dict[str, object]:
+        """Serialize this result for run summary JSON."""
+
         metadata: dict[str, object] = {
             "command": self.command,
             "cwd": str(self.cwd),
@@ -61,6 +63,8 @@ class ProcessRunner:
         timeout_seconds: float | None = None,
         evidence_refs: Sequence[str] = (),
     ) -> ProcessResult:
+        """Execute a subprocess and persist stdout, stderr, and metadata."""
+
         command_list = [str(part) for part in command]
         cwd_path = Path(cwd)
         stdout_path = self._stream_path(label, "stdout")
@@ -118,6 +122,8 @@ class ProcessRunner:
         detail: str,
         evidence_refs: Sequence[str] = (),
     ) -> ProcessResult:
+        """Record a missing-tool result without executing the command."""
+
         command_list = [str(part) for part in command]
         cwd_path = Path(cwd)
         stdout_path = self._stream_path(label, "stdout")
@@ -148,6 +154,8 @@ class ProcessRunner:
         detail: str,
         evidence_refs: Sequence[str] = (),
     ) -> ProcessResult:
+        """Record invalid configuration without executing the command."""
+
         result = self.environment_blocker(
             command,
             cwd=cwd,

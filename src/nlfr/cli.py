@@ -13,6 +13,8 @@ DESCRIPTION = "NativeLink Agent Flight Recorder"
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build the top-level ``nlfr`` argument parser and subcommands."""
+
     parser = argparse.ArgumentParser(
         prog="nlfr",
         description=DESCRIPTION,
@@ -33,6 +35,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    """Parse CLI arguments and dispatch to the selected command handler."""
+
     parser = build_parser()
     args = parser.parse_args(argv)
     handler = getattr(args, "handler", None)

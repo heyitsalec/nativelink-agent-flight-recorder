@@ -1,5 +1,11 @@
 # Real NativeLink Toolchain Proof DAG
 
+> **Historical snapshot.** This DAG mirror records PER-1019 real NativeLink
+> toolchain proof completion.
+> For current product truth and milestone status, use **[ONE_PAGER.md](ONE_PAGER.md)**
+> and **[ARCHITECTURE_TRACK.md](ARCHITECTURE_TRACK.md)**.
+> Deep dives: **[Wiki hub](wiki/README.md)**.
+
 Linear parent: [PER-1019](https://linear.app/gradschool/issue/PER-1019/nlfr-20-real-nativelink-toolchain-proof)
 
 ## Objective
@@ -26,8 +32,9 @@ Proof pass (inside `nix develop`):
 - `scripts/local-exec-proof.sh` — exit 0, `worker_endpoints_ready`
 - Summaries: `data/cold-warm-proof/summary.json`, `data/local-exec-proof/summary.json`
 
-Unsupported claims remain explicit: worker identity, scheduler assignment, queue
-time, action placement, load distribution.
+Unsupported claims remain explicit: worker identity is **conditional** on M7
+admin stdout; scheduler assignment, queue time, action placement, and load
+distribution stay unsupported.
 
 ## Proof Gates
 
@@ -43,6 +50,7 @@ npm --prefix apps/canvas run capture
 
 ## Stop Conditions
 
-- Claim worker identity/placement/queue time without direct evidence.
+- Claim worker identity without M7 admin stdout attachment and regex match.
+- Claim placement, queue time, or scheduler assignment without direct evidence.
 - Hide environment blockers when tools are missing.
 - Linear/Git/repo state conflicts would mislead the next agent.

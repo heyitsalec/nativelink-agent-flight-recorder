@@ -1,5 +1,11 @@
 # Local Remote Execution Worker Proof DAG
 
+> **Historical snapshot.** This DAG mirror records PER-1013 local
+> remote-execution worker proof completion.
+> For current product truth and milestone status, use **[ONE_PAGER.md](ONE_PAGER.md)**
+> and **[ARCHITECTURE_TRACK.md](ARCHITECTURE_TRACK.md)**.
+> Deep dives: **[Wiki hub](wiki/README.md)**.
+
 Linear parent: [PER-1013](https://linear.app/gradschool/issue/PER-1013/nlfr-14-local-remote-execution-worker-proof)
 
 ## Objective
@@ -37,8 +43,9 @@ PER-1013 is complete for this host's available proof boundary:
 - the tryout packet captures the zero-LLM worker-first strategy;
 - the final parent claim is limited to recorded evidence and environment
   blockers on this host;
-- worker identity, queue time, scheduler assignment, action placement, and
-  load distribution as follow-ups until direct NativeLink worker evidence exists.
+- worker identity is **conditional** on M7 admin stdout; queue time, scheduler
+  assignment, action placement, and load distribution remain follow-ups until
+  direct NativeLink worker evidence exists beyond M7.
 
 Completed worker-readiness behavior:
 
@@ -80,8 +87,8 @@ customer data, or private legacy source material.
 
 ## Stop Conditions
 
-- Local execution proof would need to claim worker identity, queue time, or
-  scheduling behavior without direct evidence.
+- Local execution proof would need to claim worker identity without M7 admin
+  stdout, or claim queue time or scheduling behavior without direct evidence.
 - NativeLink/Bazel cannot run and the blocker path fails to record durable
   evidence.
 - The work drifts into token-heavy real-agent demos before worker proof is

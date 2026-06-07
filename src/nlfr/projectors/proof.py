@@ -17,6 +17,8 @@ from nlfr.projectors.remote_execution import (
 
 
 def export_proof_packet(conn: Connection, *, run_group: str) -> dict[str, Any]:
+    """Build the proof packet projection for a run group."""
+
     runs = run_rows(conn, run_group)
     run_ids = [run["id"] for run in runs]
     invocations = rows(conn, "invocations", run_ids)
