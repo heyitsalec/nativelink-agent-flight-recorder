@@ -1,0 +1,38 @@
+{
+  "wave": "wave-1.5",
+  "dag_id": "m5-m9-umbrella",
+  "status": "DONE_WITH_CONCERNS",
+  "workers": [
+    {
+      "worker_id": "vision-auditor",
+      "type": "explore",
+      "status": "DONE_WITH_CONCERNS",
+      "provenance": "provenance-vision-auditor.md",
+      "top_findings": [
+        "handoff-tree-missing",
+        "m5-ci-proof-samples-gap",
+        "ci-matrix-doc-drift"
+      ]
+    },
+    {
+      "worker_id": "e2e-verifier",
+      "type": "shell",
+      "status": "DONE_WITH_CONCERNS",
+      "provenance": "provenance-e2e-verifier.md",
+      "matrix_pass": true,
+      "host_blockers": "verify-demo PATH blockers; nix cold-warm passed separately"
+    },
+    {
+      "worker_id": "ticket-drift",
+      "type": "explore",
+      "status": "DONE",
+      "provenance": "provenance-ticket-drift.md",
+      "wave_2_code_blockers": []
+    }
+  ],
+  "wave_2_unblocked": true,
+  "concerns": [
+    "Promote CI proof samples after first green GHA",
+    "Extend CI unit job with canvas dogfood steps"
+  ]
+}

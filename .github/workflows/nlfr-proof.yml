@@ -1,0 +1,117 @@
+name: NLFR proof
+
+on:
+  push:
+    branches: [main, codex/**, fix/**]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: nlfr-proof-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: Unit + generic record + canvas build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/canvas/package-lock.json
+
+      - name: Python tests
+        run: uv sync && uv run pytest -q
+
+      - name: Generic record proof
+        run: ./scripts/record-proof.sh
+
+      - name: Canvas dogfood record + build + truth guard
+        run: |
+          ./scripts/record-canvas-build.sh
+          npm ci --prefix apps/canvas
+          npm --prefix apps/canvas run build
+          npm --prefix apps/canvas run test:truth
+
+      - name: Upload record-proof artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: record-proof
+          path: |
+            data/record-proof/summary.json
+            data/record-proof/run.json
+            data/record-proof/projections/
+          if-no-files-found: warn
+
+  linux-nix-toolchain:
+    name: Nix toolchain proofs
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: DeterminateSystems/nix-installer-action@main
+
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Cold-warm + agent-loop proofs
+        run: |
+          nix develop --command bash -lc '
+            set -euo pipefail
+            uv sync
+            ./scripts/cold-warm-cache-proof.sh
+            ./scripts/agent-loop-proof.sh
+          '
+
+      - name: Upload toolchain proof artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nix-toolchain-proof
+          path: |
+            data/cold-warm-proof/summary.json
+            data/cold-warm-proof/environment-blocker.json
+            data/agent-loop-proof/summary.json
+            data/agent-loop-proof/environment-blocker.json
+          if-no-files-found: warn
+
+  verify-demo-fixture:
+    name: Fixture demo path
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/canvas/package-lock.json
+
+      - name: Verify demo (fixture path)
+        run: |
+          npm ci --prefix apps/canvas
+          ./scripts/verify-demo.sh
+
+      - name: Upload demo proof artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo-proof
+          path: |
+            data/demo-proof/summary.json
+            data/demo-proof/projections/
+          if-no-files-found: warn

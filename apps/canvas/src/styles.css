@@ -617,6 +617,21 @@ input {
   box-shadow: 0 24px 70px rgba(17, 24, 39, 0.12);
 }
 
+.compare-lens {
+  position: absolute;
+  z-index: 5;
+  top: 94px;
+  right: 24px;
+  width: min(480px, calc(100vw - 108px));
+  max-height: calc(100vh - 188px);
+  padding: 20px;
+  overflow: auto;
+  border: 1px solid rgba(17, 24, 39, 0.13);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 24px 70px rgba(17, 24, 39, 0.12);
+}
+
 .proof-drawer-heading {
   display: grid;
   grid-template-columns: 22px minmax(0, 1fr);
@@ -668,6 +683,121 @@ input {
   font-size: 24px;
   line-height: 1.08;
   letter-spacing: 0;
+}
+
+.compare-lens-heading {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 8px 10px;
+  padding-right: 32px;
+}
+
+.compare-lens-heading > svg {
+  grid-row: span 2;
+  margin-top: 2px;
+  color: #7a4b9a;
+}
+
+.compare-lens-heading p {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 820;
+  color: #667085;
+  text-transform: uppercase;
+}
+
+.compare-lens-heading h2 {
+  margin: 0;
+  color: #172033;
+  font-size: 22px;
+  line-height: 1.12;
+  letter-spacing: 0;
+}
+
+.compare-state-line {
+  display: grid;
+  grid-template-columns: 13px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  margin-top: 18px;
+  padding: 10px 0;
+  border-top: 1px solid rgba(17, 24, 39, 0.1);
+  border-bottom: 1px solid rgba(17, 24, 39, 0.1);
+}
+
+.compare-empty {
+  margin: 16px 0 0;
+  color: #475467;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.compare-dimension-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.compare-dimension {
+  padding: 14px;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.72);
+}
+
+.compare-dimension-heading {
+  display: grid;
+  grid-template-columns: 13px minmax(0, 1fr);
+  gap: 8px 10px;
+}
+
+.compare-dimension-heading p {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 820;
+  color: #667085;
+  text-transform: uppercase;
+}
+
+.compare-dimension-heading h3 {
+  margin: 0;
+  color: #172033;
+  font-size: 16px;
+}
+
+.compare-dimension-summary {
+  margin: 10px 0 0;
+  color: #475467;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.compare-dimension-truth {
+  margin-top: 10px;
+}
+
+.compare-delta-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.compare-delta-metrics span {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.86);
+  font-size: 11px;
+  color: #667085;
+  text-transform: uppercase;
+}
+
+.compare-delta-metrics strong {
+  color: #172033;
+  font-size: 15px;
+  text-transform: none;
 }
 
 .remote-state-line {
@@ -972,6 +1102,14 @@ input {
   }
 
   .remote-lens {
+    left: 70px;
+    right: 12px;
+    top: 70px;
+    width: auto;
+    max-height: calc(100vh - 164px);
+  }
+
+  .compare-lens {
     left: 70px;
     right: 12px;
     top: 70px;

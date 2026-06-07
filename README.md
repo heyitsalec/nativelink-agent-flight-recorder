@@ -123,7 +123,9 @@ Tryout narrative: [docs/TRYOUT_PACKET.md](docs/TRYOUT_PACKET.md) · One-pager:
 [docs/proof-samples/](docs/proof-samples/) · Full walkthrough:
 [docs/WALKTHROUGH.md](docs/WALKTHROUGH.md) · Implementation walkthrough:
 [docs/IMPLEMENTATION_WALKTHROUGH.md](docs/IMPLEMENTATION_WALKTHROUGH.md) ·
-Usefulness roadmap: [docs/USEFULNESS_ROADMAP.md](docs/USEFULNESS_ROADMAP.md)
+Usefulness roadmap: [docs/USEFULNESS_ROADMAP.md](docs/USEFULNESS_ROADMAP.md) ·
+Adoption guide: [docs/ADOPTION_GUIDE.md](docs/ADOPTION_GUIDE.md) ·
+CI recipe: [docs/CI_RECIPE.md](docs/CI_RECIPE.md)
 
 ## CLI Flow
 
@@ -217,18 +219,19 @@ observed_cache_event → cache_event`. It writes `data/agent-loop-proof/summary.
 with `chain_complete=true` and `source_kind: collectable_v1`. The graph
 projector derives the `agent` node from the `agent_provenance` proof block and
 the `changes` table, with edge kinds `authored_change` and `validated_by`. The
-fixture (no-Nix) canvas shows the same chain as `simulated_v1`:
-`scripts/verify-demo.sh` simulates `llm-bounded-patch` into `run_group=latest`,
-then attaches fixture Bazel evidence to the same run, so the committed
-`apps/canvas/public/projections/action-graph.json` includes the agent and change
-nodes.
+fixture (no-Nix) canvas can show the agent-loop chain as `simulated_v1` when
+`scripts/verify-demo.sh` simulates `llm-bounded-patch`. The **default dev
+projection** is `canvas-dev` (`collectable_v1` dogfood) — see Canvas below.
 
-Canvas:
+Canvas (default: **`canvas-dev`** `collectable_v1` dogfood projection; fixture
+fallback banner when projections are missing):
 
 ```bash
 npm --prefix apps/canvas install
 npm --prefix apps/canvas run dev -- --host 127.0.0.1
 ```
+
+CI runs the same proof matrix on Linux — see [`docs/CI_RECIPE.md`](docs/CI_RECIPE.md).
 
 Visual proof capture, with the canvas server running:
 

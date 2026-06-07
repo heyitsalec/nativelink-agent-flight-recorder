@@ -6,6 +6,7 @@ import {
   FileCheck2,
   Focus,
   GitBranch,
+  GitCompare,
   Maximize2,
   MessageCircle,
   Network,
@@ -23,6 +24,7 @@ import { sampleProofPacket, sampleProjection } from "./sampleProjection";
 import type {
   ActionGraphProjection,
   CanvasMode,
+  CompareProjection,
   FocusFilter,
   PositionedNode,
   ProofBlock,
@@ -33,10 +35,12 @@ import type {
 
 const projectionPath = "/projections/action-graph.json";
 const proofPath = "/projections/proof.json";
+const comparePath = "/projections/compare-projection.json";
 
 export function App() {
   const [projection, setProjection] = useState<ActionGraphProjection>(sampleProjection);
   const [proofPacket, setProofPacket] = useState<ProofPacket>(sampleProofPacket);
+  const [compareProjection, setCompareProjection] = useState<CompareProjection | null>(null);
   const [mode, setMode] = useState<CanvasMode>("graph");
   const [focus, setFocus] = useState<FocusFilter>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -95,6 +99,24 @@ export function App() {
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    fetch(comparePath)
+      .then((response) => {
+        if (!response.ok) throw new Error("compare projection missing");
+        return response.json() as Promise<CompareProjection>;
+      })
+      .then((payload) => {
+        if (active) setCompareProjection(payload);
+      })
+      .catch(() => {
+        if (active) setCompareProjection(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const graph = useMemo(() => layoutProjection(projection), [projection]);
   const selectedNode = graph.nodes.find((node) => node.id === selectedId) ?? null;
   const highlighted = useMemo(() => highlightedIds(graph.nodes, focus), [graph.nodes, focus]);
@@ -147,6 +169,14 @@ export function App() {
       const firstAgent = graph.nodes.find((node) => node.kind === "agent");
       setSelectedId(firstAgent?.id ?? null);
       setOperatorNote("Agent loop is isolated: agent and change evidence stays simulated until collected.");
+    } else if (value.includes("compare") || value.includes("diff")) {
+      setMode("compare");
+      setFocus("derived");
+      setOperatorNote(
+        compareProjection
+          ? "Compare lens shows derived proof-packet deltas only."
+          : "Compare lens unavailable — compare-projection.json not loaded.",
+      );
     } else if (value.includes("runway") || value.includes("timeline")) {
       setMode("runway");
       setFocus("all");
@@ -210,6 +240,15 @@ export function App() {
             setFocus("remote");
           }}
         />
+        <IconButton
+          label="Compare Runs"
+          active={mode === "compare"}
+          icon={<GitCompare size={18} />}
+          onClick={() => {
+            setMode("compare");
+            setFocus("derived");
+          }}
+        />
         <span className="rail-break" />
         <IconButton label="Zoom in" icon={<ZoomIn size={18} />} onClick={() => applyZoom("in")} />
         <IconButton label="Zoom out" icon={<ZoomOut size={18} />} onClick={() => applyZoom("out")} />
@@ -271,7 +310,10 @@ export function App() {
         {mode === "runway" && <RunwayOverlay projection={projection} onSelect={setSelectedId} />}
         {mode === "proof" && <ProofDrawer packet={proofPacket} onClose={() => setMode("graph")} />}
         {mode === "remote" && <RemoteLens lens={remoteLens} onClose={() => setMode("graph")} />}
-        {selectedNode && mode !== "proof" && mode !== "remote" && (
+        {mode === "compare" && (
+          <CompareLens projection={compareProjection} onClose={() => setMode("graph")} />
+        )}
+        {selectedNode && mode !== "proof" && mode !== "remote" && mode !== "compare" && (
           <Inspector node={selectedNode} onClose={() => setSelectedId(null)} />
         )}
         <TruthLegend />
@@ -521,6 +563,107 @@ function RemoteLens({
         </div>
       </div>
     </aside>
+  );
+}
+
+function CompareLens({
+  projection,
+  onClose,
+}: {
+  projection: CompareProjection | null;
+  onClose: () => void;
+}) {
+  return (
+    <aside className="compare-lens" aria-label="multi-run compare" data-testid="compare-lens">
+      <button className="close-button" onClick={onClose} aria-label="Close compare lens">
+        <X size={16} />
+      </button>
+      <div className="compare-lens-heading">
+        <GitCompare size={18} />
+        <p>Multi-run Compare</p>
+        <h2>
+          {projection
+            ? `${projection.left_run_group} vs ${projection.right_run_group}`
+            : "No compare projection loaded"}
+        </h2>
+      </div>
+      {!projection ? (
+        <p className="compare-empty">
+          Place <code>compare-projection.json</code> under <code>public/projections/</code> to enable
+          derived proof-packet diffs.
+        </p>
+      ) : (
+        <>
+          <div className="compare-state-line">
+            <span className={`truth-dot ${projection.source_kind}`} />
+            <strong>{projection.source_kind}</strong>
+            <span>{projection.confidence}</span>
+          </div>
+          <div className="compare-dimension-list">
+            {projection.dimensions.map((dimension) => (
+              <CompareDimensionView key={dimension.id} dimension={dimension} />
+            ))}
+          </div>
+        </>
+      )}
+    </aside>
+  );
+}
+
+function CompareDimensionView({ dimension }: { dimension: CompareProjection["dimensions"][number] }) {
+  const deltaEntries = Object.entries(dimension.delta ?? {}).filter(
+    ([, value]) => value !== null && typeof value !== "object",
+  );
+  return (
+    <section className={`compare-dimension ${dimension.source_kind}`}>
+      <div className="compare-dimension-heading">
+        <span className={`truth-dot ${dimension.source_kind}`} />
+        <div>
+          <p>{dimension.id}</p>
+          <h3>{dimension.title}</h3>
+        </div>
+      </div>
+      <p className="compare-dimension-summary">{dimension.summary}</p>
+      <dl className="truth-grid compare-dimension-truth">
+        <div>
+          <dt>Source</dt>
+          <dd>{dimension.source_kind}</dd>
+        </div>
+        <div>
+          <dt>Confidence</dt>
+          <dd>{dimension.confidence}</dd>
+        </div>
+        <div>
+          <dt>Redaction</dt>
+          <dd>{dimension.redaction_state}</dd>
+        </div>
+      </dl>
+      {deltaEntries.length > 0 && (
+        <div className="compare-delta-metrics" aria-label={`${dimension.title} delta`}>
+          {deltaEntries.map(([key, value]) => (
+            <span key={key}>
+              <strong>{formatMetricValue(value as ProofMetricValue)}</strong>
+              {labelKind(key)}
+            </span>
+          ))}
+        </div>
+      )}
+      {(dimension.claims?.length ?? 0) > 0 && (
+        <ul className="proof-claims">
+          {dimension.claims.map((claim) => (
+            <li key={claim}>{claim}</li>
+          ))}
+        </ul>
+      )}
+      {dimension.evidence_refs.length > 0 && (
+        <div className="evidence-list proof-evidence">
+          <span>Evidence refs</span>
+          {dimension.evidence_refs.map((ref) => (
+            <code key={ref}>{ref}</code>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 

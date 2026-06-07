@@ -1,0 +1,200 @@
+{
+  "confidence": "medium",
+  "dimensions": [
+    {
+      "claims": [
+        "Left run group recorded 1 run(s).",
+        "Right run group recorded 1 run(s).",
+        "Run counts match between run groups."
+      ],
+      "confidence": "medium",
+      "delta": {
+        "runs": 0
+      },
+      "evidence_refs": [
+        "run_group:fixture-left",
+        "run_group:fixture-right"
+      ],
+      "id": "run_counts",
+      "left": {
+        "run_group": "fixture-left",
+        "runs": 1
+      },
+      "redaction_state": "safe",
+      "right": {
+        "run_group": "fixture-right",
+        "runs": 1
+      },
+      "source_kind": "derived_v1",
+      "summary": "Recorded run counts from proof packet summaries.",
+      "title": "Run Counts"
+    },
+    {
+      "claims": [
+        "Cache metrics are derived from proof packet cache blocks only.",
+        "Left: 1 hit(s), 0 miss(es).",
+        "Right: 2 hit(s), 1 miss(es).",
+        "Hit rate delta is -33.33%."
+      ],
+      "confidence": "medium",
+      "delta": {
+        "hit_rate": -0.33333333333333337,
+        "hits": 1,
+        "misses": 1
+      },
+      "evidence_refs": [
+        "run_group:fixture-left",
+        "run_group:fixture-right"
+      ],
+      "id": "cache_metrics",
+      "left": {
+        "metrics": {
+          "hit_rate": 1.0,
+          "hits": 1,
+          "misses": 0,
+          "unknown": 0
+        }
+      },
+      "redaction_state": "safe",
+      "right": {
+        "metrics": {
+          "hit_rate": 0.6666666666666666,
+          "hits": 2,
+          "misses": 1,
+          "unknown": 0
+        }
+      },
+      "source_kind": "derived_v1",
+      "summary": "Cache hit/miss counts and hit rates from recorded Bazel evidence.",
+      "title": "Cache Metrics"
+    },
+    {
+      "claims": [
+        "Worker identity is true only when direct worker admin evidence exists in the proof packet.",
+        "Left worker identity observed: False.",
+        "Right worker identity observed: False.",
+        "Worker identity observation matches between run groups."
+      ],
+      "confidence": "medium",
+      "delta": {
+        "worker_identity_observed_changed": false
+      },
+      "evidence_refs": [
+        "run_group:fixture-left",
+        "run_group:fixture-right"
+      ],
+      "id": "worker_identity",
+      "left": {
+        "worker_identity_observed": false
+      },
+      "redaction_state": "safe",
+      "right": {
+        "worker_identity_observed": false
+      },
+      "source_kind": "derived_v1",
+      "summary": "Whether direct worker identity evidence was observed in each proof packet.",
+      "title": "Worker Identity"
+    },
+    {
+      "claims": [
+        "Agent provenance presence is derived from agent_provenance proof blocks.",
+        "Left agent provenance block(s): 0.",
+        "Right agent provenance block(s): 1.",
+        "Agent provenance presence differs between run groups."
+      ],
+      "confidence": "medium",
+      "delta": {
+        "block_count_delta": 1,
+        "present_changed": true
+      },
+      "evidence_refs": [
+        "run_group:fixture-left",
+        "run_group:fixture-right"
+      ],
+      "id": "agent_provenance",
+      "left": {
+        "block_count": 0,
+        "blocks": [],
+        "present": false
+      },
+      "redaction_state": "safe",
+      "right": {
+        "block_count": 1,
+        "blocks": [
+          {
+            "confidence": "high",
+            "evidence_refs": [
+              "agent-provenance:fixture-right"
+            ],
+            "id": "proof_blocks_a5b173bec1a0f92997baf9d2",
+            "model": "composer-2.5",
+            "prompt_sha256_prefix": "aaaaaaaaaaaa",
+            "redaction_state": "safe",
+            "source_kind": "collectable_v1",
+            "title": "Agent Provenance: compare-fixture-agent"
+          }
+        ],
+        "present": true
+      },
+      "source_kind": "derived_v1",
+      "summary": "Presence of bounded agent provenance blocks (model + prompt hash only).",
+      "title": "Agent Provenance"
+    },
+    {
+      "claims": [
+        "Status deltas are derived from recorded run rows in SQLite.",
+        "Left statuses: {'completed': 1}.",
+        "Right statuses: {'completed': 1}.",
+        "Run status counts match between run groups."
+      ],
+      "confidence": "medium",
+      "delta": {
+        "by_status": {
+          "completed": {
+            "delta": 0,
+            "left": 1,
+            "right": 1
+          }
+        },
+        "changed": false
+      },
+      "evidence_refs": [
+        "run_group:fixture-left",
+        "run_group:fixture-right"
+      ],
+      "id": "status_deltas",
+      "left": {
+        "status_counts": {
+          "completed": 1
+        }
+      },
+      "redaction_state": "safe",
+      "right": {
+        "status_counts": {
+          "completed": 1
+        }
+      },
+      "source_kind": "derived_v1",
+      "summary": "Per-status run counts compared between run groups.",
+      "title": "Status Deltas"
+    }
+  ],
+  "evidence_refs": [
+    "run_group:fixture-left",
+    "run_group:fixture-right"
+  ],
+  "generated_at": "2026-06-07T00:39:28.106654Z",
+  "left_run_group": "fixture-left",
+  "projection_kind": "compare",
+  "redaction_state": "safe",
+  "right_run_group": "fixture-right",
+  "schema_version": 1,
+  "source_kind": "derived_v1",
+  "summary": {
+    "dimensions": 5,
+    "left_artifacts": 0,
+    "left_runs": 1,
+    "right_artifacts": 0,
+    "right_runs": 1
+  }
+}

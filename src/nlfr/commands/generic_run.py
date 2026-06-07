@@ -18,6 +18,7 @@ from nlfr.db.ingest import (
     upsert_change,
     upsert_failure,
     upsert_invocation,
+    upsert_proof_block,
     upsert_run,
 )
 from nlfr.ids import stable_id
@@ -125,6 +126,24 @@ def run_generic(args: argparse.Namespace) -> int:
     manifest_entries.append(summary_entry)
 
     terminal_status = _terminal_status(results)
+    if args.provenance_sidecar:
+        manifest_entries.extend(
+            _record_agent_provenance(
+                conn,
+                sidecar_path=Path(args.provenance_sidecar).resolve(),
+                artifact_root=artifact_root,
+                run_key=run_key,
+                run_row_id=run_row_id,
+                run_id=run_id,
+                scenario=args.scenario,
+                run_group=args.run_group,
+                workspace=workspace,
+                change_paths=change_paths,
+                before_hashes=before_hashes,
+                after_hashes=after_hashes,
+                terminal_status=terminal_status,
+            )
+        )
     _record_failures(conn, run_key, run_row_id, results, run_id)
     _persist_sqlite(
         conn,
@@ -173,6 +192,10 @@ def register_generic_args(parser: argparse.ArgumentParser) -> None:
         type=float,
         default=None,
         help="optional per-command timeout in seconds",
+    )
+    parser.add_argument(
+        "--provenance-sidecar",
+        help="JSON sidecar with agent.model and agent.prompt_sha256 only (never raw prompt)",
     )
 
 
@@ -458,3 +481,142 @@ def _dedupe(values: list[str]) -> list[str]:
         if value not in deduped:
             deduped.append(value)
     return deduped
+
+
+def _load_provenance_sidecar(path: Path) -> dict[str, Any]:
+    payload = json.loads(path.read_text())
+    agent = payload.get("agent")
+    if not isinstance(agent, dict):
+        raise ValueError(f"provenance sidecar missing agent object: {path}")
+    if agent.get("prompt"):
+        raise ValueError(f"provenance sidecar must not contain raw prompt: {path}")
+    if not agent.get("model"):
+        raise ValueError(f"provenance sidecar missing agent.model: {path}")
+    if not agent.get("prompt_sha256"):
+        raise ValueError(f"provenance sidecar missing agent.prompt_sha256: {path}")
+    return payload
+
+
+def _agent_provenance_payload(
+    *,
+    sidecar: dict[str, Any],
+    scenario: str | None,
+    workspace: Path,
+    change_paths: list[str],
+    before_hashes: dict[str, str | None],
+    after_hashes: dict[str, str | None],
+    run_key: str,
+    run_id: str,
+    run_group: str,
+    terminal_status: str,
+    artifact_root: Path,
+) -> dict[str, Any]:
+    agent_side = sidecar["agent"]
+    scenario_id = scenario or "agent-change"
+    agent_name = str(agent_side.get("name") or "cursor-agent-change")
+    prompt_sha = str(agent_side["prompt_sha256"])
+    evidence_refs = [
+        f"scenario:{scenario_id}",
+        f"agent:{agent_name}",
+        f"run:{run_id}",
+        f"prompt:sha256:{prompt_sha}",
+    ]
+    adapter = sidecar.get("adapter")
+    if isinstance(adapter, str) and adapter:
+        evidence_refs.append(f"adapter:{adapter}")
+
+    return {
+        "schema_version": "nlfr.agent_provenance.v1",
+        "generated_at": _timestamp(),
+        "scenario_id": scenario_id,
+        "title": "Bounded agent change with hashed prompt provenance",
+        "agent": {
+            "kind": agent_side.get("kind", "cursor_adapter_v1"),
+            "name": agent_name,
+            "input_signal": agent_side.get(
+                "input_signal",
+                "redacted: prompt withheld, hash retained",
+            ),
+            "model": agent_side["model"],
+            "prompt_sha256": prompt_sha,
+        },
+        "change": {
+            "change_class": sidecar.get("change_class", "bounded_agent_v1"),
+            "affected_paths": change_paths,
+            "before_hashes": before_hashes,
+            "after_hashes": after_hashes,
+            "patch_applied": True,
+        },
+        "workspace": str(workspace),
+        "build": {
+            "run_id": run_id,
+            "run_key": run_key,
+            "status": terminal_status,
+            "artifact_root": str(artifact_root),
+        },
+        "run_group": run_group,
+        "mode": "generic",
+        "source_kind": "collectable_v1",
+        "confidence": "high",
+        "evidence_refs": evidence_refs,
+        "redaction_state": "safe",
+    }
+
+
+def _record_agent_provenance(
+    conn: Any,
+    *,
+    sidecar_path: Path,
+    artifact_root: Path,
+    run_key: str,
+    run_row_id: str,
+    run_id: str,
+    scenario: str | None,
+    run_group: str,
+    workspace: Path,
+    change_paths: list[str],
+    before_hashes: dict[str, str | None],
+    after_hashes: dict[str, str | None],
+    terminal_status: str,
+) -> list[ArtifactManifestEntry]:
+    sidecar = _load_provenance_sidecar(sidecar_path)
+    provenance = _agent_provenance_payload(
+        sidecar=sidecar,
+        scenario=scenario,
+        workspace=workspace,
+        change_paths=change_paths,
+        before_hashes=before_hashes,
+        after_hashes=after_hashes,
+        run_key=run_key,
+        run_id=run_id,
+        run_group=run_group,
+        terminal_status=terminal_status,
+        artifact_root=artifact_root,
+    )
+    scenario_id = str(provenance["scenario_id"])
+    entry = write_artifact(
+        artifact_root,
+        artifact_key="agent-provenance.json",
+        data=json.dumps(provenance, indent=2, sort_keys=True) + "\n",
+        producer_command=["nlfr", "run", "--mode", "generic"],
+        config_hash=None,
+        redaction_state="safe",
+        source_kind="collectable_v1",
+        confidence="high",
+        evidence_refs=provenance["evidence_refs"],
+    )
+    upsert_proof_block(
+        conn,
+        stable_key=f"{run_key}:proof:agent-provenance:{scenario_id}",
+        run_id=run_row_id,
+        block_key=f"agent-provenance:{scenario_id}",
+        block_kind="agent_provenance",
+        title=f"Agent Provenance: {provenance['agent']['name']}",
+        summary=f"{scenario_id} change recorded with status {terminal_status}.",
+        payload=provenance,
+        source_kind="collectable_v1",
+        confidence="high",
+        evidence_refs=provenance["evidence_refs"],
+        redaction_state="safe",
+    )
+    return [entry]

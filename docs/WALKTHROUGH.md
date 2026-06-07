@@ -37,6 +37,18 @@ That means every node, edge, metric, and proof claim needs truth labels:
 - `evidence_refs`: artifact or fixture references backing the claim.
 - `redaction_state`: `safe`, `redacted`, `blocked`, or `unknown`.
 
+## Default canvas projection (M6)
+
+The dev server loads **`canvas-dev`** run-group projections from
+`apps/canvas/public/projections/` — a real `collectable_v1` generic-run record
+of NLFR building its own GUI (`scripts/record-canvas-build.sh`). Fixture-backed
+Bazel demo projections remain available when you point the canvas at other run
+groups or when `verify-demo.sh` has not been run.
+
+If projections fail to load, the canvas shows a **fixture fallback banner**
+(`usingFixtureFallback` in `App.tsx`) and uses committed demo fixtures — honest
+`simulated_v1`, not fake live proof.
+
 ## The current app in pictures
 
 These screenshots are fixture-backed `simulated_v1` canvas renders. They are

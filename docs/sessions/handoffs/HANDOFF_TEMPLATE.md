@@ -1,9 +1,14 @@
 # Sub-DAG Coordinator Handoff
 
 Date:
-Sub-DAG:
+Sub-DAG / dag-id:
+Wave:
 Coordinator session:
 Linear parent:
+
+Handoff dir: `docs/sessions/handoffs/{dag-id}/wave-{n}/`
+
+Write rich content here; return **paths + status** to parent broker only.
 
 ## Status vocabulary
 

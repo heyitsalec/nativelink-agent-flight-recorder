@@ -1,0 +1,128 @@
+{
+  "blocks": [
+    {
+      "claims": [
+        "This packet can prove recorded commands, artifacts, statuses, and cache events present in the local evidence spine.",
+        "This packet does not claim remote worker assignment, queue timing, or opaque SaaS telemetry."
+      ],
+      "confidence": "high",
+      "evidence_refs": [
+        "run:fixture-left"
+      ],
+      "id": "scope",
+      "kind": "derived_summary",
+      "metrics": {},
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "summary": "Local recorded evidence for AI-generated code validation (cache-only mode).",
+      "title": "Proof Scope"
+    },
+    {
+      "claims": [],
+      "confidence": "unknown",
+      "evidence_refs": [],
+      "id": "invocations",
+      "kind": "derived_summary",
+      "metrics": {},
+      "redaction_state": "unknown",
+      "source_kind": "future",
+      "summary": "NativeLink and Bazel command outcomes captured by the recorder.",
+      "title": "Invocation Results"
+    },
+    {
+      "claims": [],
+      "confidence": "medium",
+      "evidence_refs": [
+        "execution-log:fixture-left"
+      ],
+      "id": "cache",
+      "kind": "derived_summary",
+      "metrics": {
+        "hit_rate": 1.0,
+        "hits": 1,
+        "misses": 0,
+        "unknown": 0
+      },
+      "redaction_state": "safe",
+      "source_kind": "derived_v1",
+      "summary": "Cache hit/miss records extracted from available Bazel evidence.",
+      "title": "Cache Evidence"
+    },
+    {
+      "claims": [
+        "Remote execution configuration evidence requires a recorded invocation with --remote_executor.",
+        "Worker proof requires direct worker log or admin evidence."
+      ],
+      "confidence": "unknown",
+      "evidence_refs": [],
+      "id": "remote_execution",
+      "kind": "derived_summary",
+      "metrics": {
+        "queue_time_observed": false,
+        "remote_executor_endpoints": 0,
+        "remote_executor_invocations": 0,
+        "remote_executor_overrides": 0,
+        "scheduler_assignment_observed": false,
+        "worker_identity_observed": false
+      },
+      "payload": {
+        "remote_executor_endpoints": [],
+        "unsupported_claims": [
+          "worker_identity",
+          "action_placement",
+          "queue_time",
+          "scheduler_assignment",
+          "load_distribution"
+        ]
+      },
+      "redaction_state": "unknown",
+      "source_kind": "future",
+      "summary": "No Bazel remote execution configuration was observed in recorded invocations.",
+      "title": "Remote Execution Boundary"
+    },
+    {
+      "claims": [],
+      "confidence": "high",
+      "evidence_refs": [
+        "bep:target-completed"
+      ],
+      "id": "validation",
+      "kind": "derived_summary",
+      "metrics": {
+        "actions": 0,
+        "failures": 0,
+        "targets": 1
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "summary": "Targets, actions, and failures visible to the recorder.",
+      "title": "Validation Surface"
+    },
+    {
+      "claims": [],
+      "confidence": "unknown",
+      "evidence_refs": [],
+      "id": "artifacts",
+      "kind": "derived_summary",
+      "metrics": {
+        "artifacts": 0
+      },
+      "redaction_state": "unknown",
+      "source_kind": "future",
+      "summary": "Immutable files referenced by the proof packet.",
+      "title": "Artifact Chain"
+    }
+  ],
+  "generated_at": "2026-06-07T00:39:28.106416Z",
+  "projection_kind": "proof_packet",
+  "run_group": "fixture-left",
+  "schema_version": 1,
+  "summary": {
+    "actions": 0,
+    "artifacts": 0,
+    "cache_events": 1,
+    "failures": 0,
+    "runs": 1,
+    "targets": 1
+  }
+}

@@ -1,781 +1,524 @@
 {
   "edges": [
     {
-      "confidence": "high",
+      "confidence": "medium",
       "evidence_refs": [
-        "run:run_4d3e7b3a82e13bccbdd16b5e",
-        "path:apps/canvas/src/App.tsx"
+        "scenario:llm-bounded-patch",
+        "agent:demo-bounded-llm-worker",
+        "patch:sha256:856871f76606d071644921e408592cc65d4f348442e8712815b88bac7e527e98",
+        "prompt:sha256:5f787e73d6d3f8b65082f2d922e670104c580461abff1185780c76ed13a300a6",
+        "run:runs_9bf331740a74989f379808da"
       ],
-      "from": "changes_39f2c10ff2aa411c22b5d923",
-      "id": "validated_by:changes_39f2c10ff2aa411c22b5d923:runs_36750ab4f943a870ac624345",
+      "from": "agent:proof_blocks_41b28bb488d97ae1794cf264",
+      "id": "authored_change:agent:proof_blocks_41b28bb488d97ae1794cf264:changes_d16636ae11e890c114031219",
+      "kind": "authored_change",
+      "redaction_state": "safe",
+      "source_kind": "simulated_v1",
+      "to": "changes_d16636ae11e890c114031219"
+    },
+    {
+      "confidence": "medium",
+      "evidence_refs": [
+        "scenario:llm-bounded-patch",
+        "agent:demo-bounded-llm-worker",
+        "patch:sha256:856871f76606d071644921e408592cc65d4f348442e8712815b88bac7e527e98",
+        "prompt:sha256:5f787e73d6d3f8b65082f2d922e670104c580461abff1185780c76ed13a300a6",
+        "run:runs_9bf331740a74989f379808da"
+      ],
+      "from": "changes_d16636ae11e890c114031219",
+      "id": "validated_by:changes_d16636ae11e890c114031219:runs_9bf331740a74989f379808da",
       "kind": "validated_by",
       "redaction_state": "safe",
-      "source_kind": "collectable_v1",
-      "to": "runs_36750ab4f943a870ac624345"
+      "source_kind": "simulated_v1",
+      "to": "runs_9bf331740a74989f379808da"
     },
     {
-      "confidence": "high",
+      "confidence": "medium",
       "evidence_refs": [
-        "run:run_9fdec126c4e1d72366a0a5ca",
-        "path:apps/canvas/src/App.tsx"
+        "scenario:llm-bounded-patch",
+        "agent:demo-bounded-llm-worker",
+        "patch:sha256:856871f76606d071644921e408592cc65d4f348442e8712815b88bac7e527e98",
+        "prompt:sha256:5f787e73d6d3f8b65082f2d922e670104c580461abff1185780c76ed13a300a6",
+        "run:runs_9bf331740a74989f379808da"
       ],
-      "from": "changes_74c1532966df0658343459a3",
-      "id": "validated_by:changes_74c1532966df0658343459a3:runs_0490cf555e81990b0074ae45",
-      "kind": "validated_by",
-      "redaction_state": "safe",
-      "source_kind": "collectable_v1",
-      "to": "runs_0490cf555e81990b0074ae45"
-    },
-    {
-      "confidence": "high",
-      "evidence_refs": [
-        "run:run_4d3e7b3a82e13bccbdd16b5e",
-        "command:0"
-      ],
-      "from": "runs_36750ab4f943a870ac624345",
-      "id": "recorded_invocation:runs_36750ab4f943a870ac624345:invocations_c97620f6d371a2ebdd1909ec",
-      "kind": "recorded_invocation",
-      "redaction_state": "safe",
-      "source_kind": "collectable_v1",
-      "to": "invocations_c97620f6d371a2ebdd1909ec"
-    },
-    {
-      "confidence": "high",
-      "evidence_refs": [
-        "run:run_4d3e7b3a82e13bccbdd16b5e",
-        "command:1"
-      ],
-      "from": "runs_36750ab4f943a870ac624345",
-      "id": "recorded_invocation:runs_36750ab4f943a870ac624345:invocations_a6659a1313197c2d229d08b1",
-      "kind": "recorded_invocation",
-      "redaction_state": "safe",
-      "source_kind": "collectable_v1",
-      "to": "invocations_a6659a1313197c2d229d08b1"
-    },
-    {
-      "confidence": "high",
-      "evidence_refs": [
-        "run:run_9fdec126c4e1d72366a0a5ca",
-        "command:0"
-      ],
-      "from": "runs_0490cf555e81990b0074ae45",
-      "id": "recorded_invocation:runs_0490cf555e81990b0074ae45:invocations_9db16b3577fc4f051fbfa84d",
-      "kind": "recorded_invocation",
-      "redaction_state": "safe",
-      "source_kind": "collectable_v1",
-      "to": "invocations_9db16b3577fc4f051fbfa84d"
-    },
-    {
-      "confidence": "high",
-      "evidence_refs": [
-        "run:run_9fdec126c4e1d72366a0a5ca",
-        "command:1"
-      ],
-      "from": "runs_0490cf555e81990b0074ae45",
-      "id": "recorded_invocation:runs_0490cf555e81990b0074ae45:invocations_ea91247b2182fbd032c25404",
-      "kind": "recorded_invocation",
-      "redaction_state": "safe",
-      "source_kind": "collectable_v1",
-      "to": "invocations_ea91247b2182fbd032c25404"
-    },
-    {
-      "confidence": "high",
-      "evidence_refs": [
-        "invocation:invocations_c97620f6d371a2ebdd1909ec"
-      ],
-      "from": "runs_36750ab4f943a870ac624345",
-      "id": "recorded_artifact:runs_36750ab4f943a870ac624345:artifacts_966b8533dfccad5a24017b50",
+      "from": "runs_9bf331740a74989f379808da",
+      "id": "recorded_artifact:runs_9bf331740a74989f379808da:artifacts_b611de9d50de27b5c231578d",
       "kind": "recorded_artifact",
       "redaction_state": "safe",
-      "source_kind": "collectable_v1",
-      "to": "artifacts_966b8533dfccad5a24017b50"
+      "source_kind": "simulated_v1",
+      "to": "artifacts_b611de9d50de27b5c231578d"
     },
     {
       "confidence": "high",
       "evidence_refs": [
-        "invocation:invocations_c97620f6d371a2ebdd1909ec"
+        "simulated_v1:bep.jsonl"
       ],
-      "from": "runs_36750ab4f943a870ac624345",
-      "id": "recorded_artifact:runs_36750ab4f943a870ac624345:artifacts_9a345fc23d562727f6a5584f",
-      "kind": "recorded_artifact",
+      "from": "runs_9bf331740a74989f379808da",
+      "id": "evaluated_target:runs_9bf331740a74989f379808da:targets_aecefec8b0d2148629b024c4",
+      "kind": "evaluated_target",
       "redaction_state": "safe",
-      "source_kind": "collectable_v1",
-      "to": "artifacts_9a345fc23d562727f6a5584f"
+      "source_kind": "simulated_v1",
+      "to": "targets_aecefec8b0d2148629b024c4"
     },
     {
       "confidence": "high",
       "evidence_refs": [
-        "invocation:invocations_a6659a1313197c2d229d08b1"
+        "simulated_v1:bep.jsonl"
       ],
-      "from": "runs_36750ab4f943a870ac624345",
-      "id": "recorded_artifact:runs_36750ab4f943a870ac624345:artifacts_1d886afd8f0ae5770b9bea50",
-      "kind": "recorded_artifact",
+      "from": "runs_9bf331740a74989f379808da",
+      "id": "evaluated_target:runs_9bf331740a74989f379808da:targets_c0fe8bbfbbcee268433849e3",
+      "kind": "evaluated_target",
       "redaction_state": "safe",
-      "source_kind": "collectable_v1",
-      "to": "artifacts_1d886afd8f0ae5770b9bea50"
+      "source_kind": "simulated_v1",
+      "to": "targets_c0fe8bbfbbcee268433849e3"
     },
     {
       "confidence": "high",
       "evidence_refs": [
-        "run:run_4d3e7b3a82e13bccbdd16b5e"
+        "simulated_v1:bep.jsonl"
       ],
-      "from": "runs_36750ab4f943a870ac624345",
-      "id": "recorded_artifact:runs_36750ab4f943a870ac624345:artifacts_599e82089f94990534920740",
-      "kind": "recorded_artifact",
+      "from": "targets_c0fe8bbfbbcee268433849e3",
+      "id": "produced_action:targets_c0fe8bbfbbcee268433849e3:actions_1649ba3bcd71a4c1bca7889c",
+      "kind": "produced_action",
       "redaction_state": "safe",
-      "source_kind": "collectable_v1",
-      "to": "artifacts_599e82089f94990534920740"
+      "source_kind": "simulated_v1",
+      "to": "actions_1649ba3bcd71a4c1bca7889c"
     },
     {
       "confidence": "high",
       "evidence_refs": [
-        "run:run_4d3e7b3a82e13bccbdd16b5e",
-        "artifact:canvas-dist"
+        "simulated_v1:bep.jsonl"
       ],
-      "from": "runs_36750ab4f943a870ac624345",
-      "id": "recorded_artifact:runs_36750ab4f943a870ac624345:artifacts_68fb4c0355ee22b1794fa183",
-      "kind": "recorded_artifact",
+      "from": "targets_aecefec8b0d2148629b024c4",
+      "id": "produced_action:targets_aecefec8b0d2148629b024c4:actions_3ff6fcddb284148d684d57c5",
+      "kind": "produced_action",
       "redaction_state": "safe",
-      "source_kind": "collectable_v1",
-      "to": "artifacts_68fb4c0355ee22b1794fa183"
+      "source_kind": "simulated_v1",
+      "to": "actions_3ff6fcddb284148d684d57c5"
     },
     {
       "confidence": "high",
       "evidence_refs": [
-        "invocation:invocations_a6659a1313197c2d229d08b1"
+        "simulated_v1:bep.jsonl"
       ],
-      "from": "runs_36750ab4f943a870ac624345",
-      "id": "recorded_artifact:runs_36750ab4f943a870ac624345:artifacts_c7c3f67ecd42bf09b12c4331",
-      "kind": "recorded_artifact",
+      "from": "targets_c0fe8bbfbbcee268433849e3",
+      "id": "produced_action:targets_c0fe8bbfbbcee268433849e3:actions_dcf05812ab20689f3108483f",
+      "kind": "produced_action",
       "redaction_state": "safe",
-      "source_kind": "collectable_v1",
-      "to": "artifacts_c7c3f67ecd42bf09b12c4331"
+      "source_kind": "simulated_v1",
+      "to": "actions_dcf05812ab20689f3108483f"
     },
     {
       "confidence": "high",
       "evidence_refs": [
-        "invocation:invocations_9db16b3577fc4f051fbfa84d"
+        "simulated_v1:execution-log.json"
       ],
-      "from": "runs_0490cf555e81990b0074ae45",
-      "id": "recorded_artifact:runs_0490cf555e81990b0074ae45:artifacts_59afda906ace67b2eb5b8b03",
-      "kind": "recorded_artifact",
+      "from": "targets_c0fe8bbfbbcee268433849e3",
+      "id": "observed_cache_event:targets_c0fe8bbfbbcee268433849e3:cache_events_7436531115a20e86a59bc00b",
+      "kind": "observed_cache_event",
       "redaction_state": "safe",
-      "source_kind": "collectable_v1",
-      "to": "artifacts_59afda906ace67b2eb5b8b03"
+      "source_kind": "simulated_v1",
+      "to": "cache_events_7436531115a20e86a59bc00b"
+    },
+    {
+      "confidence": "medium",
+      "evidence_refs": [
+        "simulated_v1:profile.json"
+      ],
+      "from": "targets_c0fe8bbfbbcee268433849e3",
+      "id": "observed_cache_event:targets_c0fe8bbfbbcee268433849e3:cache_events_8a5988733feeee06ba389854",
+      "kind": "observed_cache_event",
+      "redaction_state": "safe",
+      "source_kind": "derived_v1",
+      "to": "cache_events_8a5988733feeee06ba389854"
+    },
+    {
+      "confidence": "low",
+      "evidence_refs": [
+        "simulated_v1:profile.json"
+      ],
+      "from": "targets_aecefec8b0d2148629b024c4",
+      "id": "observed_cache_event:targets_aecefec8b0d2148629b024c4:cache_events_d4d32866770093896742c2ab",
+      "kind": "observed_cache_event",
+      "redaction_state": "safe",
+      "source_kind": "derived_v1",
+      "to": "cache_events_d4d32866770093896742c2ab"
     },
     {
       "confidence": "high",
       "evidence_refs": [
-        "invocation:invocations_9db16b3577fc4f051fbfa84d"
+        "simulated_v1:execution-log.json"
       ],
-      "from": "runs_0490cf555e81990b0074ae45",
-      "id": "recorded_artifact:runs_0490cf555e81990b0074ae45:artifacts_d7632ee20141c288fc5f151e",
-      "kind": "recorded_artifact",
+      "from": "targets_aecefec8b0d2148629b024c4",
+      "id": "observed_cache_event:targets_aecefec8b0d2148629b024c4:cache_events_e55a33a312d157da4f58d38d",
+      "kind": "observed_cache_event",
       "redaction_state": "safe",
-      "source_kind": "collectable_v1",
-      "to": "artifacts_d7632ee20141c288fc5f151e"
+      "source_kind": "simulated_v1",
+      "to": "cache_events_e55a33a312d157da4f58d38d"
     },
     {
       "confidence": "high",
       "evidence_refs": [
-        "invocation:invocations_ea91247b2182fbd032c25404"
+        "simulated_v1:bep.jsonl"
       ],
-      "from": "runs_0490cf555e81990b0074ae45",
-      "id": "recorded_artifact:runs_0490cf555e81990b0074ae45:artifacts_255526a763c736a9af96224f",
-      "kind": "recorded_artifact",
+      "from": "runs_9bf331740a74989f379808da",
+      "id": "observed_failure:runs_9bf331740a74989f379808da:failures_63f9ef6937b97907cc6b775d",
+      "kind": "observed_failure",
       "redaction_state": "safe",
-      "source_kind": "collectable_v1",
-      "to": "artifacts_255526a763c736a9af96224f"
+      "source_kind": "simulated_v1",
+      "to": "failures_63f9ef6937b97907cc6b775d"
     },
     {
       "confidence": "high",
       "evidence_refs": [
-        "invocation:invocations_ea91247b2182fbd032c25404"
+        "simulated_v1:bep.jsonl"
       ],
-      "from": "runs_0490cf555e81990b0074ae45",
-      "id": "recorded_artifact:runs_0490cf555e81990b0074ae45:artifacts_338774eac1c1adc0c940ac34",
-      "kind": "recorded_artifact",
+      "from": "runs_9bf331740a74989f379808da",
+      "id": "observed_failure:runs_9bf331740a74989f379808da:failures_7a6c04fae39ea2dd90d15afa",
+      "kind": "observed_failure",
       "redaction_state": "safe",
-      "source_kind": "collectable_v1",
-      "to": "artifacts_338774eac1c1adc0c940ac34"
-    },
-    {
-      "confidence": "high",
-      "evidence_refs": [
-        "run:run_9fdec126c4e1d72366a0a5ca"
-      ],
-      "from": "runs_0490cf555e81990b0074ae45",
-      "id": "recorded_artifact:runs_0490cf555e81990b0074ae45:artifacts_b126147841d3feb1eaae2dfb",
-      "kind": "recorded_artifact",
-      "redaction_state": "safe",
-      "source_kind": "collectable_v1",
-      "to": "artifacts_b126147841d3feb1eaae2dfb"
-    },
-    {
-      "confidence": "high",
-      "evidence_refs": [
-        "run:run_9fdec126c4e1d72366a0a5ca",
-        "artifact:canvas-dist"
-      ],
-      "from": "runs_0490cf555e81990b0074ae45",
-      "id": "recorded_artifact:runs_0490cf555e81990b0074ae45:artifacts_fd6e261b1ce9d35e5acd3431",
-      "kind": "recorded_artifact",
-      "redaction_state": "safe",
-      "source_kind": "collectable_v1",
-      "to": "artifacts_fd6e261b1ce9d35e5acd3431"
+      "source_kind": "simulated_v1",
+      "to": "failures_7a6c04fae39ea2dd90d15afa"
     }
   ],
-  "generated_at": "2026-06-06T23:32:34.380664Z",
+  "generated_at": "2026-06-07T00:24:35.230331Z",
   "nodes": [
     {
-      "confidence": "high",
+      "confidence": "medium",
       "evidence_refs": [
-        "artifact:run.json"
+        "scenario:llm-bounded-patch"
       ],
-      "id": "runs_36750ab4f943a870ac624345",
+      "id": "runs_9bf331740a74989f379808da",
       "kind": "run",
-      "label": "canvas-build",
+      "label": "llm-bounded-patch",
       "payload": {
-        "ended_at": "2026-06-06T23:31:48.161556Z",
-        "mode": "generic",
-        "run_group": "canvas-dev",
-        "scenario": "canvas-build",
-        "started_at": "2026-06-06T23:31:42.804274Z",
-        "status": "completed"
+        "mode": "cache-only",
+        "run_group": "latest",
+        "scenario": "llm-bounded-patch",
+        "status": "simulated_only"
       },
       "redaction_state": "safe",
-      "source_kind": "collectable_v1",
-      "status": "completed"
+      "source_kind": "simulated_v1",
+      "status": "simulated_only"
     },
     {
-      "confidence": "high",
+      "confidence": "medium",
       "evidence_refs": [
-        "artifact:run.json"
+        "scenario:llm-bounded-patch",
+        "agent:demo-bounded-llm-worker",
+        "patch:sha256:856871f76606d071644921e408592cc65d4f348442e8712815b88bac7e527e98",
+        "prompt:sha256:5f787e73d6d3f8b65082f2d922e670104c580461abff1185780c76ed13a300a6",
+        "run:runs_9bf331740a74989f379808da"
       ],
-      "id": "runs_0490cf555e81990b0074ae45",
-      "kind": "run",
-      "label": "canvas-build",
+      "id": "agent:proof_blocks_41b28bb488d97ae1794cf264",
+      "kind": "agent",
+      "label": "demo-bounded-llm-worker",
       "payload": {
-        "ended_at": "2026-06-06T23:32:34.323131Z",
-        "mode": "generic",
-        "run_group": "canvas-dev",
-        "scenario": "canvas-build",
-        "started_at": "2026-06-06T23:32:31.271308Z",
-        "status": "completed"
+        "agent_kind": "bounded_llm_v1",
+        "agent_name": "demo-bounded-llm-worker",
+        "change_class": "safe_leaf",
+        "input_signal": "redacted: one-line code task; raw prompt withheld, hash retained",
+        "model": "demo-bounded-llm",
+        "patch_sha256": "856871f76606d071644921e408592cc65d4f348442e8712815b88bac7e527e98",
+        "prompt_sha256": "5f787e73d6d3f8b65082f2d922e670104c580461abff1185780c76ed13a300a6",
+        "scenario_id": "llm-bounded-patch",
+        "status": "simulated_only"
       },
       "redaction_state": "safe",
-      "source_kind": "collectable_v1",
-      "status": "completed"
+      "source_kind": "simulated_v1",
+      "status": "simulated_only"
     },
     {
-      "confidence": "high",
+      "confidence": "medium",
       "evidence_refs": [
-        "run:run_4d3e7b3a82e13bccbdd16b5e",
-        "path:apps/canvas/src/App.tsx"
+        "scenario:llm-bounded-patch",
+        "agent:demo-bounded-llm-worker",
+        "patch:sha256:856871f76606d071644921e408592cc65d4f348442e8712815b88bac7e527e98",
+        "prompt:sha256:5f787e73d6d3f8b65082f2d922e670104c580461abff1185780c76ed13a300a6",
+        "run:runs_9bf331740a74989f379808da"
       ],
-      "id": "changes_39f2c10ff2aa411c22b5d923",
+      "id": "changes_d16636ae11e890c114031219",
       "kind": "change",
-      "label": "apps/canvas/src/App.tsx",
+      "label": "tasks/priority_test.py",
       "payload": {
-        "after_hash": "916cca354f54c018fa7dff230d14e0856b76ba95f8496e22de5c6c0fe7bd4f09",
-        "before_hash": "916cca354f54c018fa7dff230d14e0856b76ba95f8496e22de5c6c0fe7bd4f09",
-        "change_kind": "generic_path",
-        "path": "apps/canvas/src/App.tsx",
-        "run_id": "runs_36750ab4f943a870ac624345",
-        "summary": "generic run touched apps/canvas/src/App.tsx"
+        "after_hash": "6c456a81ba3a67cd4c3c148b0d8871318ef49bf0f55e3e42c9dbea7376590721",
+        "before_hash": "6c456a81ba3a67cd4c3c148b0d8871318ef49bf0f55e3e42c9dbea7376590721",
+        "change_kind": "safe_leaf",
+        "path": "tasks/priority_test.py",
+        "run_id": "runs_9bf331740a74989f379808da",
+        "summary": "llm-bounded-patch touched tasks/priority_test.py"
       },
       "redaction_state": "safe",
-      "source_kind": "collectable_v1",
+      "source_kind": "simulated_v1",
       "status": null
     },
     {
-      "confidence": "high",
+      "confidence": "medium",
       "evidence_refs": [
-        "run:run_9fdec126c4e1d72366a0a5ca",
-        "path:apps/canvas/src/App.tsx"
+        "scenario:llm-bounded-patch",
+        "agent:demo-bounded-llm-worker",
+        "patch:sha256:856871f76606d071644921e408592cc65d4f348442e8712815b88bac7e527e98",
+        "prompt:sha256:5f787e73d6d3f8b65082f2d922e670104c580461abff1185780c76ed13a300a6",
+        "run:runs_9bf331740a74989f379808da"
       ],
-      "id": "changes_74c1532966df0658343459a3",
-      "kind": "change",
-      "label": "apps/canvas/src/App.tsx",
-      "payload": {
-        "after_hash": "916cca354f54c018fa7dff230d14e0856b76ba95f8496e22de5c6c0fe7bd4f09",
-        "before_hash": "916cca354f54c018fa7dff230d14e0856b76ba95f8496e22de5c6c0fe7bd4f09",
-        "change_kind": "generic_path",
-        "path": "apps/canvas/src/App.tsx",
-        "run_id": "runs_0490cf555e81990b0074ae45",
-        "summary": "generic run touched apps/canvas/src/App.tsx"
-      },
-      "redaction_state": "safe",
-      "source_kind": "collectable_v1",
-      "status": null
-    },
-    {
-      "confidence": "high",
-      "evidence_refs": [
-        "run:run_4d3e7b3a82e13bccbdd16b5e",
-        "command:0"
-      ],
-      "id": "invocations_c97620f6d371a2ebdd1909ec",
-      "kind": "invocation",
-      "label": "npm",
-      "payload": {
-        "command": [
-          "npm",
-          "--prefix",
-          "apps/canvas",
-          "run",
-          "build"
-        ],
-        "cwd": "${HOME}/Documents/nativelink-agent-flight-recorder",
-        "ended_at": "2026-06-06T23:31:46.339023Z",
-        "exit_code": 0,
-        "invocation_kind": "npm",
-        "run_id": "runs_36750ab4f943a870ac624345",
-        "started_at": "2026-06-06T23:31:42.804585Z"
-      },
-      "redaction_state": "safe",
-      "source_kind": "collectable_v1",
-      "status": 0
-    },
-    {
-      "confidence": "high",
-      "evidence_refs": [
-        "run:run_4d3e7b3a82e13bccbdd16b5e",
-        "command:1"
-      ],
-      "id": "invocations_a6659a1313197c2d229d08b1",
-      "kind": "invocation",
-      "label": "uv",
-      "payload": {
-        "command": [
-          "uv",
-          "run",
-          "pytest",
-          "tests/test_generic_run.py",
-          "-q",
-          "--tb=no"
-        ],
-        "cwd": "${HOME}/Documents/nativelink-agent-flight-recorder",
-        "ended_at": "2026-06-06T23:31:48.157965Z",
-        "exit_code": 0,
-        "invocation_kind": "uv",
-        "run_id": "runs_36750ab4f943a870ac624345",
-        "started_at": "2026-06-06T23:31:46.340529Z"
-      },
-      "redaction_state": "safe",
-      "source_kind": "collectable_v1",
-      "status": 0
-    },
-    {
-      "confidence": "high",
-      "evidence_refs": [
-        "run:run_9fdec126c4e1d72366a0a5ca",
-        "command:0"
-      ],
-      "id": "invocations_9db16b3577fc4f051fbfa84d",
-      "kind": "invocation",
-      "label": "npm",
-      "payload": {
-        "command": [
-          "npm",
-          "--prefix",
-          "apps/canvas",
-          "run",
-          "build"
-        ],
-        "cwd": "${HOME}/Documents/nativelink-agent-flight-recorder",
-        "ended_at": "2026-06-06T23:32:33.857748Z",
-        "exit_code": 0,
-        "invocation_kind": "npm",
-        "run_id": "runs_0490cf555e81990b0074ae45",
-        "started_at": "2026-06-06T23:32:31.271708Z"
-      },
-      "redaction_state": "safe",
-      "source_kind": "collectable_v1",
-      "status": 0
-    },
-    {
-      "confidence": "high",
-      "evidence_refs": [
-        "run:run_9fdec126c4e1d72366a0a5ca",
-        "command:1"
-      ],
-      "id": "invocations_ea91247b2182fbd032c25404",
-      "kind": "invocation",
-      "label": "uv",
-      "payload": {
-        "command": [
-          "uv",
-          "run",
-          "pytest",
-          "tests/test_generic_run.py",
-          "-q",
-          "--tb=no"
-        ],
-        "cwd": "${HOME}/Documents/nativelink-agent-flight-recorder",
-        "ended_at": "2026-06-06T23:32:34.319306Z",
-        "exit_code": 0,
-        "invocation_kind": "uv",
-        "run_id": "runs_0490cf555e81990b0074ae45",
-        "started_at": "2026-06-06T23:32:33.858238Z"
-      },
-      "redaction_state": "safe",
-      "source_kind": "collectable_v1",
-      "status": 0
-    },
-    {
-      "confidence": "high",
-      "evidence_refs": [
-        "invocation:invocations_c97620f6d371a2ebdd1909ec"
-      ],
-      "id": "artifacts_966b8533dfccad5a24017b50",
+      "id": "artifacts_b611de9d50de27b5c231578d",
       "kind": "artifact",
-      "label": "npm-0.stderr.txt",
+      "label": "agent-provenance.json",
       "payload": {
-        "artifact_key": "npm-0.stderr.txt",
-        "artifact_path": "npm-0.stderr.txt",
-        "content_type": "text/plain",
-        "manifest_path": "artifact_manifest.json",
-        "producer_command": [
-          "npm",
-          "--prefix",
-          "apps/canvas",
-          "run",
-          "build"
-        ],
-        "run_id": "runs_36750ab4f943a870ac624345",
-        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "size_bytes": 0
-      },
-      "redaction_state": "safe",
-      "source_kind": "collectable_v1",
-      "status": null
-    },
-    {
-      "confidence": "high",
-      "evidence_refs": [
-        "invocation:invocations_c97620f6d371a2ebdd1909ec"
-      ],
-      "id": "artifacts_9a345fc23d562727f6a5584f",
-      "kind": "artifact",
-      "label": "npm-0.stdout.txt",
-      "payload": {
-        "artifact_key": "npm-0.stdout.txt",
-        "artifact_path": "npm-0.stdout.txt",
-        "content_type": "text/plain",
-        "manifest_path": "artifact_manifest.json",
-        "producer_command": [
-          "npm",
-          "--prefix",
-          "apps/canvas",
-          "run",
-          "build"
-        ],
-        "run_id": "runs_36750ab4f943a870ac624345",
-        "sha256": "8f081cd3feb4b0ce8b15afd001fa2a0981f237050c79c066eacc235be9f21a63",
-        "size_bytes": 400
-      },
-      "redaction_state": "safe",
-      "source_kind": "collectable_v1",
-      "status": null
-    },
-    {
-      "confidence": "high",
-      "evidence_refs": [
-        "invocation:invocations_a6659a1313197c2d229d08b1"
-      ],
-      "id": "artifacts_1d886afd8f0ae5770b9bea50",
-      "kind": "artifact",
-      "label": "uv-1.stderr.txt",
-      "payload": {
-        "artifact_key": "uv-1.stderr.txt",
-        "artifact_path": "uv-1.stderr.txt",
-        "content_type": "text/plain",
-        "manifest_path": "artifact_manifest.json",
-        "producer_command": [
-          "uv",
-          "run",
-          "pytest",
-          "tests/test_generic_run.py",
-          "-q",
-          "--tb=no"
-        ],
-        "run_id": "runs_36750ab4f943a870ac624345",
-        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "size_bytes": 0
-      },
-      "redaction_state": "safe",
-      "source_kind": "collectable_v1",
-      "status": null
-    },
-    {
-      "confidence": "high",
-      "evidence_refs": [
-        "run:run_4d3e7b3a82e13bccbdd16b5e"
-      ],
-      "id": "artifacts_599e82089f94990534920740",
-      "kind": "artifact",
-      "label": "run.json",
-      "payload": {
-        "artifact_key": "run.json",
-        "artifact_path": "run.json",
+        "artifact_key": "agent-provenance.json",
+        "artifact_path": "agent-provenance.json",
         "content_type": "application/json",
         "manifest_path": "artifact_manifest.json",
         "producer_command": [
           "nlfr",
-          "run",
-          "--mode",
-          "generic"
+          "simulate",
+          "--scenario",
+          "llm-bounded-patch"
         ],
-        "run_id": "runs_36750ab4f943a870ac624345",
-        "sha256": "e573c7a2e1fa0ce63b21c3c3c7e3015a65ea624697f0be419f6585ec6dcb1718",
-        "size_bytes": 5320
+        "run_id": "runs_9bf331740a74989f379808da",
+        "sha256": "d8ce9763fb48bda27373f69b2dfd21bfdc125c28e24f2c296c00de7501206545",
+        "size_bytes": 3595
       },
       "redaction_state": "safe",
-      "source_kind": "collectable_v1",
+      "source_kind": "simulated_v1",
       "status": null
     },
     {
       "confidence": "high",
       "evidence_refs": [
-        "run:run_4d3e7b3a82e13bccbdd16b5e",
-        "artifact:canvas-dist"
+        "simulated_v1:bep.jsonl"
       ],
-      "id": "artifacts_68fb4c0355ee22b1794fa183",
-      "kind": "artifact",
-      "label": "outputs/canvas-dist.html",
+      "id": "targets_aecefec8b0d2148629b024c4",
+      "kind": "target",
+      "label": "//tasks:flaky_test",
       "payload": {
-        "artifact_key": "outputs/canvas-dist.html",
-        "artifact_path": "outputs/canvas-dist.html",
-        "content_type": "application/octet-stream",
-        "manifest_path": "artifact_manifest.json",
-        "producer_command": [
-          "nlfr",
-          "run",
-          "--mode",
-          "generic"
-        ],
-        "run_id": "runs_36750ab4f943a870ac624345",
-        "sha256": "8928080087fd5a1a6e43382df5afd78f302f998315a83026ac174f7f5b3eddc8",
-        "size_bytes": 417
+        "label": "//tasks:flaky_test",
+        "run_id": "runs_9bf331740a74989f379808da",
+        "status": "FAILED",
+        "target_kind": "py_test rule"
       },
       "redaction_state": "safe",
-      "source_kind": "collectable_v1",
+      "source_kind": "simulated_v1",
+      "status": "FAILED"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "simulated_v1:bep.jsonl"
+      ],
+      "id": "targets_c0fe8bbfbbcee268433849e3",
+      "kind": "target",
+      "label": "//tasks:priority_test",
+      "payload": {
+        "label": "//tasks:priority_test",
+        "run_id": "runs_9bf331740a74989f379808da",
+        "status": "PASSED",
+        "target_kind": "py_test rule"
+      },
+      "redaction_state": "safe",
+      "source_kind": "simulated_v1",
+      "status": "PASSED"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "simulated_v1:bep.jsonl"
+      ],
+      "id": "actions_1649ba3bcd71a4c1bca7889c",
+      "kind": "action",
+      "label": "PythonTestSetup",
+      "payload": {
+        "action_key": "//tasks:priority_test:action:1",
+        "mnemonic": "PythonTestSetup",
+        "run_id": "runs_9bf331740a74989f379808da",
+        "status": "SUCCESS",
+        "target_id": "targets_c0fe8bbfbbcee268433849e3"
+      },
+      "redaction_state": "safe",
+      "source_kind": "simulated_v1",
+      "status": "SUCCESS"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "simulated_v1:bep.jsonl"
+      ],
+      "id": "actions_3ff6fcddb284148d684d57c5",
+      "kind": "action",
+      "label": "BazelTest",
+      "payload": {
+        "action_key": "//tasks:flaky_test:test:run=1:shard=1:attempt=1",
+        "mnemonic": "BazelTest",
+        "run_id": "runs_9bf331740a74989f379808da",
+        "status": "FAILED",
+        "target_id": "targets_aecefec8b0d2148629b024c4"
+      },
+      "redaction_state": "safe",
+      "source_kind": "simulated_v1",
+      "status": "FAILED"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "simulated_v1:bep.jsonl"
+      ],
+      "id": "actions_dcf05812ab20689f3108483f",
+      "kind": "action",
+      "label": "BazelTest",
+      "payload": {
+        "action_key": "//tasks:priority_test:test:run=1:shard=1:attempt=1",
+        "mnemonic": "BazelTest",
+        "run_id": "runs_9bf331740a74989f379808da",
+        "status": "PASSED",
+        "target_id": "targets_c0fe8bbfbbcee268433849e3"
+      },
+      "redaction_state": "safe",
+      "source_kind": "simulated_v1",
+      "status": "PASSED"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "simulated_v1:execution-log.json"
+      ],
+      "id": "cache_events_7436531115a20e86a59bc00b",
+      "kind": "cache_event",
+      "label": "remote_cache_hit",
+      "payload": {
+        "digest": "sha256:1111222233334444",
+        "event_key": "//tasks:priority_test:PyTest:sha256:1111222233334444",
+        "event_kind": "remote_cache_hit",
+        "hit": 1,
+        "run_id": "runs_9bf331740a74989f379808da",
+        "target_id": "targets_c0fe8bbfbbcee268433849e3"
+      },
+      "redaction_state": "safe",
+      "source_kind": "simulated_v1",
+      "status": null
+    },
+    {
+      "confidence": "medium",
+      "evidence_refs": [
+        "simulated_v1:profile.json"
+      ],
+      "id": "cache_events_8a5988733feeee06ba389854",
+      "kind": "cache_event",
+      "label": "remote_cache_hit",
+      "payload": {
+        "digest": "sha256:1111222233334444",
+        "event_key": "profile://tasks:priority_test:PyTest:sha256:1111222233334444",
+        "event_kind": "remote_cache_hit",
+        "hit": 1,
+        "run_id": "runs_9bf331740a74989f379808da",
+        "target_id": "targets_c0fe8bbfbbcee268433849e3"
+      },
+      "redaction_state": "safe",
+      "source_kind": "derived_v1",
+      "status": null
+    },
+    {
+      "confidence": "low",
+      "evidence_refs": [
+        "simulated_v1:profile.json"
+      ],
+      "id": "cache_events_d4d32866770093896742c2ab",
+      "kind": "cache_event",
+      "label": "action_cache_observed",
+      "payload": {
+        "event_key": "profile://tasks:flaky_test:PyTest:202",
+        "event_kind": "action_cache_observed",
+        "run_id": "runs_9bf331740a74989f379808da",
+        "target_id": "targets_aecefec8b0d2148629b024c4"
+      },
+      "redaction_state": "safe",
+      "source_kind": "derived_v1",
       "status": null
     },
     {
       "confidence": "high",
       "evidence_refs": [
-        "invocation:invocations_a6659a1313197c2d229d08b1"
+        "simulated_v1:execution-log.json"
       ],
-      "id": "artifacts_c7c3f67ecd42bf09b12c4331",
-      "kind": "artifact",
-      "label": "uv-1.stdout.txt",
+      "id": "cache_events_e55a33a312d157da4f58d38d",
+      "kind": "cache_event",
+      "label": "cache_miss",
       "payload": {
-        "artifact_key": "uv-1.stdout.txt",
-        "artifact_path": "uv-1.stdout.txt",
-        "content_type": "text/plain",
-        "manifest_path": "artifact_manifest.json",
-        "producer_command": [
-          "uv",
-          "run",
-          "pytest",
-          "tests/test_generic_run.py",
-          "-q",
-          "--tb=no"
-        ],
-        "run_id": "runs_36750ab4f943a870ac624345",
-        "sha256": "bc9507cf730567da3d80c9df14fc5d069992b9bda90f54ce5b21db23cc23d1b1",
-        "size_bytes": 98
+        "digest": "sha256:aaaabbbbccccdddd",
+        "event_key": "//tasks:flaky_test:PyTest:sha256:aaaabbbbccccdddd",
+        "event_kind": "cache_miss",
+        "hit": 0,
+        "run_id": "runs_9bf331740a74989f379808da",
+        "target_id": "targets_aecefec8b0d2148629b024c4"
       },
       "redaction_state": "safe",
-      "source_kind": "collectable_v1",
+      "source_kind": "simulated_v1",
       "status": null
     },
     {
       "confidence": "high",
       "evidence_refs": [
-        "invocation:invocations_9db16b3577fc4f051fbfa84d"
+        "simulated_v1:bep.jsonl"
       ],
-      "id": "artifacts_59afda906ace67b2eb5b8b03",
-      "kind": "artifact",
-      "label": "npm-0.stdout.txt",
+      "id": "failures_63f9ef6937b97907cc6b775d",
+      "kind": "failure",
+      "label": "target_completed",
       "payload": {
-        "artifact_key": "npm-0.stdout.txt",
-        "artifact_path": "npm-0.stdout.txt",
-        "content_type": "text/plain",
-        "manifest_path": "artifact_manifest.json",
-        "producer_command": [
-          "npm",
-          "--prefix",
-          "apps/canvas",
-          "run",
-          "build"
-        ],
-        "run_id": "runs_0490cf555e81990b0074ae45",
-        "sha256": "ed88da6baef125279f141e83b276c123d92db4987e5e16761e3156db721a5820",
-        "size_bytes": 400
+        "failure_kind": "target_completed",
+        "message": "//tasks:flaky_test failed: expected stable priority ordering",
+        "run_id": "runs_9bf331740a74989f379808da",
+        "span": {
+          "event_index": 8,
+          "id": {
+            "targetCompleted": {
+              "configuration": "k8-fastbuild",
+              "label": "//tasks:flaky_test"
+            }
+          }
+        }
       },
       "redaction_state": "safe",
-      "source_kind": "collectable_v1",
+      "source_kind": "simulated_v1",
       "status": null
     },
     {
       "confidence": "high",
       "evidence_refs": [
-        "invocation:invocations_9db16b3577fc4f051fbfa84d"
+        "simulated_v1:bep.jsonl"
       ],
-      "id": "artifacts_d7632ee20141c288fc5f151e",
-      "kind": "artifact",
-      "label": "npm-0.stderr.txt",
+      "id": "failures_7a6c04fae39ea2dd90d15afa",
+      "kind": "failure",
+      "label": "build_finished",
       "payload": {
-        "artifact_key": "npm-0.stderr.txt",
-        "artifact_path": "npm-0.stderr.txt",
-        "content_type": "text/plain",
-        "manifest_path": "artifact_manifest.json",
-        "producer_command": [
-          "npm",
-          "--prefix",
-          "apps/canvas",
-          "run",
-          "build"
-        ],
-        "run_id": "runs_0490cf555e81990b0074ae45",
-        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "size_bytes": 0
+        "failure_kind": "build_finished",
+        "message": "Bazel finished with TESTS_FAILED (exit code 3)",
+        "run_id": "runs_9bf331740a74989f379808da",
+        "span": {
+          "event_index": 9,
+          "id": {
+            "buildFinished": {}
+          }
+        }
       },
       "redaction_state": "safe",
-      "source_kind": "collectable_v1",
-      "status": null
-    },
-    {
-      "confidence": "high",
-      "evidence_refs": [
-        "invocation:invocations_ea91247b2182fbd032c25404"
-      ],
-      "id": "artifacts_255526a763c736a9af96224f",
-      "kind": "artifact",
-      "label": "uv-1.stderr.txt",
-      "payload": {
-        "artifact_key": "uv-1.stderr.txt",
-        "artifact_path": "uv-1.stderr.txt",
-        "content_type": "text/plain",
-        "manifest_path": "artifact_manifest.json",
-        "producer_command": [
-          "uv",
-          "run",
-          "pytest",
-          "tests/test_generic_run.py",
-          "-q",
-          "--tb=no"
-        ],
-        "run_id": "runs_0490cf555e81990b0074ae45",
-        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "size_bytes": 0
-      },
-      "redaction_state": "safe",
-      "source_kind": "collectable_v1",
-      "status": null
-    },
-    {
-      "confidence": "high",
-      "evidence_refs": [
-        "invocation:invocations_ea91247b2182fbd032c25404"
-      ],
-      "id": "artifacts_338774eac1c1adc0c940ac34",
-      "kind": "artifact",
-      "label": "uv-1.stdout.txt",
-      "payload": {
-        "artifact_key": "uv-1.stdout.txt",
-        "artifact_path": "uv-1.stdout.txt",
-        "content_type": "text/plain",
-        "manifest_path": "artifact_manifest.json",
-        "producer_command": [
-          "uv",
-          "run",
-          "pytest",
-          "tests/test_generic_run.py",
-          "-q",
-          "--tb=no"
-        ],
-        "run_id": "runs_0490cf555e81990b0074ae45",
-        "sha256": "e4bc44d3c5f85cc9898efcc86c7ca16ae983811829513a75e6f3a364232aa1de",
-        "size_bytes": 98
-      },
-      "redaction_state": "safe",
-      "source_kind": "collectable_v1",
-      "status": null
-    },
-    {
-      "confidence": "high",
-      "evidence_refs": [
-        "run:run_9fdec126c4e1d72366a0a5ca"
-      ],
-      "id": "artifacts_b126147841d3feb1eaae2dfb",
-      "kind": "artifact",
-      "label": "run.json",
-      "payload": {
-        "artifact_key": "run.json",
-        "artifact_path": "run.json",
-        "content_type": "application/json",
-        "manifest_path": "artifact_manifest.json",
-        "producer_command": [
-          "nlfr",
-          "run",
-          "--mode",
-          "generic"
-        ],
-        "run_id": "runs_0490cf555e81990b0074ae45",
-        "sha256": "682596b2606f69c233e346ec19b73fc893209bf8a15fdcfa9a8b2428a781b17c",
-        "size_bytes": 5320
-      },
-      "redaction_state": "safe",
-      "source_kind": "collectable_v1",
-      "status": null
-    },
-    {
-      "confidence": "high",
-      "evidence_refs": [
-        "run:run_9fdec126c4e1d72366a0a5ca",
-        "artifact:canvas-dist"
-      ],
-      "id": "artifacts_fd6e261b1ce9d35e5acd3431",
-      "kind": "artifact",
-      "label": "outputs/canvas-dist.html",
-      "payload": {
-        "artifact_key": "outputs/canvas-dist.html",
-        "artifact_path": "outputs/canvas-dist.html",
-        "content_type": "application/octet-stream",
-        "manifest_path": "artifact_manifest.json",
-        "producer_command": [
-          "nlfr",
-          "run",
-          "--mode",
-          "generic"
-        ],
-        "run_id": "runs_0490cf555e81990b0074ae45",
-        "sha256": "8928080087fd5a1a6e43382df5afd78f302f998315a83026ac174f7f5b3eddc8",
-        "size_bytes": 417
-      },
-      "redaction_state": "safe",
-      "source_kind": "collectable_v1",
+      "source_kind": "simulated_v1",
       "status": null
     }
   ],
   "projection_kind": "action_graph",
-  "run_group": "canvas-dev",
+  "run_group": "latest",
   "schema_version": 1,
   "summary": {
-    "agents": 0,
-    "cache_events": 0,
-    "changes": 2,
-    "edges": 18,
-    "failures": 0,
-    "invocation_statuses": {
-      "unknown": 4
-    },
-    "nodes": 20,
-    "runs": 2,
-    "target_statuses": {}
+    "agents": 1,
+    "cache_events": 4,
+    "changes": 1,
+    "edges": 14,
+    "failures": 2,
+    "invocation_statuses": {},
+    "nodes": 15,
+    "runs": 1,
+    "target_statuses": {
+      "FAILED": 1,
+      "PASSED": 1
+    }
   }
 }

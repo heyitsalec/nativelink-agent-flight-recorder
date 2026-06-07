@@ -1,0 +1,20 @@
+{
+  "wave": "wave-2",
+  "dag_id": "m5-m9-umbrella",
+  "status": "DONE",
+  "workers": [
+    {
+      "worker_id": "m7-worker-parser",
+      "status": "DONE",
+      "provenance": "provenance-m7-worker-parser.md",
+      "tests_passed": 55,
+      "worker_identity_observed": true
+    },
+    {
+      "worker_id": "m8-agent-adapter",
+      "status": "DONE",
+      "provenance": "provenance-m8-agent-adapter.md",
+      "tests_passed": 58
+    }
+  ]
+}

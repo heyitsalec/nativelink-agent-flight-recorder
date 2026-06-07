@@ -260,6 +260,8 @@ environment blocker, per the architecture track ladder.
 
 Goal: remove the "only works on the author's Mac in Nix" objection.
 
+Status: **landed locally** — [`.github/workflows/nlfr-proof.yml`](../.github/workflows/nlfr-proof.yml), [`CI_RECIPE.md`](CI_RECIPE.md), [`ADOPTION_GUIDE.md`](ADOPTION_GUIDE.md). Awaiting first green GitHub Actions run to promote CI proof samples.
+
 Deliverables:
 
 - CI job that runs cold/warm and agent-loop proofs on Linux/x86_64.
@@ -276,9 +278,7 @@ claims without the original builder's machine.
 
 Goal: close the demo/proof gap where the first screenshots are fixture-backed.
 
-Status: **partially delivered** — `apps/canvas/public/projections/` now ships a redacted
-`canvas-dev` generic-run projection (`collectable_v1`). Fixture fallbacks remain in
-`sampleProjection.ts` when fetch fails.
+Status: **done** — `canvas-dev` collectable_v1 default; fixture fallback banner in App.tsx; README/WALKTHROUGH callouts.
 
 Deliverables:
 
@@ -296,6 +296,8 @@ The first thing an evaluator sees can be `collectable_v1` evidence, not only
 Goal: take the first legitimate step into Ring 3 without inventing dashboard
 state.
 
+Status: **landed** — `src/nlfr/ingest/worker_admin_stdout.py` promotes `worker_identity` from admin stdout; `scripts/worker-evidence-proof.sh`.
+
 Deliverables:
 
 - Parser for NativeLink worker/admin stdout or logs.
@@ -312,6 +314,8 @@ documents exactly why it cannot be yet.
 
 Goal: convert agent-loop framing from aspirational to demonstrated.
 
+Status: **landed** — `scripts/record-agent-change.sh` + `adapters/cursor/README.md`; dry-run proven; full run for operator.
+
 Deliverables:
 
 - Documented Cursor/CLI adapter emitting the same provenance shape as
@@ -326,6 +330,8 @@ deterministic scenario.
 ### M9: Multi-run retention and read query (only if pulled)
 
 Goal: foundation for operator console or provenance layer forks.
+
+Status: **landed** — `nlfr compare export|index`, compare projection, canvas compare lens, `scripts/compare-proof.sh`. Retention is index-only (no auto-purge).
 
 Deliverables:
 
