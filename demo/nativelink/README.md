@@ -128,7 +128,32 @@ correlation.
 nix develop --command ./scripts/lre-nix-toolchain-proof.sh
 ```
 
-Future NLFR runner integration on a supported Linux/x86_64 host:
+## LRE cold/warm cache parity (phase 4 — observed economics)
+
+`scripts/lre-cold-warm-proof.sh` mirrors the proven `cold-warm-cache-proof.sh` pattern
+with LRE-specific deltas: NativeLink on `lre.json5` (ports `50071`/`50081`), Nix-generated
+`lre.bazelrc` copied into the demo monorepo, and `nlfr run --mode local-exec --bazel-arg=--config=lre`
+cold/warm legs on `//tasks:priority_test`. Evidence is ingested and exported with
+`cache_economics` comparing cold `hit_rate` 0 → warm `hit_rate` 1.
+
+Writes `data/lre-cold-warm-proof/summary.json` with `status: lre_cache_parity_observed`,
+`source_kind: collectable_v1`, `confidence: medium`, and honest `claim_boundary` metadata.
+On Darwin or outside `nix develop`, the script records `environment-blocker.json` instead;
+CI job `lre-cold-warm-ci` owns the x86_64-linux green path.
+
+**`claim_boundary` supported (phase 4):** LRE cold/warm cache economics on x86_64-linux via
+`lre.json5` + `--config=lre`; `nlfr run --mode local-exec` ingest + proof export with
+`cache_economics`; warm `hit_rate` exceeds cold on `//tasks:priority_test` through LRE endpoints.
+
+**Still unsupported:** hermetic container-image parity across distinct worker images;
+`lre-cc` C++ LRE builds as parity proof target; aarch64-darwin full LRE cold/warm green path;
+fleet dashboards; queue/action correlation.
+
+```bash
+nix develop --command ./scripts/lre-cold-warm-proof.sh
+```
+
+NLFR runner integration on a supported Linux/x86_64 host:
 
 ```bash
 nlfr run --mode local-exec \

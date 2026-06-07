@@ -1,0 +1,117 @@
+{
+  "bazel_config": "lre",
+  "cache_economics": {
+    "comparison": {
+      "cold_duration_seconds": 9.241105,
+      "cold_hit_rate": 0.0,
+      "cold_scenario": "cold-cache",
+      "duration_delta_seconds": -2.912338,
+      "hit_rate_delta": 1.0,
+      "warm_duration_lower": true,
+      "warm_duration_seconds": 6.328767,
+      "warm_hit_rate": 1.0,
+      "warm_hit_rate_higher": true,
+      "warm_scenario": "warm-cache"
+    },
+    "legs": [
+      {
+        "duration_seconds": 9.241105,
+        "hit_rate": 0.0,
+        "hits": 0,
+        "misses": 2,
+        "mode": "local-exec",
+        "run_id": "runs_c4a1ef2e9bc2c6944a92d61e",
+        "scenario": "cold-cache",
+        "status": "completed",
+        "unknown": 0
+      },
+      {
+        "duration_seconds": 6.328767,
+        "hit_rate": 1.0,
+        "hits": 2,
+        "misses": 0,
+        "mode": "local-exec",
+        "run_id": "runs_d20c36b609aac894a173cd49",
+        "scenario": "warm-cache",
+        "status": "completed",
+        "unknown": 0
+      }
+    ],
+    "metrics": {
+      "cold_duration_seconds": 9.241105,
+      "cold_hit_rate": 0.0,
+      "cold_scenario": "cold-cache",
+      "duration_delta_seconds": -2.912338,
+      "hit_rate_delta": 1.0,
+      "legs": 2,
+      "warm_duration_lower": true,
+      "warm_duration_seconds": 6.328767,
+      "warm_hit_rate": 1.0,
+      "warm_hit_rate_higher": true,
+      "warm_scenario": "warm-cache"
+    }
+  },
+  "claim_boundary": {
+    "supported": [
+      "LRE cold/warm cache economics on x86_64-linux via lre.json5 + --config=lre",
+      "nlfr run --mode local-exec ingest + proof export with cache_economics",
+      "warm hit_rate exceeds cold on //tasks:priority_test through LRE endpoints"
+    ],
+    "unsupported": [
+      "hermetic container-image parity across distinct worker images",
+      "lre-cc C++ LRE builds as parity proof target",
+      "aarch64-darwin full LRE cold/warm green path",
+      "fleet scheduler dashboards",
+      "queue time and action placement correlation"
+    ]
+  },
+  "cold": {
+    "artifact_root": "<repo>/data/lre-cold-warm-proof/nlfr/runs/run_e62f8cc65ffd5866a3635b7c/artifacts",
+    "mode": "local-exec",
+    "results": [
+      {
+        "command": [
+          "<bazel>/bin/bazel",
+          "--output_base=<repo>/data/lre-cold-warm-proof/bazel-output-cold",
+          "test"
+        ],
+        "exit_code": 0,
+        "status": "completed"
+      }
+    ],
+    "run_id": "run_e62f8cc65ffd5866a3635b7c",
+    "status": "completed"
+  },
+  "confidence": "medium",
+  "evidence_refs": [
+    "cold-run.json",
+    "warm-run.json",
+    "projections/proof.json",
+    "nativelink.stdout.txt",
+    "nativelink.stderr.txt",
+    "demo/bazel-monorepo/lre.bazelrc"
+  ],
+  "lre_config": "demo/nativelink/lre.json5",
+  "redaction_state": "safe",
+  "remote_cache": "grpc://127.0.0.1:50071",
+  "remote_executor": "grpc://127.0.0.1:50071",
+  "source_kind": "collectable_v1",
+  "status": "lre_cache_parity_observed",
+  "warm": {
+    "artifact_root": "<repo>/data/lre-cold-warm-proof/nlfr/runs/run_266bc86ea3f643d4703e566b/artifacts",
+    "mode": "local-exec",
+    "results": [
+      {
+        "command": [
+          "<bazel>/bin/bazel",
+          "--output_base=<repo>/data/lre-cold-warm-proof/bazel-output-warm",
+          "test"
+        ],
+        "exit_code": 0,
+        "status": "completed"
+      }
+    ],
+    "run_id": "run_266bc86ea3f643d4703e566b",
+    "status": "completed"
+  }
+}

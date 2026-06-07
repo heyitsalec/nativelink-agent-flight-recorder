@@ -12,14 +12,16 @@ raw prompts, logs, environment variables, or credentials are included.
 | Sample | Produced by | Truth label | What it proves |
 |--------|-------------|-------------|----------------|
 | `cold-warm-summary.json` | `scripts/cold-warm-cache-proof.sh` | `collectable_v1` | Cold run: `hit_rate` 0.0 / 8.17s. Warm run: `hit_rate` 1.0 / 5.48s. Warm is faster and higher hit rate. |
-| `two-worker-summary.json` | `NLFR_EXPECTED_WORKERS=2 scripts/local-exec-proof.sh` | `collectable_v1` | Two workers configured AND endpoints opened live (`worker_endpoints_ready`, `expected_workers=2`). Lists the claims it does **not** make. |
+| `two-worker-summary.json` | `NLFR_EXPECTED_WORKERS=2 scripts/local-exec-proof.sh` | `collectable_v1` | Two workers configured AND endpoints opened live (`worker_endpoints_ready`, `expected_workers=2`). `nativelink.stdout.txt` / `.stderr.txt` are attached to `artifact_root` pre-ingest (fleet-evidence-v1 wave-0). Lists the claims it does **not** make unless M7 stdout regex matches. |
 | `agent-loop-summary.json` | `scripts/agent-loop-proof.sh` | mixed: `collectable_v1` validation/cache; `simulated_v1` agent/change | Deterministic bounded-agent patch validates through `agent → change → run → target → action → cache_event` (`chain_complete=true`). Carries a `model` label and `prompt_sha256` only — never the raw prompt; no live LLM call. |
-| `agent-bugfix-summary.json` | `scripts/tier1-agent-demo.sh --act 1` | `collectable_v1` | Tier 1 Act 1 live `cursor_adapter_v1` bugfix record (`agent-bugfix-1`). Validation via pytest fallback when Bazel skipped. |
-| `agent-feature-summary.json` | `scripts/tier1-agent-demo.sh --act 2` | `collectable_v1` | Tier 1 Act 2 feature slice (`agent-feature-compare`) with shared-module policy retune. |
+| `agent-bugfix-summary.json` | `scripts/tier1-live-bazel-proof.sh` (Act 1) | `collectable_v1` | Tier 1 Act 1 live `cursor_adapter_v1` bugfix record (`agent-bugfix-1`). `bazel_validated: true`, `validation: bazel` — real Bazel via `tier1-live-bazel-proof.sh`, not pytest fallback. |
+| `agent-feature-summary.json` | `scripts/tier1-live-bazel-proof.sh` (Act 2) | `collectable_v1` | Tier 1 Act 2 feature slice (`agent-feature-compare`). `bazel_validated: true`, shared-module policy retune with live Bazel validation. |
 | `lre-proof-blocker-sample.json` | `scripts/lre-proof.sh` | `collectable_v1` | Honest blocker until `demo/nativelink/lre.json5` exists; documents claim ceiling vs fleet dashboards. |
 | `lre-proof-summary-sample.json` | `scripts/lre-proof.sh` (with `demo/nativelink/lre.json5`) | `collectable_v1` (`confidence: medium`) | LRE substrate ready: delegates to `local-exec-proof.sh` on ports 50071/50081; `claim_boundary` excludes hermetic Nix `--config=lre` until toolchain wired. |
 | `lre-nix-toolchain-proof-blocker-sample.json` | `scripts/lre-nix-toolchain-proof.sh` (outside `nix develop`) | `collectable_v1` | Honest blocker until flake LRE `installationScript` generates repo-root `lre.bazelrc`. |
 | `lre-nix-toolchain-proof-summary-sample.json` | `scripts/lre-nix-toolchain-proof.sh` (inside `nix develop`) | `collectable_v1` (`confidence: medium`) | Phase-2 ceiling `lre_bazelrc_generated`: Nix-generated `build:lre` flags wired into demo monorepo; optional `--config=lre` build on x86_64-linux; does **not** claim cache parity. |
+| `lre-cold-warm-proof-blocker-sample.json` | `scripts/lre-cold-warm-proof.sh` (Darwin or outside `nix develop`) | `collectable_v1` | Honest blocker until x86_64-linux `nix develop` with generated `lre.bazelrc`; Darwin gets rust-only LRE env without full cold/warm parity path. |
+| `lre-cold-warm-proof-summary-sample.json` | `scripts/lre-cold-warm-proof.sh` (x86_64-linux `nix develop`) | `collectable_v1` (`confidence: medium`) | Phase-4 ceiling `lre_cache_parity_observed`: LRE cold/warm via `lre.json5` + `--config=lre` + `local-exec`; cold `hit_rate` 0 → warm `hit_rate` 1; does **not** claim hermetic container-image parity. |
 
 To regenerate the originals (under ignored `data/`), run the scripts above
 inside `nix develop`. See [`../DEV_ENVIRONMENT.md`](../DEV_ENVIRONMENT.md).
@@ -35,3 +37,8 @@ inside `nix develop`. See [`../DEV_ENVIRONMENT.md`](../DEV_ENVIRONMENT.md).
   validation chain, not to the agent's reasoning. The scenario fixture names the
   agent `demo-bounded-llm-worker` historically; that label does not claim
   NativeLink worker identity.
+- The tier1 agent samples (`agent-bugfix-summary.json`,
+  `agent-feature-summary.json`) are fully `collectable_v1` with
+  `bazel_validated: true` — produced by `scripts/tier1-live-bazel-proof.sh`
+  with live `cursor_adapter_v1` agent records. Contrast with
+  `agent-loop-summary.json` where the agent leg stays `simulated_v1`.

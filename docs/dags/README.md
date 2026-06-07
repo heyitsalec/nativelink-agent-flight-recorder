@@ -5,6 +5,16 @@
 Tier1 hero GIF refresh: [nlfr-doc-capture-wave2.md](nlfr-doc-capture-wave2.md)  
 Handoffs: `docs/sessions/handoffs/nlfr-doc-capture/wave-2/`
 
+## Active — Fleet evidence v1 (frontier wave)
+
+[fleet-evidence-v1.md](fleet-evidence-v1.md) · Handoffs: `docs/sessions/handoffs/fleet-evidence-v1/wave-0/`  
+Wave-0 ceiling: attach `nativelink.stdout.txt` pre-ingest on local-exec + worker-evidence paths; M7 `worker_identity` conditional on regex match. Agent-loop and cold-warm attach deferred.
+
+## Active — Tier1 live Bazel (frontier wave)
+
+[tier1-live-bazel.md](tier1-live-bazel.md) · Handoffs: `docs/sessions/handoffs/tier1-live-bazel/wave-1/`  
+Live Acts 1+2 via `tier1-agent-demo.sh` with real Bazel validation.
+
 ## Active — CI Bazel tier1
 
 [ci-bazel-tier1.md](ci-bazel-tier1.md) · Handoffs: `docs/sessions/handoffs/ci-bazel-tier1/`

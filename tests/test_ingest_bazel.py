@@ -18,6 +18,16 @@ from nlfr.projectors import export_proof_packet
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE_ROOT = ROOT / "tests" / "fixtures" / "bazel"
+WORKER_ADMIN_FIXTURE_ROOT = ROOT / "tests" / "fixtures" / "worker-admin"
+
+
+def _stage_bazel_artifact_fixtures(artifact_root: Path) -> None:
+    artifact_root.mkdir(parents=True, exist_ok=True)
+    shutil.copy(FIXTURE_ROOT / "bep.jsonl", artifact_root / "bazel.bep.json")
+    shutil.copy(
+        FIXTURE_ROOT / "execution-log.json",
+        artifact_root / "bazel.execution-log.json",
+    )
 
 
 def test_parse_bep_extracts_targets_actions_test_results_and_failures() -> None:
@@ -202,12 +212,7 @@ def test_ingest_command_attaches_artifact_dir_to_run_metadata(tmp_path) -> None:
     )
 
     artifact_root = tmp_path / "runs" / "run_existing" / "artifacts"
-    artifact_root.mkdir(parents=True)
-    shutil.copy(FIXTURE_ROOT / "bep.jsonl", artifact_root / "bazel.bep.json")
-    shutil.copy(
-        FIXTURE_ROOT / "execution-log.json",
-        artifact_root / "bazel.execution-log.json",
-    )
+    _stage_bazel_artifact_fixtures(artifact_root)
     shutil.copy(FIXTURE_ROOT / "profile.json", artifact_root / "bazel.profile.json")
     (artifact_root / "run.json").write_text(
         json.dumps(
@@ -263,12 +268,7 @@ def test_ingest_command_attaches_artifact_dir_to_run_metadata(tmp_path) -> None:
 def test_ingest_command_converts_worker_readiness_to_proof_block(tmp_path) -> None:
     database_path = tmp_path / "nlfr.sqlite"
     artifact_root = tmp_path / "runs" / "run_worker" / "artifacts"
-    artifact_root.mkdir(parents=True)
-    shutil.copy(FIXTURE_ROOT / "bep.jsonl", artifact_root / "bazel.bep.json")
-    shutil.copy(
-        FIXTURE_ROOT / "execution-log.json",
-        artifact_root / "bazel.execution-log.json",
-    )
+    _stage_bazel_artifact_fixtures(artifact_root)
     (artifact_root / "run.json").write_text(
         json.dumps(
             {
@@ -344,6 +344,47 @@ def test_ingest_command_converts_worker_readiness_to_proof_block(tmp_path) -> No
     )
     assert proof_block["source_kind"] == "collectable_v1"
     assert proof_block["payload"]["status"] == "worker_endpoints_ready"
+
+
+def test_ingest_command_discovers_nativelink_stdout_with_bazel_fixtures(tmp_path) -> None:
+    database_path = tmp_path / "nlfr.sqlite"
+    artifact_root = tmp_path / "artifacts"
+    _stage_bazel_artifact_fixtures(artifact_root)
+    shutil.copy(
+        WORKER_ADMIN_FIXTURE_ROOT / "nativelink.stdout.txt",
+        artifact_root / "nativelink.stdout.txt",
+    )
+    (artifact_root / "run.json").write_text(
+        json.dumps(
+            {
+                "run_key": "worker-evidence:local-exec:2026-06-06T12:00:00.000000Z",
+                "run_group": "worker-evidence",
+                "scenario": "worker-evidence-proof",
+                "mode": "local-exec",
+                "artifact_root": str(artifact_root),
+            }
+        )
+        + "\n"
+    )
+
+    result = _run_nlfr(
+        "ingest",
+        str(artifact_root),
+        "--database",
+        str(database_path),
+        "--json",
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["counts"]["targets"] == 2
+    assert payload["counts"]["proof_blocks"] == 1
+
+    with sqlite3.connect(database_path) as conn:
+        conn.row_factory = sqlite3.Row
+        block = conn.execute("SELECT block_kind FROM proof_blocks").fetchone()
+
+    assert block["block_kind"] == "worker_admin_identity_v1"
 
 
 def test_ingest_command_rejects_run_metadata_without_bazel_evidence(tmp_path) -> None:

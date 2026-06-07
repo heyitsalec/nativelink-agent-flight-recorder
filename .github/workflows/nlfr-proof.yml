@@ -190,6 +190,40 @@ jobs:
             data/lre-nix-toolchain-proof/environment-blocker.json
           if-no-files-found: warn
 
+  lre-cold-warm-ci:
+    name: LRE cold/warm cache parity proof
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: DeterminateSystems/nix-installer-action@main
+
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: LRE cold/warm proof (nix develop)
+        run: |
+          nix develop --command bash -lc '
+            set -euo pipefail
+            uv sync
+            if ./scripts/lre-cold-warm-proof.sh; then
+              test -f data/lre-cold-warm-proof/summary.json
+            else
+              test -f data/lre-cold-warm-proof/environment-blocker.json
+            fi
+          '
+
+      - name: Upload LRE cold/warm proof artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lre-cold-warm-proof
+          path: |
+            data/lre-cold-warm-proof/summary.json
+            data/lre-cold-warm-proof/environment-blocker.json
+            data/lre-cold-warm-proof/projections/
+          if-no-files-found: warn
+
   verify-demo-fixture:
     name: Fixture demo path
     runs-on: ubuntu-latest

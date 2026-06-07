@@ -120,7 +120,6 @@ payload = json.loads((Path(os.environ["OUT"]) / "local-exec/local-exec-run.json"
 print(payload["artifact_root"])
 PY
 )"
-  cp "$OUT/local-exec/nativelink.stdout.txt" "$artifact_root/nativelink.stdout.txt" 2>/dev/null || true
   PYTHONPATH=src uv run python -m nlfr ingest "$artifact_root" \
     --database "$DB" \
     --run-group worker-evidence \

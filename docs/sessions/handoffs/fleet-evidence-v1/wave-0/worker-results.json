@@ -1,0 +1,63 @@
+{
+  "schema_version": "knowledge-os.worker_results.v1",
+  "dag_id": "fleet-evidence-v1",
+  "wave": "wave-0",
+  "phase": "implement",
+  "status": "DONE",
+  "claim_ceiling": "stdout_ingest_local_exec",
+  "host": "/Users/alecbot/Documents/nativelink-agent-flight-recorder",
+  "branch": "feat/frontier-wave",
+  "git_head": "a3fd341eae1d3c4f9d082ff09594a82131122e9d",
+  "coordinator_id": "coord-fleet-evidence-v1",
+  "workers": [
+    {
+      "worker_id": "fel-w0-scripts-capture",
+      "coordinator_id": "coord-fleet-evidence-v1",
+      "status": "DONE",
+      "provenance": "docs/sessions/handoffs/fleet-evidence-v1/wave-0/provenance-fel-w0-scripts-capture.md",
+      "artifacts": [
+        "scripts/local-exec-proof.sh",
+        "scripts/worker-evidence-proof.sh",
+        "docs/sessions/handoffs/fleet-evidence-v1/wave-0/research-nativelink-stdout-formats.md"
+      ],
+      "proof": {
+        "command": "uv run pytest tests/test_worker_admin_stdout.py tests/test_worker_readiness.py -q",
+        "exit_code": 0,
+        "passed": 10
+      }
+    },
+    {
+      "worker_id": "fel-w0-handoffs",
+      "coordinator_id": "coord-fleet-evidence-v1",
+      "status": "DONE",
+      "provenance": "docs/sessions/handoffs/fleet-evidence-v1/wave-0/provenance-fel-w0-handoffs.md",
+      "artifacts": [
+        "docs/dags/fleet-evidence-v1.md",
+        "docs/dags/README.md",
+        "docs/sessions/handoffs/README.md",
+        "docs/proof-samples/README.md",
+        "docs/sessions/handoffs/fleet-evidence-v1/wave-0/spawn-ledger.md",
+        "docs/sessions/handoffs/fleet-evidence-v1/wave-0/integration-brief.md",
+        "docs/sessions/handoffs/fleet-evidence-v1/wave-0/worker-results.json",
+        "docs/sessions/handoffs/fleet-evidence-v1/wave-0/provenance-fel-w0-scripts-capture.md",
+        "docs/sessions/handoffs/fleet-evidence-v1/wave-0/provenance-fel-w0-handoffs.md"
+      ]
+    }
+  ],
+  "proof_gates": {
+    "pytest_worker_fleet": {
+      "command": "uv run pytest tests/test_worker_admin_stdout.py tests/test_worker_readiness.py -q",
+      "status": "PASS",
+      "passed": 10
+    },
+    "bash_syntax": {
+      "command": "bash -n scripts/local-exec-proof.sh scripts/worker-evidence-proof.sh",
+      "status": "PASS"
+    }
+  },
+  "claims_touched": [
+    "worker_identity",
+    "worker_endpoints_ready"
+  ],
+  "blocked_reason": null
+}

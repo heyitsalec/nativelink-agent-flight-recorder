@@ -6,6 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "lre-proof.sh"
 NIX_TOOLCHAIN_SCRIPT = ROOT / "scripts" / "lre-nix-toolchain-proof.sh"
+COLD_WARM_SCRIPT = ROOT / "scripts" / "lre-cold-warm-proof.sh"
 LRE_CONFIG = ROOT / "demo" / "nativelink" / "lre.json5"
 SUMMARY_SAMPLE = ROOT / "docs" / "proof-samples" / "lre-proof-summary-sample.json"
 NIX_TOOLCHAIN_SUMMARY_SAMPLE = (
@@ -13,6 +14,12 @@ NIX_TOOLCHAIN_SUMMARY_SAMPLE = (
 )
 NIX_TOOLCHAIN_BLOCKER_SAMPLE = (
     ROOT / "docs" / "proof-samples" / "lre-nix-toolchain-proof-blocker-sample.json"
+)
+COLD_WARM_SUMMARY_SAMPLE = (
+    ROOT / "docs" / "proof-samples" / "lre-cold-warm-proof-summary-sample.json"
+)
+COLD_WARM_BLOCKER_SAMPLE = (
+    ROOT / "docs" / "proof-samples" / "lre-cold-warm-proof-blocker-sample.json"
 )
 
 _LRE_SUMMARY_WRITER = """
@@ -114,6 +121,79 @@ summary = {
 print(json.dumps(summary, indent=2))
 """
 
+_LRE_COLD_WARM_SUMMARY_WRITER = """
+import json
+import os
+from pathlib import Path
+
+root = Path(os.environ["SUMMARY_ROOT"])
+proof_path = root / "projections" / "proof.json"
+proof = json.loads(proof_path.read_text()) if proof_path.exists() else {}
+cache_economics = next(
+    (block for block in proof.get("blocks", []) if block.get("id") == "cache_economics"),
+    None,
+)
+
+summary = {
+    "status": "lre_cache_parity_observed",
+    "lre_config": "demo/nativelink/lre.json5",
+    "remote_cache": "grpc://127.0.0.1:50071",
+    "remote_executor": "grpc://127.0.0.1:50071",
+    "bazel_config": "lre",
+}
+for leg in ("cold", "warm"):
+    payload = json.loads((root / f"{leg}-run.json").read_text())
+    summary[leg] = {
+        "status": payload["status"],
+        "run_id": payload["run_id"],
+        "artifact_root": payload["artifact_root"],
+        "mode": payload.get("mode", "local-exec"),
+        "results": [
+            {
+                "command": item["command"][:3],
+                "status": item["status"],
+                "exit_code": item["exit_code"],
+            }
+            for item in payload["results"]
+        ],
+    }
+
+if cache_economics:
+    summary["cache_economics"] = {
+        "metrics": cache_economics.get("metrics", {}),
+        "comparison": (cache_economics.get("payload") or {}).get("comparison"),
+        "legs": (cache_economics.get("payload") or {}).get("legs"),
+    }
+
+summary["source_kind"] = "collectable_v1"
+summary["confidence"] = "medium"
+summary["redaction_state"] = "safe"
+summary["evidence_refs"] = [
+    "cold-run.json",
+    "warm-run.json",
+    "projections/proof.json",
+    "nativelink.stdout.txt",
+    "nativelink.stderr.txt",
+    "demo/bazel-monorepo/lre.bazelrc",
+]
+summary["claim_boundary"] = {
+    "supported": [
+        "LRE cold/warm cache economics on x86_64-linux via lre.json5 + --config=lre",
+        "nlfr run --mode local-exec ingest + proof export with cache_economics",
+        "warm hit_rate exceeds cold on //tasks:priority_test through LRE endpoints",
+    ],
+    "unsupported": [
+        "hermetic container-image parity across distinct worker images",
+        "lre-cc C++ LRE builds as parity proof target",
+        "aarch64-darwin full LRE cold/warm green path",
+        "fleet scheduler dashboards",
+        "queue time and action placement correlation",
+    ],
+}
+(root / "summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True) + "\\n")
+print(json.dumps(summary, indent=2, sort_keys=True))
+"""
+
 
 def _stub_bin(tmp_path: Path, name: str) -> Path:
     bindir = tmp_path / "bin"
@@ -180,6 +260,41 @@ def _run_lre_nix_toolchain_proof(
         capture_output=True,
         check=False,
     )
+
+
+def _run_lre_cold_warm_proof(
+    tmp_path: Path,
+    *,
+    output: Path,
+    lre_bazelrc: Path | None = None,
+) -> subprocess.CompletedProcess[str]:
+    env = os.environ.copy()
+    env["NLFR_LRE_COLD_WARM_OUTPUT"] = str(output)
+    if lre_bazelrc is not None:
+        env["NLFR_LRE_BAZELRC"] = str(lre_bazelrc)
+    return subprocess.run(
+        [str(COLD_WARM_SCRIPT)],
+        cwd=ROOT,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+
+def _write_lre_cold_warm_summary(output: Path) -> dict:
+    env = os.environ.copy()
+    env["SUMMARY_ROOT"] = str(output)
+    output.mkdir(parents=True, exist_ok=True)
+    subprocess.run(
+        ["python3", "-c", _LRE_COLD_WARM_SUMMARY_WRITER],
+        cwd=ROOT,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    return json.loads((output / "summary.json").read_text(encoding="utf-8"))
 
 
 def _write_lre_nix_toolchain_summary(
@@ -339,6 +454,101 @@ def test_lre_nix_toolchain_summary_shape_with_fixture(tmp_path):
     assert summary["build_config_lre"]["target"] == sample["build_config_lre"]["target"]
     assert "recorded_at" in summary
     assert summary["recorded_at"].endswith("Z")
+    assert (out / "summary.json").is_file()
+
+
+def test_lre_cold_warm_proof_records_environment_blocker(tmp_path):
+    out = tmp_path / "lre-cold-warm-proof"
+    result = _run_lre_cold_warm_proof(tmp_path, output=out)
+    assert result.returncode == 2
+    blocker = out / "environment-blocker.json"
+    assert blocker.is_file()
+    payload = json.loads(blocker.read_text(encoding="utf-8"))
+    sample = json.loads(COLD_WARM_BLOCKER_SAMPLE.read_text(encoding="utf-8"))
+    assert payload["status"] == sample["status"]
+    assert payload["source_kind"] == sample["source_kind"]
+    assert payload["confidence"] == sample["confidence"]
+    assert payload["redaction_state"] == sample["redaction_state"]
+    assert payload["evidence_refs"] == sample["evidence_refs"]
+    assert payload["claim_boundary"] == sample["claim_boundary"]
+    if os.uname().sysname == "Darwin":
+        assert payload["reason"] == sample["reason"]
+        assert payload["next_step"] == sample["next_step"]
+    else:
+        assert payload["reason"]
+        assert "lre.bazelrc" in payload["reason"] or "nativelink" in payload["reason"]
+
+
+def test_lre_cold_warm_summary_shape_with_fixture(tmp_path):
+    out = tmp_path / "lre-cold-warm-proof"
+    sample = json.loads(COLD_WARM_SUMMARY_SAMPLE.read_text(encoding="utf-8"))
+    projections = out / "projections"
+    projections.mkdir(parents=True)
+
+    for leg in ("cold", "warm"):
+        leg_sample = sample[leg]
+        (out / f"{leg}-run.json").write_text(
+            json.dumps(
+                {
+                    "status": leg_sample["status"],
+                    "run_id": leg_sample["run_id"],
+                    "artifact_root": leg_sample["artifact_root"],
+                    "mode": leg_sample["mode"],
+                    "results": [
+                        {
+                            "command": item["command"],
+                            "status": item["status"],
+                            "exit_code": item["exit_code"],
+                        }
+                        for item in leg_sample["results"]
+                    ],
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+    (projections / "proof.json").write_text(
+        json.dumps(
+            {
+                "blocks": [
+                    {
+                        "id": "cache_economics",
+                        "metrics": sample["cache_economics"]["metrics"],
+                        "payload": {
+                            "comparison": sample["cache_economics"]["comparison"],
+                            "legs": sample["cache_economics"]["legs"],
+                        },
+                    }
+                ]
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    summary = _write_lre_cold_warm_summary(out)
+
+    for key in (
+        "status",
+        "source_kind",
+        "confidence",
+        "redaction_state",
+        "lre_config",
+        "remote_cache",
+        "remote_executor",
+        "bazel_config",
+    ):
+        assert summary[key] == sample[key]
+
+    assert summary["evidence_refs"] == sample["evidence_refs"]
+    assert summary["claim_boundary"] == sample["claim_boundary"]
+    assert summary["cold"]["status"] == sample["cold"]["status"]
+    assert summary["cold"]["run_id"] == sample["cold"]["run_id"]
+    assert summary["warm"]["status"] == sample["warm"]["status"]
+    assert summary["warm"]["run_id"] == sample["warm"]["run_id"]
+    assert summary["cache_economics"]["metrics"] == sample["cache_economics"]["metrics"]
+    assert summary["cache_economics"]["comparison"] == sample["cache_economics"]["comparison"]
     assert (out / "summary.json").is_file()
 
 
