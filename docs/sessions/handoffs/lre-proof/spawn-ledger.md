@@ -17,7 +17,12 @@
 | lre-nix-proof | wave-3 | DONE | `lre-nix-toolchain-proof.sh` + tests |
 | lre-nix-ci | wave-3 | DONE | CI `lre-nix-ci` job |
 | lre-wave3-handoffs | wave-3 | DONE | `wave-3/` handoff closure |
+| lre-parity-research | wave-4 | DONE | gap analysis + blueprint |
+| lre-parity-proof-script | wave-4 | DONE | `scripts/lre-cold-warm-proof.sh` |
+| lre-parity-tests | wave-4 | DONE | cold/warm contract tests |
+| lre-parity-ci | wave-4 | DONE | CI `lre-cold-warm-ci` job |
+| lre-parity-handoffs | wave-4 | DONE | `wave-4/` handoff closure |
 
-**Status:** `lre_bazelrc_generated` — phase-2 Nix toolchain wired; cache parity and fleet UI remain blocked.
+**Status:** `lre_cache_parity_observed` — phase-4 LRE cold/warm wired on x86_64-linux; hermetic container parity and fleet UI remain blocked.
 
-**Handoffs:** `docs/sessions/handoffs/lre-proof/wave-3/` · **DAG:** `docs/dags/lre-proof.md`
+**Handoffs:** `docs/sessions/handoffs/lre-proof/wave-4/` · **DAG:** `docs/dags/lre-proof.md`

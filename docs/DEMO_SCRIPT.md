@@ -105,6 +105,7 @@ trust story if you narrate labels.
 | proof-samples cold-warm | **collectable_v1** — real Bazel through NativeLink cache |
 | proof-samples two-worker | **collectable_v1** — endpoint readiness only, not distributed execution |
 | proof-samples agent-loop | **Mixed** — validation leg collectable, agent/change simulated |
+| proof-samples agent-bugfix / agent-feature | **collectable_v1** — live agent record, `bazel_validated: true` via `tier1-live-bazel-proof.sh` |
 | Compare lens | **derived_v1** — diff across run groups, no worker correlation |
 | Remote Boundary | Configured remote execution — placement unproven |
 
@@ -112,18 +113,28 @@ trust story if you narrate labels.
 
 ## Tier 1 Agent Vision — "AI wrote it; here's proof" (~5 min)
 
-Broker DAG: [`dags/tier1-agent-vision.md`](dags/tier1-agent-vision.md)
+Broker DAG: [`dags/tier1-agent-vision.md`](dags/tier1-agent-vision.md)  
+Live Bazel proof: [`dags/tier1-live-bazel.md`](dags/tier1-live-bazel.md)  
+Proof samples: [`proof-samples/README.md`](proof-samples/README.md) —
+`agent-bugfix-summary.json`, `agent-feature-summary.json`
 
 ```bash
+# Primary path — Acts 1+2 with real Bazel (inside nix develop)
+nix develop --command ./scripts/tier1-live-bazel-proof.sh
+# → data/tier1-live-bazel/summary.json (collectable_v1, validation: bazel)
+# → data/agent-bugfix-1/summary.json + data/agent-feature-compare/summary.json
+#   (bazel_validated: true on each act summary)
+
+# Fixture-backed gate (blocker smoke; optional live with NLFR_RUN_TIER1_LIVE_BAZEL=1)
+uv run pytest tests/test_tier1_live_bazel.py -q
+
 # Plan all three acts + compare triple (no SQLite writes)
 ./scripts/tier1-agent-demo.sh --dry-run --json
 
-# Act 1 — bounded bugfix (collectable_v1 cursor adapter)
+# Fallback — pytest-only validation (no Bazel on PATH)
 NLFR_SKIP_BAZEL=1 ./scripts/tier1-bugfix-setup.sh --state broken --check   # expect fail
 NLFR_SKIP_BAZEL=1 ./scripts/tier1-bugfix-setup.sh --state fixed
 NLFR_SKIP_BAZEL=1 ./scripts/tier1-agent-demo.sh --act 1
-
-# Act 2 — feature slice (shared policy module)
 NLFR_SKIP_BAZEL=1 ./scripts/tier1-feature-setup.sh --state feature
 NLFR_SKIP_BAZEL=1 ./scripts/tier1-agent-demo.sh --act 2
 
@@ -132,9 +143,16 @@ NLFR_SKIP_BAZEL=1 ./scripts/tier1-agent-demo.sh --act 2
 ./scripts/promote-tier1-compare.sh
 ```
 
-**Say aloud:** Act 1+2 summaries are **`collectable_v1`** (`agent-bugfix-summary.json`,
-`agent-feature-summary.json`). Compare lens is **`derived_v1`** — no worker correlation.
-Contrast with `agent-loop-summary.json` where the agent leg is **`simulated_v1`**.
+**Say aloud:** Act 1+2 summaries are **`collectable_v1`** with
+**`bazel_validated: true`** (`agent-bugfix-summary.json`,
+`agent-feature-summary.json`). Agent leg is live **`cursor_adapter_v1`** — not the
+**`simulated_v1`** bounded patch in `agent-loop-summary.json`. Compare lens is
+**`derived_v1`** — no worker correlation.
+
+**No Nix?** Open `docs/proof-samples/agent-bugfix-summary.json` and
+`agent-feature-summary.json` — redacted excerpts from a real
+`tier1-live-bazel-proof.sh` run. Point at `bazel_validated` and
+`validation: bazel` in each file.
 
 Canvas: `npm --prefix apps/canvas run preview` — `?view=tier1-demo` (Compare lens) or `?view=graph-only`.
 Operator: type `composer` for view-spec export drawer.

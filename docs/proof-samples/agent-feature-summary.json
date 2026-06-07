@@ -5,10 +5,11 @@
     "name": "tier1-feature-agent",
     "prompt_sha256": "cbf1f7214dded715cc38cdd2b2646e9d36601580ec4f5a94cc13763ba6916528"
   },
+  "bazel_validated": true,
   "build_status": "completed",
   "chain_complete": true,
   "confidence": "high",
-  "contrast_note": "Act 2 feature slice with shared-module policy retune; compare narrative pairs with agent-bugfix-1.",
+  "contrast_note": "Act 2 feature slice with shared-module policy retune and live Bazel validation via tier1-live-bazel-proof; compare narrative pairs with agent-bugfix-1.",
   "evidence_refs": [
     "run.json",
     "agent-provenance.json",
@@ -35,9 +36,10 @@
   ],
   "redaction_state": "safe",
   "run_group": "agent-feature-compare",
-  "run_id": "run_aed862e1e654d2691b65e89c",
+  "run_id": "run_cd9dca449589af9a7f8ceb70",
   "scenario_id": "agent-feature-compare",
   "source_kind": "collectable_v1",
+  "validation": "bazel",
   "validation_source_kind": "collectable_v1",
   "workload": {
     "change_paths": [

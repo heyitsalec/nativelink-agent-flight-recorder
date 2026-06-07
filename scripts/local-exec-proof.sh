@@ -165,27 +165,35 @@ print(payload["artifact_root"])
 PY
 )"
 
-echo "== Attach worker readiness evidence =="
-READINESS_PATH="$OUT/worker-readiness.json" ARTIFACT_ROOT="$ARTIFACT_ROOT" PYTHONPATH=src \
+echo "== Attach local-exec evidence =="
+OUT_ROOT="$OUT" ARTIFACT_ROOT="$ARTIFACT_ROOT" PYTHONPATH=src \
   uv run python - <<'PY'
 import os
 from pathlib import Path
 
 from nlfr.artifacts import write_artifact
 
-readiness_path = Path(os.environ["READINESS_PATH"])
+out_root = Path(os.environ["OUT_ROOT"])
 artifact_root = Path(os.environ["ARTIFACT_ROOT"])
-write_artifact(
-    artifact_root,
-    artifact_key="worker-readiness.json",
-    data=readiness_path.read_bytes(),
-    producer_command=["scripts/local-exec-proof.sh"],
-    config_hash=None,
-    redaction_state="safe",
-    source_kind="collectable_v1",
-    confidence="high",
-    evidence_refs=["script:local-exec-proof.sh", "worker-readiness.json"],
+attachments = (
+    ("worker-readiness.json", out_root / "worker-readiness.json"),
+    ("nativelink.stdout.txt", out_root / "nativelink.stdout.txt"),
+    ("nativelink.stderr.txt", out_root / "nativelink.stderr.txt"),
 )
+for artifact_key, source_path in attachments:
+    if not source_path.exists():
+        continue
+    write_artifact(
+        artifact_root,
+        artifact_key=artifact_key,
+        data=source_path.read_bytes(),
+        producer_command=["scripts/local-exec-proof.sh"],
+        config_hash=None,
+        redaction_state="safe",
+        source_kind="collectable_v1",
+        confidence="high",
+        evidence_refs=["script:local-exec-proof.sh", artifact_key],
+    )
 PY
 
 echo "== Ingest local execution Bazel evidence =="

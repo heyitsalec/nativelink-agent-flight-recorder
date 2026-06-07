@@ -1,0 +1,103 @@
+{
+  "schema_version": "knowledge-os.worker_results.v1",
+  "dag_id": "lre-proof",
+  "wave": "wave-4",
+  "phase": "implement",
+  "status": "DONE",
+  "claim_ceiling": "lre_cache_parity_observed",
+  "host": "/Users/alecbot/Documents/nativelink-agent-flight-recorder",
+  "branch": "feat/frontier-wave",
+  "git_head": "a3fd341eae1d3c4f9d082ff09594a82131122e9d",
+  "coordinator_id": "coord-lre-cache-parity",
+  "workers": [
+    {
+      "worker_id": "lre-parity-research",
+      "coordinator_id": "coord-lre-cache-parity",
+      "status": "DONE",
+      "provenance": "docs/sessions/handoffs/lre-proof/wave-4/provenance-lre-parity-research.md",
+      "artifacts": [
+        "docs/sessions/handoffs/lre-proof/wave-4/provenance-lre-parity-research.md"
+      ]
+    },
+    {
+      "worker_id": "lre-parity-proof-script",
+      "coordinator_id": "coord-lre-cache-parity",
+      "status": "DONE",
+      "provenance": "docs/sessions/handoffs/lre-proof/wave-4/provenance-lre-parity-research.md",
+      "artifacts": [
+        "scripts/lre-cold-warm-proof.sh",
+        "docs/proof-samples/lre-cold-warm-proof-summary-sample.json",
+        "docs/proof-samples/lre-cold-warm-proof-blocker-sample.json",
+        "docs/proof-samples/README.md"
+      ]
+    },
+    {
+      "worker_id": "lre-parity-tests",
+      "coordinator_id": "coord-lre-cache-parity",
+      "status": "DONE",
+      "provenance": "docs/sessions/handoffs/lre-proof/wave-4/provenance-lre-parity-tests.md",
+      "proof": {
+        "command": "uv run pytest tests/test_lre_proof.py -q",
+        "exit_code": 0,
+        "passed": 9
+      },
+      "artifacts": [
+        "tests/test_lre_proof.py"
+      ]
+    },
+    {
+      "worker_id": "lre-parity-ci",
+      "coordinator_id": "coord-lre-cache-parity",
+      "status": "DONE",
+      "provenance": "docs/sessions/handoffs/lre-proof/wave-4/provenance-lre-parity-ci.md",
+      "ci_job": "lre-cold-warm-ci",
+      "artifacts": [
+        ".github/workflows/nlfr-proof.yml"
+      ]
+    },
+    {
+      "worker_id": "lre-parity-handoffs",
+      "coordinator_id": "coord-lre-cache-parity",
+      "status": "DONE",
+      "provenance": "docs/sessions/handoffs/lre-proof/wave-4/provenance-lre-parity-handoffs.md",
+      "artifacts": [
+        "docs/sessions/handoffs/lre-proof/wave-4/spawn-ledger.md",
+        "docs/sessions/handoffs/lre-proof/wave-4/worker-results.json",
+        "docs/sessions/handoffs/lre-proof/wave-4/integration-brief.md",
+        "docs/dags/lre-proof.md",
+        "demo/nativelink/README.md"
+      ]
+    }
+  ],
+  "proof_gates": {
+    "pytest": {
+      "command": "uv run pytest tests/test_lre_proof.py -q",
+      "status": "PASS",
+      "passed": 9
+    },
+    "bash_syntax": {
+      "command": "bash -n scripts/lre-cold-warm-proof.sh",
+      "status": "PASS"
+    },
+    "nix_lre_cold_warm_proof": {
+      "command": "nix develop --command ./scripts/lre-cold-warm-proof.sh",
+      "status": "DEFERRED",
+      "note": "Requires Nix + x86_64-linux; CI lre-cold-warm-ci owns green path"
+    },
+    "lre_substrate_regression": {
+      "command": "nix develop --command ./scripts/lre-proof.sh",
+      "status": "UNCHANGED",
+      "note": "Wave-2 lre_substrate_ready ceiling preserved"
+    },
+    "lre_nix_toolchain_regression": {
+      "command": "nix develop --command ./scripts/lre-nix-toolchain-proof.sh",
+      "status": "UNCHANGED",
+      "note": "Wave-3 lre_bazelrc_generated ceiling preserved"
+    }
+  },
+  "claims_touched": [
+    "lre_cache_parity_observed",
+    "claim_boundary"
+  ],
+  "blocked_reason": null
+}

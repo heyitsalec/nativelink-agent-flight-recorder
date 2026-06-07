@@ -118,10 +118,47 @@ print(artifact_root)
 PY
 }
 
+attach_nativelink_logs() {
+  local artifact_root="$1"
+
+  OUT_ROOT="$OUT" ARTIFACT_ROOT="$artifact_root" PYTHONPATH=src \
+    uv run python - <<'PY'
+import os
+from pathlib import Path
+
+from nlfr.artifacts import write_artifact
+
+out_root = Path(os.environ["OUT_ROOT"])
+artifact_root = Path(os.environ["ARTIFACT_ROOT"])
+script_ref = "script:cold-warm-cache-proof.sh"
+attachments = (
+    ("nativelink.stdout.txt", out_root / "nativelink.stdout.txt"),
+    ("nativelink.stderr.txt", out_root / "nativelink.stderr.txt"),
+)
+for artifact_key, source_path in attachments:
+    if not source_path.exists():
+        continue
+    write_artifact(
+        artifact_root,
+        artifact_key=artifact_key,
+        data=source_path.read_bytes(),
+        producer_command=["scripts/cold-warm-cache-proof.sh"],
+        config_hash=None,
+        redaction_state="safe",
+        source_kind="collectable_v1",
+        confidence="high",
+        evidence_refs=[script_ref, artifact_key],
+    )
+PY
+}
+
 ingest_leg() {
   local leg="$1"
   local artifact_root
   artifact_root="$(artifact_root_for_leg "$leg")"
+
+  echo "== Attach $leg NativeLink evidence =="
+  attach_nativelink_logs "$artifact_root"
 
   echo "== Ingest $leg Bazel evidence =="
   PYTHONPATH=src uv run python -m nlfr ingest "$artifact_root" \

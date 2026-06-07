@@ -1637,9 +1637,282 @@
       "source_kind": "collectable_v1",
       "started_at": "2026-06-07T03:55:07.579Z",
       "status": null
+    },
+    {
+      "confidence": "high",
+      "ended_at": "2026-06-07T05:17:35.702177Z",
+      "evidence_refs": [
+        "artifact:run.json"
+      ],
+      "id": "runs_fe7ad327351866288d6b2eed",
+      "label": "canvas-build",
+      "lane": "run",
+      "payload": {
+        "ended_at": "2026-06-07T05:17:35.702177Z",
+        "mode": "generic",
+        "run_group": "canvas-dev",
+        "scenario": "canvas-build",
+        "stable_key": "canvas-build:generic:2026-06-07T05:17:28.346503Z",
+        "started_at": "2026-06-07T05:17:28.347481Z",
+        "status": "completed"
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "started_at": "2026-06-07T05:17:28.347481Z",
+      "status": "completed"
+    },
+    {
+      "confidence": "high",
+      "ended_at": "2026-06-07T05:17:34.828094Z",
+      "evidence_refs": [
+        "run:run_f7167b7d48a4e36e89fb657f",
+        "command:0"
+      ],
+      "id": "invocations_2b8fd8ba626f477da43a9a2c",
+      "label": "canvas-build:generic:2026-06-07T05:17:28.346503Z:invocation:npm",
+      "lane": "npm",
+      "payload": {
+        "command": [
+          "npm",
+          "--prefix",
+          "apps/canvas",
+          "run",
+          "build"
+        ],
+        "cwd": "${HOME}/Documents/nativelink-agent-flight-recorder",
+        "ended_at": "2026-06-07T05:17:34.828094Z",
+        "exit_code": 0,
+        "invocation_kind": "npm",
+        "run_id": "runs_fe7ad327351866288d6b2eed",
+        "stable_key": "canvas-build:generic:2026-06-07T05:17:28.346503Z:invocation:npm",
+        "started_at": "2026-06-07T05:17:28.347975Z"
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "started_at": "2026-06-07T05:17:28.347975Z",
+      "status": null
+    },
+    {
+      "confidence": "high",
+      "ended_at": "2026-06-07T05:17:35.698344Z",
+      "evidence_refs": [
+        "run:run_f7167b7d48a4e36e89fb657f",
+        "command:1"
+      ],
+      "id": "invocations_ef888f3d26d6801799965a35",
+      "label": "canvas-build:generic:2026-06-07T05:17:28.346503Z:invocation:uv",
+      "lane": "uv",
+      "payload": {
+        "command": [
+          "uv",
+          "run",
+          "pytest",
+          "tests/test_generic_run.py",
+          "-q",
+          "--tb=no"
+        ],
+        "cwd": "${HOME}/Documents/nativelink-agent-flight-recorder",
+        "ended_at": "2026-06-07T05:17:35.698344Z",
+        "exit_code": 0,
+        "invocation_kind": "uv",
+        "run_id": "runs_fe7ad327351866288d6b2eed",
+        "stable_key": "canvas-build:generic:2026-06-07T05:17:28.346503Z:invocation:uv",
+        "started_at": "2026-06-07T05:17:34.828622Z"
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "started_at": "2026-06-07T05:17:34.828622Z",
+      "status": null
+    },
+    {
+      "confidence": "high",
+      "ended_at": null,
+      "evidence_refs": [
+        "invocation:invocations_2b8fd8ba626f477da43a9a2c"
+      ],
+      "id": "artifacts_98326c46b0e0f8ec2bba9998",
+      "label": "npm-0.stdout.txt",
+      "lane": "artifact",
+      "payload": {
+        "artifact_key": "npm-0.stdout.txt",
+        "artifact_path": "npm-0.stdout.txt",
+        "content_type": "text/plain",
+        "manifest_path": "artifact_manifest.json",
+        "producer_command": [
+          "npm",
+          "--prefix",
+          "apps/canvas",
+          "run",
+          "build"
+        ],
+        "run_id": "runs_fe7ad327351866288d6b2eed",
+        "sha256": "5bd998f03c15eb3fd6d2fc7cba7a6ba6c50ce9b79625181f20c193d6e76dbe78",
+        "size_bytes": 400,
+        "stable_key": "canvas-build:generic:2026-06-07T05:17:28.346503Z:artifact:npm-0.stdout.txt"
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "started_at": "2026-06-07T05:17:35.702Z",
+      "status": null
+    },
+    {
+      "confidence": "high",
+      "ended_at": null,
+      "evidence_refs": [
+        "invocation:invocations_2b8fd8ba626f477da43a9a2c"
+      ],
+      "id": "artifacts_9f1d56294973e13daba97bb9",
+      "label": "npm-0.stderr.txt",
+      "lane": "artifact",
+      "payload": {
+        "artifact_key": "npm-0.stderr.txt",
+        "artifact_path": "npm-0.stderr.txt",
+        "content_type": "text/plain",
+        "manifest_path": "artifact_manifest.json",
+        "producer_command": [
+          "npm",
+          "--prefix",
+          "apps/canvas",
+          "run",
+          "build"
+        ],
+        "run_id": "runs_fe7ad327351866288d6b2eed",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0,
+        "stable_key": "canvas-build:generic:2026-06-07T05:17:28.346503Z:artifact:npm-0.stderr.txt"
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "started_at": "2026-06-07T05:17:35.702Z",
+      "status": null
+    },
+    {
+      "confidence": "high",
+      "ended_at": null,
+      "evidence_refs": [
+        "run:run_f7167b7d48a4e36e89fb657f",
+        "artifact:canvas-dist"
+      ],
+      "id": "artifacts_60f3f0b5d59b1aa30f9e7873",
+      "label": "outputs/canvas-dist.html",
+      "lane": "artifact",
+      "payload": {
+        "artifact_key": "outputs/canvas-dist.html",
+        "artifact_path": "outputs/canvas-dist.html",
+        "content_type": "application/octet-stream",
+        "manifest_path": "artifact_manifest.json",
+        "producer_command": [
+          "nlfr",
+          "run",
+          "--mode",
+          "generic"
+        ],
+        "run_id": "runs_fe7ad327351866288d6b2eed",
+        "sha256": "8bf4d2c613a7753d598410b8d130fff5dcaea8b9f3bcee0cee4cae278b479039",
+        "size_bytes": 417,
+        "stable_key": "canvas-build:generic:2026-06-07T05:17:28.346503Z:artifact:outputs/canvas-dist.html"
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "started_at": "2026-06-07T05:17:35.703Z",
+      "status": null
+    },
+    {
+      "confidence": "high",
+      "ended_at": null,
+      "evidence_refs": [
+        "invocation:invocations_ef888f3d26d6801799965a35"
+      ],
+      "id": "artifacts_68900f274ee993e9cf18b4ad",
+      "label": "uv-1.stderr.txt",
+      "lane": "artifact",
+      "payload": {
+        "artifact_key": "uv-1.stderr.txt",
+        "artifact_path": "uv-1.stderr.txt",
+        "content_type": "text/plain",
+        "manifest_path": "artifact_manifest.json",
+        "producer_command": [
+          "uv",
+          "run",
+          "pytest",
+          "tests/test_generic_run.py",
+          "-q",
+          "--tb=no"
+        ],
+        "run_id": "runs_fe7ad327351866288d6b2eed",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0,
+        "stable_key": "canvas-build:generic:2026-06-07T05:17:28.346503Z:artifact:uv-1.stderr.txt"
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "started_at": "2026-06-07T05:17:35.703Z",
+      "status": null
+    },
+    {
+      "confidence": "high",
+      "ended_at": null,
+      "evidence_refs": [
+        "run:run_f7167b7d48a4e36e89fb657f"
+      ],
+      "id": "artifacts_c2ba8e6a2f0f5dcc9c335831",
+      "label": "run.json",
+      "lane": "artifact",
+      "payload": {
+        "artifact_key": "run.json",
+        "artifact_path": "run.json",
+        "content_type": "application/json",
+        "manifest_path": "artifact_manifest.json",
+        "producer_command": [
+          "nlfr",
+          "run",
+          "--mode",
+          "generic"
+        ],
+        "run_id": "runs_fe7ad327351866288d6b2eed",
+        "sha256": "42dd36bb853f25e6f85a9a0f2fc4ff9a15193607344a72b3d4e69f604be68db4",
+        "size_bytes": 5320,
+        "stable_key": "canvas-build:generic:2026-06-07T05:17:28.346503Z:artifact:run.json"
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "started_at": "2026-06-07T05:17:35.703Z",
+      "status": null
+    },
+    {
+      "confidence": "high",
+      "ended_at": null,
+      "evidence_refs": [
+        "invocation:invocations_ef888f3d26d6801799965a35"
+      ],
+      "id": "artifacts_c579bcb4180e4637c609c618",
+      "label": "uv-1.stdout.txt",
+      "lane": "artifact",
+      "payload": {
+        "artifact_key": "uv-1.stdout.txt",
+        "artifact_path": "uv-1.stdout.txt",
+        "content_type": "text/plain",
+        "manifest_path": "artifact_manifest.json",
+        "producer_command": [
+          "uv",
+          "run",
+          "pytest",
+          "tests/test_generic_run.py",
+          "-q",
+          "--tb=no"
+        ],
+        "run_id": "runs_fe7ad327351866288d6b2eed",
+        "sha256": "5c0779280f223cab31b4a7314869d2128df35c57e56fe7ef54777ad6f0d0521e",
+        "size_bytes": 98,
+        "stable_key": "canvas-build:generic:2026-06-07T05:17:28.346503Z:artifact:uv-1.stdout.txt"
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "started_at": "2026-06-07T05:17:35.703Z",
+      "status": null
     }
   ],
-  "generated_at": "2026-06-07T03:55:07.709620Z",
+  "generated_at": "2026-06-07T05:17:35.892140Z",
   "lanes": [
     {
       "id": "run",
@@ -1675,11 +1948,11 @@
   "schema_version": 1,
   "summary": {
     "cache_events": {},
-    "events": 54,
+    "events": 63,
     "failures": 0,
     "invocation_statuses": {
-      "unknown": 12
+      "unknown": 14
     },
-    "runs": 6
+    "runs": 7
   }
 }

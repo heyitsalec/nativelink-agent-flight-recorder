@@ -90,7 +90,7 @@ then
   exit 1
 fi
 
-echo "== Simulate bounded agent patch, real run, ingest validation evidence =="
+echo "== Simulate bounded agent patch and real run =="
 PYTHONPATH=src uv run python -m nlfr simulate \
   --scenario "$SCENARIO" \
   --output-dir "$OUT" \
@@ -99,8 +99,76 @@ PYTHONPATH=src uv run python -m nlfr simulate \
   --bazel-executable "$BAZEL_BIN" \
   --remote-cache "$REMOTE_CACHE" \
   --bazel-startup-arg=--output_base="$OUT/bazel-output-agent-loop" \
-  --ingest \
   --json >"$OUT/simulate.json"
+
+ARTIFACT_ROOT="$(
+  ROOT_PATH="$OUT/simulate.json" python3 - <<'PY'
+import json
+import os
+from pathlib import Path
+
+payload = json.loads(Path(os.environ["ROOT_PATH"]).read_text())
+build = payload["scenarios"][0]["build"]
+artifact_root = build.get("artifact_root")
+if not artifact_root:
+    raise SystemExit("missing artifact_root in simulate.json")
+print(artifact_root)
+PY
+)"
+
+RUN_KEY="$(
+  ROOT_PATH="$OUT/simulate.json" python3 - <<'PY'
+import json
+import os
+from pathlib import Path
+
+payload = json.loads(Path(os.environ["ROOT_PATH"]).read_text())
+build = payload["scenarios"][0]["build"]
+run_key = build.get("run_key")
+if not run_key:
+    raise SystemExit("missing run_key in simulate.json")
+print(run_key)
+PY
+)"
+
+echo "== Attach agent-loop evidence =="
+OUT_ROOT="$OUT" ARTIFACT_ROOT="$ARTIFACT_ROOT" PYTHONPATH=src \
+  uv run python - <<'PY'
+import os
+from pathlib import Path
+
+from nlfr.artifacts import write_artifact
+
+out_root = Path(os.environ["OUT_ROOT"])
+artifact_root = Path(os.environ["ARTIFACT_ROOT"])
+script_ref = "script:agent-loop-proof.sh"
+attachments = (
+    ("nativelink.stdout.txt", out_root / "nativelink.stdout.txt"),
+    ("nativelink.stderr.txt", out_root / "nativelink.stderr.txt"),
+)
+for artifact_key, source_path in attachments:
+    if not source_path.exists():
+        continue
+    write_artifact(
+        artifact_root,
+        artifact_key=artifact_key,
+        data=source_path.read_bytes(),
+        producer_command=["scripts/agent-loop-proof.sh"],
+        config_hash=None,
+        redaction_state="safe",
+        source_kind="collectable_v1",
+        confidence="high",
+        evidence_refs=[script_ref, artifact_key],
+    )
+PY
+
+echo "== Ingest agent-loop validation evidence =="
+PYTHONPATH=src uv run python -m nlfr ingest "$ARTIFACT_ROOT" \
+  --database "$DB" \
+  --run-key "$RUN_KEY" \
+  --run-group "$RUN_GROUP" \
+  --source-kind collectable_v1 \
+  --json >"$OUT/ingest.json"
 
 echo "== Export agent-loop projections =="
 PYTHONPATH=src uv run python -m nlfr graph export \
@@ -124,6 +192,8 @@ from pathlib import Path
 root = Path(os.environ["SUMMARY_ROOT"])
 simulate = json.loads((root / "simulate.json").read_text())
 graph = json.loads((root / "projections" / "action-graph.json").read_text())
+ingest_path = root / "ingest.json"
+ingest = json.loads(ingest_path.read_text()) if ingest_path.exists() else {}
 
 scenario = simulate["scenarios"][0]
 build = scenario["build"]
@@ -146,7 +216,7 @@ summary = {
     "scenario_id": scenario["scenario_id"],
     "agent": scenario["agent"],
     "build_status": build["status"],
-    "ingest": build.get("ingest", {}),
+    "ingest": ingest,
     "graph_node_kinds": kinds,
     "graph_edge_kinds": edge_kinds,
     "chain_complete": chain_ok,
@@ -160,6 +230,7 @@ summary = {
     "redaction_state": "safe",
     "evidence_refs": [
         "simulate.json",
+        "ingest.json",
         "projections/action-graph.json",
         "projections/proof.json",
         "nativelink.stdout.txt",

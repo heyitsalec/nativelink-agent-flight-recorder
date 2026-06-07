@@ -32,6 +32,11 @@ NLFR is a local-first black-box recorder for agent validation loops:
   `expected_workers=2`, `configured_workers=2`, no environment blocker;
   `collectable_v1`). This is two workers configured AND endpoints opened live —
   not work distributed across two workers.
+- Worker identity from NativeLink admin stdout when `nativelink.stdout.txt` is
+  attached pre-ingest **and** admin lines match the M7 parser (`worker_admin_stdout`,
+  `scripts/worker-evidence-proof.sh`, `worker_identity_observed: true`,
+  `collectable_v1`, `high`). Observed worker names appear in the action graph —
+  not scheduler assignment, queue time, placement, or fleet ops UI.
 - Deterministic simulated-agent provenance (zero LLM tokens).
 - Agent loop closure: a deterministic bounded-agent patch validates through the chain
   `agent → change → run → target → action → cache_event`
@@ -43,8 +48,13 @@ NLFR is a local-first black-box recorder for agent validation loops:
 
 ## What is explicitly unproven
 
-Worker identity, scheduler assignment, queue time, action placement, load
-distribution, multi-machine fleet behavior, org-scale history.
+Scheduler assignment, queue time, action placement, load distribution,
+multi-machine fleet behavior, org-scale history.
+
+Worker identity is **conditional**, not globally proven: only when NativeLink admin
+stdout is attached pre-ingest and M7 regex matches (`collectable_v1`). Runs without
+captured stdout or matching lines do not carry this claim. No scheduler/fleet
+dashboard UI — queue time, placement, and work distribution remain unproven.
 
 *Research matrix:* [`docs/dags/future-fleet-claims.md`](dags/future-fleet-claims.md) · run `./scripts/fleet-claims-audit.sh` → `data/fleet-claims-audit/claim-matrix.json`.
 
