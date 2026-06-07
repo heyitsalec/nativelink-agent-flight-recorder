@@ -1,0 +1,16 @@
+{
+  "schema_version": "knowledge-os.worker_results.v1",
+  "dag_id": "tier1-agent-vision",
+  "wave": "wave-3",
+  "phase": "implement",
+  "status": "DONE",
+  "workers": [
+    {"worker_id": "t3-i-views", "coordinator_id": "coord-t3-implement", "status": "DONE"},
+    {"worker_id": "t3-i-shell", "coordinator_id": "coord-t3-implement", "status": "DONE"},
+    {"worker_id": "t3-i-panels", "coordinator_id": "coord-t3-implement", "status": "DONE"}
+  ],
+  "proof_gates": {
+    "npm_build": "PASS",
+    "test_truth": {"ok": true, "expectedCount": 40, "renderedCount": 40}
+  }
+}

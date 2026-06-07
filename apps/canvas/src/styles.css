@@ -35,7 +35,8 @@ input {
     linear-gradient(140deg, #fbfcfd 0%, #f4f7f8 54%, #f8faf9 100%);
 }
 
-.fixture-fallback-banner {
+.fixture-fallback-banner,
+.projection-notice {
   position: absolute;
   z-index: 5;
   top: 0;
@@ -43,10 +44,33 @@ input {
   right: 0;
   margin: 0;
   padding: 0.55rem 1rem;
+  font-size: 0.85rem;
+  border-bottom: 1px solid transparent;
+}
+
+.fixture-fallback-banner,
+.projection-notice-fallback {
   background: #3d2e00;
   color: #ffe8a3;
-  font-size: 0.85rem;
-  border-bottom: 1px solid #6b5200;
+  border-bottom-color: #6b5200;
+}
+
+.projection-notice-simulated {
+  background: #3d2e00;
+  color: #ffe8a3;
+  border-bottom-color: #6b5200;
+}
+
+.projection-notice-mixed {
+  background: #2a3140;
+  color: #dbeafe;
+  border-bottom-color: #475569;
+}
+
+.projection-notice-collectable {
+  background: #0f2f22;
+  color: #b8f5d4;
+  border-bottom-color: #1f6b4a;
 }
 
 .topbar {
@@ -1139,5 +1163,146 @@ input {
 
   .operator-copy span {
     white-space: normal;
+  }
+}
+
+/* Grid shell (view-spec layout) */
+.grid-shell {
+  display: grid;
+}
+
+.grid-region {
+  min-width: 0;
+}
+
+.grid-region-notice {
+  position: relative;
+  z-index: 5;
+}
+
+.grid-region-notice .projection-notice {
+  position: relative;
+  top: auto;
+  left: auto;
+  right: auto;
+}
+
+.grid-region-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 24px 8px;
+  z-index: 4;
+}
+
+.grid-region-header .topbar {
+  position: static;
+  flex: 1 1 100%;
+  pointer-events: auto;
+}
+
+.grid-region-header .mode-rail {
+  position: static;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.grid-region-primary {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.grid-region-primary .grid-slot {
+  height: 100%;
+  width: 100%;
+}
+
+.grid-region-primary .grid-slot-action_graph_canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.grid-region-primary .canvas-stage {
+  position: absolute;
+  inset: 0;
+}
+
+.grid-region-primary .truth-legend {
+  position: absolute;
+  left: 24px;
+  bottom: 24px;
+}
+
+.grid-region-primary .runway-overlay {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 24px;
+}
+
+.grid-region-primary .proof-constellation-overlay {
+  position: absolute;
+  z-index: 3;
+  top: 24px;
+  left: 24px;
+}
+
+.grid-region-rail {
+  position: relative;
+  overflow: auto;
+  padding: 16px;
+}
+
+.grid-region-rail .inspector,
+.grid-region-rail .proof-drawer,
+.grid-region-rail .remote-lens,
+.grid-region-rail .compare-lens {
+  position: relative;
+  top: auto;
+  right: auto;
+  left: auto;
+  width: 100%;
+  max-height: none;
+}
+
+.grid-region-operator {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  padding: 12px 24px 20px;
+  z-index: 6;
+}
+
+.grid-region-operator .operator {
+  position: static;
+  transform: none;
+  width: min(520px, 100%);
+}
+
+.grid-slot {
+  min-width: 0;
+}
+
+@media (max-width: 720px) {
+  .grid-region-header {
+    padding: 12px 12px 8px;
+  }
+
+  .grid-region-header .mode-rail {
+    flex-direction: column;
+  }
+
+  .grid-region-primary .truth-legend {
+    left: 12px;
+    bottom: 12px;
+  }
+
+  .grid-region-primary .runway-overlay {
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
   }
 }

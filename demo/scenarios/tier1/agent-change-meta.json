@@ -1,0 +1,38 @@
+{
+  "schema_version": "nlfr.tier1.scenario.v1",
+  "scenario_id": "agent-change",
+  "act": 3,
+  "title": "Meta dogfood with compare triple hook",
+  "run_group": "agent-change",
+  "narrative": "M8 adapter meta dogfood; Act 3 chains compare-agent-runs triple after record.",
+  "record": {
+    "adapter": "record-agent-change.sh",
+    "output_dir": "data/agent-change",
+    "workspace": ".",
+    "change_paths": ["adapters/cursor/README.md"],
+    "validation_command": "uv run pytest tests/test_record_agent_change.py -q",
+    "validation_fallback": "uv run pytest tests/test_record_agent_change.py -q",
+    "agent": {
+      "kind": "cursor_adapter_v1",
+      "name": "tier1-meta-agent",
+      "model": "composer-2.5",
+      "prompt_fixture": "fixtures/prompt-meta.txt",
+      "prompt_sha256": "fb354f71665330f403392d1bdb09f9bd40aec6d9821e1502efcfc51447c32705"
+    }
+  },
+  "related_simulate_scenario": null,
+  "proof_claims": [
+    {
+      "claim_id": "tier1.meta.provenance.hashed",
+      "statement": "Meta dogfood provenance carries model + prompt_sha256; raw prompt withheld.",
+      "source_kind": "collectable_v1",
+      "confidence": "high",
+      "evidence_refs": ["artifact:agent-provenance.json"],
+      "redaction_state": "redacted"
+    }
+  ],
+  "blockers": {
+    "bazel": "Act 3 uses pytest smoke only; Bazel not required.",
+    "nativelink": "Compare triple may reference groups without NativeLink on dry-run."
+  }
+}

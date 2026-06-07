@@ -1,0 +1,471 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "nlfr.view-spec.v1",
+  "title": "NLFR View Spec v1",
+  "description": "Projection-only view substrate for NLFR canvas. Describes layout, component instances, projection bindings, and mode lenses. Never invents nodes, edges, or audit events.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "view_id",
+    "title",
+    "description",
+    "generated_at",
+    "run_group",
+    "layout",
+    "components",
+    "bindings",
+    "modes",
+    "source_kind",
+    "confidence",
+    "evidence_refs",
+    "redaction_state"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "nlfr.view-spec.v1",
+      "description": "View spec schema version identifier."
+    },
+    "view_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]*$",
+      "description": "Stable view identifier (e.g. nlfr-default-v0, tier1-demo)."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 timestamp when this view spec was authored or exported."
+    },
+    "run_group": {
+      "type": "string",
+      "description": "Expected run group for projection alignment; mismatch warns at validate time."
+    },
+    "layout": {
+      "$ref": "#/$defs/grid_shell_v1"
+    },
+    "components": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/component_instance"
+      }
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/projection_binding"
+      },
+      "description": "Map of binding keys (e.g. binding.action_graph) to projection fetch descriptors."
+    },
+    "modes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/mode_lens"
+      },
+      "description": "Lens registry replacing implicit CanvasMode routing."
+    },
+    "source_kind": {
+      "$ref": "#/$defs/source_kind"
+    },
+    "confidence": {
+      "$ref": "#/$defs/confidence"
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "redaction_state": {
+      "$ref": "#/$defs/redaction_state"
+    }
+  },
+  "$defs": {
+    "source_kind": {
+      "enum": ["collectable_v1", "derived_v1", "simulated_v1", "future", "unknown"]
+    },
+    "confidence": {
+      "enum": ["high", "medium", "low", "unknown"]
+    },
+    "redaction_state": {
+      "enum": ["safe", "redacted", "blocked", "unknown"]
+    },
+    "truth_labels": {
+      "type": "object",
+      "required": ["source_kind", "confidence", "evidence_refs", "redaction_state"],
+      "properties": {
+        "source_kind": {
+          "$ref": "#/$defs/source_kind"
+        },
+        "confidence": {
+          "$ref": "#/$defs/confidence"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "redaction_state": {
+          "$ref": "#/$defs/redaction_state"
+        }
+      },
+      "additionalProperties": false
+    },
+    "component_kind": {
+      "type": "string",
+      "enum": [
+        "projection_notice",
+        "topbar_summary",
+        "mode_rail",
+        "action_graph_canvas",
+        "evidence_inspector",
+        "validation_runway",
+        "proof_constellation",
+        "proof_drawer",
+        "proof_block_card",
+        "remote_boundary_lens",
+        "compare_lens",
+        "compare_dimension_card",
+        "truth_legend",
+        "operator_command_bar",
+        "zoom_controls"
+      ],
+      "description": "v1 component catalog kinds mapped 1:1 from current App.tsx lenses."
+    },
+    "region_slot": {
+      "enum": ["notice", "header", "primary", "rail", "operator"]
+    },
+    "projection_kind": {
+      "enum": ["action_graph", "proof_packet", "compare", "runway", "run_group_index"]
+    },
+    "fallback_policy": {
+      "type": "string",
+      "pattern": "^(fixture:[a-zA-Z0-9_]+|none)$",
+      "description": "fixture:* loads bundled sample; none shows empty state without synthesis."
+    },
+    "refresh_policy": {
+      "enum": ["manual", "on_run_group_change"],
+      "default": "manual"
+    },
+    "projection_binding": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/projection_binding_direct"
+        },
+        {
+          "$ref": "#/$defs/projection_binding_join"
+        }
+      ]
+    },
+    "projection_binding_direct": {
+      "type": "object",
+      "required": ["projection_kind", "path"],
+      "properties": {
+        "projection_kind": {
+          "$ref": "#/$defs/projection_kind"
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^/",
+          "description": "Absolute path under canvas public root (e.g. /projections/action-graph.json)."
+        },
+        "required": {
+          "type": "boolean",
+          "default": true
+        },
+        "selector": {
+          "type": "string",
+          "description": "JSONPath-like pointer restricted to safe subset (e.g. $.nodes[?(@.id=='{selected}')])."
+        },
+        "fallback": {
+          "$ref": "#/$defs/fallback_policy"
+        },
+        "refresh": {
+          "$ref": "#/$defs/refresh_policy"
+        },
+        "notes": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "projection_binding_join": {
+      "type": "object",
+      "required": ["kind", "sources", "join_fn"],
+      "properties": {
+        "kind": {
+          "const": "join_v1"
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^binding\\."
+          },
+          "minItems": 2
+        },
+        "join_fn": {
+          "type": "string",
+          "description": "Pure function name in pageModel.ts registry (e.g. remote_lens_model)."
+        },
+        "source_kind": {
+          "$ref": "#/$defs/source_kind"
+        },
+        "confidence": {
+          "$ref": "#/$defs/confidence"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "redaction_state": {
+          "$ref": "#/$defs/redaction_state"
+        }
+      },
+      "additionalProperties": false
+    },
+    "binding_reference": {
+      "type": "string",
+      "pattern": "^binding\\.[a-z][a-z0-9_]*$"
+    },
+    "component_binding": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/binding_reference"
+        },
+        {
+          "$ref": "#/$defs/projection_binding_join"
+        }
+      ]
+    },
+    "visible_when": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["graph", "runway", "proof", "remote", "compare"]
+          },
+          "minItems": 1,
+          "description": "Active mode lens must be in this set."
+        },
+        "mode_not": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["graph", "runway", "proof", "remote", "compare"]
+          },
+          "minItems": 1,
+          "description": "Active mode lens must not be in this set."
+        },
+        "selected_node": {
+          "type": "boolean",
+          "description": "When true, requires a selected graph node id."
+        },
+        "binding_present": {
+          "$ref": "#/$defs/binding_reference",
+          "description": "Binding resolved successfully (fetch ok or fixture fallback)."
+        },
+        "binding_missing_ok": {
+          "$ref": "#/$defs/binding_reference",
+          "description": "Show empty state when binding absent; do not synthesize data."
+        },
+        "fixture_fallback": {
+          "type": "boolean",
+          "description": "Global usingFixtureFallback flag is true."
+        },
+        "viewport_min_px": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Minimum viewport width for desktop layout (rail visible)."
+        },
+        "viewport_max_px": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum viewport width for collapsed layout (bottom sheet)."
+        },
+        "prop_truthy": {
+          "type": "string",
+          "description": "Component props key that must be truthy (e.g. show_truth_legend)."
+        }
+      },
+      "additionalProperties": false
+    },
+    "component_props": {
+      "type": "object",
+      "additionalProperties": {
+        "oneOf": [
+          { "type": "boolean" },
+          { "type": "string" },
+          { "type": "number" },
+          { "type": "null" }
+        ]
+      },
+      "description": "Component-specific flags. Must not contain secrets, env vars, or raw prompts."
+    },
+    "component_instance": {
+      "type": "object",
+      "required": ["instance_id", "component_kind", "region"],
+      "properties": {
+        "instance_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]*$"
+        },
+        "component_kind": {
+          "$ref": "#/$defs/component_kind"
+        },
+        "region": {
+          "$ref": "#/$defs/region_slot"
+        },
+        "props": {
+          "$ref": "#/$defs/component_props"
+        },
+        "projection_binding": {
+          "$ref": "#/$defs/component_binding"
+        },
+        "visible_when": {
+          "$ref": "#/$defs/visible_when"
+        },
+        "data_testid": {
+          "type": "string",
+          "description": "Stable Playwright selector; defaults from component catalog when omitted."
+        }
+      },
+      "additionalProperties": false
+    },
+    "focus_filter": {
+      "enum": ["all", "cache", "failures", "derived", "remote", "agent"]
+    },
+    "mode_lens": {
+      "type": "object",
+      "required": ["mode_id", "label", "icon", "primary_component", "default_focus"],
+      "properties": {
+        "mode_id": {
+          "type": "string",
+          "enum": ["graph", "runway", "proof", "remote", "compare"]
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "icon": {
+          "type": "string",
+          "description": "Lucide icon name (e.g. git-branch, route, file-check-2)."
+        },
+        "primary_component": {
+          "type": "string",
+          "description": "instance_id of the primary work-area component (typically action graph)."
+        },
+        "rail_component": {
+          "type": "string",
+          "description": "instance_id of the mode-specific rail or overlay component."
+        },
+        "default_focus": {
+          "$ref": "#/$defs/focus_filter"
+        },
+        "requires_binding": {
+          "$ref": "#/$defs/binding_reference",
+          "description": "Optional binding that must resolve for full mode behavior; missing binding shows empty state."
+        },
+        "data_testid": {
+          "type": "string",
+          "pattern": "^canvas-mode-[a-z]+$",
+          "description": "Per-mode rail button testid for truth-guard extension."
+        }
+      },
+      "additionalProperties": false
+    },
+    "grid_shell_v1": {
+      "type": "object",
+      "required": ["kind", "columns", "rows", "regions", "responsive"],
+      "properties": {
+        "kind": {
+          "const": "grid_shell_v1"
+        },
+        "columns": {
+          "type": "string",
+          "default": "minmax(0,1fr) 440px"
+        },
+        "rows": {
+          "type": "string",
+          "default": "auto auto minmax(0,1fr) auto"
+        },
+        "regions": {
+          "type": "object",
+          "required": ["notice", "header", "primary", "rail", "operator"],
+          "properties": {
+            "notice": {
+              "$ref": "#/$defs/grid_region"
+            },
+            "header": {
+              "$ref": "#/$defs/grid_region"
+            },
+            "primary": {
+              "$ref": "#/$defs/grid_region"
+            },
+            "rail": {
+              "allOf": [
+                { "$ref": "#/$defs/grid_region" },
+                {
+                  "type": "object",
+                  "properties": {
+                    "width_px": {
+                      "const": 440
+                    }
+                  }
+                }
+              ]
+            },
+            "operator": {
+              "$ref": "#/$defs/grid_region"
+            }
+          },
+          "additionalProperties": false
+        },
+        "responsive": {
+          "type": "object",
+          "required": ["breakpoint_px", "collapse_rail"],
+          "properties": {
+            "breakpoint_px": {
+              "const": 720
+            },
+            "collapse_rail": {
+              "const": "bottom_sheet"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "grid_region": {
+      "type": "object",
+      "required": ["grid_area", "slot"],
+      "properties": {
+        "grid_area": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "width_px": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

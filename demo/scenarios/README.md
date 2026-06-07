@@ -33,8 +33,9 @@ exports projections. The Action Graph shows `agent → (authored_change) → cha
 `data/agent-loop-proof/summary.json` carrying `chain_complete=true` and
 `source_kind: collectable_v1`.
 
-Without Nix, `scripts/verify-demo.sh` shows the same chain as `simulated_v1` in
-the committed `apps/canvas/public/projections/action-graph.json`.
+Without Nix, `./scripts/verify-demo.sh` exports a **simulated_v1** agent-loop chain
+to `data/demo-proof/projections/` only. The committed canvas default is
+**canvas-dev `collectable_v1`** from `./scripts/record-canvas-build.sh`.
 
 ## Truth labels
 

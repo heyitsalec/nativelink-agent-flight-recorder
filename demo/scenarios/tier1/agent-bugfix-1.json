@@ -1,0 +1,38 @@
+{
+  "schema_version": "nlfr.tier1.scenario.v1",
+  "scenario_id": "agent-bugfix-1",
+  "act": 1,
+  "title": "Bounded agent bugfix with validation proof",
+  "run_group": "agent-bugfix-1",
+  "narrative": "Operator applies the bounded bugfix patch, then records collectable agent provenance with Bazel validation.",
+  "record": {
+    "adapter": "record-agent-change.sh",
+    "output_dir": "data/agent-bugfix-1",
+    "workspace": ".",
+    "change_paths": ["demo/bazel-monorepo/tasks/priority_test.py"],
+    "validation_command": "cd demo/bazel-monorepo && bazel test //tasks:priority_test",
+    "validation_fallback": "uv run pytest demo/bazel-monorepo/tasks/priority_test.py -q",
+    "agent": {
+      "kind": "cursor_adapter_v1",
+      "name": "tier1-bugfix-agent",
+      "model": "composer-2.5",
+      "prompt_fixture": "fixtures/prompt-bugfix.txt",
+      "prompt_sha256": "a0c42719429deb3badd19b9baa0016b08abf08fb282db95f39a817024852ac58"
+    }
+  },
+  "related_simulate_scenario": "llm-bounded-patch",
+  "proof_claims": [
+    {
+      "claim_id": "tier1.bugfix.provenance.hashed",
+      "statement": "Agent provenance carries model + prompt_sha256; raw prompt withheld.",
+      "source_kind": "collectable_v1",
+      "confidence": "high",
+      "evidence_refs": ["artifact:agent-provenance.json"],
+      "redaction_state": "redacted"
+    }
+  ],
+  "blockers": {
+    "bazel": "Set NLFR_SKIP_BAZEL=1 to use validation_fallback on hosts without Bazel.",
+    "nativelink": "Cache proof requires NativeLink; orchestrator documents skip."
+  }
+}

@@ -55,7 +55,8 @@ def index_run_groups(args: argparse.Namespace) -> int:
         "run_groups": groups,
         "count": len(groups),
     }
-    if args.json:
+    output_format = "json" if args.json else args.format
+    if output_format == "json":
         print(json.dumps(payload, indent=2, sort_keys=True))
     else:
         if not groups:
@@ -126,8 +127,14 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         help="SQLite database path",
     )
     index_parser.add_argument(
+        "--format",
+        choices=("json", "table"),
+        default="table",
+        help="output format (default: table)",
+    )
+    index_parser.add_argument(
         "--json",
         action="store_true",
-        help="emit JSON instead of tab-separated rows",
+        help="emit JSON instead of tab-separated rows (alias for --format json)",
     )
     index_parser.set_defaults(handler=index_run_groups)

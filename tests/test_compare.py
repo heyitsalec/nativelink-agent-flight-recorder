@@ -1,4 +1,7 @@
 import json
+import os
+import subprocess
+import sys
 from pathlib import Path
 
 from nlfr.db import connect, initialize
@@ -7,6 +10,43 @@ from nlfr.projectors.compare import export_compare_projection, list_run_group_in
 from nlfr.projectors.proof import export_proof_packet
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def run_nlfr(*args: str) -> subprocess.CompletedProcess[str]:
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(ROOT / "src")
+    return subprocess.run(
+        [sys.executable, "-m", "nlfr", *args],
+        cwd=ROOT,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+
+def _seed_compare_index_db(db_path: Path) -> None:
+    conn = initialize(connect(db_path))
+    _seed_group(
+        conn,
+        run_group="alpha",
+        scenario="alpha",
+        status="completed",
+        cache_hits=0,
+        cache_misses=0,
+        agent_provenance=False,
+        worker_identity=False,
+    )
+    _seed_group(
+        conn,
+        run_group="beta",
+        scenario="beta",
+        status="completed",
+        cache_hits=0,
+        cache_misses=0,
+        agent_provenance=False,
+        worker_identity=False,
+    )
 
 
 def _seed_group(
@@ -257,3 +297,65 @@ def test_compare_fixture_proof_packets_are_exportable(tmp_path) -> None:
     assert len(loaded["dimensions"]) == 5
     assert left_proof["run_group"] == "fixture-left"
     assert right_proof["run_group"] == "fixture-right"
+
+
+def test_compare_index_cli_format_json(tmp_path) -> None:
+    db_path = tmp_path / "nlfr.sqlite"
+    _seed_compare_index_db(db_path)
+
+    result = run_nlfr("compare", "index", "--db", str(db_path), "--format", "json")
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["kind"] == "run_group_index"
+    assert payload["db"] == str(db_path)
+    assert payload["count"] == 2
+    groups = {item["run_group"]: item["run_count"] for item in payload["run_groups"]}
+    assert groups == {"alpha": 1, "beta": 1}
+
+
+def test_compare_index_cli_json_alias(tmp_path) -> None:
+    db_path = tmp_path / "nlfr.sqlite"
+    _seed_compare_index_db(db_path)
+
+    result = run_nlfr("compare", "index", "--db", str(db_path), "--json")
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["kind"] == "run_group_index"
+    assert payload["count"] == 2
+
+
+def test_compare_index_cli_format_table(tmp_path) -> None:
+    db_path = tmp_path / "nlfr.sqlite"
+    _seed_compare_index_db(db_path)
+
+    result = run_nlfr("compare", "index", "--db", str(db_path), "--format", "table")
+
+    assert result.returncode == 0, result.stderr
+    lines = [line for line in result.stdout.strip().splitlines() if line]
+    assert len(lines) == 2
+    assert all("\t" in line for line in lines)
+    run_groups = {line.split("\t", 1)[0] for line in lines}
+    assert run_groups == {"alpha", "beta"}
+
+
+def test_compare_index_cli_default_is_table(tmp_path) -> None:
+    db_path = tmp_path / "nlfr.sqlite"
+    _seed_compare_index_db(db_path)
+
+    result = run_nlfr("compare", "index", "--db", str(db_path))
+
+    assert result.returncode == 0, result.stderr
+    assert "\t" in result.stdout
+    assert not result.stdout.lstrip().startswith("{")
+
+
+def test_compare_index_cli_empty_table_message(tmp_path) -> None:
+    db_path = tmp_path / "nlfr.sqlite"
+    initialize(connect(db_path))
+
+    result = run_nlfr("compare", "index", "--db", str(db_path))
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "no run groups recorded"
