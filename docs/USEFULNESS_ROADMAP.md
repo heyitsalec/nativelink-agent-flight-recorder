@@ -1,5 +1,7 @@
 # Making NLFR actually useful
 
+← [Docs index](INDEX.md)
+
 This document answers: what does the MVP do today, what makes it useful, what is
 still missing, and what should be built next?
 
@@ -393,3 +395,5 @@ asking the original author:
 
 The MVP answers many of these for one local proof path. The roadmap above is how
 to make those answers repeatable for real teams.
+
+← [Docs index](INDEX.md)

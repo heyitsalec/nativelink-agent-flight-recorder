@@ -1,5 +1,7 @@
 # NativeLink Agent Flight Recorder — One Pager
 
+← [Docs index](INDEX.md)
+
 ## Thesis
 
 When AI writes the code, NativeLink makes validating it fast, and NLFR makes
@@ -60,3 +62,5 @@ agentic validation infrastructure.
 
 `/Users/alecbot/Documents/nativelink-agent-flight-recorder` · Branch `main` ·
 Tag `v0.2.0-mvp` · Linear PER-1058 architecture track
+
+← [Docs index](INDEX.md)

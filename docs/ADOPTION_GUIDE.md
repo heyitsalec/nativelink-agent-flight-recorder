@@ -1,5 +1,7 @@
 # Adoption guide (M5)
 
+← [Docs index](INDEX.md)
+
 For evaluators who are not on the author's Mac.
 
 ## 5-minute path (no Nix, no NativeLink)
@@ -89,3 +91,5 @@ See [`USEFULNESS_ROADMAP.md`](USEFULNESS_ROADMAP.md).
 M5 CI → M6 polish → **Wave 1.5 review** → M7 parser → M8 adapter → **Wave 2.5 review** → M9 compare → Wave 4 handoff.
 
 Mirror: [`dags/m5-m9-umbrella.md`](dags/m5-m9-umbrella.md)
+
+← [Docs index](INDEX.md)

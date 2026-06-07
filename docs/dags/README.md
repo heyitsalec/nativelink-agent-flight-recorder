@@ -1,5 +1,17 @@
 # NLFR DAG Mirrors
 
+## Active — Doc capture (PER-1071)
+
+Linear: [PER-1071](https://linear.app/gradschool/issue/PER-1071/nlfr-doc-documentation-and-hero-media-capture-pass)
+
+| Workstream | Linear | Deliverable |
+|------------|--------|-------------|
+| DOC-A capture | PER-1072 | Capture scripts + `docs/media/*.gif` + `MEDIA_CAPTURE.md` |
+| DOC-B wiki | PER-1073 | `docs/INDEX.md` hub + cross-links + `CONTRIBUTING.md` |
+| DOC-C readme | PER-1074 | Harmony-style root `README.md` with embedded heroes |
+
+Mirror: [doc-capture-pass.md](doc-capture-pass.md) · Handoffs: `docs/sessions/handoffs/nlfr-doc-capture/wave-1/`
+
 ## Active — Architecture track
 
 Linear: [PER-1058](https://linear.app/gradschool/issue/PER-1058/nlfr-arch-architecturally-sound-track-l0-l2-hardening)

@@ -1,5 +1,7 @@
 # NLFR walkthrough
 
+← [Docs index](INDEX.md)
+
 This is the guided tour for understanding the NativeLink Agent Flight Recorder
 (NLFR) as it exists today. Read it with the repo open. The goal is to move from
 the product idea to the concrete files, commands, screenshots, and proof
@@ -386,3 +388,5 @@ a day-to-day platform tool for a team. The largest missing pieces are covered in
 - Preserve the evidence spine while improving operator ergonomics.
 - Do not build SaaS/auth/billing or a worker dashboard before direct evidence
   exists for the claims those surfaces would imply.
+
+← [Docs index](INDEX.md)

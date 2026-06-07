@@ -21,6 +21,7 @@ docs/sessions/handoffs/{dag-id}/wave-{n}/
 | DAG | Linear parent | Waves |
 |-----|---------------|-------|
 | `m5-m9-umbrella` | PER-1058 | [m5-m9-umbrella/](m5-m9-umbrella/) |
+| `nlfr-doc-capture` | PER-1071 | [nlfr-doc-capture/](nlfr-doc-capture/) |
 
 ## Templates
 
