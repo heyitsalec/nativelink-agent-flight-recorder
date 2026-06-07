@@ -80,9 +80,11 @@ Strict order — each step is a new claim boundary:
         ↓
 2-worker live endpoints      ← Nix proof exists (worker_endpoints_ready, 2 configured)
         ↓
-Direct worker/admin log ingest  ← new parsers, new proof block kinds
+Direct worker/admin log ingest  ← M7 landed (worker_admin_stdout parser)
         ↓
-Action placement / identity (only if direct evidence exists)
+Worker identity (conditional)   ← M7: collectable_v1 when stdout attached + regex match
+        ↓
+Action placement / scheduler / queue (only if direct evidence exists)
         ↓
 Multi-machine / LRE / fleet
 ```
@@ -93,11 +95,18 @@ Multi-machine / LRE / fleet
   `expected_workers=2`, `configured_workers=2`, no environment blocker
   (`collectable_v1`). This proves two workers configured AND endpoints opened
   live — not work distribution.
-- **Parsers:** NativeLink stdout/admin only when structured rules exist; else stay unsupported
-- **Graph:** worker nodes only when SQLite has direct evidence rows
+- **M7 worker identity (done):** `worker_admin_stdout` ingests admin stdout rows;
+  graph/proof promote `worker_identity` when stdout is attached pre-ingest and
+  regex matches (`collectable_v1`, `high`). Proof:
+  `scripts/worker-evidence-proof.sh` → `data/worker-evidence-proof/summary.json`
+  with `worker_identity_observed: true`. Default path is fixture-replay; live
+  stdout when Nix + chained local-exec. Honest ceiling — not scheduler/fleet UI.
+- **Parsers:** M7 structured rules on attached stdout; no promotion without matching rows
+- **Graph:** worker nodes only when SQLite has direct `worker_admin_identity_v1` evidence rows
 
-**Still unsupported:** worker identity, scheduler assignment, queue time, action
-placement, load distribution.
+**Still unsupported:** scheduler assignment, queue time, action placement, load
+distribution. Worker identity is conditional on M7 stdout capture — not a
+scheduler, queue, placement, or fleet-ops claim.
 
 **Exit:** Each step has `summary.json` + pytest + no softened blockers.
 
@@ -146,9 +155,9 @@ The graph projector now also derives the `agent` node from the
 | M4 | One bounded LLM patch + full provenance chain | Ring 2+3 bridge | done (`data/agent-loop-proof/summary.json`) | child of PER-1058 |
 
 After M4: credibly at reference-kit + credible substrate demo, not operator
-console or enterprise provenance yet. Worker identity, scheduler assignment,
-queue time, action placement, and load distribution remain unsupported until
-direct worker evidence is captured.
+console or enterprise provenance yet. M7 adds conditional worker identity when
+admin stdout is captured (`collectable_v1`, `high`); scheduler assignment,
+queue time, action placement, and load distribution remain unsupported.
 
 ## Decision rules
 
