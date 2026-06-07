@@ -90,11 +90,15 @@ if [[ ! -f "$LRE_CONFIG" ]]; then
     "add TraceMachina LRE json5 + Nix toolchain wiring per demo/nativelink/README.md Future full-LRE section, then re-run lre-proof.sh"
 fi
 
-echo "== LRE config found — delegate to nlfr run local-exec with LRE config =="
+echo "== LRE config found — delegate to local-exec smoke with LRE substrate =="
 NLFR_NATIVELINK_CONFIG="$LRE_CONFIG" \
 NLFR_LOCAL_EXEC_OUTPUT="$OUT/local-exec" \
+NLFR_LOCAL_EXEC_CACHE_ROOT="/tmp/nlfr-nativelink/lre" \
+NLFR_REMOTE_CACHE="grpc://127.0.0.1:50071" \
+NLFR_REMOTE_EXECUTOR="grpc://127.0.0.1:50071" \
   "$ROOT/scripts/local-exec-proof.sh" >"$OUT/local-exec-run.json"
 
+export OUT
 python3 - <<'PY'
 import json
 import os
@@ -102,17 +106,43 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 out = Path(os.environ["OUT"])
+local_exec_summary = out / "local-exec" / "summary.json"
+local_exec_payload = {}
+if local_exec_summary.is_file():
+    local_exec_payload = json.loads(local_exec_summary.read_text(encoding="utf-8"))
+
 summary = {
-    "status": "completed",
+    "status": "lre_substrate_ready",
     "source_kind": "collectable_v1",
     "confidence": "medium",
     "redaction_state": "safe",
-    "evidence_refs": ["script:lre-proof.sh", "script:local-exec-proof.sh"],
+    "evidence_refs": [
+        "script:lre-proof.sh",
+        "script:local-exec-proof.sh",
+        "demo/nativelink/lre.json5",
+    ],
     "lre_config": "demo/nativelink/lre.json5",
+    "remote_cache": "grpc://127.0.0.1:50071",
+    "remote_executor": "grpc://127.0.0.1:50071",
+    "local_exec_summary": local_exec_payload.get("status"),
     "recorded_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    "claim_boundary": {
+        "supported": [
+            "LRE NativeLink server substrate configured",
+            "remote_executor smoke with lre.json5 endpoints",
+            "worker_endpoints_ready for one local worker",
+        ],
+        "unsupported_until_nix_lre_toolchain": [
+            "hermetic Nix toolchain parity across local and remote",
+            "generated lre.bazelrc / --config=lre cache hit parity",
+            "fleet scheduler dashboards",
+            "queue time and action placement correlation",
+        ],
+    },
 }
 (out / "summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
 print(json.dumps(summary, indent=2))
 PY
 
 echo "lre-proof complete: $OUT/summary.json"
+echo "Optional phase-3 Nix toolchain probe: ./scripts/lre-nix-toolchain-proof.sh (run inside nix develop)"

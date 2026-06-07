@@ -1,0 +1,25 @@
+{
+  "status": "environment_blocker",
+  "reason": "lre.bazelrc not found at repo root — run inside nix develop so flake LRE installationScript generates build:lre flags",
+  "next_step": "nix develop --command ./scripts/lre-nix-toolchain-proof.sh",
+  "source_kind": "collectable_v1",
+  "confidence": "high",
+  "redaction_state": "safe",
+  "evidence_refs": [
+    "script:lre-nix-toolchain-proof.sh",
+    "docs/dags/lre-proof.md",
+    "flake.nix"
+  ],
+  "claim_boundary": {
+    "supported": [
+      "lre_substrate_ready via scripts/lre-proof.sh",
+      "flake.nix LRE module wiring when nix develop runs"
+    ],
+    "unsupported_until_lre_bazelrc": [
+      "hermetic Nix --config=lre Bazel builds",
+      "local and remote cache hit parity",
+      "fleet scheduler dashboards",
+      "queue time and action placement correlation"
+    ]
+  }
+}

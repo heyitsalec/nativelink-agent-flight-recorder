@@ -1,0 +1,16 @@
+{
+  "wave": "wave-1",
+  "status": "DONE",
+  "workers": {
+    "ship-integration-brief": "DONE",
+    "ship-pr-body": "DONE",
+    "ship-verify": "DONE",
+    "fel-w1-ladder-truth-sync": "DONE",
+    "fel-w1-docs-audit-integrate": "DONE"
+  },
+  "proof_summary": {
+    "pytest_full": "92 passed, 1 skipped",
+    "pytest_lre": "4 passed",
+    "pytest_fleet": "4 passed"
+  }
+}

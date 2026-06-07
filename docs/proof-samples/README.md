@@ -17,6 +17,9 @@ raw prompts, logs, environment variables, or credentials are included.
 | `agent-bugfix-summary.json` | `scripts/tier1-agent-demo.sh --act 1` | `collectable_v1` | Tier 1 Act 1 live `cursor_adapter_v1` bugfix record (`agent-bugfix-1`). Validation via pytest fallback when Bazel skipped. |
 | `agent-feature-summary.json` | `scripts/tier1-agent-demo.sh --act 2` | `collectable_v1` | Tier 1 Act 2 feature slice (`agent-feature-compare`) with shared-module policy retune. |
 | `lre-proof-blocker-sample.json` | `scripts/lre-proof.sh` | `collectable_v1` | Honest blocker until `demo/nativelink/lre.json5` exists; documents claim ceiling vs fleet dashboards. |
+| `lre-proof-summary-sample.json` | `scripts/lre-proof.sh` (with `demo/nativelink/lre.json5`) | `collectable_v1` (`confidence: medium`) | LRE substrate ready: delegates to `local-exec-proof.sh` on ports 50071/50081; `claim_boundary` excludes hermetic Nix `--config=lre` until toolchain wired. |
+| `lre-nix-toolchain-proof-blocker-sample.json` | `scripts/lre-nix-toolchain-proof.sh` (outside `nix develop`) | `collectable_v1` | Honest blocker until flake LRE `installationScript` generates repo-root `lre.bazelrc`. |
+| `lre-nix-toolchain-proof-summary-sample.json` | `scripts/lre-nix-toolchain-proof.sh` (inside `nix develop`) | `collectable_v1` (`confidence: medium`) | Phase-2 ceiling `lre_bazelrc_generated`: Nix-generated `build:lre` flags wired into demo monorepo; optional `--config=lre` build on x86_64-linux; does **not** claim cache parity. |
 
 To regenerate the originals (under ignored `data/`), run the scripts above
 inside `nix develop`. See [`../DEV_ENVIRONMENT.md`](../DEV_ENVIRONMENT.md).

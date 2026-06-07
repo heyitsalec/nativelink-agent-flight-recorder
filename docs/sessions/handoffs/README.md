@@ -22,6 +22,7 @@ docs/sessions/handoffs/{dag-id}/wave-{n}/
 |-----|---------------|-------|
 | `m5-m9-umbrella` | PER-1058 | [m5-m9-umbrella/](m5-m9-umbrella/) |
 | `nlfr-doc-capture` | PER-1071 | [nlfr-doc-capture/](nlfr-doc-capture/) |
+| `future-fleet-claims` | PER-1058 | [future-fleet-claims/wave-1/](future-fleet-claims/wave-1/) · DAG: [future-fleet-claims.md](../../dags/future-fleet-claims.md) |
 | `tier1-agent-vision` | PER-TIER1-AGENT | [tier1-agent-vision/](tier1-agent-vision/) · KOS: [KOS-startup-routing.md](tier1-agent-vision/KOS-startup-routing.md) |
 
 ## Templates

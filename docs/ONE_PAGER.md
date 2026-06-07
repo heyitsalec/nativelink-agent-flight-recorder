@@ -46,6 +46,8 @@ NLFR is a local-first black-box recorder for agent validation loops:
 Worker identity, scheduler assignment, queue time, action placement, load
 distribution, multi-machine fleet behavior, org-scale history.
 
+*Research matrix:* [`docs/dags/future-fleet-claims.md`](dags/future-fleet-claims.md) · run `./scripts/fleet-claims-audit.sh` → `data/fleet-claims-audit/claim-matrix.json`.
+
 ## Evaluator paths
 
 | Path | Time | What you see |

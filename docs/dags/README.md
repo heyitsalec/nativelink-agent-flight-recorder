@@ -9,10 +9,10 @@ Handoffs: `docs/sessions/handoffs/nlfr-doc-capture/wave-2/`
 
 [ci-bazel-tier1.md](ci-bazel-tier1.md) · Handoffs: `docs/sessions/handoffs/ci-bazel-tier1/`
 
-## Active — LRE proof (blocker-gated)
+## Active — LRE proof (substrate ready)
 
-[lre-proof.md](lre-proof.md) · Handoffs: `docs/sessions/handoffs/lre-proof/`  
-Records honest `environment-blocker.json` until `demo/nativelink/lre.json5` exists.
+[lre-proof.md](lre-proof.md) · Handoffs: `docs/sessions/handoffs/lre-proof/wave-3/`  
+Phase 2 ceiling: `lre_bazelrc_generated` (`collectable_v1`, `medium`) — Nix `lre.bazelrc` + Bazel consumer wiring + `lre-nix-toolchain-proof.sh`. Phase 1 `lre_substrate_ready` preserved via `lre-proof.sh`. Cache parity and fleet UI remain blocked.
 
 ## Future — execution ladder (blocker-gated)
 
