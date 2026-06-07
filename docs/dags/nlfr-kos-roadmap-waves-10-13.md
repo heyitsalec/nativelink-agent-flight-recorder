@@ -1,9 +1,10 @@
 # NLFR flagship KOS roadmap — waves 10–13 (post cutover 1–9)
 
-**Status:** PLANNED (broker ARM after wave 9 `DONE_WITH_CONCERNS` close 2026-06-06)  
+**Status:** SHIPPED (umbrella 10–13 closed `DONE_WITH_CONCERNS` 2026-06-07)  
 **Control plane:** `dag:nlfr-flagship` · `kos serve` · `linear_authority: false`  
 **Branch:** `feat/docs-wiki-wave2`  
-**Handoffs:** `docs/sessions/handoffs/nlfr-kos-cutover/wave-{10,11,12,13}/` *(planned)*  
+**Handoffs:** `docs/sessions/handoffs/nlfr-kos-cutover/wave-{10,11,12,13}/`  
+**Umbrella close:** [`wave-14/umbrella-close-packet.md`](../sessions/handoffs/nlfr-kos-cutover/wave-14/umbrella-close-packet.md)  
 **Prior umbrella:** [nlfr-kos-roadmap-waves-5-8.md](nlfr-kos-roadmap-waves-5-8.md) (waves 5–9)  
 **Broker contract:** [knowledge-os/agent-os/harness/broker-dispatch-manifest.md](/Users/alecbot/Documents/knowledge-os/agent-os/harness/broker-dispatch-manifest.md)
 
@@ -136,7 +137,7 @@ flowchart LR
 | **DAG ref** | `dag:nlfr-flagship` |
 | **Authority** | KOS local primary (`linear_authority: false`) |
 | **Serve** | `kos serve http://127.0.0.1:7423` |
-| **Seed script** | `tools/orchestrator/scripts/seed_nlfr_flagship_waves_10_13.py` *(planned; Knowledge OS repo)* |
+| **Seed script** | `tools/orchestrator/scripts/seed_nlfr_flagship_waves_10_13.py` *(Knowledge OS repo)* |
 | **Handoff tree** | `docs/sessions/handoffs/nlfr-kos-cutover/wave-{10..13}/` |
 
 Parent broker reads `integration-brief.md` + `worker-results.json` between waves.
@@ -357,3 +358,5 @@ when wave 10 achieves sustained green.
 | Wave 9 gap honesty | [`gap-honesty-packet.md`](../sessions/handoffs/nlfr-kos-cutover/wave-9/gap-honesty-packet.md) |
 | GHA offline policy | [`gha-offline-proof-shift.md`](../sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md) |
 | USEFULNESS gaps | [`USEFULNESS_ROADMAP.md`](../USEFULNESS_ROADMAP.md) |
+| Waves 10–13 shipped DAG | [`nlfr-kos-roadmap-waves-10-13.md`](nlfr-kos-roadmap-waves-10-13.md) |
+| Umbrella 1–13 close | [`umbrella-close-packet.md`](../sessions/handoffs/nlfr-kos-cutover/wave-14/umbrella-close-packet.md) |

@@ -41,18 +41,18 @@ Branch: `feat/docs-wiki-wave2`.
 
 Branch: `feat/docs-wiki-wave2`. KOS CP: `W9-*` nodes closed. Proof: 126 passed, 3 skipped.
 
-## Planned — NLFR flagship KOS roadmap (waves 10–13)
+## Completed — NLFR flagship KOS roadmap (waves 10–13 SHIPPED)
 
-[nlfr-kos-roadmap-waves-10-13.md](nlfr-kos-roadmap-waves-10-13.md) · Handoffs: `docs/sessions/handoffs/nlfr-kos-cutover/wave-{10,11,12,13}/` *(planned)*
+[nlfr-kos-roadmap-waves-10-13.md](nlfr-kos-roadmap-waves-10-13.md) · Handoffs: `docs/sessions/handoffs/nlfr-kos-cutover/wave-{10,11,12,13}/` · Umbrella: [`wave-14/umbrella-close-packet.md`](../sessions/handoffs/nlfr-kos-cutover/wave-14/umbrella-close-packet.md)
 
 | Wave | `wave_id` | Status | Focus |
 |------|-----------|--------|-------|
-| 10 | `gha-sustained-green` | **PLANNED** | GHA restore + CI artifact promotion |
-| 11 | `adoption-init-path` | **PLANNED** | `nlfr init`, adapter pattern, one-command record |
-| 12 | `multi-run-history-v1` | **PLANNED** | History index + multi-run projection beyond M9 pairwise |
-| 13 | `operator-console-ergonomics` | **PLANNED** | 8-node canvas cap, lens ergonomics, failure messages |
+| 10 | `gha-sustained-green` | **DONE_WITH_CONCERNS** | GHA local readiness; CI promotion blocked |
+| 11 | `adoption-init-path` | **SHIPPED** | `nlfr init`, adapter pattern, one-command record |
+| 12 | `multi-run-history-v1` | **SHIPPED** | History index + multi-run projection beyond M9 pairwise |
+| 13 | `operator-console-ergonomics` | **SHIPPED** | 8-node canvas cap, lens ergonomics, failure messages |
 
-Branch: `feat/docs-wiki-wave2`. **Next:** ARM wave 10 after merge.
+Branch: `feat/docs-wiki-wave2`. KOS CP: `W10-*` … `W13-*` nodes closed. Proof: 140 passed, 3 skipped.
 
 ## Active — Docs excellence (wave-0 ARMED)
 

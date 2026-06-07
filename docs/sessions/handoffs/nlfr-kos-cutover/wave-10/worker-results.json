@@ -53,6 +53,7 @@
     "status": "DONE",
     "artifacts": [
       "docs/sessions/handoffs/nlfr-kos-cutover/wave-10/integration-brief.md",
+      "docs/sessions/handoffs/nlfr-kos-cutover/wave-10/spawn-ledger.md",
       "docs/sessions/handoffs/nlfr-kos-cutover/wave-10/worker-results.json"
     ]
   },
@@ -68,7 +69,7 @@
     "pytest_full": {
       "command": "uv run pytest -q",
       "status": "PASS",
-      "detail": "131 passed, 3 skipped"
+      "detail": "140 passed, 3 skipped"
     },
     "gha_nlfr_proof_sustained_green": {
       "status": "BLOCKED",

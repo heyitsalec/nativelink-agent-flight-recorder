@@ -24,9 +24,15 @@ the NLFR repo root unless noted.
 | 7 | `cache-only-ci-gate` | [`wave-7/`](wave-7/) | [`integration-brief.md`](wave-7/integration-brief.md) *(planned)* |
 | 8 | `pr-proof-attachment` | [`wave-8/`](wave-8/) | [`integration-brief.md`](wave-8/integration-brief.md) *(planned)* |
 | 9 | `kos-operator-bridge` | [`wave-9/`](wave-9/) | [`integration-brief.md`](wave-9/integration-brief.md) |
+| 10 | `gha-sustained-green` | [`wave-10/`](wave-10/) | [`integration-brief.md`](wave-10/integration-brief.md) |
+| 11 | `adoption-init-path` | [`wave-11/`](wave-11/) | [`integration-brief.md`](wave-11/integration-brief.md) |
+| 12 | `multi-run-history-v1` | [`wave-12/`](wave-12/) | [`integration-brief.md`](wave-12/integration-brief.md) |
+| 13 | `operator-console-ergonomics` | [`wave-13/`](wave-13/) | [`integration-brief.md`](wave-13/integration-brief.md) |
+| 14 | `umbrella-1-13-close` | [`wave-14/`](wave-14/) | [`umbrella-close-packet.md`](wave-14/umbrella-close-packet.md) |
 
 **DAG docs:** waves 1–4 → [`nlfr-kos-roadmap.md`](../../../dags/nlfr-kos-roadmap.md); waves 5–9 →
-[`nlfr-kos-roadmap-waves-5-8.md`](../../../dags/nlfr-kos-roadmap-waves-5-8.md).
+[`nlfr-kos-roadmap-waves-5-8.md`](../../../dags/nlfr-kos-roadmap-waves-5-8.md); waves 10–13 →
+[`nlfr-kos-roadmap-waves-10-13.md`](../../../dags/nlfr-kos-roadmap-waves-10-13.md).
 
 ---
 
@@ -112,6 +118,42 @@ the NLFR repo root unless noted.
 | `W9-HANDOFF-BRIDGE` | This file | Node → path index |
 | `W9-GAP-HONESTY` | [`wave-9/gap-honesty-packet.md`](wave-9/gap-honesty-packet.md) | Residual gaps |
 | `W9-INTEGRATE` | [`wave-9/integration-brief.md`](wave-9/integration-brief.md) | Umbrella 1–9 close |
+
+### Wave 10 — `gha-sustained-green`
+
+| Node | Primary handoff | Notes |
+|------|-----------------|-------|
+| `W10-GHA-RESTORE` | [`wave-10/integration-brief.md`](wave-10/integration-brief.md) | `verify-gha-readiness.sh` |
+| `W10-CI-PROMOTE` | [`wave-10/integration-brief.md`](wave-10/integration-brief.md) | **BLOCKED** — GHA offline |
+| `W10-CI-DOCS` | [`wave-10/integration-brief.md`](wave-10/integration-brief.md) | GHA restore runbook sync |
+| `W10-INTEGRATE` | [`wave-10/integration-brief.md`](wave-10/integration-brief.md) | [`worker-results.json`](wave-10/worker-results.json) |
+
+### Wave 11 — `adoption-init-path`
+
+| Node | Primary handoff | Notes |
+|------|-----------------|-------|
+| `W11-NLFR-INIT` | [`wave-11/integration-brief.md`](wave-11/integration-brief.md) | `nlfr init` scaffold |
+| `W11-ADAPTER-PATTERN` | [`wave-11/integration-brief.md`](wave-11/integration-brief.md) | Monorepo adapter wiki |
+| `W11-ONE-COMMAND` | [`wave-11/integration-brief.md`](wave-11/integration-brief.md) | `record-this-target.sh` |
+| `W11-INTEGRATE` | [`wave-11/integration-brief.md`](wave-11/integration-brief.md) | [`worker-results.json`](wave-11/worker-results.json) |
+
+### Wave 12 — `multi-run-history-v1`
+
+| Node | Primary handoff | Notes |
+|------|-----------------|-------|
+| `W12-HISTORY-INDEX` | [`wave-12/integration-brief.md`](wave-12/integration-brief.md) | `compare index --limit` |
+| `W12-HISTORY-PROJECTION` | [`wave-12/integration-brief.md`](wave-12/integration-brief.md) | `compare history` exporter |
+| `W12-HISTORY-WIKI` | [`wave-12/integration-brief.md`](wave-12/integration-brief.md) | Browse-run-history wiki |
+| `W12-INTEGRATE` | [`wave-12/integration-brief.md`](wave-12/integration-brief.md) | [`worker-results.json`](wave-12/worker-results.json) |
+
+### Wave 13 — `operator-console-ergonomics`
+
+| Node | Primary handoff | Notes |
+|------|-----------------|-------|
+| `W13-CANVAS-8NODE-CAP` | [`wave-13/integration-brief.md`](wave-13/integration-brief.md) | 8-node default cap |
+| `W13-LENS-ERGONOMICS` | [`wave-13/integration-brief.md`](wave-13/integration-brief.md) | Compare/table lens polish |
+| `W13-FAILURE-MESSAGES` | [`wave-13/integration-brief.md`](wave-13/integration-brief.md) | Doctor + init hints |
+| `W13-INTEGRATE` | [`wave-13/integration-brief.md`](wave-13/integration-brief.md) | [`worker-results.json`](wave-13/worker-results.json) |
 
 ---
 

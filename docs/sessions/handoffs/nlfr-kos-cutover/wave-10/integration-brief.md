@@ -55,8 +55,20 @@ chmod +x scripts/verify-gha-readiness.sh
 
 ---
 
+## KOS close
+
+Wave 10 local readiness gates substitute for sustained GHA green per gha-offline-proof-shift policy.
+KOS nodes `W10-GHA-RESTORE`, `W10-CI-DOCS`, `W10-INTEGRATE` marked done; `W10-CI-PROMOTE` closed
+with honest BLOCKED status. Proof gate: **140 passed, 3 skipped** (`uv run pytest -q`).
+
+**Next broker action:** ARM wave 11 `adoption-init-path` per
+[`nlfr-kos-roadmap-waves-10-13.md`](../../../../dags/nlfr-kos-roadmap-waves-10-13.md).
+
+---
+
 ## Handoff index
 
+- Spawn ledger: [`spawn-ledger.md`](spawn-ledger.md)
 - Worker results: [`worker-results.json`](worker-results.json)
 - Roadmap: [`nlfr-kos-roadmap-waves-10-13.md`](../../../../dags/nlfr-kos-roadmap-waves-10-13.md)
 - Gap honesty (umbrella): [`../wave-9/gap-honesty-packet.md`](../wave-9/gap-honesty-packet.md)
