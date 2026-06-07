@@ -71,8 +71,19 @@ export function OperatorCommandBarPanel(instance: ComponentInstance) {
     routeActions.setCommand("");
   }
 
+  const lensClass =
+    route.mode === "proof"
+      ? "operator--lens-proof"
+      : route.mode === "remote"
+        ? "operator--lens-remote"
+        : route.mode === "compare"
+          ? "operator--lens-compare"
+          : route.mode === "runway"
+            ? "operator--lens-runway"
+            : "";
+
   return (
-    <div className="operator">
+    <div className={`operator ${lensClass}`.trim()}>
       <ComposerDrawer open={composerOpen} onClose={() => setComposerOpen(false)} initialSpec={spec} />
       <MessageCircle size={18} />
       <div className="operator-copy">

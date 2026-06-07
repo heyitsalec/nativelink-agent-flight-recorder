@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "kind": "run_group_index",
+  "source_kind": "derived_v1",
+  "confidence": "medium",
+  "evidence_refs": [
+    "run_group:canvas-dev",
+    "run_group:agent-bugfix-1",
+    "projection:compare-index"
+  ],
+  "redaction_state": "safe",
+  "run_groups": [
+    {
+      "run_group": "canvas-dev",
+      "run_count": 6,
+      "first_started_at": "2026-06-06T18:12:04.000Z",
+      "last_started_at": "2026-06-07T03:42:18.000Z",
+      "source_kind": "derived_v1",
+      "confidence": "medium",
+      "evidence_refs": [
+        "run_group:canvas-dev"
+      ],
+      "redaction_state": "safe"
+    },
+    {
+      "run_group": "agent-bugfix-1",
+      "run_count": 2,
+      "first_started_at": "2026-06-06T20:05:11.000Z",
+      "last_started_at": "2026-06-06T22:18:44.000Z",
+      "source_kind": "derived_v1",
+      "confidence": "medium",
+      "evidence_refs": [
+        "run_group:agent-bugfix-1"
+      ],
+      "redaction_state": "safe"
+    }
+  ],
+  "count": 2
+}

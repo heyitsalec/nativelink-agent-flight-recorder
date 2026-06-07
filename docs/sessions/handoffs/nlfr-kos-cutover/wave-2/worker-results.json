@@ -1,0 +1,69 @@
+{
+  "schema_version": "knowledge-os.worker_results.v1",
+  "dag_id": "agent-provenance-live",
+  "wave": "wave-2",
+  "phase": "integrate",
+  "status": "DONE_WITH_CONCERNS",
+  "claim_ceiling": "agent_provenance_live",
+  "host": "/Users/alecbot/Documents/nativelink-agent-flight-recorder",
+  "branch": "feat/docs-wiki-wave2",
+  "coordinator_id": "waves-1-4-integrate-close",
+  "coordinators": [
+    {
+      "coordinator_id": "coord-agent-live-e2e",
+      "worker_id": "agent-live-e2e",
+      "kos_node": "W2-AGENT-E2E",
+      "status": "SHIPPED",
+      "artifacts": ["scripts/agent-live-proof.sh"]
+    },
+    {
+      "coordinator_id": "coord-agent-proof-samples",
+      "worker_id": "agent-proof-samples",
+      "kos_node": "W2-AGENT-PROOF",
+      "status": "SHIPPED",
+      "artifacts": [
+        "docs/proof-samples/agent-live-blocker-sample.json",
+        "docs/proof-samples/agent-live-summary-sample.json",
+        "docs/proof-samples/README.md"
+      ]
+    },
+    {
+      "coordinator_id": "coord-agent-adapter-docs",
+      "worker_id": "agent-adapter-docs",
+      "kos_node": "W2-ADAPTER-DOCS",
+      "status": "SHIPPED",
+      "artifacts": ["adapters/cursor/README.md"]
+    }
+  ],
+  "integrate_close": {
+    "worker_id": "waves-1-4-integrate-close",
+    "kos_node": "W2-INTEGRATE",
+    "status": "DONE",
+    "artifacts": [
+      "docs/sessions/handoffs/nlfr-kos-cutover/wave-2/integration-brief.md",
+      "docs/sessions/handoffs/nlfr-kos-cutover/wave-2/spawn-ledger.md",
+      "docs/sessions/handoffs/nlfr-kos-cutover/wave-2/worker-results.json"
+    ]
+  },
+  "proof_gates": {
+    "agent_live_dry_run": {
+      "command": "./scripts/agent-live-proof.sh --dry-run",
+      "status": "PASS"
+    },
+    "pytest": {
+      "command": "uv run pytest tests/test_agent_live_proof.py tests/test_agent_live_proof_samples.py -q",
+      "status": "PASS",
+      "passed": 10,
+      "skipped": 1
+    },
+    "cursor_cli_live": {
+      "status": "BLOCKED",
+      "note": "Cursor CLI unavailable — environment-blocker sample promoted"
+    },
+    "gha_ci": {
+      "status": "DEFERRED",
+      "note": "GHA offline"
+    }
+  },
+  "blocked_reason": "Cursor CLI missing on host; live non-dry-run chain not observed"
+}

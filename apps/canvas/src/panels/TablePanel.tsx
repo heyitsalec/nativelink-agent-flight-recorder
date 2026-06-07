@@ -70,7 +70,7 @@ export function ProofDrawerPanel(_instance: ComponentInstance) {
   );
 
   return (
-    <aside className="proof-drawer" aria-label="proof packet">
+    <aside className="proof-drawer lens-panel lens-panel--proof" aria-label="proof packet">
       <button
         className="close-button"
         onClick={() => routeActions.setMode("graph")}
@@ -78,12 +78,15 @@ export function ProofDrawerPanel(_instance: ComponentInstance) {
       >
         <X size={16} />
       </button>
-      <div className="proof-drawer-heading">
+      <div className="proof-drawer-heading lens-heading">
         <ShieldCheck size={18} />
         <p>Proof Packet</p>
         <h2>{packet.run_group}</h2>
+        <span className="lens-meta">
+          {packet.blocks.length} block{packet.blocks.length === 1 ? "" : "s"} · derived_v1 summary
+        </span>
       </div>
-      <div className="proof-summary" aria-label="proof summary">
+      <div className="proof-summary lens-metric-strip" aria-label="proof summary">
         {summaryEntries.map(([key, value]) => (
           <span key={key}>
             <strong>{formatMetricValue(value as ProofMetricValue)}</strong>
@@ -112,8 +115,8 @@ function ProofBlockView({ block }: { block: ProofBlock }) {
   const metrics = Object.entries(block.metrics ?? {});
   const unsupportedClaims = unsupportedClaimsFromPayload(block.payload);
   return (
-    <section className={`proof-block ${block.source_kind}`}>
-      <div className="proof-block-heading">
+    <section className={`proof-block lens-block ${block.source_kind}`}>
+      <div className="proof-block-heading lens-block-heading">
         <span className={`truth-dot ${block.source_kind}`} />
         <div>
           <p>{block.kind}</p>
@@ -180,7 +183,7 @@ export function RemoteBoundaryLensPanel(_instance: ComponentInstance) {
   if (!lens) return null;
 
   return (
-    <aside className="remote-lens" aria-label="remote execution boundary">
+    <aside className="remote-lens lens-panel lens-panel--remote" aria-label="remote execution boundary">
       <button
         className="close-button"
         onClick={() => routeActions.setMode("graph")}
@@ -188,17 +191,20 @@ export function RemoteBoundaryLensPanel(_instance: ComponentInstance) {
       >
         <X size={16} />
       </button>
-      <div className="remote-lens-heading">
+      <div className="remote-lens-heading lens-heading">
         <Network size={18} />
         <p>Remote Boundary</p>
         <h2>{lens.statusLabel}</h2>
+        <span className="lens-meta">
+          {lens.boundaries.length} boundary{lens.boundaries.length === 1 ? "" : "ies"} · projection join
+        </span>
       </div>
-      <div className="remote-state-line">
+      <div className="remote-state-line lens-state-line">
         <span className={`truth-dot ${lens.sourceKind}`} />
         <strong>{lens.modeLabel}</strong>
         <span>{lens.confidence}</span>
       </div>
-      <div className="remote-metrics">
+      <div className="remote-metrics lens-metric-strip">
         {lens.metrics.map((metric) => (
           <span key={metric.label}>
             <strong>{metric.value}</strong>
@@ -206,9 +212,9 @@ export function RemoteBoundaryLensPanel(_instance: ComponentInstance) {
           </span>
         ))}
       </div>
-      <div className="remote-boundaries">
+      <div className="remote-boundaries lens-boundary-list">
         {lens.boundaries.map((boundary) => (
-          <section key={boundary.title} className={`remote-boundary ${boundary.sourceKind}`}>
+          <section key={boundary.title} className={`remote-boundary lens-boundary ${boundary.sourceKind}`}>
             <div>
               <p>{boundary.kind}</p>
               <h3>{boundary.title}</h3>
@@ -236,7 +242,7 @@ export function CompareLensPanel(instance: ComponentInstance) {
   void stringProp(instance.props, "empty_state_path_hint");
 
   return (
-    <aside className="compare-lens" aria-label="multi-run compare">
+    <aside className="compare-lens lens-panel lens-panel--compare" aria-label="multi-run compare">
       <button
         className="close-button"
         onClick={() => routeActions.setMode("graph")}
@@ -244,26 +250,36 @@ export function CompareLensPanel(instance: ComponentInstance) {
       >
         <X size={16} />
       </button>
-      <div className="compare-lens-heading">
+      <div className="compare-lens-heading lens-heading">
         <GitCompare size={18} />
         <p>Multi-run Compare</p>
-        <h2>
-          {projection
-            ? `${projection.left_run_group} vs ${projection.right_run_group}`
-            : "No compare projection loaded"}
-        </h2>
+        {projection ? (
+          <>
+            <h2 className="compare-run-title">Run group deltas</h2>
+            <div className="compare-run-pills" aria-label="compared run groups">
+              <span className="compare-run-pill compare-run-pill--left">{projection.left_run_group}</span>
+              <span className="compare-run-pill compare-run-pill--vs">vs</span>
+              <span className="compare-run-pill compare-run-pill--right">{projection.right_run_group}</span>
+            </div>
+          </>
+        ) : (
+          <h2>No compare projection loaded</h2>
+        )}
       </div>
       {!projection ? (
-        <p className="compare-empty">
+        <p className="compare-empty lens-empty">
           Place <code>compare-projection.json</code> under <code>public/projections/</code> to enable
           derived proof-packet diffs.
         </p>
       ) : (
         <>
-          <div className="compare-state-line">
+          <div className="compare-state-line lens-state-line">
             <span className={`truth-dot ${projection.source_kind}`} />
             <strong>{projection.source_kind}</strong>
             <span>{projection.confidence}</span>
+            <span className="compare-dimension-count">
+              {projection.dimensions.length} dimension{projection.dimensions.length === 1 ? "" : "s"}
+            </span>
           </div>
           <div className="compare-dimension-list">
             {projection.dimensions.map((dimension) => (

@@ -129,19 +129,22 @@ Needed:
 
 ### Gap 2: multi-run history (partially closed by M9)
 
-M9 shipped compare export, run-group indexing, and a canvas compare lens. Still
-missing for day-to-day operator use:
+M9 shipped compare export, run-group indexing, and a canvas compare lens.
+**V1 retention policy is explicit** (`index_only` discovery, `no_auto_purge`,
+`operator_managed` lifecycle) in `src/nlfr/retention_policy.py`, proof packet
+`retention` blocks, and `compare index --limit`. Still missing for day-to-day
+operator use:
 
 - trends across many runs (not just pairwise compare).
 - proof packet history browser.
 - agent/change history over time.
-- artifact retention policy and auto-purge.
+- automatic artifact purge / TTL jobs (explicitly out of scope for v1).
 
 Needed next:
 
 - Run-group browser/exporter beyond `compare index`.
 - Multi-run projection views.
-- Retention/redaction rules with explicit policy.
+- Redaction rules beyond the existing truth-label model.
 
 ### Gap 3: CI/PR attachment
 
@@ -363,11 +366,12 @@ Goal: foundation for operator console or provenance layer forks.
 
 Status: **shipped** — `nlfr compare export|index`, compare projection
 (`derived_v1`), canvas compare lens, `scripts/compare-proof.sh`. Retention is
-index-only (no auto-purge).
+index-only (`index_only`), no auto-purge (`no_auto_purge`), operator-managed
+(`operator_managed`); proof packets export a `retention` block.
 
 Deliverables:
 
-- Cross-run indexing and retention policy.
+- Cross-run indexing and explicit v1 retention policy.
 - `nlfr compare export` between two run groups.
 - Projection JSON for compare views.
 - PR/CI proof attachment recipe (workflow exists; PR comment exporter still open).

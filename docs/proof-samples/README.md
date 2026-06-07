@@ -31,12 +31,39 @@ documented in [`../GITHUB_RELEASE.md`](../GITHUB_RELEASE.md) — deferred while
 GHA is offline per
 [`gha-offline-proof-shift.md`](../sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md).
 
+## GHA restore promotion
+
+When [`nlfr-proof.yml`](../../.github/workflows/nlfr-proof.yml) returns sustained
+green, copy redacted CI `summary.json` (or honest blockers) into this directory
+per the artifact → sample map in
+[`CI_PROMOTION_MATRIX.md`](CI_PROMOTION_MATRIX.md).
+
+| CI job | Artifact bundle | Primary committed targets |
+|--------|-----------------|---------------------------|
+| `linux-nix-toolchain` | `nix-toolchain-proof` | `cold-warm-summary.json`, `agent-loop-summary.json` |
+| `tier1-bazel` | `tier1-bazel-ci` | `agent-bugfix-summary.json`, `agent-feature-summary.json` (Act excerpts from combined CI summary) |
+| `lre-proof-probe` | `lre-proof-probe` | `lre-proof-summary-sample.json` or `lre-proof-blocker-sample.json` |
+| `lre-nix-ci` | `lre-nix-toolchain-proof` | `lre-nix-toolchain-proof-*-sample.json` |
+| `lre-cold-warm-ci` | `lre-cold-warm-proof` | `lre-cold-warm-proof-*-sample.json` |
+| `unit` | `record-proof` | *(none — generic record; not promoted)* |
+| `verify-demo-fixture` | `demo-proof` | *(none — fixture demo gate only)* |
+
+**Not CI-gated today:** `two-worker-summary.json`, `compare-summary.json`,
+`agent-live-*`, `lre-cold-warm-proof-linux-manual-sample.json`, and optional M7
+worker-evidence — see
+[Local-only sources](CI_PROMOTION_MATRIX.md#local-only-sources-no-dedicated-ci-job)
+in the matrix.
+
+After promotion, update the provenance note above to cite the Linux workflow run
+URL and refresh catalog rows if metrics changed. Full operator steps:
+[`../GHA_RESTORE_RUNBOOK.md`](../GHA_RESTORE_RUNBOOK.md) Phase 2.
+
 ## Milestone map (M7 · M8 · M9 · Tier 1)
 
 | Milestone | What landed | Honesty ceiling |
 |-----------|-------------|-----------------|
 | **M7** worker parser | `worker_admin_stdout` promotes `worker_identity` when admin stdout is attached pre-ingest **and** lines match the M7 regex | **Conditional** — not global. Runs without captured stdout keep `worker_identity` in `unsupported_claims`. |
-| **M8** agent adapter | `record-agent-change.sh` with `model` + `prompt_sha256` only; dry-run and pytest paths proven | Agent leg may be `simulated_v1` (deterministic patch) or `collectable_v1` when live adapter + Bazel validation run. |
+| **M8** agent adapter | `record-agent-change.sh` + `agent-live-proof.sh`; `model` + `prompt_sha256` only; dry-run, pytest fixture, and honest Cursor CLI blocker proven | Agent leg is `collectable_v1` via `cursor_adapter_v1` when adapter records; `simulated_v1` only in bounded `agent-loop-proof.sh`. Live Cursor session is operator-gated — see [`agent-live-blocker-sample.json`](agent-live-blocker-sample.json). |
 | **M9** multi-run compare | `nlfr compare export`, canvas Compare lens, `scripts/compare-proof.sh` | `derived_v1` compare projection — no new collectable fleet claims. [`compare-summary.json`](compare-summary.json) excerpt committed. |
 | **Tier 1** live Bazel | `scripts/tier1-live-bazel-proof.sh` Acts 1+2 with `cursor_adapter_v1` + real Bazel | Fully `collectable_v1` with `bazel_validated: true` — not pytest fallback. |
 
@@ -53,11 +80,13 @@ Fleet claim policy (what v1 will and will not promote) lives in
 | [`cold-warm-summary.json`](cold-warm-summary.json) | `scripts/cold-warm-cache-proof.sh` | `collectable_v1` · `high` | Cold: `hit_rate` 0.0 / 8.17s. Warm: `hit_rate` 1.0 / 5.48s. Warm is faster with higher hit rate. |
 | [`two-worker-summary.json`](two-worker-summary.json) | `NLFR_EXPECTED_WORKERS=2 scripts/local-exec-proof.sh` | `collectable_v1` · `high` | Two workers configured **and** endpoints opened live (`worker_endpoints_ready`, `expected_workers=2`). `nativelink.stdout.txt` / `.stderr.txt` attached pre-ingest. Does **not** prove work distribution. `worker_identity` stays in `unsupported_claims` here unless M7 regex matches attached stdout. |
 
-### Agent loop and Tier 1 (`collectable_v1` / mixed)
+### Agent loop, live adapter, and Tier 1 (`collectable_v1` / mixed)
 
 | Sample | Produced by | `source_kind` · `confidence` | What it proves |
 |--------|-------------|-------------------------------|----------------|
 | [`agent-loop-summary.json`](agent-loop-summary.json) | `scripts/agent-loop-proof.sh` | mixed: `collectable_v1` validation/cache; `simulated_v1` agent/change · `high` | Deterministic bounded-agent patch validates `agent → change → run → target → action → cache_event` (`chain_complete=true`). `model` + `prompt_sha256` only — never the raw prompt; no live LLM call. |
+| [`agent-live-blocker-sample.json`](agent-live-blocker-sample.json) | `scripts/agent-live-proof.sh` (no Cursor CLI) | `collectable_v1` · `high` | Honest `environment_blocker` when `cursor` is unavailable; documents M8 ceiling vs live adapter. Does **not** fake a collectable run. |
+| [`agent-live-summary-sample.json`](agent-live-summary-sample.json) | `scripts/agent-live-proof.sh` (fixture / pytest validation) | `collectable_v1` · `high` | `cursor_adapter_v1` agent leg with `chain_complete=true` via `agent → change → run`; `model` + `prompt_sha256` only. Pytest validation path — not Tier 1 Bazel parity. |
 | [`agent-bugfix-summary.json`](agent-bugfix-summary.json) | `scripts/tier1-live-bazel-proof.sh` (Act 1) | `collectable_v1` · `high` | Tier 1 Act 1 live `cursor_adapter_v1` bugfix (`agent-bugfix-1`). `bazel_validated: true`, `validation: bazel` — real Bazel, not pytest fallback. |
 | [`agent-feature-summary.json`](agent-feature-summary.json) | `scripts/tier1-live-bazel-proof.sh` (Act 2) | `collectable_v1` · `high` | Tier 1 Act 2 feature slice (`agent-feature-compare`). `bazel_validated: true`; shared-module policy retune with live Bazel validation. |
 
@@ -70,6 +99,7 @@ Fleet claim policy (what v1 will and will not promote) lives in
 | [`lre-nix-toolchain-proof-blocker-sample.json`](lre-nix-toolchain-proof-blocker-sample.json) | `scripts/lre-nix-toolchain-proof.sh` (outside `nix develop`) | `collectable_v1` · `high` | Honest blocker until flake LRE `installationScript` generates repo-root `lre.bazelrc`. |
 | [`lre-nix-toolchain-proof-summary-sample.json`](lre-nix-toolchain-proof-summary-sample.json) | `scripts/lre-nix-toolchain-proof.sh` (inside `nix develop`) | `collectable_v1` · `medium` | Phase-2 ceiling `lre_bazelrc_generated`: Nix-generated `build:lre` flags; optional `--config=lre` build on x86_64-linux; does **not** claim cache parity. |
 | [`lre-cold-warm-proof-blocker-sample.json`](lre-cold-warm-proof-blocker-sample.json) | `scripts/lre-cold-warm-proof.sh` (Darwin or outside `nix develop`) | `collectable_v1` · `high` | Honest blocker until x86_64-linux `nix develop` with generated `lre.bazelrc`; Darwin gets rust-only LRE env without full cold/warm parity path. |
+| [`lre-cold-warm-proof-linux-manual-sample.json`](lre-cold-warm-proof-linux-manual-sample.json) | `scripts/lre-cold-warm-proof.sh` (manual x86_64-linux path; Darwin blocker recorded 2026-06-06) | `collectable_v1` · `high` | Manual Linux proof slot: cites honest `environment_blocker` until operator promotes green `summary.json` from [`LRE_LINUX_PROOF.md`](../LRE_LINUX_PROOF.md); does **not** fabricate parity metrics. |
 | [`lre-cold-warm-proof-summary-sample.json`](lre-cold-warm-proof-summary-sample.json) | `scripts/lre-cold-warm-proof.sh` (x86_64-linux `nix develop`) | `collectable_v1` · `medium` | Phase-4 ceiling `lre_cache_parity_observed`: LRE cold/warm via `lre.json5` + `--config=lre` + `local-exec`; cold `hit_rate` 0 → warm `hit_rate` 1; does **not** claim hermetic container-image parity. |
 
 ### Research and policy (`derived_v1`)
@@ -117,12 +147,25 @@ proven validation chain, not the agent's reasoning. The scenario names the agent
 `demo-bounded-llm-worker` historically — that label does not claim NativeLink
 worker identity.
 
+**M8 agent-live samples** (`agent-live-blocker-sample.json`,
+`agent-live-summary-sample.json`) document the live adapter wrapper. The blocker
+is honest when Cursor CLI is absent. The summary excerpt is fixture-backed
+`collectable_v1` with `cursor_adapter_v1` — pytest validation, not Bazel.
+
 **Tier 1 agent samples** (`agent-bugfix-summary.json`, `agent-feature-summary.json`)
 are fully `collectable_v1` with `bazel_validated: true` from
 `scripts/tier1-live-bazel-proof.sh` with live `cursor_adapter_v1` records.
 
 **M9 compare** outputs `derived_v1` projections — dimension deltas across run
 groups, not new backend observations.
+
+**LRE Linux manual sample** (`lre-cold-warm-proof-linux-manual-sample.json`)
+documents the operator-owned phase-4 path while GHA is offline. On Darwin it
+records an honest `environment_blocker` — cite it instead of fabricating
+`lre_cache_parity_observed` metrics. After a green x86_64-linux
+`nix develop` run, promote redacted output to
+[`lre-cold-warm-proof-summary-sample.json`](lre-cold-warm-proof-summary-sample.json)
+per [`LRE_LINUX_PROOF.md`](../LRE_LINUX_PROOF.md).
 
 ## Regenerate originals
 
@@ -133,7 +176,9 @@ Full summaries live under gitignored `data/`. Regenerate inside `nix develop`:
 ./scripts/local-exec-proof.sh
 NLFR_EXPECTED_WORKERS=2 NLFR_LOCAL_EXEC_OUTPUT=$PWD/data/local-exec-proof-2w ./scripts/local-exec-proof.sh
 ./scripts/agent-loop-proof.sh
-./scripts/tier1-live-bazel-proof.sh
+./scripts/agent-live-proof.sh --dry-run
+./scripts/record-agent-change.sh --dry-run --change-path adapters/cursor/README.md --model composer-2.5 --prompt-file demo/scenarios/tier1/fixtures/prompt-meta.txt
+NLFR_RUN_AGENT_LIVE=1 ./scripts/agent-live-proof.sh   # live; requires Cursor CLI
 NLFR_WORKER_EVIDENCE_FIXTURE_ONLY=1 ./scripts/worker-evidence-proof.sh
 ./scripts/compare-proof.sh   # M9; requires record-proof + canvas-dev DBs
 ```
@@ -144,5 +189,6 @@ See [`../DEV_ENVIRONMENT.md`](../DEV_ENVIRONMENT.md) and [`../TRYOUT_PACKET.md`]
 
 - Tryout narrative: [`../TRYOUT_PACKET.md`](../TRYOUT_PACKET.md)
 - Release and GHA promotion: [`../GITHUB_RELEASE.md`](../GITHUB_RELEASE.md)
+- Artifact → sample matrix: [`CI_PROMOTION_MATRIX.md`](CI_PROMOTION_MATRIX.md)
 - One-page claims: [`../ONE_PAGER.md`](../ONE_PAGER.md)
 - CI jobs: [`../CI_RECIPE.md`](../CI_RECIPE.md)

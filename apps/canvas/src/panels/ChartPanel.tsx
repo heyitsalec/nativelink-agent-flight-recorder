@@ -235,6 +235,38 @@ export function ActionGraphCanvasPanel(instance: ComponentInstance) {
   );
 }
 
+const REMOTE_WORKER_KINDS = new Set(["worker", "worker_readiness", "remote_execution_config"]);
+
+function isRemoteWorkerKind(kind: string): boolean {
+  return REMOTE_WORKER_KINDS.has(kind);
+}
+
+function hexagonPath(radius: number): string {
+  const points: string[] = [];
+  for (let index = 0; index < 6; index += 1) {
+    const angle = (Math.PI / 3) * index - Math.PI / 6;
+    points.push(`${Math.cos(angle) * radius},${Math.sin(angle) * radius}`);
+  }
+  return `M${points.join("L")}Z`;
+}
+
+function workerStatusLabel(node: PositionedNode): string | null {
+  if (node.kind === "worker") {
+    return String(node.status ?? "observed");
+  }
+  if (node.kind === "remote_execution_config") {
+    const observed = node.payload?.worker_identity_observed;
+    if (typeof observed === "boolean") {
+      return observed ? "identity observed" : "identity gated";
+    }
+    return String(node.status ?? "configured");
+  }
+  if (node.kind === "worker_readiness") {
+    return String(node.status ?? node.payload?.status ?? "readiness boundary");
+  }
+  return null;
+}
+
 function GraphNode({
   node,
   selected,
@@ -246,10 +278,18 @@ function GraphNode({
   dimmed: boolean;
   onSelect: () => void;
 }) {
-  const shortLabel = node.label.length > 26 ? `${node.label.slice(0, 24)}...` : node.label;
+  const remoteWorker = isRemoteWorkerKind(node.kind);
+  const shortLabel =
+    node.label.length > (remoteWorker ? 22 : 26)
+      ? `${node.label.slice(0, remoteWorker ? 20 : 24)}...`
+      : node.label;
+  const statusLabel = remoteWorker ? workerStatusLabel(node) : null;
+  const labelY = remoteWorker ? 13 : 15;
+  const confidenceY = node.radius + (remoteWorker ? 30 : 24);
+
   return (
     <g
-      className={`graph-node ${node.kind} ${node.source_kind} ${selected ? "selected" : ""} ${dimmed ? "dimmed" : ""}`}
+      className={`graph-node ${node.kind} ${node.source_kind} ${remoteWorker ? "remote-worker" : ""} ${selected ? "selected" : ""} ${dimmed ? "dimmed" : ""}`}
       data-graph-node-id={node.id}
       transform={`translate(${node.x},${node.y})`}
       onClick={(event) => {
@@ -260,15 +300,39 @@ function GraphNode({
       role="button"
       aria-label={`${node.kind}: ${node.label}`}
     >
-      <circle className="node-halo" r={node.radius + 12} />
-      <circle className="node-body" r={node.radius} />
+      {remoteWorker ? (
+        <>
+          <path className="node-halo" d={hexagonPath(node.radius + 12)} />
+          <path className="node-body" d={hexagonPath(node.radius)} />
+          <g
+            className="node-worker-badge"
+            transform={`translate(${node.radius - 9},${-node.radius + 9})`}
+            aria-hidden="true"
+          >
+            <circle r={8} />
+            <text textAnchor="middle" y={3.5}>
+              {node.kind === "worker" ? "W" : "R"}
+            </text>
+          </g>
+        </>
+      ) : (
+        <>
+          <circle className="node-halo" r={node.radius + 12} />
+          <circle className="node-body" r={node.radius} />
+        </>
+      )}
       <text className="node-kind" textAnchor="middle" y={-5}>
         {labelKind(node.kind)}
       </text>
-      <text className="node-label" textAnchor="middle" y={15}>
+      <text className="node-label" textAnchor="middle" y={labelY}>
         {shortLabel}
       </text>
-      <text className="node-confidence" textAnchor="middle" y={node.radius + 24}>
+      {statusLabel && (
+        <text className="node-status" textAnchor="middle" y={node.radius + 16}>
+          {statusLabel}
+        </text>
+      )}
+      <text className="node-confidence" textAnchor="middle" y={confidenceY}>
         {node.confidence}
       </text>
     </g>

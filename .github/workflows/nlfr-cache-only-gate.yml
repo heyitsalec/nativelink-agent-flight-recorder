@@ -1,0 +1,41 @@
+# Lightweight PR gate — doctor JSON contract + pytest smoke.
+# Independent of full nlfr-proof.yml restore; may be non-green while GHA is offline.
+name: NLFR cache-only gate
+
+on:
+  push:
+    branches: [main, feat/**, fix/**, codex/**]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: nlfr-cache-only-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cache-only-gate:
+    name: Cache-only doctor + pytest smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Cache-only CI gate
+        run: |
+          uv sync
+          chmod +x scripts/cache-only-ci-gate.sh
+          ./scripts/cache-only-ci-gate.sh
+
+      - name: Upload gate artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cache-only-ci-gate
+          path: |
+            data/cache-only-ci-gate/doctor.json
+            data/cache-only-ci-gate/summary.json
+          if-no-files-found: warn

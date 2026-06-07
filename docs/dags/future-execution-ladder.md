@@ -14,11 +14,13 @@
 
 **NLFR meaning:** Record a Bazel workload where validation actually flows through NativeLink **remote execution** (not just cache-only or local-exec smoke), ingest stdout/admin evidence, and export projections with honest `collectable_v1` labels.
 
-**Current state:** Cache-only and local-exec proofs exist (`cold-warm-cache-proof.sh`, `local-exec-proof.sh`). **Wave-2 done:** phase-1 ceiling `lre_substrate_ready` (`collectable_v1`, `medium`) — `demo/nativelink/lre.json5` + `scripts/lre-proof.sh` → `data/lre-proof/summary.json` with `claim_boundary` (CI job `lre-proof-probe`). Does **not** claim hermetic Nix `--config=lre` or fleet correlation.
+**Current state:** Cache-only and local-exec proofs exist (`cold-warm-cache-proof.sh`, `local-exec-proof.sh`). **Phases 1–4 script path shipped:** `lre_substrate_ready` → `lre_bazelrc_generated` → `lre_cache_parity_observed` via `scripts/lre-proof.sh`, `scripts/lre-nix-toolchain-proof.sh`, and `scripts/lre-cold-warm-proof.sh` (see [`lre-proof.md`](lre-proof.md)). Redacted schema samples in [`proof-samples/`](../proof-samples/README.md).
 
-**Phase-3 blocker (Nix LRE):** Hermetic `bazel --config=lre` requires TraceMachina Nix toolchain wiring (`flake.nix` + `MODULE.bazel`) — tracked as `claim_boundary.unsupported_until_nix_lre_toolchain`. Coordinator: `coord-lre-nix-phase3` (research → implement or honest blocker).
+**Manual Linux path (phase 4, GHA offline):** `lre_cache_parity_observed` requires x86_64-linux inside `nix develop`. Operators follow [`LRE_LINUX_PROOF.md`](../LRE_LINUX_PROOF.md). On Darwin the script records honest `environment-blocker.json` (exit `2`) — cite [`lre-cold-warm-proof-linux-manual-sample.json`](../proof-samples/lre-cold-warm-proof-linux-manual-sample.json) or [`lre-cold-warm-proof-blocker-sample.json`](../proof-samples/lre-cold-warm-proof-blocker-sample.json). Promote green `summary.json` only after a real Linux run; do **not** fabricate parity metrics.
 
-**Broker?** **`lre-proof` wave-2 shipped.** Do **not** broker UI, fleet dashboards, or Nix LRE narrative ahead of phase-3 exit criteria and a real `summary.json`.
+**CI promotion:** `lre-cold-warm-ci` artifact green deferred while GHA offline (wave 4). Manual Linux sample closes the evaluator gap without claiming CI green.
+
+**Broker?** **`lre-proof` waves 2–4 script path shipped.** Do **not** broker fleet dashboards or hermetic container-image parity ahead of new collectable parsers and direct evidence.
 
 ---
 
@@ -51,13 +53,13 @@
 | Priority | DAG id | Gate |
 |----------|--------|------|
 | — | *(done)* tier1-agent-vision wave 5 | integrate + dogfood |
-| — | *(done)* `lre-proof` wave-2 | `lre_substrate_ready`; phase-3 Nix LRE blocked |
+| — | *(done)* `lre-proof` waves 2–4 + W3 manual Linux | `lre_cache_parity_observed` script path; manual Linux sample or blocker; CI green deferred |
 | — | *(done)* `ci-bazel-tier1` | `tier1-bazel` CI job + proof script |
 | — | *(done)* `future-fleet-claims` wave-1 | claim matrix + ONE_PAGER sync; phase-3 parsers blocked |
 | 1 | `ci-cache-only-gate` | `nlfr doctor --mode cache-only` on every PR |
 | 2 | `nlfr-doc-capture` wave 2 | tier1-aligned hero GIF refresh |
 | 3 | `tier1-canvas-polish` | composer UI + view/run-group selector |
-| — | *(phase-3)* `lre-proof` wave-3 | Nix LRE toolchain OR honest blocker (`coord-lre-nix-phase3`) |
+| — | *(done)* `lre-proof` wave-3 | `lre_bazelrc_generated`; Nix LRE toolchain wired |
 | — | *(phase-3)* fleet evidence | direct admin/stdout parsers + SQLite rows (no UI until exit criteria) |
 
 ---

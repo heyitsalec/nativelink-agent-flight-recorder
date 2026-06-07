@@ -34,6 +34,7 @@ The canvas reads JSON under `public/projections/`:
 | `proof.json` | Proof packet blocks (cache, remote, agent) |
 | `runway.json` | Runway timeline lens |
 | `compare-projection.json` | Compare lens (`derived_v1` deltas between run groups) |
+| `compare-index.json` | Run-group index for composer selector (`run_group_index`, `derived_v1`) |
 
 Regenerate with:
 
@@ -41,6 +42,8 @@ Regenerate with:
 ./scripts/record-canvas-build.sh          # canvas-dev run group
 ./scripts/record-proof.sh                 # record-proof run group (compare left)
 ./scripts/compare-proof.sh                # compare summary + compare-projection.json
+./scripts/compare-agent-runs.sh           # tier1 pairwise compares under data/compare-agent-runs/
+./scripts/promote-tier1-compare.sh      # copy default pair into compare-projection.json
 ```
 
 Compare export (manual):
@@ -66,7 +69,7 @@ Bundled and committed views in `public/views/`:
 | View ID | Use |
 |---------|-----|
 | `nlfr-default-v0` | Full layout — graph, proof, remote, compare lenses |
-| `tier1-demo` | Tier1 agent demo tour (hero GIF capture default) |
+| `tier1-demo` | Tier1 agent demo tour — compare lens + run-group selector (hero GIF default) |
 | `proof-review` | Proof packet–focused rail |
 | `graph-only` | Graph lens only |
 
@@ -95,6 +98,34 @@ The default view exposes five mode lenses (top bar):
 Remote and compare panels render unsupported claims as boundary labels, not
 invented metrics.
 
+## Run group selector (`RunGroupSelector`)
+
+The View Composer drawer (`data-testid="composer-drawer"`) includes a run-group
+picker (`data-testid="run-group-selector"`). It reads **projection JSON only** —
+no live SQLite or invented backend state.
+
+Load order:
+
+1. **`compare-index.json`** — preferred `run_group_index` fixture with per-group
+   truth labels (`derived_v1`, `medium`, `safe`).
+2. **`compare-projection.json`** — fallback: derives group names from
+   `left_run_group`, `right_run_group`, dimension sides, and `run_group:*`
+   `evidence_refs`.
+
+Regenerate the committed index from a tier1 DB (redact paths before commit):
+
+```bash
+PYTHONPATH=src uv run python -m nlfr compare index \
+  --db data/canvas-dev/nlfr.sqlite \
+  --json > /tmp/compare-index.raw.json
+# Add root + per-entry truth labels; omit raw db paths; write to:
+# apps/canvas/public/projections/compare-index.json
+```
+
+The committed fixture lists `canvas-dev` and `agent-bugfix-1` for tier1 demo;
+pairwise compare JSON still comes from `promote-tier1-compare.sh` (default pair
+`canvas-dev-vs-agent-bugfix-1`).
+
 ## Truth guard (`test:truth`)
 
 `npm run test:truth` runs `scripts/truth-guard.mjs`:
@@ -118,15 +149,19 @@ Hero GIFs and screenshot diffs for docs:
 | `capture:heroes` | both GIFs |
 | `diff` | pixel diff vs committed baselines |
 
-Typical regenerate flow:
+Typical regenerate flow (tier1 demo + compare index):
 
 ```bash
 ./scripts/record-canvas-build.sh
-./scripts/compare-agent-runs.sh      # optional tier1 compare lens
+./scripts/compare-agent-runs.sh
+./scripts/promote-tier1-compare.sh   # when data/compare-agent-runs/projections/ exists
 npm --prefix apps/canvas run build
 CANVAS_URL='http://127.0.0.1:5174/?view=tier1-demo' npm --prefix apps/canvas run capture:heroes
 npm --prefix apps/canvas run test:truth
 ```
+
+Open `?view=tier1-demo`, use **Compare Runs**, and open the composer to exercise
+`RunGroupSelector` against `compare-index.json`.
 
 See [MEDIA_CAPTURE.md](../../docs/MEDIA_CAPTURE.md) for ffmpeg/Playwright
 prerequisites and privacy rules.

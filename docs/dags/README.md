@@ -1,9 +1,22 @@
 # NLFR DAG Mirrors
 
-## Active — Docs wiki wave 2 (wave-0 ARMED)
+## Active — Docs wiki wave 2 (wave-1 SHIPPED)
 
-[docs-wiki-wave2.md](docs-wiki-wave2.md) · Handoffs: `docs/sessions/handoffs/docs-wiki-wave2/wave-0/`  
-Wave-0 ceiling: close docs-excellence wave-1 gaps (historical banners, broker diagram, ADR-lite, compare sample, link audit). Control plane: `kos serve http://127.0.0.1:7423`, `dag_ref` `dag:nlfr-flagship`, `linear_authority: false`. Parallel coordinators: `coord-historical-banners`, `coord-broker-diagram`, `coord-wiki-adrs`, `coord-compare-sample`, `coord-link-audit`. Branch: `feat/docs-wiki-wave2`.
+[docs-wiki-wave2.md](docs-wiki-wave2.md) · Handoffs: `docs/sessions/handoffs/docs-wiki-wave2/wave-1/` (wave-0: `wave-0/`)  
+Wave-1 ceiling: broker diagram, ADR-lite, compare proof sample, contracts reference, partial historical banners, link audit. Status `DONE_WITH_CONCERNS` — waves 1.5–3 pending. **Next:** [nlfr-kos-roadmap.md](nlfr-kos-roadmap.md) after merge. Branch: `feat/docs-wiki-wave2`.
+
+## Active — NLFR flagship KOS roadmap (waves 1–4 DONE_WITH_CONCERNS)
+
+[nlfr-kos-roadmap.md](nlfr-kos-roadmap.md) · Handoffs: `docs/sessions/handoffs/nlfr-kos-cutover/wave-{1,2,3,4}/` (wave-0 plan: `wave-0/`)
+
+| Wave | DAG mirror | Status | Handoffs |
+|------|------------|--------|----------|
+| 1 | [tier1-canvas-polish.md](tier1-canvas-polish.md) | **SHIPPED** | `nlfr-kos-cutover/wave-1/` — canvas UX, run-group selector, README |
+| 2 | [nlfr-kos-roadmap.md](nlfr-kos-roadmap.md) § Wave 2 | **DONE_WITH_CONCERNS** | `wave-2/` — agent-live-proof; Cursor CLI missing |
+| 3 | [lre-proof.md](lre-proof.md) + ladder | **DONE_WITH_CONCERNS** | `wave-3/` — LRE Linux runbook; Darwin blocker sample |
+| 4 | [nlfr-kos-roadmap.md](nlfr-kos-roadmap.md) § Wave 4 | **DONE_WITH_CONCERNS** | `wave-4/` — GHA restore runbook; GHA offline |
+
+Branch: `feat/docs-wiki-wave2`. Local proof gates substitute for CI. **Next:** [nlfr-kos-roadmap-waves-5-8.md](nlfr-kos-roadmap-waves-5-8.md).
 
 ## Active — Docs excellence (wave-0 ARMED)
 

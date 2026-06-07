@@ -14,6 +14,7 @@ from nlfr.projectors.compare import (
     list_run_group_index,
 )
 from nlfr.projectors.proof import export_proof_packet
+from nlfr.retention_policy import retention_policy_summary
 
 
 def export_compare(args: argparse.Namespace) -> int:
@@ -52,13 +53,20 @@ def index_run_groups(args: argparse.Namespace) -> int:
 
     conn = initialize(connect(args.db))
     groups = list_run_group_index(conn)
+    total = len(groups)
+    if args.limit is not None:
+        groups = groups[: args.limit]
     payload = {
         "schema_version": 1,
         "kind": "run_group_index",
         "db": args.db,
+        "retention_policy": retention_policy_summary(),
         "run_groups": groups,
         "count": len(groups),
     }
+    if args.limit is not None:
+        payload["limit"] = args.limit
+        payload["total"] = total
     output_format = "json" if args.json else args.format
     if output_format == "json":
         print(json.dumps(payload, indent=2, sort_keys=True))
@@ -142,5 +150,11 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         "--json",
         action="store_true",
         help="emit JSON instead of tab-separated rows (alias for --format json)",
+    )
+    index_parser.add_argument(
+        "--limit",
+        type=int,
+        metavar="N",
+        help="return at most N run groups (index-only; no purge)",
     )
     index_parser.set_defaults(handler=index_run_groups)

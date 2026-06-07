@@ -28,6 +28,7 @@ docs/sessions/handoffs/{dag-id}/wave-{n}/
 | `tier1-live-bazel` | frontier | [tier1-live-bazel/](tier1-live-bazel/) |
 | `frontier-wave` | broker | [frontier-wave/](frontier-wave/) |
 | `docs-excellence` | broker | [docs-excellence/](docs-excellence/) · DAG: [docs-excellence.md](../../dags/docs-excellence.md) |
+| `docs-wiki-wave2` | broker · KOS | [wave-0/](docs-wiki-wave2/wave-0/) · [wave-1/](docs-wiki-wave2/wave-1/) · DAG: [docs-wiki-wave2.md](../../dags/docs-wiki-wave2.md) · Next: [nlfr-kos-roadmap.md](../../dags/nlfr-kos-roadmap.md) |
 
 ## Templates
 

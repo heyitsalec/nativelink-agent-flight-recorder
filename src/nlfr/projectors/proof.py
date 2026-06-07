@@ -7,6 +7,7 @@ from sqlite3 import Connection
 from typing import Any
 
 from nlfr.projectors.common import generated_at, rows, run_rows, status_counts, truth
+from nlfr.retention_policy import proof_retention_block
 from nlfr.projectors.remote_execution import (
     remote_execution_endpoint_summaries,
     remote_execution_invocations,
@@ -100,6 +101,7 @@ def export_proof_packet(conn: Connection, *, run_group: str) -> dict[str, Any]:
             "cache_events": len(cache_events),
             "failures": len(failures),
         },
+        "retention": proof_retention_block(),
         "blocks": blocks,
     }
 

@@ -1,9 +1,10 @@
 # Docs wiki — wave 2 (excellence gap closure + KOS cutover routing)
 
-**Status:** wave-0 ARMED  
+**Status:** wave-1 SHIPPED (`DONE_WITH_CONCERNS`; waves 1.5–3 pending)  
 **Branch:** `feat/docs-wiki-wave2`  
 **Parent DAG:** [docs-excellence.md](docs-excellence.md) (wave-1 SHIPPED `DONE_WITH_CONCERNS`)  
-**Handoffs:** `docs/sessions/handoffs/docs-wiki-wave2/wave-0/`  
+**Handoffs:** `docs/sessions/handoffs/docs-wiki-wave2/wave-1/` (wave-0: `wave-0/`)  
+**Next umbrella:** [nlfr-kos-roadmap.md](nlfr-kos-roadmap.md) (spawn after merge)  
 **Excellence bar (inherited):** [`docs-excellence/wave-0/excellence-bar.md`](../sessions/handoffs/docs-excellence/wave-0/excellence-bar.md)
 
 Broker contract: [knowledge-os/agent-os/harness/broker-dispatch-manifest.md](/Users/alecbot/Documents/knowledge-os/agent-os/harness/broker-dispatch-manifest.md)
@@ -106,6 +107,9 @@ Parent proof gates substitute for CI while GHA is offline:
 
 ## Handoff index
 
+- Wave-1 integration: [`integration-brief.md`](../sessions/handoffs/docs-wiki-wave2/wave-1/integration-brief.md)
+- Wave-1 spawn ledger: [`spawn-ledger.md`](../sessions/handoffs/docs-wiki-wave2/wave-1/spawn-ledger.md)
+- Wave-1 worker results: [`worker-results.json`](../sessions/handoffs/docs-wiki-wave2/wave-1/worker-results.json)
 - Wave-0 ARM: [`broker-arm.md`](../sessions/handoffs/docs-wiki-wave2/wave-0/broker-arm.md)
 - KOS routing: [`KOS-startup-routing.md`](../sessions/handoffs/docs-wiki-wave2/wave-0/KOS-startup-routing.md)
 - Wave-0 spawn ledger: [`spawn-ledger.md`](../sessions/handoffs/docs-wiki-wave2/wave-0/spawn-ledger.md)

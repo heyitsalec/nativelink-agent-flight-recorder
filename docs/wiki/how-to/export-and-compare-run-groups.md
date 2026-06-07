@@ -25,7 +25,25 @@ PYTHONPATH=src uv run python -m nlfr compare index \
   --json
 ```
 
-Output is an index only — v1 does not auto-purge old groups.
+Limit the newest groups when the index grows large (index-only; no purge):
+
+```bash
+PYTHONPATH=src uv run python -m nlfr compare index \
+  --db data/record-proof/nlfr.sqlite \
+  --limit 5 \
+  --json
+```
+
+### V1 retention policy
+
+| Mode | Constant | Meaning |
+|------|----------|---------|
+| Discovery | `index_only` | `compare index` lists run groups from SQLite |
+| Purge | `no_auto_purge` | NLFR v1 never deletes rows or artifact files |
+| Lifecycle | `operator_managed` | Operators prune local DBs and artifact dirs manually |
+
+Proof packet exports include a `retention` block with these notes (`derived_v1`,
+`high`). There is no `nlfr purge` or TTL job in v1.
 
 ## Export single-run projections
 

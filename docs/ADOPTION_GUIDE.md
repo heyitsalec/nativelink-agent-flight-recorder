@@ -12,6 +12,7 @@ cd nativelink-agent-flight-recorder
 pip install uv
 uv sync
 uv run pytest -q
+./scripts/cache-only-ci-gate.sh   # PR-safe doctor JSON + smoke (see CI_RECIPE.md)
 ./scripts/verify-demo.sh
 npm --prefix apps/canvas ci && npm --prefix apps/canvas run build
 npm --prefix apps/canvas run preview   # http://127.0.0.1:5174/
@@ -68,6 +69,8 @@ See [`DEV_ENVIRONMENT.md`](DEV_ENVIRONMENT.md), [`TRYOUT_PACKET.md`](TRYOUT_PACK
 ## Skeptic path (CI artifacts)
 
 GitHub Actions may be **non-green** (~1 month offline as of 2026-06-06). Do not block evaluation on a green workflow badge. Prefer local gates from [GHA offline proof shift](sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md).
+
+**Fast PR gate:** [`scripts/cache-only-ci-gate.sh`](../scripts/cache-only-ci-gate.sh) (or workflow **`NLFR cache-only gate`**) proves the cache-only doctor JSON contract plus pytest smoke — independent of full proof restore. See [Cache-only gate](CI_RECIPE.md#cache-only-gate-pr-safe) in [`CI_RECIPE.md`](CI_RECIPE.md).
 
 When workflows run, workflow **`NLFR proof`** (`.github/workflows/nlfr-proof.yml`) has **seven parallel jobs**. See [`CI_RECIPE.md`](CI_RECIPE.md) for the full matrix.
 
