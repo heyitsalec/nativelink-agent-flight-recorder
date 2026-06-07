@@ -1,0 +1,89 @@
+{
+  "schema_version": "knowledge-os.worker_results.v1",
+  "dag_id": "lre-proof",
+  "wave": "wave-2",
+  "phase": "implement",
+  "status": "DONE",
+  "claim_ceiling": "lre_substrate_ready",
+  "host": "/Users/alecbot/Documents/nativelink-agent-flight-recorder",
+  "branch": "feat/lre-fleet-unlocks",
+  "git_head": "e00d057bf41cf480a608ebfcff2dd1d658c410d4",
+  "coordinator_id": "coord-lre-proof",
+  "workers": [
+    {
+      "worker_id": "lre-w2-config-readme",
+      "coordinator_id": "coord-lre-proof",
+      "status": "DONE",
+      "provenance": "docs/sessions/handoffs/lre-proof/wave-2/provenance-lre-w2-config-readme.md",
+      "task_packet": "docs/sessions/handoffs/lre-proof/wave-2/task-packet-lre-w2-config-readme.md",
+      "artifacts": [
+        "demo/nativelink/lre.json5",
+        "demo/nativelink/README.md"
+      ]
+    },
+    {
+      "worker_id": "lre-w2-proof-script",
+      "coordinator_id": "coord-lre-proof",
+      "status": "DONE",
+      "provenance": "docs/sessions/handoffs/lre-proof/wave-2/provenance-lre-w2-proof-script.md",
+      "task_packet": "docs/sessions/handoffs/lre-proof/wave-2/task-packet-lre-w2-proof-script.md",
+      "artifacts": [
+        "scripts/lre-proof.sh",
+        "docs/proof-samples/lre-proof-summary-sample.json",
+        "docs/proof-samples/lre-proof-blocker-sample.json"
+      ]
+    },
+    {
+      "worker_id": "lre-w2-tests",
+      "coordinator_id": "coord-lre-proof",
+      "status": "DONE",
+      "provenance": "docs/sessions/handoffs/lre-proof/wave-2/provenance-lre-w2-tests.md",
+      "task_packet": "docs/sessions/handoffs/lre-proof/wave-2/task-packet-lre-w2-tests.md",
+      "proof": {
+        "command": "uv run pytest tests/test_lre_proof.py -q",
+        "exit_code": 0,
+        "passed": 4
+      },
+      "artifacts": [
+        "tests/test_lre_proof.py"
+      ]
+    },
+    {
+      "worker_id": "lre-w2-ci-probe",
+      "coordinator_id": "coord-lre-proof",
+      "status": "DONE",
+      "provenance": "docs/sessions/handoffs/lre-proof/wave-2/provenance-lre-w2-ci-probe.md",
+      "task_packet": "docs/sessions/handoffs/lre-proof/wave-2/task-packet-lre-w2-ci-probe.md",
+      "artifacts": [
+        ".github/workflows/nlfr-proof.yml"
+      ]
+    },
+    {
+      "worker_id": "lre-w2-handoffs",
+      "coordinator_id": "coord-lre-proof",
+      "status": "DONE",
+      "provenance": "docs/sessions/handoffs/lre-proof/wave-2/provenance-lre-w2-handoffs.md",
+      "task_packet": "docs/sessions/handoffs/lre-proof/wave-2/task-packet-lre-w2-handoffs.md",
+      "artifacts": [
+        "docs/sessions/handoffs/lre-proof/wave-2/spawn-ledger.md",
+        "docs/sessions/handoffs/lre-proof/wave-2/worker-results.json",
+        "docs/sessions/handoffs/lre-proof/wave-2/integration-brief.md",
+        "docs/dags/lre-proof.md"
+      ]
+    }
+  ],
+  "proof_gates": {
+    "pytest": {
+      "command": "uv run pytest tests/test_lre_proof.py -q",
+      "status": "PASS",
+      "passed": 4
+    },
+    "nix_lre_proof": {
+      "command": "nix develop --command ./scripts/lre-proof.sh",
+      "status": "DEFERRED",
+      "note": "Requires Nix toolchain on host; CI lre-proof-probe owns green path"
+    }
+  },
+  "claims_touched": ["lre_substrate_ready", "claim_boundary"],
+  "blocked_reason": null
+}

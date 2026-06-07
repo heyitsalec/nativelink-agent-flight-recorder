@@ -123,7 +123,7 @@ jobs:
           if-no-files-found: warn
 
   lre-proof-probe:
-    name: LRE proof probe (honest blocker)
+    name: LRE substrate proof
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -133,12 +133,16 @@ jobs:
 
       - uses: DeterminateSystems/magic-nix-cache-action@main
 
-      - name: LRE probe records blocker until lre.json5 exists
+      - name: LRE substrate proof (nix develop)
         run: |
           nix develop --command bash -lc '
             set -euo pipefail
             uv sync
-            ./scripts/lre-proof.sh || test -f data/lre-proof/environment-blocker.json
+            if ./scripts/lre-proof.sh; then
+              test -f data/lre-proof/summary.json
+            else
+              test -f data/lre-proof/environment-blocker.json
+            fi
           '
 
       - name: Upload LRE probe artifacts
@@ -147,8 +151,43 @@ jobs:
         with:
           name: lre-proof-probe
           path: |
+            data/lre-proof/summary.json
             data/lre-proof/probe.json
             data/lre-proof/environment-blocker.json
+          if-no-files-found: warn
+
+
+  lre-nix-ci:
+    name: LRE Nix toolchain proof
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: DeterminateSystems/nix-installer-action@main
+
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: LRE Nix toolchain proof (nix develop)
+        run: |
+          nix develop --command bash -lc '
+            set -euo pipefail
+            uv sync
+            if ./scripts/lre-nix-toolchain-proof.sh; then
+              test -f data/lre-nix-toolchain-proof/summary.json
+            else
+              test -f data/lre-nix-toolchain-proof/environment-blocker.json
+            fi
+          '
+
+      - name: Upload LRE Nix toolchain proof artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lre-nix-toolchain-proof
+          path: |
+            data/lre-nix-toolchain-proof/summary.json
+            data/lre-nix-toolchain-proof/environment-blocker.json
           if-no-files-found: warn
 
   verify-demo-fixture:

@@ -1,0 +1,37 @@
+{
+  "status": "lre_bazelrc_generated",
+  "source_kind": "collectable_v1",
+  "confidence": "medium",
+  "redaction_state": "safe",
+  "evidence_refs": [
+    "script:lre-nix-toolchain-proof.sh",
+    "flake.nix",
+    "demo/bazel-monorepo/.bazelrc",
+    "demo/bazel-monorepo/MODULE.bazel"
+  ],
+  "lre_bazelrc_path": "lre.bazelrc",
+  "monorepo_lre_bazelrc_path": "demo/bazel-monorepo/lre.bazelrc",
+  "platform": "linux",
+  "machine": "x86_64",
+  "recorded_at": "2026-06-06T20:15:00Z",
+  "build_config_lre": {
+    "attempted": true,
+    "succeeded": true,
+    "target": "@local-remote-execution//examples:lre-cc",
+    "skip_reason": null
+  },
+  "claim_boundary": {
+    "supported": [
+      "Nix devShell generates lre.bazelrc with build:lre flags",
+      "demo/bazel-monorepo try-imports generated lre.bazelrc",
+      "MODULE.bazel resolves @local-remote-execution at pinned NativeLink rev"
+    ],
+    "unsupported": [
+      "hermetic local and remote cache hit parity",
+      "nlfr run --bazel-arg=--config=lre end-to-end ingest",
+      "aarch64-darwin full lre-cc builds",
+      "fleet scheduler dashboards",
+      "queue time and action placement correlation"
+    ]
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "status": "research_only",
+  "recorded_at": "2026-06-06T18:42:11Z",
+  "source_kind": "derived_v1",
+  "confidence": "high",
+  "redaction_state": "safe",
+  "evidence_refs": [
+    "script:fleet-claims-audit.sh",
+    "docs/dags/future-fleet-claims.md",
+    "src/nlfr/projectors/remote_execution.py",
+    "docs/ONE_PAGER.md"
+  ],
+  "broker_rule": "no implement workers for fleet/scheduler UI without new direct evidence parsers",
+  "supported_collectable_ceiling": [
+    "remote_executor configured (Bazel --remote_executor)",
+    "worker_endpoints_ready (configured workers + live endpoints)",
+    "worker_identity when admin stdout captured"
+  ],
+  "claims": [
+    {
+      "claim_id": "worker_identity",
+      "v1_policy": "conditional",
+      "parser": "nlfr.ingest.worker_admin_stdout.parse_worker_admin_stdout",
+      "sqlite_proof_block": "worker_admin_identity_v1",
+      "canvas_lens": "remote_boundary",
+      "one_pager": "explicitly_unproven",
+      "collectable_when": "nativelink.stdout.txt contains Worker <name> started lines",
+      "projection_behavior": "unsupported_claims_for_run drops worker_identity when direct evidence exists"
+    },
+    {
+      "claim_id": "action_placement",
+      "v1_policy": "out_of_scope",
+      "parser": null,
+      "sqlite_proof_block": null,
+      "canvas_lens": "remote_boundary",
+      "one_pager": "explicitly_unproven",
+      "blocker": "no per-action worker correlation parser beyond identity lines"
+    },
+    {
+      "claim_id": "queue_time",
+      "v1_policy": "out_of_scope",
+      "parser": null,
+      "sqlite_proof_block": null,
+      "canvas_lens": "remote_boundary",
+      "one_pager": "explicitly_unproven",
+      "blocker": "no BEP/execution-log queue timestamp parser"
+    },
+    {
+      "claim_id": "scheduler_assignment",
+      "v1_policy": "out_of_scope",
+      "parser": null,
+      "sqlite_proof_block": null,
+      "canvas_lens": "remote_boundary",
+      "one_pager": "explicitly_unproven",
+      "blocker": "no scheduler stdout / admin API assignment parser"
+    },
+    {
+      "claim_id": "load_distribution",
+      "v1_policy": "out_of_scope",
+      "parser": null,
+      "sqlite_proof_block": null,
+      "canvas_lens": "remote_boundary",
+      "one_pager": "explicitly_unproven",
+      "blocker": "two-worker config proves endpoints only, not work distribution"
+    }
+  ]
+}

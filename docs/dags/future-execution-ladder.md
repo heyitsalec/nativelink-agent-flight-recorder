@@ -14,9 +14,11 @@
 
 **NLFR meaning:** Record a Bazel workload where validation actually flows through NativeLink **remote execution** (not just cache-only or local-exec smoke), ingest stdout/admin evidence, and export projections with honest `collectable_v1` labels.
 
-**Current state:** Cache-only and local-exec proofs exist (`cold-warm-cache-proof.sh`, `local-exec-proof.sh`). LRE is listed as v1 item **#6 — when stable on the host**. Not proven in NLFR yet.
+**Current state:** Cache-only and local-exec proofs exist (`cold-warm-cache-proof.sh`, `local-exec-proof.sh`). **Wave-2 done:** phase-1 ceiling `lre_substrate_ready` (`collectable_v1`, `medium`) — `demo/nativelink/lre.json5` + `scripts/lre-proof.sh` → `data/lre-proof/summary.json` with `claim_boundary` (CI job `lre-proof-probe`). Does **not** claim hermetic Nix `--config=lre` or fleet correlation.
 
-**Broker?** **Yes, but only as a blocker-gated DAG** (`lre-proof`) once `nix develop` + NativeLink LRE config is green on CI or a designated host. Do **not** broker UI or narrative ahead of a real `summary.json`.
+**Phase-3 blocker (Nix LRE):** Hermetic `bazel --config=lre` requires TraceMachina Nix toolchain wiring (`flake.nix` + `MODULE.bazel`) — tracked as `claim_boundary.unsupported_until_nix_lre_toolchain`. Coordinator: `coord-lre-nix-phase3` (research → implement or honest blocker).
+
+**Broker?** **`lre-proof` wave-2 shipped.** Do **not** broker UI, fleet dashboards, or Nix LRE narrative ahead of phase-3 exit criteria and a real `summary.json`.
 
 ---
 
@@ -24,9 +26,9 @@
 
 **Meaning:** Tier 1 agent scenarios (`agent-bugfix-1`, `agent-feature-compare`) run `bazel test //tasks:priority_test` in GitHub Actions (or Nix job), not only `NLFR_SKIP_BAZEL=1` pytest fallback.
 
-**Current state:** `.github/workflows/nlfr-proof.yml` runs pytest, generic record, canvas dogfood, Nix cold-warm/agent-loop — but **not** demo monorepo Bazel targets for tier1 acts.
+**Current state:** **Done** — `scripts/tier1-bazel-ci-proof.sh` proves Act 1+2 validation with real Bazel (`//tasks:priority_test`); CI job `tier1-bazel` in `.github/workflows/nlfr-proof.yml` (Nix shell). Output: `data/tier1-bazel-ci/summary.json` or `environment-blocker.json`.
 
-**Broker?** **Yes, as a small DAG** (`ci-bazel-tier1`) **after** cache-only `nlfr doctor` gate is stable. Depends on Bazel + Java in CI or Nix shell; estimate 1–2 workers (workflow job + fixture doc). Lower priority than wave 5 close-out.
+**Broker?** **`ci-bazel-tier1` shipped.** Does not claim LRE or worker placement.
 
 ---
 
@@ -38,7 +40,9 @@
 
 **Current evidence ceiling:** `worker_endpoints_ready` (two workers configured + live endpoints) — not distribution, not identity correlation across runs.
 
-**Broker?** **No implementation DAG.** Optional **research-only** DAG (`future-fleet-claims`) to keep honesty docs synchronized — never spawn implement workers without new **direct evidence parsers** and SQLite rows. Reject Harmony-style fake worker personas.
+**Phase-3 blocker (fleet parsers):** Direct worker/admin log ingest and action-placement claims require **new collectable parsers**, SQLite proof blocks, and pytest per [`ARCHITECTURE_TRACK.md`](../ARCHITECTURE_TRACK.md) Phase 3 ladder — not research-matrix sync alone.
+
+**Broker?** **No implementation DAG.** **Wave-1 done:** research-only DAG [`future-fleet-claims.md`](future-fleet-claims.md) keeps honesty docs synchronized via `fleet-claims-audit.sh` claim matrix — never spawn implement workers without new **direct evidence parsers** and SQLite rows. Reject Harmony-style fake worker personas.
 
 ---
 
@@ -47,12 +51,14 @@
 | Priority | DAG id | Gate |
 |----------|--------|------|
 | — | *(done)* tier1-agent-vision wave 5 | integrate + dogfood |
+| — | *(done)* `lre-proof` wave-2 | `lre_substrate_ready`; phase-3 Nix LRE blocked |
+| — | *(done)* `ci-bazel-tier1` | `tier1-bazel` CI job + proof script |
+| — | *(done)* `future-fleet-claims` wave-1 | claim matrix + ONE_PAGER sync; phase-3 parsers blocked |
 | 1 | `ci-cache-only-gate` | `nlfr doctor --mode cache-only` on every PR |
 | 2 | `nlfr-doc-capture` wave 2 | tier1-aligned hero GIF refresh |
 | 3 | `tier1-canvas-polish` | composer UI + view/run-group selector |
-| 4 | `ci-bazel-tier1` | Bazel in CI for tier1 scenarios |
-| 5 | `lre-proof` | host has stable LRE + Nix |
-| — | `future-fleet-claims` | research only; no UI |
+| — | *(phase-3)* `lre-proof` wave-3 | Nix LRE toolchain OR honest blocker (`coord-lre-nix-phase3`) |
+| — | *(phase-3)* fleet evidence | direct admin/stdout parsers + SQLite rows (no UI until exit criteria) |
 
 ---
 

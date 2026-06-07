@@ -1,0 +1,29 @@
+{
+  "status": "lre_substrate_ready",
+  "source_kind": "collectable_v1",
+  "confidence": "medium",
+  "redaction_state": "safe",
+  "evidence_refs": [
+    "script:lre-proof.sh",
+    "script:local-exec-proof.sh",
+    "demo/nativelink/lre.json5"
+  ],
+  "lre_config": "demo/nativelink/lre.json5",
+  "remote_cache": "grpc://127.0.0.1:50071",
+  "remote_executor": "grpc://127.0.0.1:50071",
+  "local_exec_summary": "completed",
+  "recorded_at": "2026-06-06T18:42:11Z",
+  "claim_boundary": {
+    "supported": [
+      "LRE NativeLink server substrate configured",
+      "remote_executor smoke with lre.json5 endpoints",
+      "worker_endpoints_ready for one local worker"
+    ],
+    "unsupported_until_nix_lre_toolchain": [
+      "hermetic Nix toolchain parity across local and remote",
+      "generated lre.bazelrc / --config=lre cache hit parity",
+      "fleet scheduler dashboards",
+      "queue time and action placement correlation"
+    ]
+  }
+}

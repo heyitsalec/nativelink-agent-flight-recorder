@@ -1,0 +1,150 @@
+{
+  // LRE substrate config — NativeLink remote-executor smoke for NLFR lre-proof.sh.
+  // Hermetic Nix toolchain parity (--config=lre) is a separate Bazel/MODULE.bazel step;
+  // this file unlocks the LRE proof path without claiming full TraceMachina LRE yet.
+  "stores": [
+    {
+      "name": "AC_MAIN_STORE",
+      "filesystem": {
+        "content_path": "/tmp/nlfr-nativelink/lre/ac",
+        "temp_path": "/tmp/nlfr-nativelink/lre/tmp-ac",
+        "max_concurrent_writes": 8,
+        "eviction_policy": {
+          "max_bytes": 1000000000
+        }
+      }
+    },
+    {
+      "name": "WORKER_FAST_SLOW_STORE",
+      "fast_slow": {
+        "fast": {
+          "filesystem": {
+            "content_path": "/tmp/nlfr-nativelink/lre/cas",
+            "temp_path": "/tmp/nlfr-nativelink/lre/tmp-cas",
+            "max_concurrent_writes": 8,
+            "eviction_policy": {
+              "max_bytes": 5000000000
+            }
+          }
+        },
+        "slow": {
+          "noop": {}
+        }
+      }
+    }
+  ],
+  "schedulers": [
+    {
+      "name": "MAIN_SCHEDULER",
+      "simple": {
+        "supported_platform_properties": {
+          "cpu_count": "minimum",
+          "memory_kb": "minimum",
+          "network_kbps": "minimum",
+          "cpu_arch": "exact",
+          "OSFamily": "priority",
+          "container-image": "priority"
+        }
+      }
+    }
+  ],
+  "workers": [
+    {
+      "local": {
+        "worker_api_endpoint": {
+          "uri": "grpc://127.0.0.1:50081"
+        },
+        "cas_fast_slow_store": "WORKER_FAST_SLOW_STORE",
+        "upload_action_result": {
+          "ac_store": "AC_MAIN_STORE"
+        },
+        "work_directory": "/tmp/nlfr-nativelink/lre/work-1",
+        "platform_properties": {
+          "cpu_count": {
+            "values": ["2"]
+          },
+          "memory_kb": {
+            "values": ["2000000"]
+          },
+          "network_kbps": {
+            "values": ["100000"]
+          },
+          "cpu_arch": {
+            "values": ["x86_64"]
+          },
+          "OSFamily": {
+            "values": [""]
+          },
+          "container-image": {
+            "values": [""]
+          }
+        }
+      }
+    }
+  ],
+  "servers": [
+    {
+      "name": "lre_public",
+      "listener": {
+        "http": {
+          "socket_address": "127.0.0.1:50071"
+        }
+      },
+      "services": {
+        "cas": [
+          {
+            "instance_name": "main",
+            "cas_store": "WORKER_FAST_SLOW_STORE"
+          }
+        ],
+        "ac": [
+          {
+            "instance_name": "main",
+            "ac_store": "AC_MAIN_STORE"
+          }
+        ],
+        "execution": [
+          {
+            "instance_name": "main",
+            "cas_store": "WORKER_FAST_SLOW_STORE",
+            "scheduler": "MAIN_SCHEDULER"
+          }
+        ],
+        "capabilities": [
+          {
+            "instance_name": "main",
+            "remote_execution": {
+              "scheduler": "MAIN_SCHEDULER"
+            }
+          }
+        ],
+        "bytestream": [
+          {
+            "instance_name": "main",
+            "cas_store": "WORKER_FAST_SLOW_STORE"
+          }
+        ]
+      }
+    },
+    {
+      "name": "lre_worker_api",
+      "listener": {
+        "http": {
+          "socket_address": "127.0.0.1:50081"
+        }
+      },
+      "services": {
+        "worker_api": {
+          "scheduler": "MAIN_SCHEDULER"
+        },
+        "admin": {},
+        "health": {
+          "timeout_seconds": 2
+        }
+      }
+    }
+  ],
+  "global": {
+    "max_open_files": 8192
+  }
+}
