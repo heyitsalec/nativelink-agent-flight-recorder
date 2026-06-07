@@ -3,27 +3,27 @@
   "dimensions": [
     {
       "claims": [
-        "Left run group recorded 4 run(s).",
-        "Right run group recorded 3 run(s).",
-        "Run count delta is -1."
+        "Left run group recorded 6 run(s).",
+        "Right run group recorded 2 run(s).",
+        "Run count delta is -4."
       ],
       "confidence": "medium",
       "delta": {
-        "runs": -1
+        "runs": -4
       },
       "evidence_refs": [
-        "run_group:record-proof",
-        "run_group:canvas-dev"
+        "run_group:canvas-dev",
+        "run_group:agent-bugfix-1"
       ],
       "id": "run_counts",
       "left": {
-        "run_group": "record-proof",
-        "runs": 4
+        "run_group": "canvas-dev",
+        "runs": 6
       },
       "redaction_state": "safe",
       "right": {
-        "run_group": "canvas-dev",
-        "runs": 3
+        "run_group": "agent-bugfix-1",
+        "runs": 2
       },
       "source_kind": "derived_v1",
       "summary": "Recorded run counts from proof packet summaries.",
@@ -42,8 +42,8 @@
         "misses": 0
       },
       "evidence_refs": [
-        "run_group:record-proof",
-        "run_group:canvas-dev"
+        "run_group:canvas-dev",
+        "run_group:agent-bugfix-1"
       ],
       "id": "cache_metrics",
       "left": {
@@ -79,8 +79,8 @@
         "worker_identity_observed_changed": false
       },
       "evidence_refs": [
-        "run_group:record-proof",
-        "run_group:canvas-dev"
+        "run_group:canvas-dev",
+        "run_group:agent-bugfix-1"
       ],
       "id": "worker_identity",
       "left": {
@@ -98,16 +98,17 @@
       "claims": [
         "Agent provenance presence is derived from agent_provenance proof blocks.",
         "Left agent provenance block(s): 0.",
-        "Right agent provenance block(s): 0."
+        "Right agent provenance block(s): 2.",
+        "Agent provenance presence differs between run groups."
       ],
       "confidence": "medium",
       "delta": {
-        "block_count_delta": 0,
-        "present_changed": false
+        "block_count_delta": 2,
+        "present_changed": true
       },
       "evidence_refs": [
-        "run_group:record-proof",
-        "run_group:canvas-dev"
+        "run_group:canvas-dev",
+        "run_group:agent-bugfix-1"
       ],
       "id": "agent_provenance",
       "left": {
@@ -117,9 +118,42 @@
       },
       "redaction_state": "safe",
       "right": {
-        "block_count": 0,
-        "blocks": [],
-        "present": false
+        "block_count": 2,
+        "blocks": [
+          {
+            "confidence": "high",
+            "evidence_refs": [
+              "scenario:agent-change",
+              "agent:cursor-agent-change",
+              "run:run_3f72de8f7ebc796b40beea82",
+              "prompt:sha256:5b326db8593b9713861de82dea61a2b9d01d04a95f2919dc88f35dba5820932d",
+              "adapter:record-agent-change.sh"
+            ],
+            "id": "proof_blocks_79c337c055633cce2ef7a5cb",
+            "model": "composer-2.5",
+            "prompt_sha256_prefix": "5b326db8593b",
+            "redaction_state": "safe",
+            "source_kind": "collectable_v1",
+            "title": "Agent Provenance: cursor-agent-change"
+          },
+          {
+            "confidence": "high",
+            "evidence_refs": [
+              "scenario:agent-bugfix-1",
+              "agent:cursor-agent-change",
+              "run:run_a62deac46fa9ee8f15c3415a",
+              "prompt:sha256:a0c42719429deb3badd19b9baa0016b08abf08fb282db95f39a817024852ac58",
+              "adapter:record-agent-change.sh"
+            ],
+            "id": "proof_blocks_e667bf6a820d7e82467b351c",
+            "model": "composer-2.5",
+            "prompt_sha256_prefix": "a0c42719429d",
+            "redaction_state": "safe",
+            "source_kind": "collectable_v1",
+            "title": "Agent Provenance: cursor-agent-change"
+          }
+        ],
+        "present": true
       },
       "source_kind": "derived_v1",
       "summary": "Presence of bounded agent provenance blocks (model + prompt hash only).",
@@ -128,35 +162,35 @@
     {
       "claims": [
         "Status deltas are derived from recorded run rows in SQLite.",
-        "Left statuses: {'completed': 4}.",
-        "Right statuses: {'completed': 3}.",
+        "Left statuses: {'completed': 6}.",
+        "Right statuses: {'completed': 2}.",
         "At least one run status count differs between run groups."
       ],
       "confidence": "medium",
       "delta": {
         "by_status": {
           "completed": {
-            "delta": -1,
-            "left": 4,
-            "right": 3
+            "delta": -4,
+            "left": 6,
+            "right": 2
           }
         },
         "changed": true
       },
       "evidence_refs": [
-        "run_group:record-proof",
-        "run_group:canvas-dev"
+        "run_group:canvas-dev",
+        "run_group:agent-bugfix-1"
       ],
       "id": "status_deltas",
       "left": {
         "status_counts": {
-          "completed": 4
+          "completed": 6
         }
       },
       "redaction_state": "safe",
       "right": {
         "status_counts": {
-          "completed": 3
+          "completed": 2
         }
       },
       "source_kind": "derived_v1",
@@ -165,21 +199,21 @@
     }
   ],
   "evidence_refs": [
-    "run_group:record-proof",
-    "run_group:canvas-dev"
+    "run_group:canvas-dev",
+    "run_group:agent-bugfix-1"
   ],
-  "generated_at": "2026-06-07T00:50:12.895965Z",
-  "left_run_group": "record-proof",
+  "generated_at": "2026-06-07T03:55:22.322529Z",
+  "left_run_group": "canvas-dev",
   "projection_kind": "compare",
   "redaction_state": "safe",
-  "right_run_group": "canvas-dev",
+  "right_run_group": "agent-bugfix-1",
   "schema_version": 1,
   "source_kind": "derived_v1",
   "summary": {
     "dimensions": 5,
-    "left_artifacts": 12,
-    "left_runs": 4,
-    "right_artifacts": 18,
-    "right_runs": 3
+    "left_artifacts": 36,
+    "left_runs": 6,
+    "right_artifacts": 8,
+    "right_runs": 2
   }
 }

@@ -9,7 +9,7 @@ function viewIdFromQuery(): string | null {
 
 async function fetchRemoteViewSpec(viewId: string): Promise<ViewSpec | null> {
   try {
-    const response = await fetch(`/view-specs/${viewId}.json`);
+    const response = await fetch(`/views/${viewId}.json`);
     if (!response.ok) return null;
     const spec = (await response.json()) as ViewSpec;
     if (spec.schema_version !== "nlfr.view-spec.v1") return null;
@@ -21,7 +21,7 @@ async function fetchRemoteViewSpec(viewId: string): Promise<ViewSpec | null> {
 
 /**
  * View spec load precedence:
- * 1. Query `?view=<view_id>` — bundled template or `/view-specs/<view_id>.json`
+ * 1. Query `?view=<view_id>` — bundled template or `/views/<view_id>.json`
  * 2. `localStorage` key `nlfr.view-spec`
  * 3. Bundled `nlfr-default-v0`
  */

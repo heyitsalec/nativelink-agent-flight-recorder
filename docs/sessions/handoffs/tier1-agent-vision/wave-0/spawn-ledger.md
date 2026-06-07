@@ -1,6 +1,6 @@
 # Tier 1 Agent Vision — broker spawn ledger
 
-**Parent broker session:** complete  
+**Parent broker session:** complete (wave 5 close-out 2026-06-06)  
 **DAG:** tier1-agent-vision  
 **Mode:** broker-coordinated (coordinators return DispatchManifest only)  
 **KOS arming:** [`../KOS-startup-routing.md`](../KOS-startup-routing.md) · [`kos-arming.md`](kos-arming.md)  
@@ -52,9 +52,16 @@
 |-------|--------|
 | t3-i-composer | DONE |
 
+## Wave 5 — Integrate + dogfood
+
+| Agent | Status |
+|-------|--------|
+| coord-t1-integrate | DONE — promote-tier1-compare, tier1-demo view |
+| coord-t3-dogfood | DONE — record-canvas-build + act 3 |
+
 ## Wave 6 — Ship
 
-Parent proof gates: **all green** (81 pytest, tier1 dry-run, compare live, test:truth)
+Parent proof gates: **all green** (83 pytest, tier1 dry-run, compare live, test:truth)
 
 ## Rules
 

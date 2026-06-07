@@ -1,5 +1,10 @@
 # NLFR DAG Mirrors
 
+## Future — execution ladder (blocker-gated)
+
+LRE proof, Bazel tier1 CI, fleet dashboards: [future-execution-ladder.md](future-execution-ladder.md)  
+**Broker when unblocked** — not active implement DAGs.
+
 ## Active — Tier 1 Agent Vision (PER-TIER1-AGENT)
 
 Broker-coordinated DAG. Mirror: [tier1-agent-vision.md](tier1-agent-vision.md)  

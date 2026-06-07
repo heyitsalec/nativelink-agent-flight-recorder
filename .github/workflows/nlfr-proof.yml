@@ -31,6 +31,15 @@ jobs:
       - name: Python tests
         run: uv sync && uv run pytest -q
 
+      - name: NLFR doctor (cache-only)
+        run: PYTHONPATH=src uv run python -m nlfr doctor --mode cache-only --json
+
+      - name: Tier 1 demo dry-run
+        run: |
+          NLFR_SKIP_BAZEL=1 ./scripts/tier1-agent-demo.sh --dry-run
+          ./scripts/compare-agent-runs.sh --dry-run
+          ./scripts/promote-tier1-compare.sh --dry-run || true
+
       - name: Generic record proof
         run: ./scripts/record-proof.sh
 

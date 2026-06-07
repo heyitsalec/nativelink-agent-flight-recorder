@@ -1025,6 +1025,71 @@ input {
   margin-top: 14px;
 }
 
+.view-template-select {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.view-template-select select {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.2rem 0.4rem;
+}
+
+.composer-drawer {
+  position: fixed;
+  right: 1rem;
+  bottom: 5rem;
+  width: min(360px, 92vw);
+  max-height: 70vh;
+  overflow: auto;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  z-index: 40;
+}
+
+.composer-drawer header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.composer-drawer label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.75rem;
+  font-size: 0.8rem;
+}
+
+.composer-drawer input,
+.composer-drawer select {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.35rem 0.5rem;
+}
+
+.composer-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.composer-meta {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
 .operator {
   position: absolute;
   z-index: 6;
