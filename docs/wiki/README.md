@@ -46,6 +46,7 @@ Related operator docs: [CI recipe](../CI_RECIPE.md), [Demo script](../DEMO_SCRIP
 | [CLI](reference/cli.md) | `nlfr doctor`, `run`, `graph export`, `proof export`, `compare` |
 | [Truth labels](reference/truth-labels.md) | Four required fields on every projected claim |
 | [Proof scripts matrix](reference/proof-scripts-matrix.md) | Script → claim → artifact path |
+| [JSON contracts](reference/contracts/README.md) | Artifact manifest, proof packet, canvas projection, compare projection (M9) |
 
 External reference anchors:
 

@@ -1,0 +1,29 @@
+{
+  "compare_projection": "<repo>/data/compare-proof/projections/compare-projection.json",
+  "confidence": "medium",
+  "dimension_ids": [
+    "run_counts",
+    "cache_metrics",
+    "worker_identity",
+    "agent_provenance",
+    "status_deltas"
+  ],
+  "evidence_refs": [
+    "run_group:record-proof",
+    "run_group:canvas-dev"
+  ],
+  "left_db": "<repo>/data/record-proof/nlfr.sqlite",
+  "left_run_group": "record-proof",
+  "redaction_state": "safe",
+  "right_db": "<repo>/data/canvas-dev/nlfr.sqlite",
+  "right_run_group": "canvas-dev",
+  "source_kind": "derived_v1",
+  "status": "ok",
+  "summary": {
+    "dimensions": 5,
+    "left_artifacts": 0,
+    "left_runs": 1,
+    "right_artifacts": 0,
+    "right_runs": 1
+  }
+}

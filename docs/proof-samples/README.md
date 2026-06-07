@@ -37,7 +37,7 @@ GHA is offline per
 |-----------|-------------|-----------------|
 | **M7** worker parser | `worker_admin_stdout` promotes `worker_identity` when admin stdout is attached pre-ingest **and** lines match the M7 regex | **Conditional** — not global. Runs without captured stdout keep `worker_identity` in `unsupported_claims`. |
 | **M8** agent adapter | `record-agent-change.sh` with `model` + `prompt_sha256` only; dry-run and pytest paths proven | Agent leg may be `simulated_v1` (deterministic patch) or `collectable_v1` when live adapter + Bazel validation run. |
-| **M9** multi-run compare | `nlfr compare export`, canvas Compare lens, `scripts/compare-proof.sh` | `derived_v1` compare projection — no new collectable fleet claims. No committed compare sample yet; run `compare-proof.sh` locally. |
+| **M9** multi-run compare | `nlfr compare export`, canvas Compare lens, `scripts/compare-proof.sh` | `derived_v1` compare projection — no new collectable fleet claims. [`compare-summary.json`](compare-summary.json) excerpt committed. |
 | **Tier 1** live Bazel | `scripts/tier1-live-bazel-proof.sh` Acts 1+2 with `cursor_adapter_v1` + real Bazel | Fully `collectable_v1` with `bazel_validated: true` — not pytest fallback. |
 
 Fleet claim policy (what v1 will and will not promote) lives in
@@ -77,6 +77,7 @@ Fleet claim policy (what v1 will and will not promote) lives in
 | Sample | Produced by | `source_kind` · `confidence` | What it proves |
 |--------|-------------|-------------------------------|----------------|
 | [`fleet-claims-matrix-sample.json`](fleet-claims-matrix-sample.json) | `scripts/fleet-claims-audit.sh` | `derived_v1` · `high` | v1 fleet claim matrix: `worker_identity` is **conditional** (M7); scheduler, queue time, placement, and load distribution remain `out_of_scope`. |
+| [`compare-summary.json`](compare-summary.json) | `scripts/compare-proof.sh` | `derived_v1` · `medium` | M9 compare of `record-proof` vs `canvas-dev`: five dimension ids (`run_counts`, `cache_metrics`, `worker_identity`, `agent_provenance`, `status_deltas`). Does **not** claim cross-run worker correlation or scheduler assignment. Projection excerpt: [`compare-projection-sample.json`](compare-projection-sample.json). |
 
 ## M7 conditional `worker_identity`
 

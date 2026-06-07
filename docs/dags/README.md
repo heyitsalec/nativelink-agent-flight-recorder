@@ -1,5 +1,10 @@
 # NLFR DAG Mirrors
 
+## Active — Docs wiki wave 2 (wave-0 ARMED)
+
+[docs-wiki-wave2.md](docs-wiki-wave2.md) · Handoffs: `docs/sessions/handoffs/docs-wiki-wave2/wave-0/`  
+Wave-0 ceiling: close docs-excellence wave-1 gaps (historical banners, broker diagram, ADR-lite, compare sample, link audit). Control plane: `kos serve http://127.0.0.1:7423`, `dag_ref` `dag:nlfr-flagship`, `linear_authority: false`. Parallel coordinators: `coord-historical-banners`, `coord-broker-diagram`, `coord-wiki-adrs`, `coord-compare-sample`, `coord-link-audit`. Branch: `feat/docs-wiki-wave2`.
+
 ## Active — Docs excellence (wave-0 ARMED)
 
 [docs-excellence.md](docs-excellence.md) · Handoffs: `docs/sessions/handoffs/docs-excellence/wave-0/`  

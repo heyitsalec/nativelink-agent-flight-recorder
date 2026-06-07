@@ -75,6 +75,10 @@ End-to-end proof with fixture-backed DBs:
 Writes `data/compare-proof/summary.json` and projections under
 `data/compare-proof/projections/`.
 
+Redacted committed excerpt (fixture-backed `record-proof` vs `canvas-dev`):
+[`compare-summary.json`](../../proof-samples/compare-summary.json) and
+[`compare-projection-sample.json`](../../proof-samples/compare-projection-sample.json).
+
 Environment overrides: `NLFR_RECORD_PROOF_OUTPUT`, `NLFR_CANVAS_DEV_OUTPUT`,
 `NLFR_COMPARE_LEFT`, `NLFR_COMPARE_RIGHT`, `NLFR_COMPARE_OUTPUT`.
 
@@ -102,7 +106,7 @@ Mode contract: [design routing](../../design/routing.md).
 ## Verify
 
 ```bash
-uv run pytest -q tests/test_compare.py
+uv run pytest -q tests/test_compare.py tests/test_compare_proof_sample.py
 npm --prefix apps/canvas run test:truth
 ```
 
