@@ -1,13 +1,8 @@
 import { TEMPLATE_REFS } from "../../composer/templates";
 
-const VIEW_OPTIONS = [
-  ...TEMPLATE_REFS,
-  {
-    view_id: "tier1-demo",
-    title: "Tier 1 Demo",
-    description: "Compare lens + tier1 run groups",
-  },
-];
+const VIEW_OPTIONS = TEMPLATE_REFS.filter(
+  (ref, index) => TEMPLATE_REFS.findIndex((other) => other.view_id === ref.view_id) === index,
+);
 
 export function ViewTemplateSelector() {
   const current =

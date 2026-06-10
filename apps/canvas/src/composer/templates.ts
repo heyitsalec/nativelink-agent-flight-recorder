@@ -4,6 +4,7 @@ import type { ViewSpec } from "../view/types";
 import graphOnlyJson from "../../public/views/graph-only.json";
 import proofReviewJson from "../../public/views/proof-review.json";
 import tier1DemoJson from "../../public/views/tier1-demo.json";
+import twoActSparkJson from "../../public/views/two-act-spark.json";
 
 export type TemplateRef = {
   view_id: string;
@@ -37,6 +38,12 @@ export const TEMPLATE_REFS: TemplateRef[] = [
     description: "Compare-forward tier1 demo with canvas-dev bindings",
     source_kind: "derived_v1",
   },
+  {
+    view_id: "two-act-spark",
+    title: "Two-Act Spark — Failure vs Fix",
+    description: "Recorded failure→fix arc with verifiable agent receipts",
+    source_kind: "derived_v1",
+  },
 ];
 
 const BUNDLED_TEMPLATES: Record<string, ViewSpec> = {
@@ -44,6 +51,7 @@ const BUNDLED_TEMPLATES: Record<string, ViewSpec> = {
   "graph-only": graphOnlyJson as unknown as ViewSpec,
   "proof-review": proofReviewJson as unknown as ViewSpec,
   "tier1-demo": tier1DemoJson as unknown as ViewSpec,
+  "two-act-spark": twoActSparkJson as unknown as ViewSpec,
 };
 
 export function getTemplateRef(viewId: string): TemplateRef | undefined {
