@@ -87,24 +87,14 @@ Full index: [diagrams/README.md](../diagrams/README.md).
 |-------|------------|------------|
 | M7 worker identity | [Proof scripts matrix](reference/proof-scripts-matrix.md#m7-worker-evidence) | [Architecture track § Phase 3](../ARCHITECTURE_TRACK.md) |
 | M8 agent adapter | [Cursor adapter](../../adapters/cursor/README.md) | [Architecture track § Phase 4](../ARCHITECTURE_TRACK.md) |
-| M9 compare | [Export and compare](how-to/export-and-compare-run-groups.md) | [m5-m9-umbrella DAG](../dags/m5-m9-umbrella.md) |
-| Tier1 live Bazel | [Run tier1 demo](how-to/run-tier1-live-bazel-demo.md) | [tier1-live-bazel DAG](../dags/tier1-live-bazel.md) |
-| LRE proof | [Proof scripts matrix § LRE](reference/proof-scripts-matrix.md#lre-proof-ladder) | [lre-proof DAG](../dags/lre-proof.md) |
-| Fleet evidence v1 | [Proof scripts matrix § Fleet](reference/proof-scripts-matrix.md#fleet-evidence-v1) | [fleet-evidence-v1 DAG](../dags/fleet-evidence-v1.md) |
+| M9 compare | [Export and compare](how-to/export-and-compare-run-groups.md) | [M9 milestone record](../dags/m9-multi-run-compare.md) |
+| Tier1 live Bazel | [Run tier1 demo](how-to/run-tier1-live-bazel-demo.md) | [Architecture track](../ARCHITECTURE_TRACK.md) |
+| LRE proof | [Proof scripts matrix § LRE](reference/proof-scripts-matrix.md#lre-proof-ladder) | [Dev environment § LRE](../DEV_ENVIRONMENT.md#lre-proof-ladder) |
+| Fleet evidence v1 | [Proof scripts matrix § Fleet](reference/proof-scripts-matrix.md#fleet-evidence-v1) | [Future fleet claims](../dags/future-fleet-claims.md) |
 
-## GHA offline
-
-GitHub Actions may be non-green. Prefer local proof gates:
+## Local proof gates
 
 ```bash
 uv run pytest -q
 bash -n scripts/*.sh
 ```
-
-See [GHA offline proof shift](../sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md).
-
-## Maintainer-only
-
-Broker handoffs under [`docs/sessions/handoffs/`](../sessions/handoffs/README.md)
-are for coordinator maintainers — not required for operators. See
-[Docs index § Maintainer-only](../INDEX.md#maintainer-only-broker-handoffs).

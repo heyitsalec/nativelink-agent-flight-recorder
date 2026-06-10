@@ -53,7 +53,7 @@ Artifact manifests are written at record time under each run's artifact root as
 
 ## Proof samples and fixtures
 
-Redacted real-run excerpts: [proof samples](../../../../proof-samples/README.md).
+Redacted real-run excerpts: [proof samples](../../../proof-samples/README.md).
 
 Fixture-backed shapes for tests and docs:
 
@@ -76,4 +76,4 @@ These contracts do **not** define:
 - [Evidence-first architecture](../../explanation/evidence-first-architecture.md)
 - [Projection-only canvas](../../explanation/projection-only-canvas.md)
 - [Export and compare run groups](../../how-to/export-and-compare-run-groups.md)
-- [Compare projection flow diagram](../../../../diagrams/compare-projection-flow.md)
+- [Compare projection flow diagram](../../../diagrams/compare-projection-flow.md)

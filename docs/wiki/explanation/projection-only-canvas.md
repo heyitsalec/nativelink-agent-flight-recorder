@@ -71,8 +71,8 @@ visibility — not live backend correctness.
 ## M9 compare lens
 
 Compare mode loads `compare-projection.json` only. It shows deltas across run
-groups — not a unified fleet graph. Dimensions are documented in
-[m5-m9-umbrella integration brief](../../sessions/handoffs/m5-m9-umbrella/wave-2.5/integration-brief.md).
+groups — not a unified fleet graph. Dimensions are documented in the
+[compare projection contract](../reference/contracts/compare-projection-v1.md).
 
 ## M7 / M8 presentation
 
@@ -87,7 +87,7 @@ Hero GIFs must come from fixture projections or labeled dry-run output —
 [Media capture](../../MEDIA_CAPTURE.md). Tier1 and Nix demos export real
 projections first, then capture.
 
-## GHA offline
+## Local proof gates
 
 Canvas build and truth tests are local gates:
 
@@ -95,9 +95,6 @@ Canvas build and truth tests are local gates:
 npm --prefix apps/canvas run build
 npm --prefix apps/canvas run test:truth
 ```
-
-CI badge green is not required:
-[GHA offline proof shift](../../sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md).
 
 ## Related
 

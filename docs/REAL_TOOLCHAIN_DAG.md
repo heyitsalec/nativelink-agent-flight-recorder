@@ -1,12 +1,10 @@
 # Real NativeLink Toolchain Proof DAG
 
-> **Historical snapshot.** This DAG mirror records PER-1019 real NativeLink
+> **Historical snapshot.** This planning doc records real NativeLink
 > toolchain proof completion.
 > For current product truth and milestone status, use **[ONE_PAGER.md](ONE_PAGER.md)**
 > and **[ARCHITECTURE_TRACK.md](ARCHITECTURE_TRACK.md)**.
 > Deep dives: **[Wiki hub](wiki/README.md)**.
-
-Linear parent: [PER-1019](https://linear.app/gradschool/issue/PER-1019/nlfr-20-real-nativelink-toolchain-proof)
 
 ## Objective
 
@@ -15,15 +13,15 @@ local-exec proof on a host with Bazel and NativeLink installed.
 
 ## Children
 
-- PER-1020: Environment smoke (Nix/devcontainer). **Done**
-- PER-1021: Cold/warm NativeLink cache proof. **Done**
-- PER-1022: Local-exec smoke proof. **Done**
-- PER-1023: Artifact preservation and tryout update. **Done**
-- PER-1024: Real toolchain completion review. **Done**
+- Environment smoke (Nix/devcontainer). **Done**
+- Cold/warm NativeLink cache proof. **Done**
+- Local-exec smoke proof. **Done**
+- Artifact preservation and tryout update. **Done**
+- Real toolchain completion review. **Done**
 
 ## Result
 
-PER-1019 completed on 2026-06-06 with commit `635ee36` on `codex/per-998-nlfr-mvp`.
+Completed on 2026-06-06 with commit `635ee36`.
 
 Proof pass (inside `nix develop`):
 

@@ -40,7 +40,7 @@ canvas screenshots. Doc and diagram work can cite honest claim boundaries
 **Trade-offs:** UI richness is intentionally sparse until projections exist.
 Features that require live fleet dashboards, OTLP traces, or exact worker/action
 correlation stay `future` until direct evidence parsers land — not stubbed in the
-canvas. Broker and docs waves must not rewrite this ordering for narrative
+canvas. Later development passes must not rewrite this ordering for narrative
 convenience.
 
 **Related:** [`AGENTS.md`](../../../AGENTS.md) product rule · [Projection-only canvas](../explanation/projection-only-canvas.md) · [Truth labels](../reference/truth-labels.md)

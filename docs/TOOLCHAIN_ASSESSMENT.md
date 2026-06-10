@@ -1,12 +1,12 @@
 # Host Toolchain Assessment
 
-> **Historical snapshot.** This host toolchain assessment records the PER-1019
-> Nix proof pass at commit `635ee36`.
+> **Historical snapshot.** This host toolchain assessment records the
+> real-toolchain Nix proof pass at commit `635ee36`.
 > For current product truth and milestone status, use **[ONE_PAGER.md](ONE_PAGER.md)**
 > and **[ARCHITECTURE_TRACK.md](ARCHITECTURE_TRACK.md)**.
 > Deep dives: **[Wiki hub](wiki/README.md)**.
 
-Date: 2026-06-06 (updated after PER-1019 proof pass)
+Date: 2026-06-06 (updated after the real-toolchain proof pass)
 
 ## Toolchain-Ready Host (Nix develop)
 

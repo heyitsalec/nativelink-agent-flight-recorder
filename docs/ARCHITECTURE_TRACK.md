@@ -1,6 +1,6 @@
 # NLFR Architecture Track
 
-Linear parent: [PER-1058](https://linear.app/gradschool/issue/PER-1058) — **NLFR-ARCH — Architecturally sound track**
+Track: **NLFR-ARCH — Architecturally sound track**
 
 Supersedes the launch-demo shortcut. Harden L0–L2 before expanding L3/L4 or changing product shape.
 
@@ -40,7 +40,8 @@ Never let C rewrite what B proved. Never let canvas (L3) add claims B did not co
 
 SQLite + manifest + ingest + projectors + canvas.
 
-Foundation issues: PER-998, PER-1007, PER-1013, PER-1019, PER-1053.
+Foundation work: MVP implementation, evidence/proof-drawer extension, local
+remote-execution proof, real-toolchain proof, and the product vision pass.
 
 **Rule:** no schema/contract breaks without migration + fixture tests.
 
@@ -53,7 +54,7 @@ Foundation issues: PER-998, PER-1007, PER-1013, PER-1019, PER-1053.
 - Optional: redacted `docs/proof-samples/` from real `summary.json`
 - **Not:** new features; polish and packaging only
 
-**Exit:** A-O1 (PER-1055), D-O1 (PER-1057) sign-off.
+**Exit:** tryout-kit and integration sign-off.
 
 ### Phase 2 — Quantified “fast” (Ring 3, cache leg) → **M2** (done)
 
@@ -149,10 +150,10 @@ The graph projector now also derives the `agent` node from the
 
 | Milestone | Proves | Ring | Status | Linear |
 |-----------|--------|------|--------|--------|
-| M1 | PR merged + tryout tag | Ring 1 ~95% | done | child of PER-1058 |
-| M2 | Cold/warm metrics in proof packet | Ring 3 cache leg | done (`data/cold-warm-proof/summary.json`) | child of PER-1058 |
-| M3 | Two-worker live Nix `summary.json` | Ring 3 cache+remote leg | done (`data/local-exec-proof-2w/summary.json`) | child of PER-1058 |
-| M4 | One bounded LLM patch + full provenance chain | Ring 2+3 bridge | done (`data/agent-loop-proof/summary.json`) | child of PER-1058 |
+| M1 | PR merged + tryout tag | Ring 1 ~95% | done | architecture track |
+| M2 | Cold/warm metrics in proof packet | Ring 3 cache leg | done (`data/cold-warm-proof/summary.json`) | architecture track |
+| M3 | Two-worker live Nix `summary.json` | Ring 3 cache+remote leg | done (`data/local-exec-proof-2w/summary.json`) | architecture track |
+| M4 | One bounded LLM patch + full provenance chain | Ring 2+3 bridge | done (`data/agent-loop-proof/summary.json`) | architecture track |
 
 After M4: credibly at reference-kit + credible substrate demo, not operator
 console or enterprise provenance yet. M7 adds conditional worker identity when

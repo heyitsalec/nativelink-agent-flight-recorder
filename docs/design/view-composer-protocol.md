@@ -425,4 +425,3 @@ Composer UI screens (MVP):
 | [`component-catalog.md`](./component-catalog.md) | 15 kinds, testids, props |
 | [`view-spec.v1.schema.json`](./view-spec.v1.schema.json) | Machine validation |
 | [`routing.md`](./routing.md) | Modes, `visible_when`, selection-reset |
-| `docs/sessions/handoffs/tier1-agent-vision/wave-1/provenance-t3-view-systems.md` | Research input |

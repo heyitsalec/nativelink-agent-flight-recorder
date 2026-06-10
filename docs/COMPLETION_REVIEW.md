@@ -1,17 +1,13 @@
 # Completion Review
 
-> **Historical snapshot.** This completion review records PER-998 / PER-1013 /
-> PER-1019 / PER-1053 milestone closure evidence as of 2026-06-06.
+> **Historical snapshot.** This completion review records MVP, local
+> remote-execution, real-toolchain, and vision milestone closure evidence as
+> of 2026-06-06.
 > For current product truth and milestone status, use **[ONE_PAGER.md](ONE_PAGER.md)**
 > and **[ARCHITECTURE_TRACK.md](ARCHITECTURE_TRACK.md)**.
 > Deep dives: **[Wiki hub](wiki/README.md)**.
 
 Date: 2026-06-06
-
-Linear parent: [PER-998](https://linear.app/gradschool/issue/PER-998/nlfr-0-implement-nativelink-agent-flight-recorder-mvp)
-
-Remote-execution extension parent:
-[PER-1013](https://linear.app/gradschool/issue/PER-1013/nlfr-14-local-remote-execution-worker-proof)
 
 ## Result
 
@@ -29,14 +25,14 @@ overclaiming:
 
 ## Completed Workstreams
 
-- PER-999 Data spine: Done
-- PER-1000 CLI shell: Done
-- PER-1001 Demo Bazel workload: Done
-- PER-1002 NativeLink/Bazel runners: Done
-- PER-1003 Evidence parsers and fixture ingest: Done
-- PER-1004 Projection contracts and proof packet: Done
-- PER-1005 Sparse canvas consumer: Done
-- PER-1006 End-to-end proof, README, and completion review: Done by this review
+- Data spine: Done
+- CLI shell: Done
+- Demo Bazel workload: Done
+- NativeLink/Bazel runners: Done
+- Evidence parsers and fixture ingest: Done
+- Projection contracts and proof packet: Done
+- Sparse canvas consumer: Done
+- End-to-end proof, README, and completion review: Done by this review
 
 ## Proof
 
@@ -105,17 +101,17 @@ Visual artifacts captured with Playwright:
 - Add one real LLM-generated patch as a bounded narrative spark after the
   deterministic worker proof is stable.
 
-## PER-1013 Worker-First Extension Review
+## Worker-First Extension Review
 
-PER-1013 extends the MVP with a conservative local remote-execution proof path.
+The worker-first extension adds a conservative local remote-execution proof path.
 
 Completed children:
 
-- PER-1014: reproducible Nix/devcontainer setup.
-- PER-1015: remote execution evidence model.
-- PER-1016: one-worker readiness and two-worker gate behavior.
-- PER-1017: canvas Remote Boundary lens.
-- PER-1018: final tryout packet and proof reconciliation.
+- Reproducible Nix/devcontainer setup.
+- Remote execution evidence model.
+- One-worker readiness and two-worker gate behavior.
+- Canvas Remote Boundary lens.
+- Final tryout packet and proof reconciliation.
 
 Fresh review evidence:
 
@@ -137,7 +133,7 @@ Host blockers remain explicit:
 
 The final tryout packet is [TRYOUT_PACKET.md](TRYOUT_PACKET.md).
 
-## PER-1019 Coordinator Takeover Addendum
+## Real-Toolchain Coordinator Takeover Addendum
 
 Date: 2026-06-06
 
@@ -145,8 +141,7 @@ Coordinator actions:
 
 - Initial Git commit `e1e9070` on `codex/per-998-nlfr-mvp` (was fully untracked).
 - Knowledge OS project pack at `knowledge-os/projects/nlfr/pack.md`.
-- Linear parent [PER-1019](https://linear.app/gradschool/issue/PER-1019) armed
-  with children PER-1020 through PER-1024.
+- Real-toolchain proof track armed.
 - Repo-local DAG mirror: [docs/REAL_TOOLCHAIN_DAG.md](REAL_TOOLCHAIN_DAG.md).
 - Host assessment: [docs/TOOLCHAIN_ASSESSMENT.md](TOOLCHAIN_ASSESSMENT.md).
 
@@ -155,7 +150,7 @@ Real toolchain proof on this host:
 - `scripts/cold-warm-cache-proof.sh` → `environment_blocker` (no NativeLink).
 - `scripts/local-exec-proof.sh` → `environment_blocker` (no NativeLink).
 
-PER-1019 closed 2026-06-06 with commit `635ee36`:
+The real-toolchain track closed 2026-06-06 with commit `635ee36`:
 
 - Nix/Determinate installed; disk cleanup freed ~82GB for first proof run
 - `nix develop` provides NativeLink 1.3.2 + Bazel 9.1.1
@@ -168,12 +163,11 @@ Unsupported claims remain explicit: worker identity is **conditional** on M7
 admin stdout (`collectable_v1` when attached and regex matches); scheduler
 assignment, queue time, action placement, and load distribution stay unsupported.
 
-## PER-1053 Vision DAG Addendum
+## Vision DAG Addendum
 
 Date: 2026-06-06
 
-Umbrella [PER-1053](https://linear.app/gradschool/issue/PER-1053) executed serial
-A→B→C→D in single coordinator session.
+The vision umbrella executed serial A→B→C→D in a single coordinator session.
 
 | Sub-DAG | Result |
 |---------|--------|
@@ -191,7 +185,7 @@ Framing distance: [docs/FRAMING_DISTANCE.md](FRAMING_DISTANCE.md)
 
 Operator gates (A-O1, B-O1, D-O1): pending human read-through.
 
-## PER-1058 Live Milestone Proofs Addendum
+## Live Milestone Proofs Addendum
 
 Date: 2026-06-06
 

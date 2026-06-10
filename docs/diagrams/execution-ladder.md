@@ -32,7 +32,7 @@ flowchart TB
 | L4 stdout ingest | Proven (M7) | `collectable_v1` | `high` | Parser rows in SQLite |
 | L5 worker identity | Conditional | `collectable_v1` | `high` when stdout pre-attached | Identity from admin stdout regex — not scheduler |
 | L6 placement / queue | **Unsupported** | `future` | `unknown` | No graph nodes without new parsers |
-| L7 LRE / fleet | Partial probe | `collectable_v1` or blocker | `medium` | LRE cold/warm wired; CI green not required while GHA offline |
+| L7 LRE / fleet | Partial probe | `collectable_v1` or blocker | `medium` | LRE cold/warm wired; local proof gates canonical until CI restore |
 
 **Stop rules:** If a rung would report a blocker as success, stop — architectural violation. Canvas (L3 consume) must not add claims the ladder did not collect.
 

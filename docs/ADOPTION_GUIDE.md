@@ -98,7 +98,7 @@ See [`DEV_ENVIRONMENT.md`](DEV_ENVIRONMENT.md), [`TRYOUT_PACKET.md`](TRYOUT_PACK
 
 ## Skeptic path (CI artifacts)
 
-GitHub Actions may be **non-green** (~1 month offline as of 2026-06-06). Do not block evaluation on a green workflow badge. Prefer local gates from [GHA offline proof shift](sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md).
+Local proof gates (`uv run pytest -q`, `./scripts/verify-demo.sh`) are the canonical verification; see the README Status section for current CI state.
 
 **Fast PR gate:** [`scripts/cache-only-ci-gate.sh`](../scripts/cache-only-ci-gate.sh) (or workflow **`NLFR cache-only gate`**) proves the cache-only doctor JSON contract plus pytest smoke — independent of full proof restore. See [Cache-only gate](CI_RECIPE.md#cache-only-gate-pr-safe) in [`CI_RECIPE.md`](CI_RECIPE.md).
 
@@ -159,7 +159,7 @@ Per [`future-fleet-claims.md`](dags/future-fleet-claims.md) and [`ONE_PAGER.md`]
 | Multi-machine fleet ops dashboards | **Out of scope** |
 | Live Cursor→Bazel E2E in every proof script | M8 dry-run + tier1-live-bazel proven; generic agent-loop still `simulated_v1` on agent leg |
 
-LRE ceiling: substrate + Nix toolchain + optional cold/warm parity on x86_64-linux — not hermetic container-image parity. See [`dags/lre-proof.md`](dags/lre-proof.md).
+LRE ceiling: substrate + Nix toolchain + optional cold/warm parity on x86_64-linux — not hermetic container-image parity. See [`DEV_ENVIRONMENT.md` § LRE](DEV_ENVIRONMENT.md#lre-proof-ladder).
 
 ## Questions the MVP answers today
 
@@ -178,6 +178,6 @@ LRE ceiling: substrate + Nix toolchain + optional cold/warm parity on x86_64-lin
 
 M5 CI → M6 polish → M7 parser → M8 adapter → M9 compare → LRE phases → fleet-evidence-v1 stdout breadth.
 
-Mirror: [`dags/m5-m9-umbrella.md`](dags/m5-m9-umbrella.md) · [Wiki hub](wiki/README.md)
+More: [Wiki hub](wiki/README.md)
 
 ← [Docs index](INDEX.md)

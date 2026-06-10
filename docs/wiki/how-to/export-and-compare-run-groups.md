@@ -14,8 +14,8 @@ across two groups. The canvas Compare mode renders **only** exported compare JSO
 - For cross-DB compare: two DBs (e.g. `record-proof` and `canvas-dev`)
 
 M9 does **not** merge worker graphs across runs or claim queue time / placement.
-See [Architecture track](../../ARCHITECTURE_TRACK.md) and
-[m5-m9-umbrella integration brief](../../sessions/handoffs/m5-m9-umbrella/wave-2.5/integration-brief.md).
+See [Architecture track](../../ARCHITECTURE_TRACK.md) and the
+[compare projection contract](../reference/contracts/compare-projection-v1.md).
 
 ## List run groups (retention index)
 
@@ -127,11 +127,6 @@ Mode contract: [design routing](../../design/routing.md).
 uv run pytest -q tests/test_compare.py tests/test_compare_proof_sample.py
 npm --prefix apps/canvas run test:truth
 ```
-
-## GHA offline
-
-Compare proof is local-gate friendly. CI promotion of redacted samples is deferred:
-[GHA offline proof shift](../../sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md).
 
 ## Related
 

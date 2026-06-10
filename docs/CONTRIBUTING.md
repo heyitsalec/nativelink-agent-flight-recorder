@@ -31,16 +31,13 @@ render canvas from projections only.
    update tests that exercise real files, SQLite schemas, or serializers — not
    mocks of the evidence path.
 
-### GitHub Actions offline (2026-06-06)
+### CI policy
 
-Workflows in [`.github/workflows/nlfr-proof.yml`](../.github/workflows/nlfr-proof.yml)
-may be non-green. **Do not block** doc or code PRs on CI green while Actions are
-offline. Use the local gates above instead.
-
-See [GHA offline proof shift](sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md)
-for merge policy and revisit triggers. Do not claim CI passed until workflows
-actually pass. Promote redacted samples to [`proof-samples/`](proof-samples/) only
-after a sustained green `nlfr-proof.yml` run.
+CI lives in [`.github/workflows/nlfr-proof.yml`](../.github/workflows/nlfr-proof.yml).
+The local gates above are the canonical pre-merge verification. Do not claim CI
+passed until workflows actually pass. Promote redacted samples to
+[`proof-samples/`](proof-samples/) only after a sustained green `nlfr-proof.yml`
+run.
 
 ## Proof scripts
 
