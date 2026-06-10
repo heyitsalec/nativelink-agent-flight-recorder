@@ -118,8 +118,3 @@ Out of v1 scope per [AGENTS.md](../../../AGENTS.md):
 - [Proof scripts matrix](../reference/proof-scripts-matrix.md)
 - [Design routing](../../design/routing.md)
 - [Cursor adapter](../../../adapters/cursor/README.md) — M8 reference architecture
-
-## Maintainer-only
-
-Broker handoffs document wave integration — not operator prerequisites:
-[Docs index § Maintainer-only](../../INDEX.md#maintainer-only-broker-handoffs).

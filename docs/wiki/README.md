@@ -89,7 +89,7 @@ Full index: [diagrams/README.md](../diagrams/README.md).
 | M8 agent adapter | [Cursor adapter](../../adapters/cursor/README.md) | [Architecture track § Phase 4](../ARCHITECTURE_TRACK.md) |
 | M9 compare | [Export and compare](how-to/export-and-compare-run-groups.md) | [M9 milestone record](../dags/m9-multi-run-compare.md) |
 | Tier1 live Bazel | [Run tier1 demo](how-to/run-tier1-live-bazel-demo.md) | [Architecture track](../ARCHITECTURE_TRACK.md) |
-| LRE proof | [Proof scripts matrix § LRE](reference/proof-scripts-matrix.md#lre-proof-ladder) | [Dev environment § LRE](../DEV_ENVIRONMENT.md#lre--proof-ladder-substrate--toolchain--cache-parity) |
+| LRE proof | [Proof scripts matrix § LRE](reference/proof-scripts-matrix.md#lre-proof-ladder) | [Dev environment § LRE](../DEV_ENVIRONMENT.md#lre-proof-ladder) |
 | Fleet evidence v1 | [Proof scripts matrix § Fleet](reference/proof-scripts-matrix.md#fleet-evidence-v1) | [Future fleet claims](../dags/future-fleet-claims.md) |
 
 ## Local proof gates

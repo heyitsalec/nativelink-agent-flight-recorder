@@ -20,7 +20,7 @@ Add a new numbered ADR when a choice:
 
 - Gates implementation work tracked in [`IMPLEMENTATION_DAG.md`](../../IMPLEMENTATION_DAG.md) or [`ARCHITECTURE_TRACK.md`](../../ARCHITECTURE_TRACK.md)
 - Changes operator expectations (CLI, proof scripts, canvas contract)
-- Establishes a doc or broker pattern reused across waves
+- Establishes a documentation pattern reused across milestones
 
 Skip ADRs for routine typo fixes or single-file refactors.
 

@@ -4,7 +4,7 @@
 
 **Status (2026-06-06):** GitHub Actions cannot be exercised from this repo — this matrix is **documentation only**. Use it when the first sustained green [`nlfr-proof.yml`](../../.github/workflows/nlfr-proof.yml) run completes.
 
-Canonical procedure: [`../GITHUB_RELEASE.md`](../GITHUB_RELEASE.md#gha-offline--promotion-runbook) · restore checklist: [`../GHA_RESTORE_RUNBOOK.md`](../GHA_RESTORE_RUNBOOK.md) · sample catalog: [`README.md`](README.md).
+Canonical procedure: [`../GITHUB_RELEASE.md`](../GITHUB_RELEASE.md#ci-restore--promotion-runbook) · restore checklist: [`../GHA_RESTORE_RUNBOOK.md`](../GHA_RESTORE_RUNBOOK.md) · sample catalog: [`README.md`](README.md).
 
 ---
 
@@ -97,7 +97,7 @@ jq . docs/proof-samples/*.json
 
 ## Related docs
 
-- Release runbook: [`../GITHUB_RELEASE.md`](../GITHUB_RELEASE.md#gha-offline--promotion-runbook)
+- Release runbook: [`../GITHUB_RELEASE.md`](../GITHUB_RELEASE.md#ci-restore--promotion-runbook)
 - GHA restore phases: [`../GHA_RESTORE_RUNBOOK.md`](../GHA_RESTORE_RUNBOOK.md)
 - Job matrix and local substitutes: [`../CI_RECIPE.md`](../CI_RECIPE.md)
 - Sample catalog and honesty contract: [`README.md`](README.md)

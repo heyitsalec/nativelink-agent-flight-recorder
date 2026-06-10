@@ -159,7 +159,7 @@ are fully `collectable_v1` with `bazel_validated: true` from
 groups, not new backend observations.
 
 **LRE Linux manual sample** (`lre-cold-warm-proof-linux-manual-sample.json`)
-documents the operator-owned phase-4 path while GHA is offline. On Darwin it
+documents the operator-owned phase-4 path until CI promotion lands. On Darwin it
 records an honest `environment_blocker` — cite it instead of fabricating
 `lre_cache_parity_observed` metrics. After a green x86_64-linux
 `nix develop` run, promote redacted output to

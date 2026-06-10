@@ -23,8 +23,8 @@ Related:
 | Warm `hit_rate` exceeds cold on `//tasks:priority_test` through LRE endpoints | aarch64-darwin full LRE cold/warm green path |
 | | Fleet scheduler dashboards, queue time, action placement correlation |
 
-Do not claim LRE cache parity from CI while GHA is offline unless you have a local green
-`summary.json` or cite the redacted sample in [`proof-samples/`](proof-samples/).
+Do not claim LRE cache parity without a green `summary.json` — run it locally
+or cite the redacted sample in [`proof-samples/`](proof-samples/).
 
 ## Darwin blocker honesty
 
@@ -198,7 +198,7 @@ only** — do not fabricate parity metrics.
 | `missing nativelink` / `missing bazel` | Plain host without Nix shell | `nix develop --command ./scripts/lre-cold-warm-proof.sh` |
 | Warm `hit_rate` not higher than cold | Stale cache or shared output base | Re-run script (it clears cache root); confirm separate `bazel-output-cold` / `warm` |
 
-## Proof gates (broker / review packet)
+## Proof gates (review packet)
 
 ```bash
 uv run pytest tests/test_lre_proof.py -q

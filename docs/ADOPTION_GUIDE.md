@@ -159,7 +159,7 @@ Per [`future-fleet-claims.md`](dags/future-fleet-claims.md) and [`ONE_PAGER.md`]
 | Multi-machine fleet ops dashboards | **Out of scope** |
 | Live Cursor→Bazel E2E in every proof script | M8 dry-run + tier1-live-bazel proven; generic agent-loop still `simulated_v1` on agent leg |
 
-LRE ceiling: substrate + Nix toolchain + optional cold/warm parity on x86_64-linux — not hermetic container-image parity. See [`DEV_ENVIRONMENT.md` § LRE](DEV_ENVIRONMENT.md#lre--proof-ladder-substrate--toolchain--cache-parity).
+LRE ceiling: substrate + Nix toolchain + optional cold/warm parity on x86_64-linux — not hermetic container-image parity. See [`DEV_ENVIRONMENT.md` § LRE](DEV_ENVIRONMENT.md#lre-proof-ladder).
 
 ## Questions the MVP answers today
 

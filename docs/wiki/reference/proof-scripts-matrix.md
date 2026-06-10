@@ -129,9 +129,7 @@ uv run pytest tests/test_tier1_live_bazel.py -q
 uv run pytest tests/test_worker_admin_stdout.py -q
 ```
 
-## GHA offline
-
-Parent proof gates substitute for CI:
+## Local proof gates
 
 ```bash
 uv run pytest -q

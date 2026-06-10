@@ -103,7 +103,7 @@ Index: [diagrams/README.md](diagrams/README.md).
 | **M8** agent adapter | Bounded provenance (`model` + `prompt_sha256` only) | [Cursor adapter](../adapters/cursor/README.md), `scripts/record-agent-change.sh` |
 | **M9** multi-run compare | `derived_v1` deltas across run groups; compare lens | [How-to: export and compare](wiki/how-to/export-and-compare-run-groups.md), `scripts/compare-proof.sh` |
 | **Tier1 live Bazel** | Acts 1+2 with real Bazel via `tier1-agent-demo.sh` | [How-to: tier1](wiki/how-to/run-tier1-live-bazel-demo.md), `scripts/tier1-live-bazel-proof.sh` |
-| **LRE proof** | LRE substrate, Nix toolchain, cold/warm parity (x86_64-linux) | [Dev environment § LRE](DEV_ENVIRONMENT.md#lre--proof-ladder-substrate--toolchain--cache-parity), `scripts/lre-cold-warm-proof.sh` |
+| **LRE proof** | LRE substrate, Nix toolchain, cold/warm parity (x86_64-linux) | [Dev environment § LRE](DEV_ENVIRONMENT.md#lre-proof-ladder), `scripts/lre-cold-warm-proof.sh` |
 | **Fleet evidence v1** | Stdout ingest breadth for M7 parser; not fleet dashboards | [future fleet claims](dags/future-fleet-claims.md), [proof scripts matrix](wiki/reference/proof-scripts-matrix.md) |
 
 ## Canonical evidence flow

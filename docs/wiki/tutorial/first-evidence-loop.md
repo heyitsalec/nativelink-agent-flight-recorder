@@ -78,10 +78,9 @@ Open `proof-packet.json` (or the Proof Packet mode). Confirm:
 
 Boundaries: [One pager § What is explicitly unproven](../../ONE_PAGER.md).
 
-## Local gates (GHA offline)
+## Local gates
 
-CI may be non-green. This tutorial succeeds on `verify-demo.sh` + local pytest only.
-Do not wait for GitHub Actions.
+This tutorial succeeds on `verify-demo.sh` + local pytest only.
 
 ```bash
 uv run pytest -q

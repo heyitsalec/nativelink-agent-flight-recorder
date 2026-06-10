@@ -50,7 +50,7 @@ nix develop --command ./scripts/lre-nix-toolchain-proof.sh
 nix develop --command ./scripts/lre-cold-warm-proof.sh   # x86_64-linux Nix only
 ```
 
-### GHA offline (current default)
+### Verification before the first green CI run
 
 Until `nlfr-proof.yml` produces a sustained green run, the local gates above
 are the canonical verification. Do not claim CI passed until workflows actually
@@ -89,7 +89,7 @@ GHA artifact → sample map: [`proof-samples/CI_PROMOTION_MATRIX.md`](proof-samp
 **Provenance note:** committed samples today are from author Nix runs. Linux CI
 promotion is the credibility upgrade when GHA returns (runbook below).
 
-## GHA offline → promotion runbook
+## CI restore → promotion runbook
 
 Use this when GitHub Actions recovers and `nlfr-proof.yml` produces green
 artifacts. Until then, skip promotion and cite local proof + existing samples.
@@ -174,5 +174,5 @@ Create GitHub Release with:
 
 Job matrix and local reproduction: [`CI_RECIPE.md`](CI_RECIPE.md).
 
-When GHA is offline, [`CI_RECIPE.md`](CI_RECIPE.md) documents the same scripts
-as local substitutes — never imply CI green without a passing workflow run.
+[`CI_RECIPE.md`](CI_RECIPE.md) documents the same scripts as local
+substitutes — never imply CI green without a passing workflow run.

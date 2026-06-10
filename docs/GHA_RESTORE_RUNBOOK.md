@@ -18,8 +18,8 @@ Trigger when **any** of the following is true:
 1. Operator declares GHA restored.
 2. First sustained green run on [`.github/workflows/nlfr-proof.yml`](../.github/workflows/nlfr-proof.yml).
 
-Until then: **do not block** merge, ship, or doc review on CI green. Use local gates in
-[`CI_RECIPE.md`](CI_RECIPE.md#gha-offline-policy).
+Until then, local gates are the canonical verification — see
+[`CI_RECIPE.md`](CI_RECIPE.md#local-verification-policy).
 
 ---
 
@@ -141,7 +141,7 @@ After the first green `main` run:
 
 ## Phase 2 — Promote artifacts to `proof-samples/`
 
-Follow [`GITHUB_RELEASE.md`](GITHUB_RELEASE.md#gha-offline--promotion-runbook) (promotion
+Follow [`GITHUB_RELEASE.md`](GITHUB_RELEASE.md#ci-restore--promotion-runbook) (promotion
 runbook). Summary below; release doc is canonical for redaction rules and doc touch list.
 
 ### 2.1 Confirm promotable outputs
@@ -274,5 +274,5 @@ Full matrix: [`CI_RECIPE.md`](CI_RECIPE.md#local-substitutes-by-job).
 
 - Job matrix and artifact paths: [`CI_RECIPE.md`](CI_RECIPE.md)
 - Restore checklist (operator tick list): [`CI_RECIPE.md`](CI_RECIPE.md#gha-restore-checklist)
-- Release promotion detail: [`GITHUB_RELEASE.md`](GITHUB_RELEASE.md#gha-offline--promotion-runbook)
+- Release promotion detail: [`GITHUB_RELEASE.md`](GITHUB_RELEASE.md#ci-restore--promotion-runbook)
 - Sample catalog: [`proof-samples/README.md`](proof-samples/README.md)

@@ -67,9 +67,9 @@ demo legs remain `simulated_v1` where fixtures apply.
 
 Reference: [truth labels](../reference/truth-labels.md).
 
-## GHA offline
+## Local proof gates
 
-Tier1 proof is validated locally. Do not block on CI green:
+Tier1 proof is validated locally:
 
 ```bash
 uv run pytest -q tests/test_tier1_live_bazel.py
