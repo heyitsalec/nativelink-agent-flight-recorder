@@ -11,9 +11,11 @@ from nlfr.projectors.common import run_rows, write_or_print
 from nlfr.projectors.compare import (
     build_compare_projection,
     export_compare_projection,
+    export_history_projection,
     list_run_group_index,
 )
 from nlfr.projectors.proof import export_proof_packet
+from nlfr.retention_policy import retention_policy_summary
 
 
 def export_compare(args: argparse.Namespace) -> int:
@@ -47,18 +49,34 @@ def export_compare(args: argparse.Namespace) -> int:
     return 0
 
 
+def export_history(args: argparse.Namespace) -> int:
+    """Export a multi-run history projection from the retention index."""
+
+    conn = initialize(connect(args.db))
+    payload = export_history_projection(conn, limit=args.limit)
+    write_or_print(payload, args.output)
+    return 0
+
+
 def index_run_groups(args: argparse.Namespace) -> int:
     """List distinct run groups and run counts from SQLite."""
 
     conn = initialize(connect(args.db))
     groups = list_run_group_index(conn)
+    total = len(groups)
+    if args.limit is not None:
+        groups = groups[: args.limit]
     payload = {
         "schema_version": 1,
         "kind": "run_group_index",
         "db": args.db,
+        "retention_policy": retention_policy_summary(),
         "run_groups": groups,
         "count": len(groups),
     }
+    if args.limit is not None:
+        payload["limit"] = args.limit
+        payload["total"] = total
     output_format = "json" if args.json else args.format
     if output_format == "json":
         print(json.dumps(payload, indent=2, sort_keys=True))
@@ -143,4 +161,32 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         action="store_true",
         help="emit JSON instead of tab-separated rows (alias for --format json)",
     )
+    index_parser.add_argument(
+        "--limit",
+        type=int,
+        metavar="N",
+        help="return at most N run groups (index-only; no purge)",
+    )
     index_parser.set_defaults(handler=index_run_groups)
+
+    history_parser = compare_subparsers.add_parser(
+        "history",
+        help="export multi-run history projection JSON",
+        description="Export derived_v1 run history from the retention index.",
+    )
+    history_parser.add_argument(
+        "--db",
+        default="data/nlfr/nlfr.sqlite",
+        help="SQLite database path",
+    )
+    history_parser.add_argument(
+        "--limit",
+        type=int,
+        metavar="N",
+        help="include at most N newest run groups (index-only; no purge)",
+    )
+    history_parser.add_argument(
+        "--output",
+        help="output path for run history projection JSON",
+    )
+    history_parser.set_defaults(handler=export_history)

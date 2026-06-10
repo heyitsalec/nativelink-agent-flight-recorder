@@ -161,6 +161,8 @@ def export_action_graph(conn: Connection, *, run_group: str) -> dict[str, Any]:
             "failures": len(failures),
             "changes": len(changes),
             "agents": len(agent_node_by_run),
+            # derived_v1 canvas hint — full node list remains in projection.nodes
+            "max_visible_nodes": 8,
         },
         "nodes": nodes,
         "edges": edges,

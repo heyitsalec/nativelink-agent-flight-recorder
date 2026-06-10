@@ -4,6 +4,36 @@
 
 **Quadrant:** How-to · **Audience:** evaluators who are not on the author's Mac.
 
+## Init path (one-command record)
+
+Fastest way to scaffold NLFR in this repo and record a single Bazel target:
+
+```bash
+uv sync
+./scripts/record-this-target.sh
+# optional target override:
+./scripts/record-this-target.sh //tasks:priority_test
+```
+
+Under the hood:
+
+1. `nlfr init` writes `nlfr.toml` plus `data/.nlfr/init.json` with workspace,
+   database (`data/nlfr/nlfr.sqlite`), and run-group (`latest`) defaults.
+2. `nlfr run --mode cache-only` records `//tasks:priority_test` against
+   `demo/bazel-monorepo` into `data/nlfr/`.
+
+`init` is idempotent — re-running does not clobber an existing `nlfr.toml` unless
+you pass `--force`. When Bazel or NativeLink are absent, `run` still records an
+`environment_blocker` artifact (honest failure, not a silent skip).
+
+Adopting a **different** Bazel monorepo: [How-to: adopt existing Bazel monorepo](wiki/how-to/adopt-existing-bazel-monorepo.md).
+
+Proof:
+
+```bash
+uv run pytest tests/test_init_cmd.py -q
+```
+
 ## 5-minute path (no Nix, no NativeLink)
 
 ```bash
@@ -12,6 +42,7 @@ cd nativelink-agent-flight-recorder
 pip install uv
 uv sync
 uv run pytest -q
+./scripts/cache-only-ci-gate.sh   # PR-safe doctor JSON + smoke (see CI_RECIPE.md)
 ./scripts/verify-demo.sh
 npm --prefix apps/canvas ci && npm --prefix apps/canvas run build
 npm --prefix apps/canvas run preview   # http://127.0.0.1:5174/
@@ -68,6 +99,8 @@ See [`DEV_ENVIRONMENT.md`](DEV_ENVIRONMENT.md), [`TRYOUT_PACKET.md`](TRYOUT_PACK
 ## Skeptic path (CI artifacts)
 
 GitHub Actions may be **non-green** (~1 month offline as of 2026-06-06). Do not block evaluation on a green workflow badge. Prefer local gates from [GHA offline proof shift](sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md).
+
+**Fast PR gate:** [`scripts/cache-only-ci-gate.sh`](../scripts/cache-only-ci-gate.sh) (or workflow **`NLFR cache-only gate`**) proves the cache-only doctor JSON contract plus pytest smoke — independent of full proof restore. See [Cache-only gate](CI_RECIPE.md#cache-only-gate-pr-safe) in [`CI_RECIPE.md`](CI_RECIPE.md).
 
 When workflows run, workflow **`NLFR proof`** (`.github/workflows/nlfr-proof.yml`) has **seven parallel jobs**. See [`CI_RECIPE.md`](CI_RECIPE.md) for the full matrix.
 

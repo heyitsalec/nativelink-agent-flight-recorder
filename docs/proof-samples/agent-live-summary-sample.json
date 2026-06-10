@@ -1,0 +1,68 @@
+{
+  "status": "completed",
+  "proof_script": "agent-live-proof.sh",
+  "nlfr_agent_live": true,
+  "scenario_id": "agent-live",
+  "run_group": "agent-live",
+  "run_id": "run_b0cb4b420b144f381f1138f8",
+  "mode": "generic",
+  "change_path": ["adapters/cursor/README.md"],
+  "agent": {
+    "kind": "cursor_adapter_v1",
+    "model": "composer-2.5",
+    "name": "cursor-agent-change",
+    "prompt_sha256": "fb354f71665330f403392d1bdb09f9bd40aec6d9821e1502efcfc51447c32705"
+  },
+  "agent_source_kind": "collectable_v1",
+  "validation_source_kind": "collectable_v1",
+  "validation": "pytest",
+  "chain_complete": true,
+  "graph_node_kinds": {
+    "agent": 1,
+    "artifact": 4,
+    "change": 1,
+    "invocation": 1,
+    "run": 1
+  },
+  "graph_edge_kinds": {
+    "authored_change": 1,
+    "recorded_artifact": 4,
+    "recorded_invocation": 1,
+    "validated_by": 1
+  },
+  "projection_summary": {
+    "actions": 0,
+    "artifacts": 4,
+    "cache_events": 0,
+    "failures": 0,
+    "runs": 1,
+    "targets": 0
+  },
+  "cursor_cli": "<cursor>",
+  "contrast_note": "Fixture-backed collectable record via record-agent-change.sh with pytest validation; unlike agent-loop-summary.json which uses simulated_v1 bounded_llm_v1 for the agent leg.",
+  "workload": {
+    "change_paths": ["adapters/cursor/README.md"],
+    "output_dir": "<repo>/data/agent-live-proof"
+  },
+  "source_kind": "collectable_v1",
+  "confidence": "high",
+  "redaction_state": "safe",
+  "evidence_refs": [
+    "run.json",
+    "agent-provenance.json",
+    "projections/action-graph.json",
+    "projections/proof.json",
+    "script:agent-live-proof.sh"
+  ],
+  "claim_boundary": {
+    "supported": [
+      "agent -> change -> run chain_complete with collectable_v1 agent leg",
+      "model + prompt_sha256 provenance; raw prompt withheld"
+    ],
+    "does_not_claim": [
+      "live Cursor CLI session on every host",
+      "Bazel-validated tier1 parity (see agent-bugfix-summary.json)",
+      "live LLM reasoning as validation proof"
+    ]
+  }
+}

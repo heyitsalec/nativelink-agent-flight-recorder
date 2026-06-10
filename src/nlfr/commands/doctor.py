@@ -10,6 +10,21 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
+ADOPTION_GUIDE = "docs/ADOPTION_GUIDE.md"
+DEV_ENVIRONMENT = "docs/DEV_ENVIRONMENT.md"
+FIRST_EVIDENCE_LOOP = "docs/wiki/tutorial/first-evidence-loop.md"
+
+ADOPTION_HINT = (
+    f"Adoption: {ADOPTION_GUIDE} · {DEV_ENVIRONMENT} · {FIRST_EVIDENCE_LOOP}"
+)
+
+TOOL_ADOPTION_HINTS: dict[str, str] = {
+    "bazel": f"Install Bazel or Bazelisk — see {DEV_ENVIRONMENT}",
+    "nativelink": f"Install NativeLink — see {ADOPTION_GUIDE}",
+    "local-exec-config": f"Configure local execution — see {DEV_ENVIRONMENT} and demo/nativelink/",
+}
+
+
 @dataclass(frozen=True)
 class Check:
     name: str
@@ -71,6 +86,14 @@ def emit_text(mode: str, checks: list[Check]) -> None:
             f"{mode} proof path is not ready; missing: " + ", ".join(missing),
             file=sys.stderr,
         )
+        for check in checks:
+            if check.ok:
+                continue
+            hint = TOOL_ADOPTION_HINTS.get(check.name)
+            if hint:
+                print(f"  → {hint}", file=sys.stderr)
+        print(f"  → {ADOPTION_HINT}", file=sys.stderr)
+        print(f"  → Run: nlfr doctor --mode {mode} --json", file=sys.stderr)
 
 
 def emit_json(mode: str, checks: list[Check]) -> None:

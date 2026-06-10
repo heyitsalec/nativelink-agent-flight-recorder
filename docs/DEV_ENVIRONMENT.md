@@ -256,6 +256,8 @@ nix develop --command ./scripts/lre-cold-warm-proof.sh
 uv run pytest tests/test_lre_proof.py -q
 ```
 
+Phase 4 on x86_64-linux (manual Nix host, VM, or WSL2): [`LRE_LINUX_PROOF.md`](LRE_LINUX_PROOF.md).
+
 Without toolchain or on Darwin, scripts write `environment-blocker.json` —
 samples in [`proof-samples/`](proof-samples/). Do not claim LRE cache parity
 from CI while GHA is offline unless you have a local green `summary.json`.

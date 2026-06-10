@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "projection_kind": "run_history",
+  "generated_at": "2026-06-07T12:00:00.000000Z",
+  "retention_policy": {
+    "discovery": "index_only",
+    "purge": "no_auto_purge",
+    "lifecycle": "operator_managed"
+  },
+  "summary": {
+    "run_groups": 2,
+    "total_runs": 8
+  },
+  "claims": [
+    "Run history is derived from the retention index and proof packet summaries only.",
+    "Indexed 2 run group(s) with 8 total run(s).",
+    "This projection does not claim scheduler assignment, queue time, or fleet trends."
+  ],
+  "run_groups": [
+    {
+      "run_group": "canvas-dev",
+      "run_count": 6,
+      "first_started_at": "2026-06-06T18:12:04.000Z",
+      "last_started_at": "2026-06-07T03:42:18.000Z",
+      "scenario": "tier1-demo",
+      "mode": "cache-only",
+      "status_counts": {
+        "completed": 6
+      },
+      "proof_summary": {
+        "runs": 6,
+        "artifacts": 24,
+        "targets": 6,
+        "actions": 6,
+        "cache_events": 12,
+        "failures": 0
+      },
+      "cache_metrics": {
+        "hits": 8,
+        "misses": 4,
+        "unknown": 0,
+        "hit_rate": 0.6666666666666666
+      },
+      "worker_identity_observed": false,
+      "agent_provenance_present": false,
+      "agent_provenance_block_count": 0,
+      "source_kind": "derived_v1",
+      "confidence": "medium",
+      "evidence_refs": [
+        "run_group:canvas-dev"
+      ],
+      "redaction_state": "safe"
+    },
+    {
+      "run_group": "agent-bugfix-1",
+      "run_count": 2,
+      "first_started_at": "2026-06-06T20:05:11.000Z",
+      "last_started_at": "2026-06-06T22:18:44.000Z",
+      "scenario": "agent-bugfix",
+      "mode": "generic",
+      "status_counts": {
+        "completed": 2
+      },
+      "proof_summary": {
+        "runs": 2,
+        "artifacts": 8,
+        "targets": 2,
+        "actions": 2,
+        "cache_events": 0,
+        "failures": 0
+      },
+      "cache_metrics": {
+        "hits": 0,
+        "misses": 0,
+        "unknown": 0
+      },
+      "worker_identity_observed": false,
+      "agent_provenance_present": true,
+      "agent_provenance_block_count": 1,
+      "source_kind": "derived_v1",
+      "confidence": "medium",
+      "evidence_refs": [
+        "run_group:agent-bugfix-1"
+      ],
+      "redaction_state": "safe"
+    }
+  ],
+  "source_kind": "derived_v1",
+  "confidence": "medium",
+  "evidence_refs": [
+    "run_group:canvas-dev",
+    "run_group:agent-bugfix-1",
+    "projection:run-history"
+  ],
+  "redaction_state": "safe"
+}

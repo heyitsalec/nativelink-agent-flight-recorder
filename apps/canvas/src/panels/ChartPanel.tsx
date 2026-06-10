@@ -15,7 +15,14 @@ import {
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
-import { highlightedIds, labelKind, remoteLensModel, sortRunwayNodes } from "../pageModel";
+import {
+  capVisibleGraphNodes,
+  DEFAULT_MAX_VISIBLE_GRAPH_NODES,
+  highlightedIds,
+  labelKind,
+  remoteLensModel,
+  sortRunwayNodes,
+} from "../pageModel";
 import type { PositionedNode, SourceKind } from "../types";
 import type { ComponentInstance, ViewModeId } from "../view/types";
 import { useViewContext } from "../view/ViewContext";
@@ -130,7 +137,7 @@ function centerTransform(svg: SVGSVGElement): ZoomTransform {
 }
 
 export function ActionGraphCanvasPanel(instance: ComponentInstance) {
-  const { graph, route, routeActions } = useViewContext();
+  const { bindings, graph, route, routeActions } = useViewContext();
   const zoomRef = useOptionalZoomControllerRef();
   const svgRef = useRef<SVGSVGElement | null>(null);
   const behaviorRef = useRef<ReturnType<typeof zoom<SVGSVGElement, unknown>> | null>(null);
@@ -138,10 +145,36 @@ export function ActionGraphCanvasPanel(instance: ComponentInstance) {
 
   const minScale = typeof instance.props?.scale_extent_min === "number" ? instance.props.scale_extent_min : 0.55;
   const maxScale = typeof instance.props?.scale_extent_max === "number" ? instance.props.scale_extent_max : 2.35;
+  const summaryMaxVisible = bindings.actionGraph.summary.max_visible_nodes;
+  const maxVisibleNodes =
+    typeof summaryMaxVisible === "number" && Number.isFinite(summaryMaxVisible)
+      ? summaryMaxVisible
+      : DEFAULT_MAX_VISIBLE_GRAPH_NODES;
+
+  const { visible: visibleNodes, overflow } = useMemo(
+    () =>
+      capVisibleGraphNodes(
+        graph.nodes,
+        maxVisibleNodes,
+        route.selectedId ? [route.selectedId] : [],
+      ),
+    [graph.nodes, maxVisibleNodes, route.selectedId],
+  );
+  const visibleNodeIds = useMemo(
+    () => new Set(visibleNodes.map((node) => node.id)),
+    [visibleNodes],
+  );
+  const visibleEdges = useMemo(
+    () =>
+      graph.edges.filter(
+        (edge) => visibleNodeIds.has(edge.source.id) && visibleNodeIds.has(edge.target.id),
+      ),
+    [graph.edges, visibleNodeIds],
+  );
 
   const highlighted = useMemo(
-    () => highlightedIds(graph.nodes, route.focus),
-    [graph.nodes, route.focus],
+    () => highlightedIds(visibleNodes, route.focus),
+    [visibleNodes, route.focus],
   );
   const selectedId = route.selectedId;
 
@@ -199,7 +232,7 @@ export function ActionGraphCanvasPanel(instance: ComponentInstance) {
         <rect x="-5000" y="-5000" width="10000" height="10000" fill="url(#grid)" />
         <g transform={transform.toString()}>
           <g className="edge-layer">
-            {graph.edges.map((edge) => {
+            {visibleEdges.map((edge) => {
               const isActive =
                 selectedId === edge.source.id ||
                 selectedId === edge.target.id ||
@@ -219,7 +252,7 @@ export function ActionGraphCanvasPanel(instance: ComponentInstance) {
             })}
           </g>
           <g className="node-layer">
-            {graph.nodes.map((node) => (
+            {visibleNodes.map((node) => (
               <GraphNode
                 key={node.id}
                 node={node}
@@ -229,10 +262,56 @@ export function ActionGraphCanvasPanel(instance: ComponentInstance) {
               />
             ))}
           </g>
+          {overflow > 0 && (
+            <g
+              className="graph-overflow-chip"
+              data-testid="graph-overflow-chip"
+              transform="translate(360, 250)"
+              role="status"
+              aria-label={`${overflow} additional nodes hidden on canvas`}
+            >
+              <rect className="graph-overflow-chip-bg" x={-52} y={-16} width={104} height={32} rx={16} />
+              <text className="graph-overflow-chip-label" textAnchor="middle" y={5}>
+                +{overflow} more
+              </text>
+            </g>
+          )}
         </g>
       </svg>
     </section>
   );
+}
+
+const REMOTE_WORKER_KINDS = new Set(["worker", "worker_readiness", "remote_execution_config"]);
+
+function isRemoteWorkerKind(kind: string): boolean {
+  return REMOTE_WORKER_KINDS.has(kind);
+}
+
+function hexagonPath(radius: number): string {
+  const points: string[] = [];
+  for (let index = 0; index < 6; index += 1) {
+    const angle = (Math.PI / 3) * index - Math.PI / 6;
+    points.push(`${Math.cos(angle) * radius},${Math.sin(angle) * radius}`);
+  }
+  return `M${points.join("L")}Z`;
+}
+
+function workerStatusLabel(node: PositionedNode): string | null {
+  if (node.kind === "worker") {
+    return String(node.status ?? "observed");
+  }
+  if (node.kind === "remote_execution_config") {
+    const observed = node.payload?.worker_identity_observed;
+    if (typeof observed === "boolean") {
+      return observed ? "identity observed" : "identity gated";
+    }
+    return String(node.status ?? "configured");
+  }
+  if (node.kind === "worker_readiness") {
+    return String(node.status ?? node.payload?.status ?? "readiness boundary");
+  }
+  return null;
 }
 
 function GraphNode({
@@ -246,10 +325,18 @@ function GraphNode({
   dimmed: boolean;
   onSelect: () => void;
 }) {
-  const shortLabel = node.label.length > 26 ? `${node.label.slice(0, 24)}...` : node.label;
+  const remoteWorker = isRemoteWorkerKind(node.kind);
+  const shortLabel =
+    node.label.length > (remoteWorker ? 22 : 26)
+      ? `${node.label.slice(0, remoteWorker ? 20 : 24)}...`
+      : node.label;
+  const statusLabel = remoteWorker ? workerStatusLabel(node) : null;
+  const labelY = remoteWorker ? 13 : 15;
+  const confidenceY = node.radius + (remoteWorker ? 30 : 24);
+
   return (
     <g
-      className={`graph-node ${node.kind} ${node.source_kind} ${selected ? "selected" : ""} ${dimmed ? "dimmed" : ""}`}
+      className={`graph-node ${node.kind} ${node.source_kind} ${remoteWorker ? "remote-worker" : ""} ${selected ? "selected" : ""} ${dimmed ? "dimmed" : ""}`}
       data-graph-node-id={node.id}
       transform={`translate(${node.x},${node.y})`}
       onClick={(event) => {
@@ -260,15 +347,39 @@ function GraphNode({
       role="button"
       aria-label={`${node.kind}: ${node.label}`}
     >
-      <circle className="node-halo" r={node.radius + 12} />
-      <circle className="node-body" r={node.radius} />
+      {remoteWorker ? (
+        <>
+          <path className="node-halo" d={hexagonPath(node.radius + 12)} />
+          <path className="node-body" d={hexagonPath(node.radius)} />
+          <g
+            className="node-worker-badge"
+            transform={`translate(${node.radius - 9},${-node.radius + 9})`}
+            aria-hidden="true"
+          >
+            <circle r={8} />
+            <text textAnchor="middle" y={3.5}>
+              {node.kind === "worker" ? "W" : "R"}
+            </text>
+          </g>
+        </>
+      ) : (
+        <>
+          <circle className="node-halo" r={node.radius + 12} />
+          <circle className="node-body" r={node.radius} />
+        </>
+      )}
       <text className="node-kind" textAnchor="middle" y={-5}>
         {labelKind(node.kind)}
       </text>
-      <text className="node-label" textAnchor="middle" y={15}>
+      <text className="node-label" textAnchor="middle" y={labelY}>
         {shortLabel}
       </text>
-      <text className="node-confidence" textAnchor="middle" y={node.radius + 24}>
+      {statusLabel && (
+        <text className="node-status" textAnchor="middle" y={node.radius + 16}>
+          {statusLabel}
+        </text>
+      )}
+      <text className="node-confidence" textAnchor="middle" y={confidenceY}>
         {node.confidence}
       </text>
     </g>

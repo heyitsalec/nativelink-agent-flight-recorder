@@ -81,17 +81,35 @@ if (comparePresent) {
   compareLensOk = await page.locator('[data-testid="compare-lens"]').isVisible();
 }
 
+const overflowChipVisible = await page
+  .locator('[data-testid="graph-overflow-chip"]')
+  .isVisible()
+  .catch(() => false);
+
 await browser.close();
 
+const maxVisibleNodes =
+  typeof projection.summary?.max_visible_nodes === "number"
+    ? projection.summary.max_visible_nodes
+    : 8;
+
 const renderedSet = new Set(renderedIds);
-const missing = [...expectedIds].filter((id) => !renderedSet.has(id));
 const extra = [...renderedSet].filter((id) => !expectedIds.has(id));
+const hiddenCount = Math.max(0, expectedIds.size - renderedSet.size);
+
+const capOk =
+  renderedSet.size <= maxVisibleNodes &&
+  extra.length === 0 &&
+  (hiddenCount === 0 || overflowChipVisible) &&
+  (hiddenCount === 0 || renderedSet.size === maxVisibleNodes);
 
 const report = {
-  ok: missing.length === 0 && extra.length === 0 && compareErrors.length === 0 && compareLensOk,
+  ok: capOk && compareErrors.length === 0 && compareLensOk,
   expectedCount: expectedIds.size,
   renderedCount: renderedSet.size,
-  missing,
+  maxVisibleNodes,
+  hiddenCount,
+  overflowChipVisible,
   extra,
   compare: {
     present: comparePresent,

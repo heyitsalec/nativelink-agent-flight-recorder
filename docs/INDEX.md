@@ -50,6 +50,7 @@ Lookup tables and contracts. No narrative detours.
 - [CLI reference](wiki/reference/cli.md)
 - [Truth labels](wiki/reference/truth-labels.md)
 - [Proof scripts matrix](wiki/reference/proof-scripts-matrix.md)
+- [JSON contracts](wiki/reference/contracts/README.md) — artifact manifest, proof packet, canvas, compare (M9)
 - [One pager](ONE_PAGER.md) — proven vs unproven claims
 - [Design: view routing](design/routing.md) · [view spec schema](design/view-spec.v1.schema.json)
 - [Design: component catalog](design/component-catalog.md) · [view composer protocol](design/view-composer-protocol.md)

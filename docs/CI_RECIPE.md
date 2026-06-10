@@ -26,6 +26,105 @@ nix develop --command ./scripts/tier1-live-bazel-proof.sh
 
 Handoff: [GHA offline proof shift](sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md) · [Wiki hub § GHA offline](wiki/README.md#gha-offline)
 
+Full restore procedure when Actions return: [GHA_RESTORE_RUNBOOK.md](GHA_RESTORE_RUNBOOK.md).
+
+## Sustained-green criteria
+
+Wave 10 documents the bar for closing the GHA offline residual. **Sustained green** means:
+
+| Criterion | `NLFR proof` (`nlfr-proof.yml`) | `NLFR cache-only gate` |
+|-----------|--------------------------------|------------------------|
+| Jobs green on one run | All **seven** parallel jobs | `cache-only-gate` only |
+| Consecutive greens | **≥3** on `main` (no intervening failure) | **1** green sufficient for doctor contract |
+| Artifact promotion | Required before `proof-samples/` Linux CI provenance | Not a promotion source |
+| Local substitute | [`verify-gha-readiness.sh`](../scripts/verify-gha-readiness.sh) | [`cache-only-ci-gate.sh`](../scripts/cache-only-ci-gate.sh) |
+
+While GHA is offline, wave 10 closes **`DONE_WITH_CONCERNS`**: run the readiness script and
+treat [`ci-offline-blocker-sample.json`](proof-samples/ci-offline-blocker-sample.json) as the
+committed negative evidence. Do **not** tick the [restore checklist](#gha-restore-checklist)
+until a real workflow run meets the table above.
+
+```bash
+./scripts/verify-gha-readiness.sh
+```
+
+## Cache-only gate (PR-safe)
+
+Minimal gate independent of full `nlfr-proof.yml` restore. Validates the
+`nlfr doctor --mode cache-only` JSON contract and a pytest smoke slice — not
+full Bazel/NativeLink toolchain proof.
+
+| Item | Path |
+|------|------|
+| Local script | [`scripts/cache-only-ci-gate.sh`](../scripts/cache-only-ci-gate.sh) |
+| Workflow | [`.github/workflows/nlfr-cache-only-gate.yml`](../.github/workflows/nlfr-cache-only-gate.yml) — name **`NLFR cache-only gate`** |
+| Contract test | `tests/test_doctor_cache_only_gate.py` |
+| Artifacts | `data/cache-only-ci-gate/doctor.json`, `summary.json` |
+
+```bash
+./scripts/cache-only-ci-gate.sh
+# or:
+bash -n scripts/cache-only-ci-gate.sh
+uv run pytest tests/test_doctor_cache_only_gate.py -q
+```
+
+**Honesty:** `doctor_ok: false` (missing Bazel/NativeLink on PATH) is recorded in
+`doctor.json` and `summary.json` but does **not** fail the gate. Failure means
+malformed doctor output or pytest regression — not unsupported fleet claims.
+
+While GHA is offline, treat this workflow as **optional** (same policy as
+`nlfr-proof.yml`). Run the local script before merge; trigger with
+`gh workflow run nlfr-cache-only-gate.yml` when Actions are available.
+
+| Claim | `source_kind` | Gate |
+|-------|---------------|------|
+| cache-only doctor JSON on PR | `collectable_v1` / `high` | script + optional workflow artifact |
+| Full `nlfr-proof.yml` green | deferred | [GHA restore checklist](#gha-restore-checklist) |
+
+## GHA restore checklist
+
+Use when operator declares GHA restored or the first sustained green `nlfr-proof.yml` run
+lands. **Cannot be completed while Actions are offline** — tick locally only after a real
+workflow run. Promotion steps follow [`GITHUB_RELEASE.md`](GITHUB_RELEASE.md#gha-offline--promotion-runbook).
+
+### Pre-restore (local smoke — required while GHA offline)
+
+```bash
+./scripts/verify-gha-readiness.sh
+# equivalent spine:
+uv run pytest -q
+bash -n scripts/*.sh
+./scripts/cache-only-ci-gate.sh
+```
+
+Nix hosts may additionally run the per-job substitutes in [Local substitutes (by job)](#local-substitutes-by-job).
+
+### Restore verification
+
+- [ ] Trigger **NLFR proof** on `main` (`workflow_dispatch` or qualifying push).
+- [ ] Job `unit` green → artifact `record-proof` uploaded.
+- [ ] Job `linux-nix-toolchain` green → artifact `nix-toolchain-proof` uploaded.
+- [ ] Job `tier1-bazel` green → artifact `tier1-bazel-ci` uploaded.
+- [ ] Job `lre-proof-probe` green → artifact `lre-proof-probe` uploaded.
+- [ ] Job `lre-nix-ci` green → artifact `lre-nix-toolchain-proof` uploaded.
+- [ ] Job `lre-cold-warm-ci` green → artifact `lre-cold-warm-proof` uploaded.
+- [ ] Job `verify-demo-fixture` green → artifact `demo-proof` uploaded.
+- [ ] All seven jobs succeeded on the **same** workflow run (sustained green).
+- [ ] Downloaded all seven artifact bundles; confirmed `summary.json` vs honest blockers per claim boundary.
+
+### Proof-sample promotion (post-green only)
+
+- [ ] Redacted CI summaries copied to [`proof-samples/`](proof-samples/) per mapping in [GHA_RESTORE_RUNBOOK.md](GHA_RESTORE_RUNBOOK.md#23-map-ci--local-source--committed-sample).
+- [ ] [`proof-samples/README.md`](proof-samples/README.md) provenance updated (Linux CI).
+- [ ] [`TRYOUT_PACKET.md`](TRYOUT_PACKET.md) / [`ONE_PAGER.md`](ONE_PAGER.md) refreshed if metrics changed.
+- [ ] [`gha-offline-proof-shift.md`](sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md) marked restored; CI gate re-enabled for merge policy.
+- [ ] `uv run pytest -q` and `bash -n scripts/*.sh` pass after sample commits.
+
+### Policy flip
+
+After checklist complete: **do** treat `nlfr-proof.yml` green as a merge/release gate again;
+**do not** cite author-Nix samples as the primary credibility path when Linux CI samples exist.
+
 ## Workflow file
 
 [`.github/workflows/nlfr-proof.yml`](../.github/workflows/nlfr-proof.yml) — workflow name **`NLFR proof`**, **seven parallel jobs** (expanded from M5's original three).

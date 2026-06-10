@@ -65,6 +65,18 @@ nix develop --command ./scripts/lre-cold-warm-proof.sh
 | lre-parity-ci | CI `lre-cold-warm-ci` → `data/lre-cold-warm-proof/` artifacts |
 | lre-parity-handoffs | Handoff closure + DAG ceiling sync |
 
+## Wave 3 KOS — manual Linux proof (DONE)
+
+| Worker | Deliverable |
+|--------|-------------|
+| W3-LINUX-RUNBOOK | [`docs/LRE_LINUX_PROOF.md`](../LRE_LINUX_PROOF.md) — operator runbook for x86_64-linux `nix develop` |
+| W3-SAMPLE-PROMOTE | [`docs/proof-samples/lre-cold-warm-proof-linux-manual-sample.json`](../proof-samples/lre-cold-warm-proof-linux-manual-sample.json) — honest manual-path slot (Darwin blocker until Linux green promoted) |
+| W3-LADDER-SYNC | LRE rows in [`future-execution-ladder.md`](future-execution-ladder.md) |
+
+**Manual path (operator-owned, GHA offline):** On x86_64-linux inside `nix develop`, run `./scripts/lre-cold-warm-proof.sh`. Exit `0` → promote redacted `data/lre-cold-warm-proof/summary.json` to `lre-cold-warm-proof-summary-sample.json`. On Darwin, exit `2` → cite `lre-cold-warm-proof-linux-manual-sample.json` or `lre-cold-warm-proof-blocker-sample.json`; do **not** claim `lre_cache_parity_observed` without a green Linux run.
+
+CI artifact promotion (`lre-cold-warm-ci`) remains deferred to wave 4 while GHA is offline.
+
 ## Broker rule
 
 Do not spawn implement workers for fleet/scheduler UI. Hermetic container-image parity and fleet correlation remain blocked per `claim_boundary` in proof summaries.

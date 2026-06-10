@@ -1,0 +1,66 @@
+{
+  "schema_version": "knowledge-os.worker_results.v1",
+  "dag_id": "lre-linux-manual-proof",
+  "wave": "wave-3",
+  "phase": "integrate",
+  "status": "DONE_WITH_CONCERNS",
+  "claim_ceiling": "lre_linux_manual_proof",
+  "host": "/Users/alecbot/Documents/nativelink-agent-flight-recorder",
+  "branch": "feat/docs-wiki-wave2",
+  "coordinator_id": "waves-1-4-integrate-close",
+  "coordinators": [
+    {
+      "coordinator_id": "coord-lre-linux-runbook",
+      "worker_id": "lre-linux-runbook",
+      "kos_node": "W3-LINUX-RUNBOOK",
+      "status": "SHIPPED",
+      "artifacts": ["docs/LRE_LINUX_PROOF.md", "docs/DEV_ENVIRONMENT.md"]
+    },
+    {
+      "coordinator_id": "coord-lre-sample-promote",
+      "worker_id": "lre-sample-promote",
+      "kos_node": "W3-SAMPLE-PROMOTE",
+      "status": "SHIPPED",
+      "artifacts": [
+        "docs/proof-samples/lre-cold-warm-proof-linux-manual-sample.json",
+        "docs/proof-samples/README.md"
+      ],
+      "note": "Honest Darwin blocker — not x86_64-linux green summary"
+    },
+    {
+      "coordinator_id": "coord-lre-ladder-sync",
+      "worker_id": "lre-ladder-sync",
+      "kos_node": "W3-LADDER-SYNC",
+      "status": "SHIPPED",
+      "artifacts": [
+        "docs/dags/lre-proof.md",
+        "docs/dags/future-execution-ladder.md"
+      ]
+    }
+  ],
+  "integrate_close": {
+    "worker_id": "waves-1-4-integrate-close",
+    "kos_node": "W3-INTEGRATE",
+    "status": "DONE",
+    "artifacts": [
+      "docs/sessions/handoffs/nlfr-kos-cutover/wave-3/integration-brief.md",
+      "docs/sessions/handoffs/nlfr-kos-cutover/wave-3/spawn-ledger.md",
+      "docs/sessions/handoffs/nlfr-kos-cutover/wave-3/worker-results.json"
+    ]
+  },
+  "proof_gates": {
+    "lre_pytest": {
+      "command": "uv run pytest tests/test_lre_proof.py -q",
+      "status": "PASS"
+    },
+    "lre_cold_warm_linux": {
+      "status": "BLOCKED",
+      "note": "aarch64-darwin host — environment-blocker sample only"
+    },
+    "gha_ci": {
+      "status": "DEFERRED",
+      "note": "GHA offline"
+    }
+  },
+  "blocked_reason": "No x86_64-linux green lre-cold-warm summary on integrate host"
+}

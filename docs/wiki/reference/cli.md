@@ -140,6 +140,17 @@ python3 -m nlfr compare index --db data/record-proof/nlfr.sqlite --json
 
 Lists run groups with run counts (retention index only).
 
+### compare history
+
+```bash
+python3 -m nlfr compare history --db data/record-proof/nlfr.sqlite
+python3 -m nlfr compare history --db data/record-proof/nlfr.sqlite --limit 10 \
+  --output run-history.json
+```
+
+Exports multi-run `run_history` projection (`derived_v1`) with per-group proof
+summaries. Guide: [browse run history](../how-to/browse-run-history.md).
+
 ### compare export
 
 ```bash
@@ -164,8 +175,18 @@ Compare output is `derived_v1`. Guide: [export and compare run groups](../how-to
 
 | Command | Purpose |
 |---------|---------|
-| `nlfr init` | Scaffold local NLFR data dirs |
+| `nlfr init` | Write `nlfr.toml` + `data/.nlfr/` scaffold (workspace, database, run-group defaults) |
 | `nlfr serve` | Dev projection server for canvas |
+
+Init is idempotent and does not require NativeLink:
+
+```bash
+python3 -m nlfr init
+python3 -m nlfr init --workspace demo/bazel-monorepo --run-group adopted --json
+```
+
+One-command record in the reference repo: `./scripts/record-this-target.sh`. Guide:
+[adopt existing Bazel monorepo](../how-to/adopt-existing-bazel-monorepo.md).
 
 ## Proof-before-done bundle
 

@@ -7,6 +7,7 @@ import {
 } from "../composer";
 import type { ViewSpec } from "../view/types";
 import { persistViewSpec } from "../view/persistViewSpec";
+import { RunGroupSelector } from "./RunGroupSelector";
 
 type ComposerDrawerProps = {
   open: boolean;
@@ -66,13 +67,10 @@ export function ComposerDrawer({ open, onClose, initialSpec }: ComposerDrawerPro
           ))}
         </select>
       </label>
-      <label>
-        Run group (metadata)
-        <input
-          value={draft.run_group}
-          onChange={(event) => setDraft({ ...draft, run_group: event.target.value })}
-        />
-      </label>
+      <RunGroupSelector
+        value={draft.run_group}
+        onChange={(runGroup) => setDraft({ ...draft, run_group: runGroup })}
+      />
       {(validation.errors.length > 0 || validation.warnings.length > 0) && (
         <ul className="composer-issues" role="alert">
           {[...validation.errors, ...validation.warnings].map((issue) => (

@@ -1,5 +1,59 @@
 # NLFR DAG Mirrors
 
+## Active — Docs wiki wave 2 (wave-1 SHIPPED)
+
+[docs-wiki-wave2.md](docs-wiki-wave2.md) · Handoffs: `docs/sessions/handoffs/docs-wiki-wave2/wave-1/` (wave-0: `wave-0/`)  
+Wave-1 ceiling: broker diagram, ADR-lite, compare proof sample, contracts reference, partial historical banners, link audit. Status `DONE_WITH_CONCERNS` — waves 1.5–3 pending. **Next:** [nlfr-kos-roadmap.md](nlfr-kos-roadmap.md) after merge. Branch: `feat/docs-wiki-wave2`.
+
+## Active — NLFR flagship KOS roadmap (waves 1–4 DONE_WITH_CONCERNS)
+
+[nlfr-kos-roadmap.md](nlfr-kos-roadmap.md) · Handoffs: `docs/sessions/handoffs/nlfr-kos-cutover/wave-{1,2,3,4}/` (wave-0 plan: `wave-0/`)
+
+| Wave | DAG mirror | Status | Handoffs |
+|------|------------|--------|----------|
+| 1 | [tier1-canvas-polish.md](tier1-canvas-polish.md) | **SHIPPED** | `nlfr-kos-cutover/wave-1/` — canvas UX, run-group selector, README |
+| 2 | [nlfr-kos-roadmap.md](nlfr-kos-roadmap.md) § Wave 2 | **DONE_WITH_CONCERNS** | `wave-2/` — agent-live-proof; Cursor CLI missing |
+| 3 | [lre-proof.md](lre-proof.md) + ladder | **DONE_WITH_CONCERNS** | `wave-3/` — LRE Linux runbook; Darwin blocker sample |
+| 4 | [nlfr-kos-roadmap.md](nlfr-kos-roadmap.md) § Wave 4 | **DONE_WITH_CONCERNS** | `wave-4/` — GHA restore runbook; GHA offline |
+
+Branch: `feat/docs-wiki-wave2`. Local proof gates substitute for CI.
+
+## Completed — NLFR flagship KOS roadmap (waves 5–8 SHIPPED)
+
+[nlfr-kos-roadmap-waves-5-8.md](nlfr-kos-roadmap-waves-5-8.md) · Handoffs: `docs/sessions/handoffs/nlfr-kos-cutover/wave-{5,6,7,8}/`
+
+| Wave | DAG mirror | Status | Handoffs |
+|------|------------|--------|----------|
+| 5 | [nlfr-kos-roadmap-waves-5-8.md](nlfr-kos-roadmap-waves-5-8.md) § Wave 5 | **DONE_WITH_CONCERNS** | `wave-5/` — M8/LRE residual; honest blockers |
+| 6 | [nlfr-kos-roadmap-waves-5-8.md](nlfr-kos-roadmap-waves-5-8.md) § Wave 6 | **SHIPPED** | `wave-6/` — retention-policy-v1, `compare index --limit` |
+| 7 | [nlfr-kos-roadmap-waves-5-8.md](nlfr-kos-roadmap-waves-5-8.md) § Wave 7 | **DONE_WITH_CONCERNS** | `wave-7/` — cache-only-ci-gate; GHA offline |
+| 8 | [nlfr-kos-roadmap-waves-5-8.md](nlfr-kos-roadmap-waves-5-8.md) § Wave 8 | **SHIPPED** | `wave-8/` — pr-proof-attachment markdown exporter |
+
+Branch: `feat/docs-wiki-wave2`.
+
+## Completed — NLFR flagship KOS roadmap (wave 9 SHIPPED)
+
+[nlfr-kos-roadmap-waves-5-8.md](nlfr-kos-roadmap-waves-5-8.md) § Wave 9 · Handoffs: `docs/sessions/handoffs/nlfr-kos-cutover/wave-9/`
+
+| Wave | DAG mirror | Status | Handoffs |
+|------|------------|--------|----------|
+| 9 | [nlfr-kos-roadmap-waves-5-8.md](nlfr-kos-roadmap-waves-5-8.md) § Wave 9 | **DONE_WITH_CONCERNS** | `wave-9/` — kos-operator-bridge; dag-gui manifest + gap honesty |
+
+Branch: `feat/docs-wiki-wave2`. KOS CP: `W9-*` nodes closed. Proof: 126 passed, 3 skipped.
+
+## Completed — NLFR flagship KOS roadmap (waves 10–13 SHIPPED)
+
+[nlfr-kos-roadmap-waves-10-13.md](nlfr-kos-roadmap-waves-10-13.md) · Handoffs: `docs/sessions/handoffs/nlfr-kos-cutover/wave-{10,11,12,13}/` · Umbrella: [`wave-14/umbrella-close-packet.md`](../sessions/handoffs/nlfr-kos-cutover/wave-14/umbrella-close-packet.md)
+
+| Wave | `wave_id` | Status | Focus |
+|------|-----------|--------|-------|
+| 10 | `gha-sustained-green` | **DONE_WITH_CONCERNS** | GHA local readiness; CI promotion blocked |
+| 11 | `adoption-init-path` | **SHIPPED** | `nlfr init`, adapter pattern, one-command record |
+| 12 | `multi-run-history-v1` | **SHIPPED** | History index + multi-run projection beyond M9 pairwise |
+| 13 | `operator-console-ergonomics` | **SHIPPED** | 8-node canvas cap, lens ergonomics, failure messages |
+
+Branch: `feat/docs-wiki-wave2`. KOS CP: `W10-*` … `W13-*` nodes closed. Proof: 140 passed, 3 skipped.
+
 ## Active — Docs excellence (wave-0 ARMED)
 
 [docs-excellence.md](docs-excellence.md) · Handoffs: `docs/sessions/handoffs/docs-excellence/wave-0/`  

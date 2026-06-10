@@ -21,6 +21,9 @@ COLD_WARM_SUMMARY_SAMPLE = (
 COLD_WARM_BLOCKER_SAMPLE = (
     ROOT / "docs" / "proof-samples" / "lre-cold-warm-proof-blocker-sample.json"
 )
+COLD_WARM_LINUX_MANUAL_SAMPLE = (
+    ROOT / "docs" / "proof-samples" / "lre-cold-warm-proof-linux-manual-sample.json"
+)
 
 _LRE_SUMMARY_WRITER = """
 import json
@@ -455,6 +458,27 @@ def test_lre_nix_toolchain_summary_shape_with_fixture(tmp_path):
     assert "recorded_at" in summary
     assert summary["recorded_at"].endswith("Z")
     assert (out / "summary.json").is_file()
+
+
+def test_lre_cold_warm_linux_manual_sample_shape():
+    sample = json.loads(COLD_WARM_LINUX_MANUAL_SAMPLE.read_text(encoding="utf-8"))
+    blocker = json.loads(COLD_WARM_BLOCKER_SAMPLE.read_text(encoding="utf-8"))
+
+    assert "linux_manual_provenance" in sample
+    for key in (
+        "status",
+        "reason",
+        "source_kind",
+        "confidence",
+        "redaction_state",
+        "claim_boundary",
+    ):
+        assert sample[key] == blocker[key]
+
+    assert sample["next_step"]
+    assert "x86_64-linux" in sample["next_step"]
+    assert "docs/LRE_LINUX_PROOF.md" in sample["evidence_refs"]
+    assert "/Users/" not in json.dumps(sample)
 
 
 def test_lre_cold_warm_proof_records_environment_blocker(tmp_path):

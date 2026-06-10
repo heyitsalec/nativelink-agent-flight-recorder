@@ -90,6 +90,7 @@ For release notes, cite sanitized excerpts from `data/*/summary.json` or the
 committed hub at [`proof-samples/`](proof-samples/) — not full artifact trees.
 
 Index and honesty boundaries: [`proof-samples/README.md`](proof-samples/README.md).
+GHA artifact → sample map: [`proof-samples/CI_PROMOTION_MATRIX.md`](proof-samples/CI_PROMOTION_MATRIX.md).
 
 **Provenance note:** committed samples today are from author Nix runs. Linux CI
 promotion is the credibility upgrade when GHA returns (runbook below).
@@ -102,8 +103,11 @@ artifacts. Until then, skip promotion and cite local proof + existing samples.
 ### 1. Confirm CI green
 
 - Workflow: [`.github/workflows/nlfr-proof.yml`](../.github/workflows/nlfr-proof.yml)
-- Jobs to watch: `unit`, `linux-nix-toolchain`, `tier1-bazel`, `verify-demo-fixture`
-- Download workflow artifacts (e.g. `linux-nix-toolchain-proof`, `tier1-bazel-ci`)
+- Jobs to watch: all seven in `nlfr-proof.yml` (`unit`, `linux-nix-toolchain`,
+  `tier1-bazel`, `lre-proof-probe`, `lre-nix-ci`, `lre-cold-warm-ci`,
+  `verify-demo-fixture`)
+- Download all seven workflow artifacts (see
+  [`proof-samples/CI_PROMOTION_MATRIX.md`](proof-samples/CI_PROMOTION_MATRIX.md))
 
 Do not promote from a run where toolchain jobs wrote only
 `environment-blocker.json` unless that blocker is the honest sample you intend
@@ -121,18 +125,22 @@ For each `summary.json` to promote:
 
 ### 3. Map artifact → committed sample
 
-| CI / local source | Committed sample |
-|-------------------|------------------|
-| `data/cold-warm-proof/summary.json` | `docs/proof-samples/cold-warm-summary.json` |
-| `data/local-exec-proof-2w/summary.json` | `docs/proof-samples/two-worker-summary.json` |
-| `data/agent-loop-proof/summary.json` | `docs/proof-samples/agent-loop-summary.json` |
-| `data/tier1-live-bazel/summary.json` (Acts 1+2 slices) | `agent-bugfix-summary.json`, `agent-feature-summary.json` |
-| `data/worker-evidence-proof/summary.json` | *(optional new sample — document in README)* |
-| `data/lre-proof/summary.json` or blocker | `lre-proof-*-sample.json` |
-| `data/lre-cold-warm-proof/summary.json` or blocker | `lre-cold-warm-proof-*-sample.json` |
+**Canonical matrix:** [`proof-samples/CI_PROMOTION_MATRIX.md`](proof-samples/CI_PROMOTION_MATRIX.md)
+— maps all seven GHA jobs, artifact bundle paths, and committed sample filenames
+(including local-only sources and no-promote rows).
 
-M9 compare (`data/compare-proof/summary.json`) has no committed sample yet —
-add one only if release notes need a stable `derived_v1` excerpt.
+Quick reference (CI jobs with committed targets):
+
+| GHA job | Artifact bundle | Committed sample(s) |
+|---------|-----------------|---------------------|
+| `linux-nix-toolchain` | `nix-toolchain-proof` | `cold-warm-summary.json`, `agent-loop-summary.json` |
+| `tier1-bazel` | `tier1-bazel-ci` | `agent-bugfix-summary.json`, `agent-feature-summary.json` |
+| `lre-proof-probe` | `lre-proof-probe` | `lre-proof-*-sample.json` |
+| `lre-nix-ci` | `lre-nix-toolchain-proof` | `lre-nix-toolchain-proof-*-sample.json` |
+| `lre-cold-warm-ci` | `lre-cold-warm-proof` | `lre-cold-warm-proof-*-sample.json` |
+
+Local-only until a CI leg exists: `two-worker-summary.json`, M7 worker-evidence,
+M9 `compare-summary.json`. See the matrix for `unit` / `demo-proof` (no promote).
 
 ### 4. Update docs
 

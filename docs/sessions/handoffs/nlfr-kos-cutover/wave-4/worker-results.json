@@ -1,0 +1,67 @@
+{
+  "schema_version": "knowledge-os.worker_results.v1",
+  "dag_id": "ci-restore-verify",
+  "wave": "wave-4",
+  "phase": "integrate",
+  "status": "DONE_WITH_CONCERNS",
+  "claim_ceiling": "ci_restore_verify_docs_only",
+  "host": "/Users/alecbot/Documents/nativelink-agent-flight-recorder",
+  "branch": "feat/docs-wiki-wave2",
+  "coordinator_id": "waves-1-4-integrate-close",
+  "coordinators": [
+    {
+      "coordinator_id": "coord-gha-restore",
+      "worker_id": "gha-restore",
+      "kos_node": "W4-GHA-RESTORE",
+      "status": "SHIPPED",
+      "partial": true,
+      "artifacts": ["docs/GHA_RESTORE_RUNBOOK.md"],
+      "open": ["nlfr-proof.yml sustained green not observed — GHA offline"]
+    },
+    {
+      "coordinator_id": "coord-ci-proof-promote",
+      "worker_id": "ci-proof-promote",
+      "kos_node": "W4-PROOF-PROMOTE",
+      "status": "SHIPPED",
+      "partial": true,
+      "artifacts": ["docs/proof-samples/CI_PROMOTION_MATRIX.md"],
+      "open": ["No CI artifacts promoted — awaiting first green run"]
+    },
+    {
+      "coordinator_id": "coord-ci-docs-sync",
+      "worker_id": "ci-docs-sync",
+      "kos_node": "W4-CI-DOCS",
+      "status": "SHIPPED",
+      "artifacts": [
+        "docs/CI_RECIPE.md",
+        "docs/GITHUB_RELEASE.md",
+        "docs/dags/README.md"
+      ]
+    }
+  ],
+  "integrate_close": {
+    "worker_id": "waves-1-4-integrate-close",
+    "kos_node": "W4-INTEGRATE",
+    "status": "DONE",
+    "artifacts": [
+      "docs/sessions/handoffs/nlfr-kos-cutover/wave-4/integration-brief.md",
+      "docs/sessions/handoffs/nlfr-kos-cutover/wave-4/spawn-ledger.md",
+      "docs/sessions/handoffs/nlfr-kos-cutover/wave-4/worker-results.json"
+    ]
+  },
+  "proof_gates": {
+    "pytest": {
+      "command": "uv run pytest -q",
+      "status": "PASS"
+    },
+    "gha_nlfr_proof": {
+      "status": "BLOCKED",
+      "note": "GHA offline ~1 month — docs-only close"
+    },
+    "ci_artifact_promotion": {
+      "status": "BLOCKED",
+      "note": "CI_PROMOTION_MATRIX is documentation-only until green run"
+    }
+  },
+  "blocked_reason": "GHA offline — no sustained green nlfr-proof.yml run"
+}

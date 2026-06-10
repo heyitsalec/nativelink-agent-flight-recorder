@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import sys
+from pathlib import Path
 
 from nlfr.db import connect, initialize
 from nlfr.projectors import (
@@ -11,6 +13,7 @@ from nlfr.projectors import (
     export_validation_runway,
 )
 from nlfr.projectors.common import write_or_print
+from nlfr.projectors.proof_markdown import export_proof_markdown, proof_markdown_exit_code
 
 
 def export_graph(args: argparse.Namespace) -> int:
@@ -33,8 +36,38 @@ def export_proof(args: argparse.Namespace) -> int:
     """Export a proof packet projection for a run group."""
 
     conn = initialize(connect(args.db))
-    write_or_print(export_proof_packet(conn, run_group=args.run_group), args.output)
+    proof = export_proof_packet(conn, run_group=args.run_group)
+    if args.format == "markdown":
+        projection_paths = {}
+        if args.graph_projection:
+            projection_paths["Graph JSON"] = args.graph_projection
+        if args.proof_projection:
+            projection_paths["Proof JSON"] = args.proof_projection
+        if args.runway_projection:
+            projection_paths["Runway JSON"] = args.runway_projection
+        markdown = export_proof_markdown(
+            proof,
+            db_path=args.db,
+            manifest_path=args.manifest,
+            projection_paths=projection_paths or None,
+            repo_root=args.repo_root,
+        )
+        _write_or_print_text(markdown, args.output)
+        if args.fail_on_validation:
+            return proof_markdown_exit_code(proof)
+        return 0
+
+    write_or_print(proof, args.output)
     return 0
+
+
+def _write_or_print_text(text: str, output: str | None) -> None:
+    if output:
+        path = Path(output)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+    else:
+        sys.stdout.write(text)
 
 
 def add_export_command(
@@ -92,4 +125,62 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         description="Proof packet commands.",
     )
     proof_subparsers = proof.add_subparsers(dest="proof_command", metavar="command", required=True)
-    add_export_command(proof_subparsers, "export", export_proof, "export proof packet JSON")
+    _add_proof_export_command(proof_subparsers)
+
+
+def _add_proof_export_command(
+    subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
+) -> None:
+    """Add ``proof export`` with JSON and markdown formats."""
+
+    parser = subparsers.add_parser(
+        "export",
+        help="export proof packet JSON or PR markdown",
+        description="Export proof packet JSON or redacted PR markdown.",
+    )
+    parser.add_argument(
+        "--run-group",
+        default="latest",
+        help="run group id to export",
+    )
+    parser.add_argument(
+        "--db",
+        default="data/nlfr/nlfr.sqlite",
+        help="SQLite database path",
+    )
+    parser.add_argument(
+        "--output",
+        help="output path (JSON or markdown depending on --format)",
+    )
+    parser.add_argument(
+        "--format",
+        choices=("json", "markdown"),
+        default="json",
+        help="output format (default: json)",
+    )
+    parser.add_argument(
+        "--manifest",
+        help="artifact manifest path to cite in markdown export",
+    )
+    parser.add_argument(
+        "--graph-projection",
+        help="graph projection JSON path to cite in markdown export",
+    )
+    parser.add_argument(
+        "--proof-projection",
+        help="proof projection JSON path to cite in markdown export",
+    )
+    parser.add_argument(
+        "--runway-projection",
+        help="runway projection JSON path to cite in markdown export",
+    )
+    parser.add_argument(
+        "--repo-root",
+        help="replace this prefix with <repo> in markdown path citations",
+    )
+    parser.add_argument(
+        "--fail-on-validation",
+        action="store_true",
+        help="exit 1 when validation failures are present (markdown only)",
+    )
+    parser.set_defaults(handler=export_proof)

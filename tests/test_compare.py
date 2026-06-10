@@ -359,3 +359,39 @@ def test_compare_index_cli_empty_table_message(tmp_path) -> None:
 
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == "no run groups recorded"
+
+
+def test_compare_index_cli_limit(tmp_path) -> None:
+    db_path = tmp_path / "nlfr.sqlite"
+    _seed_compare_index_db(db_path)
+
+    result = run_nlfr(
+        "compare",
+        "index",
+        "--db",
+        str(db_path),
+        "--format",
+        "json",
+        "--limit",
+        "1",
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["count"] == 1
+    assert payload["limit"] == 1
+    assert payload["total"] == 2
+    assert len(payload["run_groups"]) == 1
+    assert payload["retention_policy"]["discovery"] == "index_only"
+    assert payload["retention_policy"]["purge"] == "no_auto_purge"
+
+
+def test_compare_index_cli_limit_table_output(tmp_path) -> None:
+    db_path = tmp_path / "nlfr.sqlite"
+    _seed_compare_index_db(db_path)
+
+    result = run_nlfr("compare", "index", "--db", str(db_path), "--limit", "1")
+
+    assert result.returncode == 0, result.stderr
+    lines = [line for line in result.stdout.strip().splitlines() if line]
+    assert len(lines) == 1

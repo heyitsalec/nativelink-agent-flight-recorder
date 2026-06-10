@@ -1,0 +1,73 @@
+{
+  "schema_version": "knowledge-os.worker_results.v1",
+  "dag_id": "live-proof-residual",
+  "wave": "wave-5",
+  "phase": "integrate",
+  "status": "DONE_WITH_CONCERNS",
+  "claim_ceiling": "live_proof_residual_honest_blockers",
+  "host": "/Users/alecbot/Documents/nativelink-agent-flight-recorder",
+  "branch": "feat/docs-wiki-wave2",
+  "coordinator_id": "waves-5-8-integrate-close",
+  "coordinators": [
+    {
+      "coordinator_id": "coord-m8-live-residual",
+      "worker_id": "m8-live-residual",
+      "kos_node": "W5-M8-LIVE",
+      "status": "SHIPPED",
+      "partial": true,
+      "artifacts": [
+        "scripts/agent-live-proof.sh",
+        "scripts/record-agent-change.sh",
+        "tests/test_agent_live_proof.py"
+      ],
+      "open": ["Cursor CLI unavailable — live chain_complete not observed"]
+    },
+    {
+      "coordinator_id": "coord-lre-linux-residual",
+      "worker_id": "lre-linux-residual",
+      "kos_node": "W5-LRE-LINUX",
+      "status": "SHIPPED",
+      "partial": true,
+      "artifacts": [
+        "docs/proof-samples/lre-cold-warm-proof-linux-manual-sample.json",
+        "tests/test_lre_proof.py"
+      ],
+      "open": ["aarch64-darwin host — x86_64-linux green not observed"]
+    },
+    {
+      "coordinator_id": "coord-live-proof-docs",
+      "worker_id": "live-proof-docs",
+      "kos_node": "W5-LIVE-DOCS",
+      "status": "SHIPPED",
+      "artifacts": [
+        "adapters/cursor/README.md",
+        "docs/LRE_LINUX_PROOF.md",
+        "docs/proof-samples/README.md"
+      ]
+    }
+  ],
+  "integrate_close": {
+    "worker_id": "waves-5-8-integrate-close",
+    "kos_node": "W5-INTEGRATE",
+    "status": "DONE",
+    "artifacts": [
+      "docs/sessions/handoffs/nlfr-kos-cutover/wave-5/integration-brief.md",
+      "docs/sessions/handoffs/nlfr-kos-cutover/wave-5/spawn-ledger.md",
+      "docs/sessions/handoffs/nlfr-kos-cutover/wave-5/worker-results.json"
+    ]
+  },
+  "proof_gates": {
+    "pytest_agent_lre": {
+      "command": "uv run pytest tests/test_agent_live_proof.py tests/test_lre_proof.py -q",
+      "status": "PASS"
+    },
+    "m8_live_cursor": {
+      "status": "BLOCKED",
+      "note": "Cursor CLI absent — blocker sample is honest outcome"
+    },
+    "lre_linux_green": {
+      "status": "BLOCKED",
+      "note": "Darwin host — manual Linux promotion operator-owned"
+    }
+  }
+}

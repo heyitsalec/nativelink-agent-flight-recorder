@@ -1,0 +1,25 @@
+{
+  "status": "environment_blocker",
+  "reason": "cursor CLI unavailable on PATH; install Cursor CLI or run with --dry-run for CI",
+  "next_step": "install Cursor CLI per adapters/cursor/README.md, or run ./scripts/agent-live-proof.sh --dry-run for CI regression",
+  "proof_script": "agent-live-proof.sh",
+  "nlfr_agent_live": true,
+  "scenario_id": "agent-live",
+  "run_group": "agent-live",
+  "source_kind": "collectable_v1",
+  "confidence": "high",
+  "redaction_state": "safe",
+  "evidence_refs": ["script:agent-live-proof.sh"],
+  "claim_boundary": {
+    "supported": [
+      "dry-run adapter contract via agent-live-proof.sh --dry-run",
+      "collectable_v1 agent provenance sidecar (model + prompt_sha256 only)",
+      "generic validation via pytest fixture path without Cursor CLI"
+    ],
+    "unsupported_until_cursor_cli": [
+      "live non-dry-run adapter invocation on host",
+      "chain_complete=true from real Cursor session",
+      "live LLM reasoning as validation proof"
+    ]
+  }
+}
