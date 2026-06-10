@@ -171,7 +171,7 @@ Default proof mode is **fixture-replay** (no Nix required). Live path chains
 # fixture: NLFR_WORKER_EVIDENCE_FIXTURE_ONLY=1 (implicit when tools absent)
 ```
 
-Deep dive: [Wiki § M7](wiki/README.md#frontier-tracks-pointers) · [`dags/m7-worker-parser.md`](dags/m7-worker-parser.md) · [`dags/fleet-evidence-v1.md`](dags/fleet-evidence-v1.md)
+Deep dive: [Wiki § M7](wiki/README.md#frontier-tracks-pointers) · [`dags/m7-worker-parser.md`](dags/m7-worker-parser.md)
 
 **Claim boundary:** regex match on attached stdout only — not scheduler, queue, or placement.
 
@@ -235,7 +235,7 @@ Phase 4 expects x86_64-linux + generated `lre.bazelrc` + `demo/nativelink/lre.js
 + Bazel `--config=lre`. Darwin and missing toolchain produce honest
 `environment-blocker.json` samples in [`proof-samples/`](proof-samples/).
 
-Deep dive: [Wiki § LRE](wiki/README.md#frontier-tracks-pointers) · [`dags/lre-proof.md`](dags/lre-proof.md)
+Deep dive: [Wiki § LRE](wiki/README.md#frontier-tracks-pointers)
 
 **Unsupported:** hermetic container-image parity, fleet dashboards, queue/action correlation.
 

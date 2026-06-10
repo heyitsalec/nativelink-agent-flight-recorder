@@ -27,9 +27,8 @@ those projections may say — not invented backend state.
 
 **Provenance today:** samples are sourced from author Nix runs on a development
 host (tag `v0.2.0-mvp`). Promotion from the first green GitHub Actions run is
-documented in [`../GITHUB_RELEASE.md`](../GITHUB_RELEASE.md) — deferred while
-GHA is offline per
-[`gha-offline-proof-shift.md`](../sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md).
+documented in [`../GITHUB_RELEASE.md`](../GITHUB_RELEASE.md) — deferred until
+the first sustained green public CI run.
 
 ## GHA restore promotion
 
@@ -160,7 +159,7 @@ are fully `collectable_v1` with `bazel_validated: true` from
 groups, not new backend observations.
 
 **LRE Linux manual sample** (`lre-cold-warm-proof-linux-manual-sample.json`)
-documents the operator-owned phase-4 path while GHA is offline. On Darwin it
+documents the operator-owned phase-4 path until CI promotion lands. On Darwin it
 records an honest `environment_blocker` — cite it instead of fabricating
 `lre_cache_parity_observed` metrics. After a green x86_64-linux
 `nix develop` run, promote redacted output to

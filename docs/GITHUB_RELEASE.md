@@ -50,17 +50,11 @@ nix develop --command ./scripts/lre-nix-toolchain-proof.sh
 nix develop --command ./scripts/lre-cold-warm-proof.sh   # x86_64-linux Nix only
 ```
 
-### GHA offline (current default)
+### Verification before the first green CI run
 
-GitHub Actions workflows may be non-green. **Local gates above substitute for CI**
-until `nlfr-proof.yml` runs green again. Do not claim CI passed or block release
-on workflow badges while offline.
-
-Policy handoff:
-[`sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md`](sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md).
-
-Merge / tag when local checklist passes, review packet is posted, and human
-review completes — **not** when CI is green.
+Until `nlfr-proof.yml` produces a sustained green run, the local gates above
+are the canonical verification. Do not claim CI passed until workflows actually
+pass.
 
 ## Tag message template (`v0.2.0-mvp`)
 
@@ -95,7 +89,7 @@ GHA artifact → sample map: [`proof-samples/CI_PROMOTION_MATRIX.md`](proof-samp
 **Provenance note:** committed samples today are from author Nix runs. Linux CI
 promotion is the credibility upgrade when GHA returns (runbook below).
 
-## GHA offline → promotion runbook
+## CI restore → promotion runbook
 
 Use this when GitHub Actions recovers and `nlfr-proof.yml` produces green
 artifacts. Until then, skip promotion and cite local proof + existing samples.
@@ -149,10 +143,7 @@ M9 `compare-summary.json`. See the matrix for `unit` / `demo-proof` (no promote)
 2. Update [`TRYOUT_PACKET.md`](TRYOUT_PACKET.md) proof table if numbers shift.
 3. Update [`ONE_PAGER.md`](ONE_PAGER.md) proven bullets if CI numbers differ from
    author Nix.
-4. Check [`m5-ci-proof.md`](dags/m5-ci-proof.md) promotion checkbox.
-5. Revise
-   [`gha-offline-proof-shift.md`](sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md)
-   — note GHA restored and CI is a gate again.
+4. Note that GHA is restored and CI is a merge gate again.
 
 ### 5. Verify before tag
 
@@ -183,5 +174,5 @@ Create GitHub Release with:
 
 Job matrix and local reproduction: [`CI_RECIPE.md`](CI_RECIPE.md).
 
-When GHA is offline, [`CI_RECIPE.md`](CI_RECIPE.md) documents the same scripts
-as local substitutes — never imply CI green without a passing workflow run.
+[`CI_RECIPE.md`](CI_RECIPE.md) documents the same scripts as local
+substitutes — never imply CI green without a passing workflow run.

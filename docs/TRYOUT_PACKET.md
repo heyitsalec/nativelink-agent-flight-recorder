@@ -2,8 +2,6 @@
 
 Date: 2026-06-06 · Tag: `v0.2.0-mvp` · Branch: `main`
 
-Linear parent: [PER-1013](https://linear.app/gradschool/issue/PER-1013/nlfr-14-local-remote-execution-worker-proof)
-
 ## One-Liner
 
 NativeLink Agent Flight Recorder is a local-first proof recorder for agentic
@@ -45,7 +43,7 @@ The current repo covers three NativeLink-adjacent layers:
 
 Outside `nix develop`, Bazel/Bazelisk and NativeLink are not on PATH — real-tool
 scripts produce truth-labeled `environment_blocker` evidence instead of fake
-success. Inside Nix, PER-1019 proved exit 0 (see Real Toolchain Proof below).
+success. Inside Nix, the real-toolchain pass proved exit 0 (see Real Toolchain Proof below).
 
 ## Milestone proof spine (M7 · M8 · M9 · Tier 1)
 
@@ -98,7 +96,7 @@ until direct evidence exists.
 
 ## Current Proof
 
-Fresh commands from the PER-1018 review pass (no hardcoded test counts — run and
+Fresh commands from the completion review pass (no hardcoded test counts — run and
 verify locally):
 
 ```bash
@@ -116,16 +114,15 @@ NLFR_WORKER_EVIDENCE_FIXTURE_ONLY=1 ./scripts/worker-evidence-proof.sh   # M7
 nix develop --command ./scripts/tier1-live-bazel-proof.sh   # Tier 1
 ```
 
-**GHA offline:** GitHub Actions may be non-green. Local gates above substitute
-for CI until workflows recover. Do not block evaluation on CI green — see
-[`sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md`](sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md).
+Local gates above are the canonical verification; see the README Status
+section for current CI state.
 
 Observed expectations (not a substitute for running commands):
 
 - `uv run pytest -q` — all tests pass.
 - Canvas production build and demo verifier — pass.
 - Bare-host real-tool paths: `environment_blocker` when outside Nix (expected).
-- Nix real-tool paths (PER-1019): cold/warm + local-exec exit 0.
+- Nix real-tool paths: cold/warm + local-exec exit 0.
 - Browser QA: page identity, blank-page, framework overlay, console health,
   remote-lens interaction, operator command, and mobile viewport passed.
 
@@ -138,12 +135,11 @@ Visual proof artifacts:
 - `output/playwright/canvas-mobile.png`
 - `output/playwright/canvas-operator-flow.webm`
 
-## Real Toolchain Proof (PER-1019)
+## Real Toolchain Proof
 
 Date: 2026-06-06
 
-Linear parent [PER-1019](https://linear.app/gradschool/issue/PER-1019) closed
-after real NativeLink proof inside `nix develop`.
+Recorded after real NativeLink proof inside `nix develop`.
 
 Commit: `635ee36` — Unblock NativeLink 1.3.2 and Bazel 9 proof paths.
 

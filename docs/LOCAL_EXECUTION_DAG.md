@@ -1,12 +1,10 @@
 # Local Remote Execution Worker Proof DAG
 
-> **Historical snapshot.** This DAG mirror records PER-1013 local
+> **Historical snapshot.** This planning doc records local
 > remote-execution worker proof completion.
 > For current product truth and milestone status, use **[ONE_PAGER.md](ONE_PAGER.md)**
 > and **[ARCHITECTURE_TRACK.md](ARCHITECTURE_TRACK.md)**.
 > Deep dives: **[Wiki hub](wiki/README.md)**.
-
-Linear parent: [PER-1013](https://linear.app/gradschool/issue/PER-1013/nlfr-14-local-remote-execution-worker-proof)
 
 ## Objective
 
@@ -29,15 +27,15 @@ of captured evidence.
 
 ## Children
 
-- PER-1014: Reproducible local-exec environment. Done.
-- PER-1015: Remote execution evidence model. Done.
-- PER-1016: One-worker then two-worker smoke. Done.
-- PER-1017: Canvas remote execution lens. Done.
-- PER-1018: Completion review and tryout packet. Done.
+- Reproducible local-exec environment. Done.
+- Remote execution evidence model. Done.
+- One-worker then two-worker smoke. Done.
+- Canvas remote execution lens. Done.
+- Completion review and tryout packet. Done.
 
 ## Current State
 
-PER-1013 is complete for this host's available proof boundary:
+This track is complete for this host's available proof boundary:
 
 - repo docs, Linear, proof commands, and visual artifacts are reconciled;
 - the tryout packet captures the zero-LLM worker-first strategy;

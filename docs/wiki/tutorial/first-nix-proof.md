@@ -83,17 +83,14 @@ Run these only when you need the next claim boundary. Each has its own script an
 | Agent loop | `scripts/agent-loop-proof.sh` | `chain_complete=true` |
 | LRE cold/warm | `scripts/lre-cold-warm-proof.sh` | `lre_cache_parity_observed` (linux) |
 
-## GHA offline
+## Local proof gates
 
-Do not require CI green to trust your local Nix run. Parent proof gates are local:
+Your local Nix run is the evidence; verify it with the local gates:
 
 ```bash
 uv run pytest -q
 bash -n scripts/cold-warm-cache-proof.sh
 ```
-
-LRE CI parity remains deferred until GHA recovers or you run manual linux proof:
-[GHA offline proof shift](../../sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md).
 
 ## Next steps
 

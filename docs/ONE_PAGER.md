@@ -73,6 +73,6 @@ agentic validation infrastructure.
 ## Repo
 
 [heyitsalec/nativelink-agent-flight-recorder](https://github.com/heyitsalec/nativelink-agent-flight-recorder) ·
-Branch `main` · Tag `v0.2.0-mvp` · Linear PER-1058 architecture track
+Branch `main` · Tag `v0.2.0-mvp` · architecture track M-series
 
 ← [Docs index](INDEX.md)

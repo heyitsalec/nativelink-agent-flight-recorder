@@ -161,10 +161,6 @@ Needed:
 
 Do not make unsupported claims look like failures. They are boundary labels.
 
-**Note:** GitHub Actions may be offline — local proof gates substitute per
-[GHA offline proof shift](sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md).
-Do not block ship on CI green until workflows recover.
-
 ### Gap 4: direct remote-execution evidence (beyond M7)
 
 M7 proves conditional worker identity from admin stdout. Still unproven:
@@ -290,7 +286,7 @@ environment blocker, per the [architecture track](ARCHITECTURE_TRACK.md) ladder.
 
 Goal: remove the "only works on the author's Mac in Nix" objection.
 
-Status: **landed** — [`.github/workflows/nlfr-proof.yml`](../.github/workflows/nlfr-proof.yml), [`CI_RECIPE.md`](CI_RECIPE.md), [`ADOPTION_GUIDE.md`](ADOPTION_GUIDE.md). CI artifact promotion to [`proof-samples/`](proof-samples/) is **deferred** while GitHub Actions are offline; use local proof gates per [GHA offline proof shift](sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md).
+Status: **landed** — [`.github/workflows/nlfr-proof.yml`](../.github/workflows/nlfr-proof.yml), [`CI_RECIPE.md`](CI_RECIPE.md), [`ADOPTION_GUIDE.md`](ADOPTION_GUIDE.md). CI artifact promotion to [`proof-samples/`](proof-samples/) follows the first sustained green public run — see [`GHA_RESTORE_RUNBOOK.md`](GHA_RESTORE_RUNBOOK.md).
 
 Deliverables:
 

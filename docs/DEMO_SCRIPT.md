@@ -9,8 +9,6 @@ recorded evidence — nothing here narrates ahead of proof.
 | **Tier 2** | ~15 min | **NativeLink team** (recommended) | [Tier 2 — NativeLink team](#tier-2--nativelink-team-15-min-recommended) |
 | **Tier 3** | ~30 min | Skeptics wanting live Nix exit codes | Steps 4–5 |
 
-Research brief: [`sessions/handoffs/nlfr-doc-capture/wave-research/integration-brief-nl-team-demo.md`](sessions/handoffs/nlfr-doc-capture/wave-research/integration-brief-nl-team-demo.md)
-
 ---
 
 ## Before you start
@@ -115,8 +113,7 @@ trust story if you narrate labels.
 
 ## Tier 1 Agent Vision — "AI wrote it; here's proof" (~5 min)
 
-Broker DAG: [`dags/tier1-agent-vision.md`](dags/tier1-agent-vision.md)  
-Live Bazel proof: [`dags/tier1-live-bazel.md`](dags/tier1-live-bazel.md)  
+Live Bazel proof: [How-to: tier1 live Bazel](wiki/how-to/run-tier1-live-bazel-demo.md)  
 Proof samples: [`proof-samples/README.md`](proof-samples/README.md) —
 `agent-bugfix-summary.json`, `agent-feature-summary.json`
 

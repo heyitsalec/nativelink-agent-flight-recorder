@@ -27,8 +27,6 @@ Wiki: [First Nix proof](wiki/tutorial/first-nix-proof.md) · [Proof scripts matr
 Outside Nix, use the fixture canvas path in README Path A (~5 minutes, no real
 NativeLink proof).
 
-**GHA offline:** CI may be non-green. Local gates substitute per
-[GHA offline proof shift](sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md).
 
 ## Nix — core proof stack
 
@@ -226,7 +224,7 @@ Fixture gate without Bazel:
 uv run pytest tests/test_tier1_live_bazel.py -q
 ```
 
-Deep dive: [`dags/tier1-live-bazel.md`](dags/tier1-live-bazel.md) · [Wiki § Tier1](wiki/how-to/run-tier1-live-bazel-demo.md)
+Deep dive: [Wiki § Tier1](wiki/how-to/run-tier1-live-bazel-demo.md)
 
 ## M9 — Compare proof
 
@@ -260,9 +258,9 @@ Phase 4 on x86_64-linux (manual Nix host, VM, or WSL2): [`LRE_LINUX_PROOF.md`](L
 
 Without toolchain or on Darwin, scripts write `environment-blocker.json` —
 samples in [`proof-samples/`](proof-samples/). Do not claim LRE cache parity
-from CI while GHA is offline unless you have a local green `summary.json`.
+without a green `summary.json`.
 
-Deep dive: [`dags/lre-proof.md`](dags/lre-proof.md) · [Wiki § LRE](wiki/README.md#frontier-tracks-pointers)
+Deep dive: [Wiki § LRE](wiki/README.md#frontier-tracks-pointers)
 
 **Unsupported:** hermetic container-image parity across worker images, fleet
 dashboards, queue/action correlation.

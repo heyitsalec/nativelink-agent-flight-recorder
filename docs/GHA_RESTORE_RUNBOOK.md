@@ -2,15 +2,12 @@
 
 **Quadrant:** How-to · **Audience:** operators restoring CI after the GHA offline period.
 
-**Status (2026-06-07):** GitHub Actions cannot be exercised from this repo right now —
-`nlfr-proof.yml` has been effectively non-green for ~1 month. Wave 10 closed
-**`DONE_WITH_CONCERNS`**: workflow YAML audits and local substitutes pass; sustained
-green is **not** proven. This document is the **procedure to run when Actions return**,
-plus **local substitutes** until then.
+**Status (2026-06-07):** GitHub Actions had not produced a sustained green run
+in this repo before the public release. Workflow YAML audits and local
+substitutes pass; sustained green is **not** proven. This document is the
+**procedure to run when Actions return**, plus **local substitutes** until then.
 
 Committed blocker sample: [`proof-samples/ci-offline-blocker-sample.json`](proof-samples/ci-offline-blocker-sample.json).
-
-Policy context: [`sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md`](sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md).
 
 ---
 
@@ -20,10 +17,9 @@ Trigger when **any** of the following is true:
 
 1. Operator declares GHA restored.
 2. First sustained green run on [`.github/workflows/nlfr-proof.yml`](../.github/workflows/nlfr-proof.yml).
-3. Wave 4 `ci-restore-verify` close-out (see [`dags/nlfr-kos-roadmap.md`](dags/nlfr-kos-roadmap.md)).
 
-Until then: **do not block** merge, ship, or doc review on CI green. Use local gates in
-[`CI_RECIPE.md`](CI_RECIPE.md#gha-offline-policy).
+Until then, local gates are the canonical verification — see
+[`CI_RECIPE.md`](CI_RECIPE.md#local-verification-policy).
 
 ---
 
@@ -58,11 +54,10 @@ Detail and operator checklist: [`CI_RECIPE.md`](CI_RECIPE.md#sustained-green-cri
 | Field | Value |
 |-------|-------|
 | **Observation** | GHA offline ~1 month; no sustained green run captured |
-| **Wave 10 status** | `DONE_WITH_CONCERNS` — readiness audit + local gates only |
+| **Audit status** | readiness audit + local gates only |
 | **Truth label** | `collectable_v1` / `high` (negative) |
 | **Readiness script** | [`scripts/verify-gha-readiness.sh`](../scripts/verify-gha-readiness.sh) |
 | **Blocker sample** | [`proof-samples/ci-offline-blocker-sample.json`](proof-samples/ci-offline-blocker-sample.json) |
-| **Handoff** | [`sessions/handoffs/nlfr-kos-cutover/wave-10/integration-brief.md`](sessions/handoffs/nlfr-kos-cutover/wave-10/integration-brief.md) |
 
 **What we do not claim:** CI Linux green, seven-job artifact promotion, CI badge as merge gate.
 
@@ -140,15 +135,13 @@ Key files per artifact (see also [`CI_RECIPE.md`](CI_RECIPE.md#artifacts-upload-
 After the first green `main` run:
 
 1. Re-run **NLFR proof** on open PRs targeting `main` (or push/rebase to re-trigger).
-2. Treat restored CI as a **merge gate** again — update
-   [`gha-offline-proof-shift.md`](sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md)
-   to note GHA restored.
+2. Treat restored CI as a **merge gate** again.
 
 ---
 
 ## Phase 2 — Promote artifacts to `proof-samples/`
 
-Follow [`GITHUB_RELEASE.md`](GITHUB_RELEASE.md#gha-offline--promotion-runbook) (promotion
+Follow [`GITHUB_RELEASE.md`](GITHUB_RELEASE.md#ci-restore--promotion-runbook) (promotion
 runbook). Summary below; release doc is canonical for redaction rules and doc touch list.
 
 ### 2.1 Confirm promotable outputs
@@ -196,9 +189,7 @@ instead of author-Nix-only.
 1. [`proof-samples/README.md`](proof-samples/README.md) — table rows and provenance note.
 2. [`TRYOUT_PACKET.md`](TRYOUT_PACKET.md) — proof table if numbers shift.
 3. [`ONE_PAGER.md`](ONE_PAGER.md) — bullets if CI numbers differ from author Nix.
-4. [`dags/m5-ci-proof.md`](dags/m5-ci-proof.md) — promotion checkbox.
-5. [`gha-offline-proof-shift.md`](sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md) — mark restored.
-6. [`CI_RECIPE.md`](CI_RECIPE.md) — check off restore checklist.
+4. [`CI_RECIPE.md`](CI_RECIPE.md) — check off restore checklist.
 
 ### 2.5 Verify before tag / release
 
@@ -283,6 +274,5 @@ Full matrix: [`CI_RECIPE.md`](CI_RECIPE.md#local-substitutes-by-job).
 
 - Job matrix and artifact paths: [`CI_RECIPE.md`](CI_RECIPE.md)
 - Restore checklist (operator tick list): [`CI_RECIPE.md`](CI_RECIPE.md#gha-restore-checklist)
-- Release promotion detail: [`GITHUB_RELEASE.md`](GITHUB_RELEASE.md#gha-offline--promotion-runbook)
+- Release promotion detail: [`GITHUB_RELEASE.md`](GITHUB_RELEASE.md#ci-restore--promotion-runbook)
 - Sample catalog: [`proof-samples/README.md`](proof-samples/README.md)
-- Offline policy handoff: [`gha-offline-proof-shift.md`](sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md)

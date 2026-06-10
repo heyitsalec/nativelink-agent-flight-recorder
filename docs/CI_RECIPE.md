@@ -2,13 +2,12 @@
 
 **Quadrant:** How-to · **Audience:** skeptics reproducing proofs on Linux/x86_64 and operators when GitHub Actions is offline.
 
-How NLFR proofs are declared in GitHub Actions and how to substitute locally when workflows are non-green.
+How NLFR proofs are declared in GitHub Actions and how to reproduce the same proofs locally.
 
-## GHA offline policy
+## Local verification policy
 
-As of 2026-06-06, `nlfr-proof.yml` has been **effectively offline / non-green** for ~1 month. **Do not block** ship, merge, or doc review on CI green.
-
-Parent/local proof gates while Actions recover:
+Until the first sustained green public run of `nlfr-proof.yml`, local proof
+gates are the canonical verification (see README § Status):
 
 ```bash
 uv run pytest -q
@@ -24,13 +23,11 @@ nix develop --command ./scripts/lre-cold-warm-proof.sh
 nix develop --command ./scripts/tier1-live-bazel-proof.sh
 ```
 
-Handoff: [GHA offline proof shift](sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md) · [Wiki hub § GHA offline](wiki/README.md#gha-offline)
-
 Full restore procedure when Actions return: [GHA_RESTORE_RUNBOOK.md](GHA_RESTORE_RUNBOOK.md).
 
 ## Sustained-green criteria
 
-Wave 10 documents the bar for closing the GHA offline residual. **Sustained green** means:
+**Sustained green** means:
 
 | Criterion | `NLFR proof` (`nlfr-proof.yml`) | `NLFR cache-only gate` |
 |-----------|--------------------------------|------------------------|
@@ -39,10 +36,10 @@ Wave 10 documents the bar for closing the GHA offline residual. **Sustained gree
 | Artifact promotion | Required before `proof-samples/` Linux CI provenance | Not a promotion source |
 | Local substitute | [`verify-gha-readiness.sh`](../scripts/verify-gha-readiness.sh) | [`cache-only-ci-gate.sh`](../scripts/cache-only-ci-gate.sh) |
 
-While GHA is offline, wave 10 closes **`DONE_WITH_CONCERNS`**: run the readiness script and
+Until a real workflow run meets the table above, run the readiness script and
 treat [`ci-offline-blocker-sample.json`](proof-samples/ci-offline-blocker-sample.json) as the
 committed negative evidence. Do **not** tick the [restore checklist](#gha-restore-checklist)
-until a real workflow run meets the table above.
+before that.
 
 ```bash
 ./scripts/verify-gha-readiness.sh
@@ -72,8 +69,7 @@ uv run pytest tests/test_doctor_cache_only_gate.py -q
 `doctor.json` and `summary.json` but does **not** fail the gate. Failure means
 malformed doctor output or pytest regression — not unsupported fleet claims.
 
-While GHA is offline, treat this workflow as **optional** (same policy as
-`nlfr-proof.yml`). Run the local script before merge; trigger with
+Run the local script before merge; trigger with
 `gh workflow run nlfr-cache-only-gate.yml` when Actions are available.
 
 | Claim | `source_kind` | Gate |
@@ -84,10 +80,9 @@ While GHA is offline, treat this workflow as **optional** (same policy as
 ## GHA restore checklist
 
 Use when operator declares GHA restored or the first sustained green `nlfr-proof.yml` run
-lands. **Cannot be completed while Actions are offline** — tick locally only after a real
-workflow run. Promotion steps follow [`GITHUB_RELEASE.md`](GITHUB_RELEASE.md#gha-offline--promotion-runbook).
+lands. Tick only after a real workflow run. Promotion steps follow [`GITHUB_RELEASE.md`](GITHUB_RELEASE.md#ci-restore--promotion-runbook).
 
-### Pre-restore (local smoke — required while GHA offline)
+### Pre-restore (local smoke)
 
 ```bash
 ./scripts/verify-gha-readiness.sh
@@ -117,7 +112,7 @@ Nix hosts may additionally run the per-job substitutes in [Local substitutes (by
 - [ ] Redacted CI summaries copied to [`proof-samples/`](proof-samples/) per mapping in [GHA_RESTORE_RUNBOOK.md](GHA_RESTORE_RUNBOOK.md#23-map-ci--local-source--committed-sample).
 - [ ] [`proof-samples/README.md`](proof-samples/README.md) provenance updated (Linux CI).
 - [ ] [`TRYOUT_PACKET.md`](TRYOUT_PACKET.md) / [`ONE_PAGER.md`](ONE_PAGER.md) refreshed if metrics changed.
-- [ ] [`gha-offline-proof-shift.md`](sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md) marked restored; CI gate re-enabled for merge policy.
+- [ ] CI gate re-enabled for merge policy.
 - [ ] `uv run pytest -q` and `bash -n scripts/*.sh` pass after sample commits.
 
 ### Policy flip
@@ -218,7 +213,7 @@ If NativeLink/Bazel/LRE toolchain is unavailable, scripts write `environment-blo
 
 ## Redaction for committed samples
 
-After a green CI run, redact absolute paths and copy summaries to [`proof-samples/`](proof-samples/) per [`proof-samples/README.md`](proof-samples/README.md). While GHA is offline, committed samples come from author-Nix or fixture/blocker paths — cite the sample table, not CI success.
+After a green CI run, redact absolute paths and copy summaries to [`proof-samples/`](proof-samples/) per [`proof-samples/README.md`](proof-samples/README.md). Until then, committed samples come from author-Nix or fixture/blocker paths — cite the sample table, not CI success.
 
 ## Honesty gates
 
@@ -228,4 +223,4 @@ After a green CI run, redact absolute paths and copy summaries to [`proof-sample
 - Do not claim M9 compare from tier1 dry-runs alone — run `compare export` or `compare-proof.sh`.
 - Document which job or local script produced which claim in [`ADOPTION_GUIDE.md`](ADOPTION_GUIDE.md).
 
-See also: [`dags/m5-ci-proof.md`](dags/m5-ci-proof.md) · [Wiki hub](wiki/README.md)
+See also: [Wiki hub](wiki/README.md)

@@ -137,9 +137,9 @@ Ground-truth run summaries that feed graph projection:
 
 | Sample | Chain proved |
 |--------|--------------|
-| [`agent-loop-summary.json`](../../../../proof-samples/agent-loop-summary.json) | `agent → change → run → target → action → cache_event` |
-| [`agent-bugfix-summary.json`](../../../../proof-samples/agent-bugfix-summary.json) | Tier 1 Act 1 live Bazel validation |
-| [`two-worker-summary.json`](../../../../proof-samples/two-worker-summary.json) | Remote config nodes; worker identity conditional |
+| [`agent-loop-summary.json`](../../../proof-samples/agent-loop-summary.json) | `agent → change → run → target → action → cache_event` |
+| [`agent-bugfix-summary.json`](../../../proof-samples/agent-bugfix-summary.json) | Tier 1 Act 1 live Bazel validation |
+| [`two-worker-summary.json`](../../../proof-samples/two-worker-summary.json) | Remote config nodes; worker identity conditional |
 
 ## Out of scope
 
@@ -152,6 +152,6 @@ The action graph does **not** represent:
 ## Related
 
 - [Projection-only canvas](../../explanation/projection-only-canvas.md)
-- [Canvas projection boundary diagram](../../../../diagrams/canvas-projection-boundary.md)
-- [Design: routing](../../../../design/routing.md) — canvas mode lenses
+- [Canvas projection boundary diagram](../../../diagrams/canvas-projection-boundary.md)
+- [Design: routing](../../../design/routing.md) — canvas mode lenses
 - CLI: [graph export](../cli.md#graph-export)

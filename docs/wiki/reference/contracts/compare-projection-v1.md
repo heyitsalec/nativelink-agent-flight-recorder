@@ -170,8 +170,8 @@ Compare is `derived_v1` over existing proof packets. Ground individual legs with
 
 | Sample | Use as compare leg |
 |--------|-------------------|
-| [`cold-warm-summary.json`](../../../../proof-samples/cold-warm-summary.json) | Cache economics baseline |
-| [`agent-bugfix-summary.json`](../../../../proof-samples/agent-bugfix-summary.json) vs [`agent-feature-summary.json`](../../../../proof-samples/agent-feature-summary.json) | Agent provenance delta |
+| [`cold-warm-summary.json`](../../../proof-samples/cold-warm-summary.json) | Cache economics baseline |
+| [`agent-bugfix-summary.json`](../../../proof-samples/agent-bugfix-summary.json) vs [`agent-feature-summary.json`](../../../proof-samples/agent-feature-summary.json) | Agent provenance delta |
 
 No committed compare sample in `docs/proof-samples/` yet — run
 `scripts/compare-proof.sh` locally or use the fixture above.
@@ -187,6 +187,6 @@ Compare projection does **not**:
 ## Related
 
 - [Truth labels § Compare claims](../truth-labels.md#compare-claims-m9)
-- [Compare projection flow diagram](../../../../diagrams/compare-projection-flow.md)
+- [Compare projection flow diagram](../../../diagrams/compare-projection-flow.md)
 - CLI: [compare export](../cli.md#compare-m9)
 - Tests: [`tests/test_compare.py`](../../../../tests/test_compare.py)

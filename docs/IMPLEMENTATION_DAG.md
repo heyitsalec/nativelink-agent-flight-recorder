@@ -1,11 +1,9 @@
 # Implementation DAG
 
 > **Historical planning artifact.** This DAG records the original MVP workstream
-> sequencing (PER-998). For current milestones, execution-ladder boundaries, and
+> sequencing. For current milestones, execution-ladder boundaries, and
 > M5–M9 status, use **[ARCHITECTURE_TRACK.md](ARCHITECTURE_TRACK.md)** and
 > **[USEFULNESS_ROADMAP.md](USEFULNESS_ROADMAP.md)**.
-
-Source planning issue: [PER-998](https://linear.app/gradschool/issue/PER-998/nlfr-0-implement-nativelink-agent-flight-recorder-mvp)
 
 ## Parent Objective
 

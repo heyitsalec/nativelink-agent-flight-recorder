@@ -16,8 +16,6 @@ not pytest fallback alone.
 | `collectable_v1` on successful live acts | Worker placement, queue time |
 | `data/tier1-live-bazel/summary.json` | Act 3 compare (M9 separate path) |
 
-DAG mirror: [tier1-live-bazel](../../dags/tier1-live-bazel.md).
-
 ## Prerequisites
 
 ```bash
@@ -57,7 +55,7 @@ NLFR_RUN_TIER1_LIVE_BAZEL=1 nix develop --command \
 
 | DAG | Scope |
 |-----|-------|
-| [ci-bazel-tier1](../../dags/ci-bazel-tier1.md) | Isolated `//tasks:priority_test` per act setup |
+| ci-bazel-tier1 (`scripts/tier1-bazel-ci-proof.sh`) | Isolated `//tasks:priority_test` per act setup |
 | tier1-live-bazel | Full `tier1-agent-demo.sh` acts 1+2 |
 
 Both require `nix develop` for the green path.
@@ -69,16 +67,14 @@ demo legs remain `simulated_v1` where fixtures apply.
 
 Reference: [truth labels](../reference/truth-labels.md).
 
-## GHA offline
+## Local proof gates
 
-Tier1 proof is validated locally. Do not block on CI green:
+Tier1 proof is validated locally:
 
 ```bash
 uv run pytest -q tests/test_tier1_live_bazel.py
 bash -n scripts/tier1-live-bazel-proof.sh
 ```
-
-[GHA offline proof shift](../../sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md).
 
 ## Related
 
