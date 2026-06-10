@@ -1,19 +1,19 @@
-import type { ReactNode } from "react";
+import type { FunctionComponent, ReactNode } from "react";
 import { createElement } from "react";
 import type { ComponentInstance, ComponentKind } from "../view/types";
 import { CHART_PANELS } from "./ChartPanel";
 import { OPERATOR_PANELS } from "./OperatorPanel";
 import { TABLE_PANELS } from "./TablePanel";
 
-const PANEL_REGISTRY: Partial<Record<ComponentKind, (instance: ComponentInstance) => ReactNode>> = {
+const PANEL_REGISTRY: Partial<Record<ComponentKind, FunctionComponent<ComponentInstance>>> = {
   ...CHART_PANELS,
   ...TABLE_PANELS,
   ...OPERATOR_PANELS,
 };
 
 export function renderPanel(instance: ComponentInstance): ReactNode {
-  const render = PANEL_REGISTRY[instance.component_kind];
-  if (!render) {
+  const Panel = PANEL_REGISTRY[instance.component_kind];
+  if (!Panel) {
     return createElement(
       "p",
       { role: "alert" },
@@ -21,7 +21,11 @@ export function renderPanel(instance: ComponentInstance): ReactNode {
       createElement("code", null, instance.component_kind),
     );
   }
-  return render(instance);
+  // Render as a React element (not a bare function call) so each panel owns
+  // its own hooks list. Calling Panel(instance) inline attributed every
+  // panel's hooks to GridShell and broke the Rules of Hooks whenever
+  // selection toggled which panels are visible.
+  return createElement(Panel, instance);
 }
 
 export { CHART_PANELS, TABLE_PANELS, OPERATOR_PANELS, PANEL_REGISTRY };
