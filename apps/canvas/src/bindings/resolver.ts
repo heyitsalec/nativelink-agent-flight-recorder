@@ -1,3 +1,4 @@
+import { withBase } from "../lib/basePath";
 import { sampleProofPacket, sampleProjection } from "../sampleProjection";
 import type { ActionGraphProjection, CompareProjection, ProofPacket } from "../types";
 import type {
@@ -36,7 +37,7 @@ async function fetchBinding(binding: ProjectionBindingDirect): Promise<{
   status: BindingResolveStatus;
 }> {
   try {
-    const response = await fetch(binding.path);
+    const response = await fetch(withBase(binding.path));
     if (!response.ok) throw new Error(`fetch failed: ${binding.path}`);
     const value = await response.json();
     return { value, status: "ok" };

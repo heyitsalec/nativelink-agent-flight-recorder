@@ -1,3 +1,4 @@
+import { withBase } from "../lib/basePath";
 import { DEFAULT_VIEW_SPEC, getBundledViewSpec } from "./defaultViewSpec";
 import { readStoredViewSpec } from "./persistViewSpec";
 import type { ViewSpec } from "./types";
@@ -9,7 +10,7 @@ function viewIdFromQuery(): string | null {
 
 async function fetchRemoteViewSpec(viewId: string): Promise<ViewSpec | null> {
   try {
-    const response = await fetch(`/views/${viewId}.json`);
+    const response = await fetch(withBase(`/views/${viewId}.json`));
     if (!response.ok) return null;
     const spec = (await response.json()) as ViewSpec;
     if (spec.schema_version !== "nlfr.view-spec.v1") return null;
