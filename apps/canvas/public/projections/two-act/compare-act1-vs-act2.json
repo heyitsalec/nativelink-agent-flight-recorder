@@ -12,17 +12,17 @@
         "runs": 0
       },
       "evidence_refs": [
-        "run_group:two-act-spark-stub-act1",
-        "run_group:two-act-spark-stub-act2"
+        "run_group:two-act-spark-act1",
+        "run_group:two-act-spark-act2"
       ],
       "id": "run_counts",
       "left": {
-        "run_group": "two-act-spark-stub-act1",
+        "run_group": "two-act-spark-act1",
         "runs": 1
       },
       "redaction_state": "safe",
       "right": {
-        "run_group": "two-act-spark-stub-act2",
+        "run_group": "two-act-spark-act2",
         "runs": 1
       },
       "source_kind": "derived_v1",
@@ -43,8 +43,8 @@
         "misses": -2
       },
       "evidence_refs": [
-        "run_group:two-act-spark-stub-act1",
-        "run_group:two-act-spark-stub-act2"
+        "run_group:two-act-spark-act1",
+        "run_group:two-act-spark-act2"
       ],
       "id": "cache_metrics",
       "left": {
@@ -80,8 +80,8 @@
         "worker_identity_observed_changed": false
       },
       "evidence_refs": [
-        "run_group:two-act-spark-stub-act1",
-        "run_group:two-act-spark-stub-act2"
+        "run_group:two-act-spark-act1",
+        "run_group:two-act-spark-act2"
       ],
       "id": "worker_identity",
       "left": {
@@ -107,33 +107,33 @@
         "present_changed": false
       },
       "evidence_refs": [
-        "run_group:two-act-spark-stub-act1",
-        "run_group:two-act-spark-stub-act2"
+        "run_group:two-act-spark-act1",
+        "run_group:two-act-spark-act2"
       ],
       "id": "agent_provenance",
       "left": {
         "block_count": 1,
         "blocks": [
           {
-            "confidence": "medium",
+            "confidence": "high",
             "evidence_refs": [
               "scenario:two-act-underspec-act1",
               "agent:two-act-spark-act1",
-              "run:run_0077b7d2d2bfe579bf3665ce",
+              "run:run_2c59084cb1dee3245ea4e02d",
               "prompt:sha256:0f631e165958418598ec4001ba69264dda2223f46419529150032d1ecc5bb57c",
               "adapter:two-act-spark-proof.sh",
               "artifact:agent-receipt.json",
-              "receipt:sha256:e94662b7a0cccb752a865ad292dd22dfbd646174a54fcbce2261555b7e38aaa5",
-              "session:stub-act1-0f631e165958"
+              "receipt:sha256:20ec1447bedd0313482374a1362e579e9ae4ba5819668dd5184f31d8c03fc45b",
+              "session:031c4fa8-83dd-426c-a201-be83f7dd77a2"
             ],
-            "id": "proof_blocks_817329713e63a64f6a34f2a0",
-            "model": "stub-deterministic-model",
+            "id": "proof_blocks_bc52b9ae246f6af705591709",
+            "model": "claude-opus-4-8[1m]",
             "prompt_sha256_prefix": "0f631e165958",
-            "provenance_class": "stub_receipt_v1",
-            "receipt_session_id": "stub-act1-0f631e165958",
-            "receipt_verified": false,
+            "provenance_class": "receipt_verified_v1",
+            "receipt_session_id": "031c4fa8-83dd-426c-a201-be83f7dd77a2",
+            "receipt_verified": true,
             "redaction_state": "safe",
-            "source_kind": "simulated_v1",
+            "source_kind": "collectable_v1",
             "title": "Agent Provenance: two-act-spark-act1"
           }
         ],
@@ -144,25 +144,25 @@
         "block_count": 1,
         "blocks": [
           {
-            "confidence": "medium",
+            "confidence": "high",
             "evidence_refs": [
               "scenario:two-act-underspec-act2",
               "agent:two-act-spark-act2",
-              "run:run_0979df63efc3bc7e6fc12944",
-              "prompt:sha256:ac6eaaf9c46807dc0e885f8a19ad97b45508bffb4886cd1030b96ba8e7aeb055",
+              "run:run_1101abdd7b147f0a313cfab3",
+              "prompt:sha256:f18e25dca1ef668440a672409a5dbf96310e44ffaa3bc8b5ba6d77b6f2e58366",
               "adapter:two-act-spark-proof.sh",
               "artifact:agent-receipt.json",
-              "receipt:sha256:909cc0ec7e1a6087e05d8475b83276d8706932c13f99763961739119a079de40",
-              "session:stub-act2-ac6eaaf9c468"
+              "receipt:sha256:4f04e3833862e1339a28cc52595d5d1ffac708d56e8b7b1eded2c096e88ae67e",
+              "session:79341d14-acce-43b9-9801-5c5cc740e6dd"
             ],
-            "id": "proof_blocks_89e02aadc9b3d48376c20a39",
-            "model": "stub-deterministic-model",
-            "prompt_sha256_prefix": "ac6eaaf9c468",
-            "provenance_class": "stub_receipt_v1",
-            "receipt_session_id": "stub-act2-ac6eaaf9c468",
-            "receipt_verified": false,
+            "id": "proof_blocks_d4c7306e2737d069e9dabaec",
+            "model": "claude-opus-4-8[1m]",
+            "prompt_sha256_prefix": "f18e25dca1ef",
+            "provenance_class": "receipt_verified_v1",
+            "receipt_session_id": "79341d14-acce-43b9-9801-5c5cc740e6dd",
+            "receipt_verified": true,
             "redaction_state": "safe",
-            "source_kind": "simulated_v1",
+            "source_kind": "collectable_v1",
             "title": "Agent Provenance: two-act-spark-act2"
           }
         ],
@@ -196,8 +196,8 @@
         "changed": true
       },
       "evidence_refs": [
-        "run_group:two-act-spark-stub-act1",
-        "run_group:two-act-spark-stub-act2"
+        "run_group:two-act-spark-act1",
+        "run_group:two-act-spark-act2"
       ],
       "id": "status_deltas",
       "left": {
@@ -217,14 +217,14 @@
     }
   ],
   "evidence_refs": [
-    "run_group:two-act-spark-stub-act1",
-    "run_group:two-act-spark-stub-act2"
+    "run_group:two-act-spark-act1",
+    "run_group:two-act-spark-act2"
   ],
-  "generated_at": "2026-06-10T15:54:25.928539Z",
-  "left_run_group": "two-act-spark-stub-act1",
+  "generated_at": "2026-06-10T16:52:53.608349Z",
+  "left_run_group": "two-act-spark-act1",
   "projection_kind": "compare",
   "redaction_state": "safe",
-  "right_run_group": "two-act-spark-stub-act2",
+  "right_run_group": "two-act-spark-act2",
   "schema_version": 1,
   "source_kind": "derived_v1",
   "summary": {

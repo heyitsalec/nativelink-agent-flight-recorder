@@ -25,17 +25,21 @@ unchanged targets, and a compare projection contrasts the two acts.
 </p>
 
 <p align="center">
-  <img src="apps/canvas/baselines/screenshots/two-act-receipt-pane.png" alt="Agent receipt detail pane: stub-receipt badge, model, session, token usage, prompt/response SHA-256 digests, truth labels, evidence refs" width="380">
+  <img src="apps/canvas/baselines/screenshots/two-act-receipt-pane.png" alt="Agent receipt detail pane: verified-receipt badge, model, session, token usage, prompt/response SHA-256 digests, truth labels, evidence refs" width="380">
   <br>
   <sub><strong>The receipt:</strong> CLI version, session, token usage, prompt/response SHA-256, truth labels, and evidence refs — the raw prompt is structurally absent.</sub>
 </p>
 
-**What is and is not real here:** the validation and cache legs are real
-recorded Bazel + NativeLink evidence (`collectable_v1`). The agent receipts in
-the committed run come from a deterministic stub CLI and are badged
-`stub_receipt_v1` — stub-verified mechanics, live receipts pending. When the
-operator-authenticated live run lands, the same pipeline upgrades the badge to
-`receipt_verified_v1`. An unauthenticated live CLI records a truth-labeled
+**What is and is not real here:** everything in the committed run. The
+validation and cache legs are real recorded Bazel + NativeLink evidence
+(`collectable_v1`), and the agent legs carry live receipts
+(`receipt_verified_v1`): a real Claude (server-resolved `claude-opus-4-8`)
+authored both the failing patch and the fix, with session id, token usage, and
+prompt/response SHA-256 recorded — never the raw prompt
+([live summary](docs/proof-samples/two-act-spark-live-summary-sample.json) ·
+[receipt](docs/proof-samples/two-act-spark-live-receipt-sample.json)).
+A deterministic stub path keeps the same mechanics testable without LLM tokens
+(`stub_receipt_v1`), and an unauthenticated CLI records a truth-labeled
 blocker instead of faking success
 ([sample](docs/proof-samples/two-act-spark-live-blocker-sample.json)).
 
@@ -46,9 +50,10 @@ blocker instead of faking success
    *(live at public release — until the repo flips public, use the quickstart
    below)*.
 2. **One proof JSON** —
-   [`docs/proof-samples/two-act-spark-stub-summary-sample.json`](docs/proof-samples/two-act-spark-stub-summary-sample.json):
+   [`docs/proof-samples/two-act-spark-live-summary-sample.json`](docs/proof-samples/two-act-spark-live-summary-sample.json):
    act 1 red and attributed to the hidden target, act 2 green with warm cache
-   hits, compare projection exported — every leg truth-labeled.
+   hits, live `receipt_verified_v1` agent receipts on both acts, compare
+   projection exported — every leg truth-labeled.
 3. **One pager** — [`docs/ONE_PAGER.md`](docs/ONE_PAGER.md): thesis, proven
    claims, and the explicitly unproven boundaries.
 
@@ -96,15 +101,14 @@ Every normalized evidence row and projection object carries four fields:
 - `redaction_state`: `safe`, `redacted`, `blocked`, or `unknown`
 
 Agent nodes additionally carry a receipt provenance badge:
-`receipt_verified_v1` (parsed live-CLI receipt), `stub_receipt_v1`
-(deterministic stub — today's committed two-act run), or
+`receipt_verified_v1` (parsed live-CLI receipt — the committed two-act run),
+`stub_receipt_v1` (deterministic stub used by the CI mechanics gate), or
 `operator_asserted_v1` (operator claim without a receipt).
 
 V1 does **not** claim remote worker assignment, queue time, action placement,
 scheduler assignment, load distribution, or full remote-execution fleet
 behavior. Worker identity is **conditional** on M7 stdout capture — not a
-wholesale fleet claim. Live-LLM agent receipts do not exist yet — the two-act
-agent legs are stub-verified mechanics until the live run lands. Full claim
+wholesale fleet claim. Full claim
 ledger: [`docs/ONE_PAGER.md`](docs/ONE_PAGER.md) ·
 [truth-label reference](docs/wiki/reference/truth-labels.md).
 
@@ -280,7 +284,7 @@ in [docs/CI_RECIPE.md](docs/CI_RECIPE.md).
 | M7 | `worker_admin_stdout` parser + `worker-evidence-proof.sh` (conditional `worker_identity`) |
 | M8 | Agent adapter (`record-agent-change.sh`; model + `prompt_sha256` only) |
 | M9 | `compare export` / `compare index`, compare lens, `compare-proof.sh` |
-| Two-act spark | Recorded fail→fix with agent receipts + canvas receipt lens (stub-verified mechanics; live receipts pending) |
+| Two-act spark | Recorded fail→fix with live `receipt_verified_v1` agent receipts + canvas receipt lens (stub path retained as CI mechanics gate) |
 
 Out of scope for v1: SaaS/auth/billing/multi-tenancy, fleet scheduler dashboards,
 OTLP/Jaeger clone, persistent worker security claims, and unsupported

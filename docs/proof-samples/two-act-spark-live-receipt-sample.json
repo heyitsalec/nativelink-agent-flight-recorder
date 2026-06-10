@@ -1,6 +1,6 @@
 {
-  "api_error_status": 401,
-  "captured_at": "2026-06-10T15:54:32.564265Z",
+  "api_error_status": null,
+  "captured_at": "2026-06-10T16:52:20.690199Z",
   "cli": {
     "command": [
       "claude",
@@ -10,38 +10,39 @@
       "json"
     ],
     "name": "claude",
-    "version": "2.1.162 (Claude Code)"
+    "version": "2.1.170 (Claude Code)"
   },
   "confidence": "high",
-  "detail": "Failed to authenticate. API Error: 401 Invalid authentication credentials",
-  "duration_api_ms": 0,
-  "duration_ms": 806,
+  "duration_api_ms": 6432,
+  "duration_ms": 7778,
   "evidence_refs": [
     "prompt:sha256:0f631e165958418598ec4001ba69264dda2223f46419529150032d1ecc5bb57c",
     "cli:claude",
-    "response:sha256:6efac9e9d5f40c9bd5c775dcc80c69b360635b04bca17f66cc3d09f43790ada7",
-    "session:efb0f38b-97af-459a-9039-3cc8f1f483f2"
+    "response:sha256:68a96a92ccf151fadc3067456f41f1f6f63b2ef72dd40cf6574432609334ab8a",
+    "session:031c4fa8-83dd-426c-a201-be83f7dd77a2"
   ],
   "model": {
     "requested": null,
-    "resolved": null,
-    "resolved_all": []
+    "resolved": "claude-opus-4-8[1m]",
+    "resolved_all": [
+      "claude-opus-4-8[1m]"
+    ]
   },
   "num_turns": 1,
   "prompt_sha256": "0f631e165958418598ec4001ba69264dda2223f46419529150032d1ecc5bb57c",
   "redaction_state": "redacted",
-  "response_chars": 73,
-  "response_sha256": "6efac9e9d5f40c9bd5c775dcc80c69b360635b04bca17f66cc3d09f43790ada7",
+  "response_chars": 476,
+  "response_sha256": "68a96a92ccf151fadc3067456f41f1f6f63b2ef72dd40cf6574432609334ab8a",
   "result_subtype": "success",
   "schema_version": "nlfr.agent_receipt.v1",
-  "session_id": "efb0f38b-97af-459a-9039-3cc8f1f483f2",
+  "session_id": "031c4fa8-83dd-426c-a201-be83f7dd77a2",
   "source_kind": "collectable_v1",
-  "status": "api_error",
-  "total_cost_usd": 0,
+  "status": "success",
+  "total_cost_usd": 0.11179200000000002,
   "usage": {
-    "cache_creation_input_tokens": 0,
-    "cache_read_input_tokens": 0,
-    "input_tokens": 0,
-    "output_tokens": 0
+    "cache_creation_input_tokens": 2804,
+    "cache_read_input_tokens": 15334,
+    "input_tokens": 14965,
+    "output_tokens": 471
   }
 }

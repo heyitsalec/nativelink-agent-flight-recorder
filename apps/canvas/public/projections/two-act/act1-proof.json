@@ -21,7 +21,7 @@
       "claims": [],
       "confidence": "high",
       "evidence_refs": [
-        "run:run_0077b7d2d2bfe579bf3665ce",
+        "run:run_2c59084cb1dee3245ea4e02d",
         "bazel:bep-profile-execution-log"
       ],
       "id": "invocations",
@@ -105,19 +105,19 @@
     },
     {
       "claims": [],
-      "confidence": "medium",
+      "confidence": "high",
       "evidence_refs": [
-        "run:run_0077b7d2d2bfe579bf3665ce",
-        "receipt:sha256:e94662b7a0cccb752a865ad292dd22dfbd646174a54fcbce2261555b7e38aaa5",
-        "prompt:sha256:0f631e165958418598ec4001ba69264dda2223f46419529150032d1ecc5bb57c",
-        "cli:spark-stub-claude.sh",
-        "response:sha256:06e16639ce30bc4d164755dfb68bd645bb1cf931e71be9801ec7cf65824bfec3",
-        "session:stub-act1-0f631e165958",
         "scenario:two-act-underspec-act1",
         "agent:two-act-spark-act1",
+        "run:run_2c59084cb1dee3245ea4e02d",
+        "prompt:sha256:0f631e165958418598ec4001ba69264dda2223f46419529150032d1ecc5bb57c",
         "adapter:two-act-spark-proof.sh",
         "artifact:agent-receipt.json",
-        "invocation:invocations_86c7ea75fc8eb19f5468cc36"
+        "receipt:sha256:20ec1447bedd0313482374a1362e579e9ae4ba5819668dd5184f31d8c03fc45b",
+        "session:031c4fa8-83dd-426c-a201-be83f7dd77a2",
+        "invocation:invocations_734959a3246e2c1b44a13821",
+        "cli:claude",
+        "response:sha256:68a96a92ccf151fadc3067456f41f1f6f63b2ef72dd40cf6574432609334ab8a"
       ],
       "id": "artifacts",
       "kind": "derived_summary",
@@ -130,52 +130,52 @@
       "title": "Artifact Chain"
     },
     {
-      "confidence": "medium",
+      "confidence": "high",
       "evidence_refs": [
         "scenario:two-act-underspec-act1",
         "agent:two-act-spark-act1",
-        "run:run_0077b7d2d2bfe579bf3665ce",
+        "run:run_2c59084cb1dee3245ea4e02d",
         "prompt:sha256:0f631e165958418598ec4001ba69264dda2223f46419529150032d1ecc5bb57c",
         "adapter:two-act-spark-proof.sh",
         "artifact:agent-receipt.json",
-        "receipt:sha256:e94662b7a0cccb752a865ad292dd22dfbd646174a54fcbce2261555b7e38aaa5",
-        "session:stub-act1-0f631e165958"
+        "receipt:sha256:20ec1447bedd0313482374a1362e579e9ae4ba5819668dd5184f31d8c03fc45b",
+        "session:031c4fa8-83dd-426c-a201-be83f7dd77a2"
       ],
-      "id": "proof_blocks_817329713e63a64f6a34f2a0",
+      "id": "proof_blocks_bc52b9ae246f6af705591709",
       "kind": "agent_provenance",
       "payload": {
         "agent": {
           "input_signal": "redacted: prompt withheld, hash retained",
           "kind": "claude_code_adapter_v1",
-          "model": "stub-deterministic-model",
-          "model_label_operator": "stub-deterministic-model",
+          "model": "claude-opus-4-8[1m]",
+          "model_label_operator": "claude-opus-4-8[1m]",
           "name": "two-act-spark-act1",
           "prompt_sha256": "0f631e165958418598ec4001ba69264dda2223f46419529150032d1ecc5bb57c",
-          "provenance_class": "stub_receipt_v1",
+          "provenance_class": "receipt_verified_v1",
           "receipt": {
-            "captured_at": "2026-06-10T15:54:15.114205Z",
-            "cli_name": "spark-stub-claude.sh",
-            "cli_version": "stub-claude 1.0.0 (deterministic spark fixture)",
-            "live": false,
+            "captured_at": "2026-06-10T16:52:20.690199Z",
+            "cli_name": "claude",
+            "cli_version": "2.1.170 (Claude Code)",
+            "live": true,
             "model_requested": null,
-            "model_resolved": "stub-deterministic-model",
+            "model_resolved": "claude-opus-4-8[1m]",
             "num_turns": 1,
             "prompt_sha256": "0f631e165958418598ec4001ba69264dda2223f46419529150032d1ecc5bb57c",
-            "receipt_sha256": "e94662b7a0cccb752a865ad292dd22dfbd646174a54fcbce2261555b7e38aaa5",
-            "response_sha256": "06e16639ce30bc4d164755dfb68bd645bb1cf931e71be9801ec7cf65824bfec3",
+            "receipt_sha256": "20ec1447bedd0313482374a1362e579e9ae4ba5819668dd5184f31d8c03fc45b",
+            "response_sha256": "68a96a92ccf151fadc3067456f41f1f6f63b2ef72dd40cf6574432609334ab8a",
             "schema_version": "nlfr.agent_receipt.v1",
-            "session_id": "stub-act1-0f631e165958",
+            "session_id": "031c4fa8-83dd-426c-a201-be83f7dd77a2",
             "status": "success",
             "usage": {
-              "input_tokens": 329,
-              "output_tokens": 135
+              "input_tokens": 14965,
+              "output_tokens": 471
             }
           }
         },
         "build": {
-          "artifact_root": "/Users/alecbot/Documents/nlfr-wt-b/data/two-act-spark-stub/runs/run_0077b7d2d2bfe579bf3665ce/artifacts",
-          "run_id": "run_0077b7d2d2bfe579bf3665ce",
-          "run_key": "two-act-underspec-act1:cache-only:2026-06-10T15:54:15.283750Z",
+          "artifact_root": "<repo>/data/two-act-spark/runs/run_2c59084cb1dee3245ea4e02d/artifacts",
+          "run_id": "run_2c59084cb1dee3245ea4e02d",
+          "run_key": "two-act-underspec-act1:cache-only:2026-06-10T16:52:21.158511Z",
           "status": "failed"
         },
         "change": {
@@ -183,7 +183,7 @@
             "tasks/escalation.py"
           ],
           "after_hashes": {
-            "tasks/escalation.py": "f3621c8f9aa90966320ef8c4d626010477d892661d5a0ec9522d2273953138b0"
+            "tasks/escalation.py": "0bcec33226ebc71ba920c4568eeba4a27cbeee32892f0a4c3f9aad44ade2268c"
           },
           "before_hashes": {
             "tasks/escalation.py": null
@@ -191,34 +191,34 @@
           "change_class": "bounded_agent_v1",
           "patch_applied": true
         },
-        "confidence": "medium",
+        "confidence": "high",
         "evidence_refs": [
           "scenario:two-act-underspec-act1",
           "agent:two-act-spark-act1",
-          "run:run_0077b7d2d2bfe579bf3665ce",
+          "run:run_2c59084cb1dee3245ea4e02d",
           "prompt:sha256:0f631e165958418598ec4001ba69264dda2223f46419529150032d1ecc5bb57c",
           "adapter:two-act-spark-proof.sh",
           "artifact:agent-receipt.json",
-          "receipt:sha256:e94662b7a0cccb752a865ad292dd22dfbd646174a54fcbce2261555b7e38aaa5",
-          "session:stub-act1-0f631e165958"
+          "receipt:sha256:20ec1447bedd0313482374a1362e579e9ae4ba5819668dd5184f31d8c03fc45b",
+          "session:031c4fa8-83dd-426c-a201-be83f7dd77a2"
         ],
-        "generated_at": "2026-06-10T15:54:20.561475Z",
+        "generated_at": "2026-06-10T16:52:28.073352Z",
         "mode": "cache-only",
         "redaction_state": "safe",
-        "run_group": "two-act-spark-stub-act1",
+        "run_group": "two-act-spark-act1",
         "scenario_id": "two-act-underspec-act1",
         "schema_version": "nlfr.agent_provenance.v1",
-        "source_kind": "simulated_v1",
+        "source_kind": "collectable_v1",
         "title": "Bounded agent change with hashed prompt provenance",
-        "workspace": "/private/tmp/nix-shell.ipMZIK/nlfr-two-act.UNSRP7/workspace"
+        "workspace": "/private<scratch>/nlfr-two-act.uJcffr/workspace"
       },
       "redaction_state": "safe",
-      "source_kind": "simulated_v1",
+      "source_kind": "collectable_v1",
       "summary": "two-act-underspec-act1 change recorded with status failed.",
       "title": "Agent Provenance: two-act-spark-act1"
     }
   ],
-  "generated_at": "2026-06-10T15:54:20.796181Z",
+  "generated_at": "2026-06-10T16:52:28.374778Z",
   "projection_kind": "proof_packet",
   "retention": {
     "claims": [
@@ -235,7 +235,7 @@
     "source_kind": "derived_v1",
     "version": 1
   },
-  "run_group": "two-act-spark-stub-act1",
+  "run_group": "two-act-spark-act1",
   "schema_version": 1,
   "summary": {
     "actions": 2,
