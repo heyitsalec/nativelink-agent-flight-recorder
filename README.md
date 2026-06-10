@@ -2,9 +2,113 @@
 
 **A local-first proof recorder for AI-agent validation loops with NativeLink and Bazel.**
 
-NLFR captures immutable build evidence, normalizes it into SQLite, exports
-truth-labeled projection JSON, and renders a sparse Action Graph canvas from
-that projection only — never from invented backend state.
+When AI writes the code, NativeLink makes validating it fast — NLFR makes
+validating it trustworthy. NLFR captures immutable build evidence, normalizes
+it into SQLite, exports truth-labeled projection JSON, and renders a sparse
+Action Graph canvas from that projection only — never from invented backend
+state.
+
+## The two-act story: the recorder catches an agent being wrong
+
+**Act 1** — an agent writes a patch from an underspecified task. A hidden Bazel
+requirement it cannot see catches it: real `bazel test` through the NativeLink
+cache goes red. The recorder captures the failure, attributes it to the hidden
+target, and stores the agent's receipt (model, session, prompt SHA-256 — never
+the raw prompt). **Act 2** — the agent receives the recorded failure evidence
+and ships the fix: validation goes green with warm NativeLink cache hits on
+unchanged targets, and a compare projection contrasts the two acts.
+
+<p align="center">
+  <img src="apps/canvas/baselines/screenshots/two-act-graph-receipt-badge.png" alt="Two-act spark act 1 in the canvas: failed agent patch in the Action Graph with the agent receipt pane open" width="100%">
+  <br>
+  <sub><strong>Act 1 in the canvas:</strong> the failed patch in the Action Graph, receipt badge on the agent node, receipt detail pane open — all rendered from committed projection JSON.</sub>
+</p>
+
+<p align="center">
+  <img src="apps/canvas/baselines/screenshots/two-act-receipt-pane.png" alt="Agent receipt detail pane: stub-receipt badge, model, session, token usage, prompt/response SHA-256 digests, truth labels, evidence refs" width="380">
+  <br>
+  <sub><strong>The receipt:</strong> CLI version, session, token usage, prompt/response SHA-256, truth labels, and evidence refs — the raw prompt is structurally absent.</sub>
+</p>
+
+**What is and is not real here:** the validation and cache legs are real
+recorded Bazel + NativeLink evidence (`collectable_v1`). The agent receipts in
+the committed run come from a deterministic stub CLI and are badged
+`stub_receipt_v1` — stub-verified mechanics, live receipts pending. When the
+operator-authenticated live run lands, the same pipeline upgrades the badge to
+`receipt_verified_v1`. An unauthenticated live CLI records a truth-labeled
+blocker instead of faking success
+([sample](docs/proof-samples/two-act-spark-live-blocker-sample.json)).
+
+## See it in 60 seconds
+
+1. **Hosted canvas** —
+   <https://heyitsalec.github.io/nativelink-agent-flight-recorder/?view=two-act-spark>
+   *(live at public release — until the repo flips public, use the quickstart
+   below)*.
+2. **One proof JSON** —
+   [`docs/proof-samples/two-act-spark-stub-summary-sample.json`](docs/proof-samples/two-act-spark-stub-summary-sample.json):
+   act 1 red and attributed to the hidden target, act 2 green with warm cache
+   hits, compare projection exported — every leg truth-labeled.
+3. **One pager** — [`docs/ONE_PAGER.md`](docs/ONE_PAGER.md): thesis, proven
+   claims, and the explicitly unproven boundaries.
+
+## Quickstart (no Nix, no NativeLink required)
+
+```bash
+git clone https://github.com/heyitsalec/nativelink-agent-flight-recorder.git
+cd nativelink-agent-flight-recorder
+uv sync
+uv run pytest -q                  # expected: 175 passed, 3 skipped
+npm --prefix apps/canvas install
+npm --prefix apps/canvas run dev  # http://127.0.0.1:5173/
+```
+
+Open `http://127.0.0.1:5173/?view=two-act-spark` for the two-act story above.
+The default view renders **`canvas-dev`** — a real `collectable_v1` record of
+NLFR building its own GUI. The canvas reads committed projection JSON only; it
+never invents backend state. Real NativeLink proof runs need Nix — see
+[Run Locally](#run-locally).
+
+## The cache numbers
+
+Real cold/warm NativeLink cache proof — NativeLink 1.3.2, Bazel 9.1.1, inside
+`nix develop`:
+
+| Leg | Wall time | Cache hit rate |
+| --- | --- | --- |
+| Cold | 8.17 s | 0.0 (0 hits / 2 misses) |
+| Warm | 5.48 s | 1.0 (2 hits / 0 misses) |
+
+Same target, 2.7 s faster on a deliberately tiny fixture workload — the point
+is the recorded, inspectable evidence trail, not the absolute seconds.
+Evidence:
+[`docs/proof-samples/cold-warm-summary.json`](docs/proof-samples/cold-warm-summary.json)
+(`collectable_v1`, `high`). Reproduce: `scripts/cold-warm-cache-proof.sh`.
+
+## Truth labels and explicit limits
+
+Every normalized evidence row and projection object carries four fields:
+
+- `source_kind`: `collectable_v1`, `derived_v1`, `simulated_v1`, `future`, or
+  `unknown`
+- `confidence`: `high`, `medium`, `low`, or `unknown`
+- `evidence_refs`: artifact or fixture references backing the claim
+- `redaction_state`: `safe`, `redacted`, `blocked`, or `unknown`
+
+Agent nodes additionally carry a receipt provenance badge:
+`receipt_verified_v1` (parsed live-CLI receipt), `stub_receipt_v1`
+(deterministic stub — today's committed two-act run), or
+`operator_asserted_v1` (operator claim without a receipt).
+
+V1 does **not** claim remote worker assignment, queue time, action placement,
+scheduler assignment, load distribution, or full remote-execution fleet
+behavior. Worker identity is **conditional** on M7 stdout capture — not a
+wholesale fleet claim. Live-LLM agent receipts do not exist yet — the two-act
+agent legs are stub-verified mechanics until the live run lands. Full claim
+ledger: [`docs/ONE_PAGER.md`](docs/ONE_PAGER.md) ·
+[truth-label reference](docs/wiki/reference/truth-labels.md).
+
+## Media tour
 
 <p align="center">
   <img src="docs/media/nlfr-canvas-tour.gif" alt="NLFR canvas tour: Action Graph, Proof Packet, Compare Runs, and operator command" width="100%">
@@ -16,9 +120,9 @@ that projection only — never from invented backend state.
   <sub><strong>Evidence loop:</strong> run Bazel through NativeLink, ingest artifacts, export projections, and inspect proof.</sub>
 </p>
 
-The public repo is credential-free and fixture-safe. Hero GIFs are generated from
-committed projections with truth labels visible. If `docs/media/*.gif` is missing
-locally, regenerate after building the canvas:
+The public repo is credential-free and fixture-safe. Hero GIFs are generated
+from committed projections with truth labels visible. If `docs/media/*.gif` is
+missing locally, regenerate after building the canvas:
 
 ```bash
 npm --prefix apps/canvas run capture:heroes
@@ -61,38 +165,18 @@ Still frames from the same projection sources: [docs/media/README.md](docs/media
 ## Run Locally
 
 Requirements: `uv`, Python 3.11+, Node/npm for the canvas app. No environment
-variables are required for the fixture path.
-
-Bootstrap once:
-
-```bash
-uv sync
-npm --prefix apps/canvas install
-```
-
-### Path A — 5-minute evaluator (no Nix)
-
-Fixture-backed canvas demo without Bazel or NativeLink on PATH:
-
-```bash
-uv run pytest tests -q
-npm --prefix apps/canvas run dev -- --host 127.0.0.1
-```
-
-Open the dev server and inspect Action Graph / Proof Packet from committed
-fixture projections under `apps/canvas/public/projections/`. This path uses
-`simulated_v1` evidence — not real NativeLink execution.
-
-Full fixture ingest, export, and simulated-agent commands:
+variables are required for the fixture path. The fixture-backed evaluator path
+is the [Quickstart](#quickstart-no-nix-no-nativelink-required) above; full
+fixture ingest, export, and simulated-agent commands:
 [docs/ADOPTION_GUIDE.md](docs/ADOPTION_GUIDE.md) (5-minute path).
 
-### Path B — Real NativeLink proof (Nix)
+### Real NativeLink proof (Nix)
 
 Outside `nix develop`, real-tool scripts record truth-labeled
 `environment_blocker` evidence. Inside Nix (NativeLink 1.3.2, Bazel 9.1.1) the
 recorder has proven cold/warm cache, one-process local-exec, live two-worker
 endpoint readiness, worker admin stdout (M7), agent-loop closure, tier1 live
-Bazel, and LRE readiness probes:
+Bazel, two-act spark mechanics, and LRE readiness probes:
 
 ```bash
 nix develop
@@ -133,7 +217,7 @@ After `promote-tier1-compare.sh` or committed tier1 projections:
 npm --prefix apps/canvas run preview
 ```
 
-Open `http://127.0.0.1:4173/?view=tier1-demo` for the Compare lens with
+Open `http://127.0.0.1:5174/?view=tier1-demo` for the Compare lens with
 `collectable_v1` dogfood pairs.
 
 ### Full verifier (local proof gates)
@@ -159,28 +243,6 @@ python3 -m nlfr proof export --run-group latest
 
 CI reproduction recipe: [docs/CI_RECIPE.md](docs/CI_RECIPE.md).
 
-## Truth Labels
-
-Every normalized evidence row and projection object carries:
-
-- `source_kind`: `collectable_v1`, `derived_v1`, `simulated_v1`, `future`, or
-  `unknown`
-- `confidence`: `high`, `medium`, `low`, or `unknown`
-- `evidence_refs`: artifact or fixture references backing the claim
-- `redaction_state`: `safe`, `redacted`, `blocked`, or `unknown`
-
-Fixture-backed records use `simulated_v1`. Profile-derived cache observations
-use `derived_v1`. Real local process outputs from `nlfr run` and Nix proof
-scripts use `collectable_v1`.
-
-V1 does **not** claim remote worker assignment, queue time, action placement,
-scheduler assignment, load distribution, or full remote-execution fleet behavior.
-Worker identity is **conditional** on M7 stdout capture — not a wholesale fleet
-claim. Compare projections are `derived_v1` summaries across ingested run groups.
-
-Privacy boundary, proof samples, and explicit unproven claims:
-[docs/ONE_PAGER.md](docs/ONE_PAGER.md).
-
 ## Documentation
 
 Start at the [documentation hub](docs/INDEX.md) for the two-hop review map
@@ -188,6 +250,7 @@ Start at the [documentation hub](docs/INDEX.md) for the two-hop review map
 
 | Intent | Where to go |
 | --- | --- |
+| Founder/evaluator tryout paths | [Tryout packet](docs/TRYOUT_PACKET.md) |
 | First guided tour | [Walkthrough](docs/WALKTHROUGH.md) |
 | Adoption paths (fixture + Nix) | [Adoption guide](docs/ADOPTION_GUIDE.md) |
 | Architecture + milestones | [Architecture track](docs/ARCHITECTURE_TRACK.md) |
@@ -208,7 +271,7 @@ the first sustained green public run, the canonical verification is local:
 `uv run pytest -q` and `./scripts/verify-demo.sh`. The CI matrix is documented
 in [docs/CI_RECIPE.md](docs/CI_RECIPE.md).
 
-**M5–M9 (landed):**
+**M5–M9 + two-act spark (landed):**
 
 | Milestone | Delivers |
 | --- | --- |
@@ -217,6 +280,7 @@ in [docs/CI_RECIPE.md](docs/CI_RECIPE.md).
 | M7 | `worker_admin_stdout` parser + `worker-evidence-proof.sh` (conditional `worker_identity`) |
 | M8 | Agent adapter (`record-agent-change.sh`; model + `prompt_sha256` only) |
 | M9 | `compare export` / `compare index`, compare lens, `compare-proof.sh` |
+| Two-act spark | Recorded fail→fix with agent receipts + canvas receipt lens (stub-verified mechanics; live receipts pending) |
 
 Out of scope for v1: SaaS/auth/billing/multi-tenancy, fleet scheduler dashboards,
 OTLP/Jaeger clone, persistent worker security claims, and unsupported
