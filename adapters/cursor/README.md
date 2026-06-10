@@ -53,7 +53,7 @@ you pass to `--command` (pytest is the usual dogfood leg).
 
 ```bash
 ./scripts/record-agent-change.sh \
-  --change-path docs/M8_E2E_MARKER.md \
+  --change-path README.md \
   --model composer-2.5 \
   --prompt-file /tmp/cursor-prompt.txt \
   --command "uv run pytest tests/test_record_agent_change.py -q --tb=no"
