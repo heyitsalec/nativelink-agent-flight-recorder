@@ -1,7 +1,6 @@
 # Demo Workload
 
-This directory contains the small workload and simulated patch scenarios for
-PER-1001 / NLFR-3.
+This directory contains the small demo workload and simulated patch scenarios.
 
 The files here are fixtures for the NativeLink Agent Flight Recorder MVP. They
 do not claim real AI-agent provenance, real NativeLink cache behavior, or exact
@@ -25,6 +24,16 @@ bazel test //tasks:priority_test
 
 If Bazel is not installed, the workload is still useful as a fixture for
 scenario parsing, static validation, and later runner/parser workstreams.
+
+### LRE overlay (opt-in, currently blocked)
+
+The committed `bazel-monorepo/MODULE.bazel` template declares no external
+dependencies, so the cache-only path analyzes on a fresh clone. Local Remote
+Execution experiments use the `bazel-monorepo/MODULE.lre.bazel` overlay
+(copied over `MODULE.bazel` in a scratch workspace copy, Nix shell active).
+The overlay header documents a known toolchain version blocker — LRE runs
+record a truth-labeled `environment_blocker` until the NativeLink pin and
+`.bazelversion` advance together.
 
 ## Scenario Files
 
