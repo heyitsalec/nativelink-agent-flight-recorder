@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nativelink-agent-flight-recorder.local/contracts/agent_receipt.v1.json",
+  "title": "NLFR Agent Receipt v1",
+  "description": "Collected evidence of a headless Claude Code CLI invocation. Carries hashes and server-resolved identifiers only; the raw prompt MUST NOT appear anywhere in this document.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "captured_at",
+    "status",
+    "cli",
+    "prompt_sha256",
+    "model",
+    "usage",
+    "source_kind",
+    "confidence",
+    "evidence_refs",
+    "redaction_state"
+  ],
+  "properties": {
+    "schema_version": { "const": "nlfr.agent_receipt.v1" },
+    "captured_at": { "type": "string" },
+    "status": {
+      "enum": ["success", "api_error", "cli_error", "invalid_output", "environment_blocker", "timeout"]
+    },
+    "cli": {
+      "type": "object",
+      "required": ["name", "command"],
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": ["string", "null"] },
+        "command": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Sanitized invocation; the prompt argument is replaced with <prompt:sha256>."
+        }
+      }
+    },
+    "prompt_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "response_sha256": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "response_chars": { "type": ["integer", "null"] },
+    "model": {
+      "type": "object",
+      "properties": {
+        "requested": { "type": ["string", "null"] },
+        "resolved": {
+          "type": ["string", "null"],
+          "description": "Server-resolved model id from the CLI result modelUsage; required when status is success."
+        },
+        "resolved_all": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "session_id": { "type": ["string", "null"] },
+    "usage": {
+      "type": "object",
+      "properties": {
+        "input_tokens": { "type": ["integer", "null"] },
+        "output_tokens": { "type": ["integer", "null"] },
+        "cache_creation_input_tokens": { "type": ["integer", "null"] },
+        "cache_read_input_tokens": { "type": ["integer", "null"] }
+      }
+    },
+    "num_turns": { "type": ["integer", "null"] },
+    "duration_ms": { "type": ["number", "null"] },
+    "duration_api_ms": { "type": ["number", "null"] },
+    "total_cost_usd": { "type": ["number", "null"] },
+    "result_subtype": { "type": ["string", "null"] },
+    "api_error_status": { "type": ["integer", "null"] },
+    "detail": { "type": "string" },
+    "source_kind": {
+      "enum": ["collectable_v1", "simulated_v1"],
+      "description": "collectable_v1 for live claude CLI receipts and honest failure receipts; simulated_v1 for stub-CLI receipts used in deterministic mechanics runs."
+    },
+    "confidence": { "enum": ["high", "medium", "low", "unknown"] },
+    "evidence_refs": { "type": "array", "items": { "type": "string" } },
+    "redaction_state": { "const": "redacted" }
+  },
+  "additionalProperties": false,
+  "not": {
+    "anyOf": [
+      { "required": ["prompt"] },
+      { "required": ["raw_prompt"] },
+      { "required": ["prompt_text"] },
+      { "required": ["system_prompt"] }
+    ]
+  }
+}

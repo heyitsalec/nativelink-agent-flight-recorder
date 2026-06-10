@@ -12,7 +12,13 @@ from nlfr.artifacts import ArtifactManifestEntry, write_artifact
 from nlfr.db import connect, initialize
 from nlfr.db.ingest import upsert_artifact, upsert_invocation, upsert_run
 from nlfr.ids import stable_id
-from nlfr.commands.generic_run import register_generic_args, run_generic
+from nlfr.commands.generic_run import (
+    _file_hashes,
+    _record_agent_provenance,
+    _record_changes,
+    register_generic_args,
+    run_generic,
+)
 from nlfr.runners import BazelRunner, NativeLinkRunner, ProcessResult
 
 
@@ -114,6 +120,17 @@ def run(args: argparse.Namespace) -> int:
     manifest_entries.append(summary_entry)
 
     terminal_status = _terminal_status(results)
+    provenance_entries = _record_bazel_mode_provenance(
+        conn,
+        args=args,
+        workspace=workspace,
+        artifact_root=artifact_root,
+        run_key=run_key,
+        run_row_id=run_row_id,
+        run_id=run_id,
+        terminal_status=terminal_status,
+    )
+    manifest_entries.extend(provenance_entries)
     with conn:
         conn.execute(
             """
@@ -167,23 +184,24 @@ def run(args: argparse.Namespace) -> int:
                     evidence_refs=[f"invocation:{invocation_id}"],
                     redaction_state=result.redaction_state,
                 )
-    upsert_artifact(
-        conn,
-        stable_key=f"{run_key}:artifact:{summary_entry.artifact_key}",
-        run_id=run_row_id,
-        artifact_key=summary_entry.artifact_key,
-        artifact_path=summary_entry.path,
-        manifest_path="artifact_manifest.json",
-        sha256=summary_entry.sha256,
-        size_bytes=summary_entry.size_bytes,
-        content_type="application/json",
-        producer_command=summary_entry.producer_command,
-        config_hash=summary_entry.config_hash,
-        source_kind=summary_entry.source_kind,
-        confidence=summary_entry.confidence,
-        evidence_refs=summary_entry.evidence_refs,
-        redaction_state=summary_entry.redaction_state,
-    )
+    for json_entry in (summary_entry, *provenance_entries):
+        upsert_artifact(
+            conn,
+            stable_key=f"{run_key}:artifact:{json_entry.artifact_key}",
+            run_id=run_row_id,
+            artifact_key=json_entry.artifact_key,
+            artifact_path=json_entry.path,
+            manifest_path="artifact_manifest.json",
+            sha256=json_entry.sha256,
+            size_bytes=json_entry.size_bytes,
+            content_type="application/json",
+            producer_command=json_entry.producer_command,
+            config_hash=json_entry.config_hash,
+            source_kind=json_entry.source_kind,
+            confidence=json_entry.confidence,
+            evidence_refs=json_entry.evidence_refs,
+            redaction_state=json_entry.redaction_state,
+        )
 
     if args.json:
         print(json.dumps(run_payload | {"status": terminal_status}, indent=2, sort_keys=True))
@@ -344,6 +362,76 @@ def _record_process_artifacts(
                 )
             )
     return entries
+
+
+def _record_bazel_mode_provenance(
+    conn: object,
+    *,
+    args: argparse.Namespace,
+    workspace: Path,
+    artifact_root: Path,
+    run_key: str,
+    run_row_id: str,
+    run_id: str,
+    terminal_status: str,
+) -> list[ArtifactManifestEntry]:
+    """Record agent change + provenance (+ optional receipt) on a Bazel-mode run.
+
+    The agent edit is applied BEFORE ``nlfr run`` validates it, so the current
+    file hashes are the after-state. A harness may declare the pre-change
+    hashes in the sidecar via ``change_before_hashes``; without that, before
+    and after are recorded equal and carry no pre-change claim.
+    """
+
+    change_paths = list(args.change_path or [])
+    if not change_paths and not args.provenance_sidecar:
+        return []
+
+    after_hashes = _file_hashes(workspace, change_paths)
+    before_hashes: dict[str, str | None] = dict(after_hashes)
+    if args.provenance_sidecar:
+        try:
+            sidecar_preview = json.loads(
+                Path(args.provenance_sidecar).read_text(encoding="utf-8")
+            )
+        except (OSError, json.JSONDecodeError):
+            sidecar_preview = {}
+        declared = sidecar_preview.get("change_before_hashes")
+        if isinstance(declared, dict):
+            for path in change_paths:
+                if path in declared:
+                    before_hashes[path] = declared[path]
+
+    if change_paths:
+        _record_changes(
+            conn,
+            run_key=run_key,
+            run_row_id=run_row_id,
+            change_paths=change_paths,
+            before_hashes=before_hashes,
+            after_hashes=after_hashes,
+            run_id=run_id,
+        )
+
+    if not args.provenance_sidecar:
+        return []
+    return _record_agent_provenance(
+        conn,
+        sidecar_path=Path(args.provenance_sidecar).resolve(),
+        artifact_root=artifact_root,
+        run_key=run_key,
+        run_row_id=run_row_id,
+        run_id=run_id,
+        scenario=args.scenario,
+        run_group=args.run_group,
+        workspace=workspace,
+        change_paths=change_paths,
+        before_hashes=before_hashes,
+        after_hashes=after_hashes,
+        terminal_status=terminal_status,
+        receipt_path=Path(args.agent_receipt).resolve() if args.agent_receipt else None,
+        mode=args.mode,
+    )
 
 
 def _label_for_result(result: ProcessResult) -> str:
