@@ -58,7 +58,13 @@ export function deriveProjectionNotice(
   if (simulatedCount > 0 && collectableCount > 0) {
     return {
       tone: "mixed",
-      message: `Mixed projection — collectable_v1 and simulated_v1 nodes; read labels per node.`,
+      message: `Mixed projection (run_group=${projection.run_group}) — ${collectableCount} collectable_v1 + ${simulatedCount} simulated_v1 nodes; read labels per node.`,
+    };
+  }
+  if (collectableCount > 0 && simulatedCount === 0) {
+    return {
+      tone: "collectable",
+      message: `${projection.run_group} run group — collectable_v1 projection (${collectableCount} nodes).`,
     };
   }
   return null;
