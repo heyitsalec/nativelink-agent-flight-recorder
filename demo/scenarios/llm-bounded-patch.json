@@ -2,7 +2,6 @@
   "schema_version": "nlfr.demo.scenario.v1",
   "scenario_id": "llm-bounded-patch",
   "title": "Bounded LLM patch with hashed prompt provenance",
-  "parent_issue": "PER-1058",
   "child_issue": "PER-1062",
   "provenance_note": "Reference pattern for a bounded LLM patch path. The model label and prompt_sha256 model how a real agent patch would attach provenance. The raw prompt is never stored or exported; only its SHA-256 hash. This fixture remains deterministic and does not make a live LLM call.",
   "simulated_agent": {

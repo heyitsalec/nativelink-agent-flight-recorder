@@ -45,6 +45,18 @@ NLFR is a local-first black-box recorder for agent validation loops:
   provenance nodes stay `simulated_v1` (deterministic patch, no live LLM). The
   patch carries a `model` label and a SHA-256 prompt hash only — the raw prompt
   is never stored or exported.
+- **Two-act live spark with verifiable agent receipts**
+  (`scripts/two-act-spark-proof.sh`): a real Claude (server-resolved
+  `claude-opus-4-8`) authored a failing patch from an underspecified spec —
+  real Bazel through NativeLink caught the hidden requirement (act 1 red,
+  attributed to the hidden target, cold cache) — then fixed it from the
+  recorder's own failure evidence (act 2 green, warm cache hits). Agent legs
+  carry `receipt_verified_v1` receipts: CLI-resolved model id, session id,
+  token usage, prompt/response SHA-256 — never the raw prompt
+  ([live summary](proof-samples/two-act-spark-live-summary-sample.json)).
+- Agent receipt provenance ladder on every agent node: `receipt_verified_v1`
+  (parsed live-CLI receipt) > `stub_receipt_v1` (deterministic stub, CI
+  mechanics gate) > `operator_asserted_v1` (claim without a receipt).
 
 ## What is explicitly unproven
 
@@ -62,8 +74,8 @@ dashboard UI — queue time, placement, and work distribution remain unproven.
 
 | Path | Time | What you see |
 |------|------|--------------|
-| Fixture canvas (no Nix) | ~5 min | Action Graph + Proof Drawer from `simulated_v1` fixtures |
-| Real proof (Nix) | ~30+ min | Cold/warm + local-exec summaries under `data/` |
+| Canvas, no Nix | ~5 min | Default view is `canvas-dev` — a real `collectable_v1` record of NLFR building its own GUI; `?view=two-act-spark` shows the live fail→fix run with `receipt_verified_v1` agent receipts |
+| Real proof (Nix) | ~30+ min | Cold/warm + local-exec + two-act summaries under `data/` |
 
 ## Audience
 

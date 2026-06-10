@@ -2,7 +2,6 @@
   "schema_version": "nlfr.demo.scenario.v1",
   "scenario_id": "safe-leaf-change",
   "title": "Safe leaf test change",
-  "parent_issue": "PER-998",
   "child_issue": "PER-1001",
   "provenance_note": "Synthetic simulated-agent metadata for the NLFR demo. This is not captured real AI provenance.",
   "simulated_agent": {
