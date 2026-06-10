@@ -63,6 +63,7 @@ Why the system is shaped this way. Not step-by-step commands.
 
 - [Evidence-first architecture](wiki/explanation/evidence-first-architecture.md)
 - [Projection-only canvas](wiki/explanation/projection-only-canvas.md)
+- [How this repo was built](METHOD.md) — contracts-first, agent-coordinated development
 - [Architecture track](ARCHITECTURE_TRACK.md) — L0–L2 spine, milestone gates
 - [Usefulness roadmap](USEFULNESS_ROADMAP.md) — MVP scope and next bets
 - [Contributing](CONTRIBUTING.md) · [Implementation DAG](IMPLEMENTATION_DAG.md)
