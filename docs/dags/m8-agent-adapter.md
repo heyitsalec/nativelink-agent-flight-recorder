@@ -1,6 +1,6 @@
 # M8 — Real agent adapter (thin, bounded)
 
-Linear: PER-1068 (proposed) · Parent: PER-1058
+Milestone: architecture track M8. Status: **landed**.
 
 ## Objective
 
@@ -12,5 +12,3 @@ One real Cursor/CLI adapter emitting `model` + `prompt_sha256` provenance (never
 - Wire to `nlfr run --mode generic` / ingest path
 - One real change recorded end-to-end
 - `summary.json`
-
-Blocked by: Wave 1.5 completion. Parallel with M7 after 1.5.

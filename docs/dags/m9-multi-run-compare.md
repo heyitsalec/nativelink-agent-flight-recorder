@@ -1,6 +1,6 @@
 # M9 — Multi-run retention + compare
 
-Linear: PER-1069 (proposed) · Parent: PER-1058
+Milestone: architecture track M9. Status: **landed**.
 
 ## Objective
 
@@ -15,7 +15,7 @@ Foundation for comparing agent runs over time; GUI compare lens; PR attachment r
 - [x] Truth guard extension for compare projection schema
 - [x] `tests/test_compare.py` — fixture-backed compare export
 
-Blocked by: Wave 2.5 completion. Depends on M5 + M8 for meaningful compare data.
+Depends on M5 + M8 for meaningful compare data.
 
 ## CLI
 

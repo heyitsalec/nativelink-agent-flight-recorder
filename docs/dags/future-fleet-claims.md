@@ -1,8 +1,6 @@
-# Future fleet claims — research-only DAG
+# Future fleet claims — research matrix
 
-**Status:** wave-1 done (research only; no UI implement workers)  
-**Parent:** [future-execution-ladder.md](future-execution-ladder.md) · PER-1058  
-**Handoffs:** `docs/sessions/handoffs/future-fleet-claims/wave-1/`
+**Status:** research complete (research only; no fleet UI work)
 
 ## Objective
 
@@ -10,7 +8,7 @@ Keep honesty docs synchronized with the **actual evidence ceiling** for fleet,
 scheduler, and worker-correlation claims. Reject Harmony-style fake worker
 personas or dashboard cosplay without SQLite proof blocks.
 
-## Wave-1 deliverables
+## Deliverables
 
 | Item | Path |
 |------|------|
@@ -43,19 +41,19 @@ Writes `data/fleet-claims-audit/claim-matrix.json` with `source_kind: derived_v1
 **Supported collectable ceiling today:** remote executor configured,
 `worker_endpoints_ready`, and `worker_identity` when admin stdout is captured.
 
-## Broker rule
+## v1 policy
 
 | Action | Allowed |
 |--------|---------|
 | Run `fleet-claims-audit.sh` | Yes |
 | Update ONE_PAGER / Remote Boundary copy from matrix | Yes |
-| Spawn canvas fleet dashboard workers | **No** |
+| Build canvas fleet dashboards | **No** |
 | Claim queue time / placement without new parser | **No** |
 
-## Exit criteria for a future implement DAG
+## Exit criteria for future fleet-evidence work
 
-A new `fleet-evidence-v1` broker DAG may spawn implement workers only when
-architecture track Phase 3 names a **new collectable claim** with:
+Fleet-evidence implementation work may start only when the architecture track
+names a **new collectable claim** with:
 
 1. Parser module + pytest on real fixtures
 2. SQLite proof block kind + ingest path
