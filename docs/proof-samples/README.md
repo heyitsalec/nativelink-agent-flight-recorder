@@ -89,6 +89,14 @@ Fleet claim policy (what v1 will and will not promote) lives in
 | [`agent-bugfix-summary.json`](agent-bugfix-summary.json) | `scripts/tier1-live-bazel-proof.sh` (Act 1) | `collectable_v1` · `high` | Tier 1 Act 1 live `cursor_adapter_v1` bugfix (`agent-bugfix-1`). `bazel_validated: true`, `validation: bazel` — real Bazel, not pytest fallback. |
 | [`agent-feature-summary.json`](agent-feature-summary.json) | `scripts/tier1-live-bazel-proof.sh` (Act 2) | `collectable_v1` · `high` | Tier 1 Act 2 feature slice (`agent-feature-compare`). `bazel_validated: true`; shared-module policy retune with live Bazel validation. |
 
+### Two-act live spark — verifiable agent receipts (R2)
+
+| Sample | Produced by | `source_kind` · `confidence` | What it proves |
+|--------|-------------|-------------------------------|----------------|
+| [`two-act-spark-stub-summary-sample.json`](two-act-spark-stub-summary-sample.json) | `scripts/two-act-spark-proof.sh` (stub CLI) | mixed: `collectable_v1` validation/cache; `simulated_v1` agent leg · `high` | Full two-act mechanics under real Bazel + NativeLink: act1 red **attributed to the hidden target** (`act1-failure-classification.json`), act2 green with warm cache hits (`hit_rate` 0.5), M9 compare exported, prompt-redaction scan gate clean. Agent leg is the deterministic stub — labeled `simulated_v1`/`stub_receipt_v1`, never presented as live. |
+| [`two-act-spark-live-blocker-sample.json`](two-act-spark-live-blocker-sample.json) | `scripts/two-act-spark-proof.sh` (live `claude`, unauthenticated host) | `collectable_v1` · `high` | Honest `environment_blocker` when the headless Claude CLI cannot authenticate; the failed invocation's receipt is kept as evidence. Does **not** fake a live run. |
+| [`two-act-spark-live-receipt-sample.json`](two-act-spark-live-receipt-sample.json) | `nlfr agent-invoke` (live `claude`, 401) | `collectable_v1` · `high` | Receipt shape of `nlfr.agent_receipt.v1`: CLI name/version, sanitized command (`<prompt:sha256>` placeholder), `prompt_sha256`, honest `api_error` status. Raw prompt is structurally absent. A green live run upgrades this slot with server-resolved model id, session id, usage, and `response_sha256`. |
+
 ### LRE substrate and parity ceilings (`collectable_v1`)
 
 | Sample | Produced by | `source_kind` · `confidence` | What it proves |
@@ -178,6 +186,8 @@ NLFR_EXPECTED_WORKERS=2 NLFR_LOCAL_EXEC_OUTPUT=$PWD/data/local-exec-proof-2w ./s
 ./scripts/agent-live-proof.sh --dry-run
 ./scripts/record-agent-change.sh --dry-run --change-path adapters/cursor/README.md --model composer-2.5 --prompt-file demo/scenarios/tier1/fixtures/prompt-meta.txt
 NLFR_RUN_AGENT_LIVE=1 ./scripts/agent-live-proof.sh   # live; requires Cursor CLI
+NLFR_SPARK_CLAUDE_BIN=$PWD/scripts/spark-stub-claude.sh NLFR_TWO_ACT_OUTPUT=$PWD/data/two-act-spark-stub NLFR_SPARK_RUN_GROUP_PREFIX=two-act-spark-stub ./scripts/two-act-spark-proof.sh   # mechanics, stub agent
+./scripts/two-act-spark-proof.sh   # two-act live spark; requires authenticated `claude` CLI
 NLFR_WORKER_EVIDENCE_FIXTURE_ONLY=1 ./scripts/worker-evidence-proof.sh
 ./scripts/compare-proof.sh   # M9; requires record-proof + canvas-dev DBs
 ```

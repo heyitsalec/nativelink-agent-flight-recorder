@@ -1,0 +1,150 @@
+{
+  "act1": {
+    "agent_node": {
+      "label": "two-act-spark-act1",
+      "model": "stub-deterministic-model",
+      "provenance_class": "stub_receipt_v1",
+      "receipt_verified": false,
+      "source_kind": "simulated_v1"
+    },
+    "cache_metrics": {
+      "hit_rate": 0.0,
+      "hits": 0,
+      "misses": 4,
+      "unknown": 0
+    },
+    "ingest": {
+      "counts": {
+        "actions": 2,
+        "cache_events": 4,
+        "failures": 1,
+        "proof_blocks": 0,
+        "targets": 5
+      },
+      "database": "<repo>/data/two-act-spark-stub/nlfr.sqlite",
+      "run_id": "runs_c718f4087463289ceaff644c",
+      "run_key": "two-act-underspec-act1:cache-only:2026-06-10T15:54:15.283750Z",
+      "run_metadata": {
+        "artifact_root": "<repo>/data/two-act-spark-stub/runs/run_0077b7d2d2bfe579bf3665ce/artifacts",
+        "mode": "cache-only",
+        "run_group": "two-act-spark-stub-act1",
+        "run_id": "run_0077b7d2d2bfe579bf3665ce",
+        "run_key": "two-act-underspec-act1:cache-only:2026-06-10T15:54:15.283750Z",
+        "scenario": "two-act-underspec-act1"
+      }
+    },
+    "receipt": {
+      "cli": "spark-stub-claude.sh",
+      "cli_version": "stub-claude 1.0.0 (deterministic spark fixture)",
+      "confidence": "medium",
+      "model_resolved": "stub-deterministic-model",
+      "num_turns": 1,
+      "prompt_sha256": "0f631e165958418598ec4001ba69264dda2223f46419529150032d1ecc5bb57c",
+      "redaction_state": "redacted",
+      "response_sha256": "06e16639ce30bc4d164755dfb68bd645bb1cf931e71be9801ec7cf65824bfec3",
+      "session_id": "stub-act1-0f631e165958",
+      "source_kind": "simulated_v1",
+      "status": "success",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 329,
+        "output_tokens": 135
+      }
+    },
+    "run_group": "two-act-spark-stub-act1",
+    "run_id": "run_0077b7d2d2bfe579bf3665ce",
+    "status": "failed"
+  },
+  "act2": {
+    "agent_node": {
+      "label": "two-act-spark-act2",
+      "model": "stub-deterministic-model",
+      "provenance_class": "stub_receipt_v1",
+      "receipt_verified": false,
+      "source_kind": "simulated_v1"
+    },
+    "cache_metrics": {
+      "hit_rate": 0.5,
+      "hits": 2,
+      "misses": 2,
+      "unknown": 0
+    },
+    "failure_evidence_source": "act1 recorded artifacts (act1-failure-excerpt.txt)",
+    "ingest": {
+      "counts": {
+        "actions": 2,
+        "cache_events": 4,
+        "failures": 0,
+        "proof_blocks": 0,
+        "targets": 5
+      },
+      "database": "<repo>/data/two-act-spark-stub/nlfr.sqlite",
+      "run_id": "runs_2213789efb618e86d0e74777",
+      "run_key": "two-act-underspec-act2:cache-only:2026-06-10T15:54:21.097828Z",
+      "run_metadata": {
+        "artifact_root": "<repo>/data/two-act-spark-stub/runs/run_0979df63efc3bc7e6fc12944/artifacts",
+        "mode": "cache-only",
+        "run_group": "two-act-spark-stub-act2",
+        "run_id": "run_0979df63efc3bc7e6fc12944",
+        "run_key": "two-act-underspec-act2:cache-only:2026-06-10T15:54:21.097828Z",
+        "scenario": "two-act-underspec-act2"
+      }
+    },
+    "receipt": {
+      "cli": "spark-stub-claude.sh",
+      "cli_version": "stub-claude 1.0.0 (deterministic spark fixture)",
+      "confidence": "medium",
+      "model_resolved": "stub-deterministic-model",
+      "num_turns": 1,
+      "prompt_sha256": "ac6eaaf9c46807dc0e885f8a19ad97b45508bffb4886cd1030b96ba8e7aeb055",
+      "redaction_state": "redacted",
+      "response_sha256": "caeac5b35a0583dde4ec9ad3beaccb5b764194701673e186b5790f573a1b797f",
+      "session_id": "stub-act2-ac6eaaf9c468",
+      "source_kind": "simulated_v1",
+      "status": "success",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 831,
+        "output_tokens": 169
+      }
+    },
+    "run_group": "two-act-spark-stub-act2",
+    "run_id": "run_0979df63efc3bc7e6fc12944",
+    "status": "completed"
+  },
+  "agent_cli": "spark-stub-claude.sh",
+  "agent_leg_live": false,
+  "agent_leg_source_kind": "simulated_v1",
+  "checks": {
+    "act1_agent_node_in_graph": true,
+    "act1_receipt_present": true,
+    "act1_red_attributed_to_hidden_target": true,
+    "act1_validation_red": true,
+    "act2_receipt_present": true,
+    "act2_validation_green": true,
+    "act2_warm_cache_hits": true,
+    "compare_projection_exported": true
+  },
+  "confidence": "high",
+  "evidence_refs": [
+    "act1-run.json",
+    "act1-failure-classification.json",
+    "act2-run.json",
+    "receipts/act1-receipt.json",
+    "receipts/act2-receipt.json",
+    "act1-failure-excerpt.txt",
+    "projections/act1-proof.json",
+    "projections/act2-proof.json",
+    "projections/compare-act1-vs-act2.json",
+    "nativelink.stdout.txt",
+    "nativelink.stderr.txt"
+  ],
+  "redaction_state": "safe",
+  "scenario_id": "two-act-underspec",
+  "scenario_path": "<repo>/demo/scenarios/two-act-underspec.json",
+  "source_kind": "collectable_v1",
+  "spark_outcome": "two_act_complete",
+  "validation_leg_source_kind": "collectable_v1"
+}

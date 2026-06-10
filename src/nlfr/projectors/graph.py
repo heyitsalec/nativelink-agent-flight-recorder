@@ -189,8 +189,11 @@ def _project_agents(
         build = payload.get("build") if isinstance(payload.get("build"), dict) else {}
         agent_name = str(agent.get("name") or block.get("block_key") or "agent")
         agent_node_id = f"agent:{block['id']}"
+        receipt = agent.get("receipt") if isinstance(agent.get("receipt"), dict) else {}
+        receipt_verified = bool(receipt.get("live"))
         # Carry only redacted, hash-level provenance into the node payload.
-        # Never surface raw prompts: only the prompt hash and model label.
+        # Never surface raw prompts: only the prompt hash, model label, and
+        # receipt hashes (session id, response/receipt SHA-256, token usage).
         agent_row = {
             "status": build.get("status"),
             "source_kind": block.get("source_kind"),
@@ -205,7 +208,21 @@ def _project_agents(
             "change_class": change.get("change_class"),
             "patch_sha256": change.get("patch_sha256"),
             "scenario_id": payload.get("scenario_id"),
+            "provenance_class": agent.get("provenance_class"),
+            "receipt_verified": receipt_verified,
         }
+        if receipt:
+            agent_row.update(
+                {
+                    "receipt_session_id": receipt.get("session_id"),
+                    "receipt_model_resolved": receipt.get("model_resolved"),
+                    "receipt_sha256": receipt.get("receipt_sha256"),
+                    "receipt_response_sha256": receipt.get("response_sha256"),
+                    "receipt_cli_version": receipt.get("cli_version"),
+                    "receipt_usage": receipt.get("usage"),
+                    "receipt_captured_at": receipt.get("captured_at"),
+                }
+            )
         nodes.append(_node(agent_node_id, "agent", agent_name, agent_row))
         run_id = block.get("run_id")
         if run_id is not None:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 
+from nlfr.commands import agent_invoke_cmd
 from nlfr.commands import compare_cmd
 from nlfr.commands import doctor
 from nlfr.commands import export_cmds
@@ -19,6 +20,7 @@ def register_commands(subparsers: argparse._SubParsersAction[argparse.ArgumentPa
 
     init_cmd.register(subparsers)
     doctor.register(subparsers)
+    agent_invoke_cmd.register(subparsers)
     run_cmd.register(subparsers)
     ingest_cmd.register(subparsers)
     export_cmds.register(subparsers)

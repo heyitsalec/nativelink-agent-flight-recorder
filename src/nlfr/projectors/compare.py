@@ -440,12 +440,16 @@ def _agent_provenance_blocks(proof: dict[str, Any]) -> list[dict[str, Any]]:
 def _agent_provenance_summary(block: dict[str, Any]) -> dict[str, Any]:
     payload = block.get("payload") if isinstance(block.get("payload"), dict) else {}
     agent = payload.get("agent") if isinstance(payload.get("agent"), dict) else {}
+    receipt = agent.get("receipt") if isinstance(agent.get("receipt"), dict) else {}
     labels = truth(block)
     return {
         "id": block.get("id"),
         "title": block.get("title"),
         "model": agent.get("model"),
         "prompt_sha256_prefix": _hash_prefix(agent.get("prompt_sha256")),
+        "provenance_class": agent.get("provenance_class"),
+        "receipt_verified": bool(receipt.get("live")),
+        "receipt_session_id": receipt.get("session_id"),
         **labels,
     }
 
