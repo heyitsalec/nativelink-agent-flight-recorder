@@ -1,0 +1,47 @@
+{
+  "api_error_status": 401,
+  "captured_at": "2026-06-10T15:54:32.564265Z",
+  "cli": {
+    "command": [
+      "claude",
+      "-p",
+      "<prompt:sha256>",
+      "--output-format",
+      "json"
+    ],
+    "name": "claude",
+    "version": "2.1.162 (Claude Code)"
+  },
+  "confidence": "high",
+  "detail": "Failed to authenticate. API Error: 401 Invalid authentication credentials",
+  "duration_api_ms": 0,
+  "duration_ms": 806,
+  "evidence_refs": [
+    "prompt:sha256:0f631e165958418598ec4001ba69264dda2223f46419529150032d1ecc5bb57c",
+    "cli:claude",
+    "response:sha256:6efac9e9d5f40c9bd5c775dcc80c69b360635b04bca17f66cc3d09f43790ada7",
+    "session:efb0f38b-97af-459a-9039-3cc8f1f483f2"
+  ],
+  "model": {
+    "requested": null,
+    "resolved": null,
+    "resolved_all": []
+  },
+  "num_turns": 1,
+  "prompt_sha256": "0f631e165958418598ec4001ba69264dda2223f46419529150032d1ecc5bb57c",
+  "redaction_state": "redacted",
+  "response_chars": 73,
+  "response_sha256": "6efac9e9d5f40c9bd5c775dcc80c69b360635b04bca17f66cc3d09f43790ada7",
+  "result_subtype": "success",
+  "schema_version": "nlfr.agent_receipt.v1",
+  "session_id": "efb0f38b-97af-459a-9039-3cc8f1f483f2",
+  "source_kind": "collectable_v1",
+  "status": "api_error",
+  "total_cost_usd": 0,
+  "usage": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 0,
+    "output_tokens": 0
+  }
+}

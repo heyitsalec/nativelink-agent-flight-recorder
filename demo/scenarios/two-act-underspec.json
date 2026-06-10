@@ -1,0 +1,127 @@
+{
+  "schema_version": "nlfr.spark.scenario.v1",
+  "scenario_id": "two-act-underspec",
+  "title": "Two-act live spark: underspecified escalation tiers",
+  "description": "Act 1: a headless Claude Code agent authors tasks/escalation.py from the task_spec below, which is plausible but incomplete — it documents only the 14-day staleness window. A hidden Bazel test (hidden_validation) encodes the full requirement, including a second 60-day escalation window the spec never mentions; the agent cannot see it (the CLI runs in an empty scratch directory and the test is written only into the temporary validation workspace). Real `bazel test` through the NativeLink cache catches the gap: the red leg is the agent's honest best effort failing a requirement it was never told, not scripted corruption. Act 2: the agent receives the recorded bazel failure excerpt from Act 1's flight-recorder artifacts and produces the fix.",
+  "design_honesty": {
+    "what_the_agent_saw": "Exactly task_spec plus the read-only context_files contents plus output_contract, assembled deterministically by nlfr.spark.build_act1_prompt; verify any receipt's prompt_sha256 by rebuilding that prompt from this file and a pristine demo workspace.",
+    "what_the_agent_could_not_see": "hidden_validation (the second 60-day window test) — written only into the temp validation workspace; the agent CLI cwd is an empty scratch directory.",
+    "why_the_failure_is_honest": "The hidden requirement extends the spec where it is silent (behavior past 60 days); it never contradicts the visible spec. The failure comes from executing the agent's real output under real bazel test.",
+    "first_pass_success_policy": "If the agent passes on the first try, the run is recorded and kept honestly; rerun under a new run group. All runs are kept.",
+    "retry_policy": "rerun = new run group; no recorded run is discarded or overwritten"
+  },
+  "workspace_overrides": [
+    {
+      "path": "MODULE.bazel",
+      "reason": "The demo template's MODULE.bazel carries a git_override on nativelink's local-remote-execution module (added for the Linux LRE track). Cache-only validation never uses LRE, and on this host that module cannot analyze under any available bazel: the template's pinned bazel 7.4.1 fails its rules_rs >=7.7.0 compatibility floor, while bazel >=7.7.0 rejects the module's rust_toolchain attributes. The temp validation workspace pins the module-free configuration that was proven green for cache-only runs; this override is recorded with its SHA-256 in the workspace setup hashes.",
+      "content_lines": [
+        "# Two-act spark validation workspace: module-free cache-only configuration.",
+        "# The demo template's local-remote-execution git_override is stripped here;",
+        "# see demo/scenarios/two-act-underspec.json workspace_overrides for why.",
+        "module(name = \"nlfr_demo_monorepo\")"
+      ]
+    }
+  ],
+  "workload": {
+    "repo_root": "demo/bazel-monorepo",
+    "bazel_targets": ["//..."],
+    "target_file": "tasks/escalation.py",
+    "context_files": ["tasks/policy.py", "tasks/priority.py"],
+    "affected_paths": ["tasks/escalation.py"]
+  },
+  "task_spec": "Create the module tasks/escalation.py for the tasks triage library. Implement escalation_tier(score, age_days) -> str returning one of 'p0', 'p1', or 'p2'. The base tier comes from the numeric score using the thresholds in tasks.policy: scores at or above URGENT_THRESHOLD are 'p0', scores at or above NORMAL_THRESHOLD are 'p1', anything lower is 'p2'. Stale tasks escalate: once a task's age_days reaches the 14-day staleness window it moves up one tier. Escalation saturates at 'p0'. Import the thresholds from tasks.policy; use only the Python standard library.",
+  "output_contract": "Respond with exactly one fenced Python code block containing the complete content of tasks/escalation.py, and no other code blocks. Do not use any tools. Do not include explanations before or after beyond a single short sentence.",
+  "hidden_validation": {
+    "path": "tasks/escalation_policy_test.py",
+    "bazel_target": "//tasks:escalation_policy_test",
+    "note": "Full requirement: a second escalation window at 60 days, omitted from task_spec on purpose. Consistent with the spec (which is silent past the first window), so a faithful best-effort implementation of the spec fails here honestly.",
+    "content_lines": [
+      "\"\"\"Full escalation requirement; the underspecified brief omits the second window.",
+      "",
+      "Bazel py_test executes this file as a plain script, so the checks run under",
+      "unittest.main() — bare test functions would silently pass without executing.",
+      "\"\"\"",
+      "",
+      "import unittest",
+      "",
+      "from tasks.escalation import escalation_tier",
+      "",
+      "",
+      "class EscalationPolicyTest(unittest.TestCase):",
+      "    def test_fresh_scores_map_to_base_tiers(self):",
+      "        self.assertEqual(escalation_tier(95, 0), \"p0\")",
+      "        self.assertEqual(escalation_tier(72, 0), \"p1\")",
+      "        self.assertEqual(escalation_tier(10, 0), \"p2\")",
+      "",
+      "    def test_stale_tasks_escalate_one_tier_at_first_window(self):",
+      "        self.assertEqual(escalation_tier(72, 14), \"p0\")",
+      "        self.assertEqual(escalation_tier(10, 21), \"p1\")",
+      "",
+      "    def test_second_staleness_window_escalates_again(self):",
+      "        # Operational convention the 14-day brief never mentions: tasks aging",
+      "        # past the 60-day window escalate one further tier.",
+      "        self.assertEqual(escalation_tier(10, 60), \"p0\")",
+      "        self.assertEqual(escalation_tier(10, 90), \"p0\")",
+      "",
+      "    def test_escalation_saturates_at_p0(self):",
+      "        self.assertEqual(escalation_tier(95, 400), \"p0\")",
+      "",
+      "",
+      "if __name__ == \"__main__\":",
+      "    unittest.main()"
+    ]
+  },
+  "build_additions": {
+    "path": "tasks/BUILD.bazel",
+    "content_lines": [
+      "py_library(",
+      "    name = \"escalation\",",
+      "    srcs = [\"escalation.py\"],",
+      "    deps = [\":policy\"],",
+      ")",
+      "",
+      "py_test(",
+      "    name = \"escalation_policy_test\",",
+      "    srcs = [\"escalation_policy_test.py\"],",
+      "    deps = [\":escalation\"],",
+      ")"
+    ]
+  },
+  "acts": {
+    "act1": {
+      "run_group": "two-act-spark-act1",
+      "expected": "red validation leg: hidden escalation_policy_test fails against the agent's honest best-effort implementation; priority_test passes and populates the NativeLink cache"
+    },
+    "act2": {
+      "run_group": "two-act-spark-act2",
+      "evidence_source": "Act 1 recorded artifacts (bazel stderr/stdout excerpt via nlfr.spark.failure_excerpt) — the recorder's own evidence is the agent's debugging context",
+      "expected": "green validation leg: corrected module passes; unchanged targets see warm NativeLink cache hits"
+    }
+  },
+  "proof_claims": [
+    {
+      "claim_id": "spark.act1.red.honest",
+      "statement": "Act 1 failure comes from real bazel test execution of the agent's real output against a hidden requirement the visible spec omits.",
+      "source_kind": "collectable_v1",
+      "confidence": "high",
+      "evidence_refs": ["artifact:bazel.stderr.txt", "artifact:agent-receipt.json"],
+      "redaction_state": "safe"
+    },
+    {
+      "claim_id": "spark.receipt.verifiable",
+      "statement": "Agent provenance carries a CLI receipt: server-resolved model id, session id, token usage, response SHA-256, prompt SHA-256; the raw prompt is never stored.",
+      "source_kind": "collectable_v1",
+      "confidence": "high",
+      "evidence_refs": ["artifact:agent-receipt.json"],
+      "redaction_state": "redacted"
+    },
+    {
+      "claim_id": "spark.act2.dogfood",
+      "statement": "Act 2 debugging context is an excerpt of Act 1's recorded artifacts, not a re-run; the fix validates green with warm cache hits on unchanged targets.",
+      "source_kind": "collectable_v1",
+      "confidence": "high",
+      "evidence_refs": ["artifact:agent-receipt.json", "projections/compare-act1-vs-act2.json"],
+      "redaction_state": "safe"
+    }
+  ]
+}

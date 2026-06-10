@@ -64,6 +64,7 @@ These committed samples exist today but are **not** produced by a current `nlfr-
 | `data/tier1-live-bazel/summary.json` (Acts 1+2) | `./scripts/tier1-live-bazel-proof.sh` | [`agent-bugfix-summary.json`](agent-bugfix-summary.json), [`agent-feature-summary.json`](agent-feature-summary.json) | **Superseded on restore** by `tier1-bazel-ci` artifact when green — CI uses `tier1-bazel-ci-proof.sh` (Bazel validation slice; no live `cursor_adapter_v1` record) |
 | `data/agent-live-proof/summary.json` or blocker | `./scripts/agent-live-proof.sh` | [`agent-live-summary-sample.json`](agent-live-summary-sample.json), [`agent-live-blocker-sample.json`](agent-live-blocker-sample.json) | **None** — operator-gated live Cursor path |
 | `data/*/summary.json` (fleet audit) | `./scripts/fleet-claims-audit.sh` | [`fleet-claims-matrix-sample.json`](fleet-claims-matrix-sample.json) | **None** — policy matrix, not runtime proof |
+| `data/two-act-spark-stub/summary.json` + `data/two-act-spark/` (live) | `./scripts/two-act-spark-proof.sh` | [`two-act-spark-stub-summary-sample.json`](two-act-spark-stub-summary-sample.json), [`two-act-spark-live-blocker-sample.json`](two-act-spark-live-blocker-sample.json), [`two-act-spark-live-receipt-sample.json`](two-act-spark-live-receipt-sample.json) | **None** — live leg is operator-gated (`claude` auth); a green live run promotes a `two-act-spark-summary-sample.json` with `receipt_verified` agent legs |
 
 ---
 
