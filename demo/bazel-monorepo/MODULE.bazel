@@ -1,0 +1,9 @@
+# Demo monorepo module — cache-only default.
+#
+# This committed template intentionally declares NO external module
+# dependencies so the cache-only demo path (`bazel test //tasks:...` through
+# the NativeLink remote cache) analyzes under the pinned .bazelversion on a
+# fresh clone, inside or outside Nix.
+#
+# Local Remote Execution (LRE) is an opt-in overlay: see MODULE.lre.bazel.
+# Status and known toolchain constraints: demo/README.md.

@@ -22,11 +22,17 @@ build/
 playwright-report/
 test-results/
 
-# Bazel output roots inside demo workspaces
+# Bazel output roots inside demo workspaces.
+# Deliberately NOT `bazel-*`: that pattern also matched the
+# `demo/bazel-monorepo` workspace directory itself and silently kept the
+# demo template out of the repo (fresh clones failed 6 tests).
 bazel-bin
 bazel-out
 bazel-testlogs
-bazel-*
+bazel-genfiles
+bazel-bazel-monorepo
+# Bzlmod lockfile embeds per-host resolution of optional overlays
+demo/bazel-monorepo/MODULE.bazel.lock
 
 # Generated LRE Bazel config (Nix flake module)
 lre.bazelrc

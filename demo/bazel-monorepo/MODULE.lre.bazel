@@ -1,0 +1,21 @@
+# OPT-IN overlay for Local Remote Execution (LRE) experiments.
+#
+# Usage: copy this file over MODULE.bazel in a scratch copy of this workspace
+# (never edit the template in place), with the Nix dev shell active so the
+# flake module generates lre.bazelrc.
+#
+# KNOWN BLOCKER (2026-06-10, truth-labeled): this pinned commit's
+# rules_rs floor requires Bazel >= 7.7.0, while .bazelversion is 7.4.1;
+# Bazel >= 7.7.0 in turn rejects this commit's rust_toolchain attributes.
+# No available Bazel version analyzes this pair — LRE runs record an
+# environment_blocker until the pin is advanced alongside .bazelversion.
+# Tracked in docs/dags/future-fleet-claims.md (execution ladder).
+
+# Keep commit in sync with flake.lock → nodes.nativelink.locked.rev
+bazel_dep(name = "local-remote-execution", version = "0")
+git_override(
+    module_name = "local-remote-execution",
+    remote = "https://github.com/TraceMachina/nativelink",
+    strip_prefix = "local-remote-execution",
+    commit = "946fd0d0ae46bfc2f2df2c4b63da5565cb6b03b4",
+)

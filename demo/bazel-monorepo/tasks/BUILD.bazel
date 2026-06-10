@@ -1,0 +1,19 @@
+py_library(
+    name = "policy",
+    srcs = [
+        "__init__.py",
+        "policy.py",
+    ],
+)
+
+py_library(
+    name = "priority",
+    srcs = ["priority.py"],
+    deps = [":policy"],
+)
+
+py_test(
+    name = "priority_test",
+    srcs = ["priority_test.py"],
+    deps = [":priority"],
+)

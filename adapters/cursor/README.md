@@ -4,7 +4,6 @@ Thin adapter for recording Cursor agent edits through NLFR without exporting raw
 prompts. Provenance matches the bounded-LLM contract in
 `demo/scenarios/llm-bounded-patch.json`: **`model` + `prompt_sha256` only**.
 
-DAG mirror: [nlfr-kos-roadmap § Wave 2](../../docs/dags/nlfr-kos-roadmap.md) ·
 Proof matrix: [M8 agent adapter](../../docs/wiki/reference/proof-scripts-matrix.md#m8-agent-adapter).
 
 ## Scope boundary
@@ -85,7 +84,9 @@ PYTHONPATH=src uv run python -m nlfr graph export \
 Expect an `agent` node with `source_kind=collectable_v1` linked to the change
 row for `--change-path`.
 
-Reference run: `docs/sessions/handoffs/m5-m9-umbrella/wave-2/provenance-m8-e2e-run.md`.
+Reference run: see the M8 row in
+[`docs/wiki/reference/proof-scripts-matrix.md`](../../docs/wiki/reference/proof-scripts-matrix.md)
+(per-wave working notes live in git history; see [`docs/METHOD.md`](../../docs/METHOD.md)).
 
 ## `agent-live-proof.sh`
 
