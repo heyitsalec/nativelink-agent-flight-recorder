@@ -159,4 +159,4 @@ truth legend match node `source_kind` in exported JSON?
 
 ---
 
-← [README — handoff index](README.md) · Next: [01-product-vision-and-thesis.md](01-product-vision-and-thesis.md)
+← [README — handoff index](README.md) · Next: [01-product-vision-and-thesis.md](01-product-vision-and-thesis.md) · Drift: [04-drift-audit.md](04-drift-audit.md)

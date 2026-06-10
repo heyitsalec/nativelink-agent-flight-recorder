@@ -178,4 +178,4 @@ Session handoff root: [docs/sessions/handoffs/README.md](../README.md).
 
 ---
 
-← [02-current-state-and-proof-matrix.md](02-current-state-and-proof-matrix.md) · [README](README.md)
+← [02-current-state-and-proof-matrix.md](02-current-state-and-proof-matrix.md) · Next: [04-drift-audit.md](04-drift-audit.md) · [README](README.md)

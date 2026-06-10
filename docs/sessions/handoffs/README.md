@@ -16,6 +16,12 @@ docs/sessions/handoffs/{dag-id}/wave-{n}/
   spawn-ledger.md
 ```
 
+## Critical review (adversarial handoff)
+
+| Packet | Branch | Purpose |
+|--------|--------|---------|
+| [critical-review-handoff/](critical-review-handoff/) | `feat/docs-wiki-wave2` | Fresh-session adversarial review: drift audit, rubric, 48 open questions, copy-paste Claude prompt. Start at [critical-review-handoff/README.md](critical-review-handoff/README.md) or [09-claude-session-prompt.md](critical-review-handoff/09-claude-session-prompt.md). |
+
 ## Active DAGs
 
 | DAG | Linear parent | Waves |

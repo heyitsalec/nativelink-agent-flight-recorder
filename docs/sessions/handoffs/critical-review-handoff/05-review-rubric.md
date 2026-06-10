@@ -310,6 +310,8 @@ Treat any match as at least **P1** until disproven.
 
 | File | Purpose |
 |------|---------|
+| [`04-drift-audit.md`](04-drift-audit.md) | Pre-computed drift: Goals A–F, doc matrix, demo blockers |
 | [`06-demo-rehearsal-script.md`](06-demo-rehearsal-script.md) | Condensed operator demo |
 | [`07-career-positioning-notes.md`](07-career-positioning-notes.md) | Portfolio framing (author context) |
 | [`08-open-questions-for-reviewer.md`](08-open-questions-for-reviewer.md) | Specific questions to answer |
+| [`09-claude-session-prompt.md`](09-claude-session-prompt.md) | Copy-paste prompt for fresh Claude session |
