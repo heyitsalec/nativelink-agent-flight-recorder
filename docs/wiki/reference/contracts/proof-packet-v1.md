@@ -112,10 +112,10 @@ Real-run `summary.json` excerpts with truth labels:
 
 | Sample | `source_kind` · `confidence` | Relevant blocks |
 |--------|------------------------------|-----------------|
-| [`cold-warm-summary.json`](../../../../proof-samples/cold-warm-summary.json) | `collectable_v1` · `high` | Cache economics, cold/warm legs |
-| [`two-worker-summary.json`](../../../../proof-samples/two-worker-summary.json) | `collectable_v1` · `high` | Remote execution boundary |
-| [`agent-loop-summary.json`](../../../../proof-samples/agent-loop-summary.json) | mixed · `high` | Agent provenance + validation |
-| [`fleet-claims-matrix-sample.json`](../../../../proof-samples/fleet-claims-matrix-sample.json) | `derived_v1` · `high` | Unsupported claim policy |
+| [`cold-warm-summary.json`](../../../proof-samples/cold-warm-summary.json) | `collectable_v1` · `high` | Cache economics, cold/warm legs |
+| [`two-worker-summary.json`](../../../proof-samples/two-worker-summary.json) | `collectable_v1` · `high` | Remote execution boundary |
+| [`agent-loop-summary.json`](../../../proof-samples/agent-loop-summary.json) | mixed · `high` | Agent provenance + validation |
+| [`fleet-claims-matrix-sample.json`](../../../proof-samples/fleet-claims-matrix-sample.json) | `derived_v1` · `high` | Unsupported claim policy |
 
 ## Out of scope
 

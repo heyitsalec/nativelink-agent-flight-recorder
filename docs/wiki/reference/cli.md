@@ -200,11 +200,6 @@ python3 -m nlfr graph export --run-group latest
 python3 -m nlfr proof export --run-group latest
 ```
 
-## GHA offline
-
-Prefer local CLI proof when CI is non-green. See
-[GHA offline proof shift](../../sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md).
-
 ## Related
 
 - [Proof scripts matrix](proof-scripts-matrix.md)

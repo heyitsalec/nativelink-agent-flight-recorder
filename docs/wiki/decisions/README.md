@@ -22,8 +22,7 @@ Add a new numbered ADR when a choice:
 - Changes operator expectations (CLI, proof scripts, canvas contract)
 - Establishes a doc or broker pattern reused across waves
 
-Skip ADRs for routine typo fixes, single-file refactors, or broker handoff noise
-under `docs/sessions/handoffs/` — those belong in integration briefs, not here.
+Skip ADRs for routine typo fixes or single-file refactors.
 
 ## Format
 

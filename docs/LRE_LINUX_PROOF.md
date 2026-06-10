@@ -12,9 +12,7 @@ While GitHub Actions is offline, this manual path is the supported way to produc
 Related:
 
 - LRE ladder overview: [`DEV_ENVIRONMENT.md` § LRE](DEV_ENVIRONMENT.md#lre-proof-ladder)
-- DAG ceiling: [`dags/lre-proof.md`](dags/lre-proof.md)
 - Redacted samples: [`proof-samples/README.md`](proof-samples/README.md)
-- GHA deferral: [`sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md`](sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md)
 
 ## What this proves (and does not)
 

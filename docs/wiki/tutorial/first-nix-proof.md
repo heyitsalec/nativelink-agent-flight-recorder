@@ -92,9 +92,6 @@ uv run pytest -q
 bash -n scripts/cold-warm-cache-proof.sh
 ```
 
-LRE CI parity remains deferred until GHA recovers or you run manual linux proof:
-[GHA offline proof shift](../../sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md).
-
 ## Next steps
 
 | Goal | Page |

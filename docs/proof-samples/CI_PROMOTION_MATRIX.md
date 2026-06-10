@@ -84,7 +84,6 @@ Committed [`agent-bugfix-summary.json`](agent-bugfix-summary.json) and [`agent-f
 - [ ] Update provenance in [`README.md`](README.md) from author-Nix to **Linux CI** (with workflow run URL).
 - [ ] Refresh sample catalog table rows if metrics or claim boundaries changed.
 - [ ] Touch [`../TRYOUT_PACKET.md`](../TRYOUT_PACKET.md) / [`../ONE_PAGER.md`](../ONE_PAGER.md) if public numbers shifted.
-- [ ] Mark [`../sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md`](../sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md) restored.
 - [ ] Check off restore items in [`../CI_RECIPE.md`](../CI_RECIPE.md#gha-restore-checklist).
 - [ ] `uv run pytest -q` and `bash -n scripts/*.sh` pass after sample commits.
 

@@ -86,8 +86,8 @@ From a cache-only proof run; paths shortened:
 Manifest entries mirror rows ingested from real proof runs. See grounded cache
 economics in:
 
-- [`cold-warm-summary.json`](../../../../proof-samples/cold-warm-summary.json) — `collectable_v1` · `high`
-- [`agent-loop-summary.json`](../../../../proof-samples/agent-loop-summary.json) — mixed agent/validation chain
+- [`cold-warm-summary.json`](../../../proof-samples/cold-warm-summary.json) — `collectable_v1` · `high`
+- [`agent-loop-summary.json`](../../../proof-samples/agent-loop-summary.json) — mixed agent/validation chain
 
 ## Out of scope
 

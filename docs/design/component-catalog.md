@@ -300,5 +300,3 @@ Do not reference these kinds in v1 view specs; schema enum is closed at 15.
 | Types | `apps/canvas/src/types.ts` |
 | Layout | `apps/canvas/src/layout.ts` |
 | Truth guard | `apps/canvas/scripts/truth-guard.mjs` |
-| View systems handoff | `docs/sessions/handoffs/tier1-agent-vision/wave-1/provenance-t3-view-systems.md` |
-| Canvas audit | `docs/sessions/handoffs/tier1-agent-vision/wave-1/provenance-t3-canvas-audit.md` |

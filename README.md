@@ -54,7 +54,7 @@ that scattered work into one loop:
 | SQLite evidence spine | Immutable artifact manifest, idempotent ingest, Bazel/NativeLink parsers, and truth-labeled rows. |
 | Projection JSON | Action Graph, proof packet, compare lens, and runway exports consumed by the canvas and proof scripts. |
 | Sparse canvas | Vite/React app under `apps/canvas/` that renders projection JSON only — no invented scheduler or worker state. |
-| Proof lane | `pytest`, `./scripts/verify-demo.sh`, Nix proof scripts, and local gates (CI deferred while GHA offline). |
+| Proof lane | `pytest`, `./scripts/verify-demo.sh`, Nix proof scripts, and local gates. |
 
 Still frames from the same projection sources: [docs/media/README.md](docs/media/README.md).
 
@@ -138,9 +138,6 @@ Open `http://127.0.0.1:4173/?view=tier1-demo` for the Compare lens with
 
 ### Full verifier (local proof gates)
 
-Local proof gates are primary while GitHub Actions has been offline (~1 month).
-Do not block on CI green for doc-only or local-proof workflows.
-
 ```bash
 scripts/verify-demo.sh
 ```
@@ -160,7 +157,7 @@ python3 -m nlfr graph export --run-group latest
 python3 -m nlfr proof export --run-group latest
 ```
 
-CI reproduction when GHA is restored: [docs/CI_RECIPE.md](docs/CI_RECIPE.md).
+CI reproduction recipe: [docs/CI_RECIPE.md](docs/CI_RECIPE.md).
 
 ## Truth Labels
 
@@ -199,13 +196,17 @@ Start at the [documentation hub](docs/INDEX.md) for the two-hop review map
 | Contributor rules | [Contributing](docs/CONTRIBUTING.md) |
 
 Depth pages live under [`docs/wiki/`](docs/wiki/) (evidence loop, truth labels,
-broker model, ADR-lite decisions). DAG mirrors for broker handoffs:
-[`docs/dags/`](docs/dags/README.md).
+ADR-lite decisions). How this repo was built: [docs/METHOD.md](docs/METHOD.md).
 
 ## Status And Limits
 
 NLFR v1 is an evidence-first recorder MVP, not a hosted SaaS, multi-tenant
 control plane, or full remote-execution fleet dashboard.
+
+**CI status:** GitHub Actions runs are restored with the public release. Until
+the first sustained green public run, the canonical verification is local:
+`uv run pytest -q` and `./scripts/verify-demo.sh`. The CI matrix is documented
+in [docs/CI_RECIPE.md](docs/CI_RECIPE.md).
 
 **M5–M9 (landed):**
 

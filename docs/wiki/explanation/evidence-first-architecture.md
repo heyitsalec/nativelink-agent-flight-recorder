@@ -86,9 +86,9 @@ lists unsupported claim types.
 
 | Track | Adds to spine | Does not add |
 |-------|---------------|--------------|
-| [LRE proof](../../dags/lre-proof.md) | LRE substrate + cache parity probes | Fleet UI |
-| [Fleet evidence v1](../../dags/fleet-evidence-v1.md) | Stdout breadth for M7 | Scheduler claims |
-| [Tier1 live Bazel](../../dags/tier1-live-bazel.md) | Live Bazel demo acts | Compare / LRE |
+| LRE proof | LRE substrate + cache parity probes | Fleet UI |
+| Fleet evidence v1 | Stdout breadth for M7 | Scheduler claims |
+| Tier1 live Bazel | Live Bazel demo acts | Compare / LRE |
 
 ## Truth labels as architecture gate
 
@@ -111,12 +111,6 @@ Out of v1 scope per [AGENTS.md](../../../AGENTS.md):
 - OTLP/Jaeger clones
 - Canvas as source of truth
 - Fleet correlation without direct evidence
-
-## GHA offline
-
-Architecture proof is host-local while Actions are non-green. Ship gates use
-`pytest` + `bash -n`, not CI badges:
-[GHA offline proof shift](../../sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md).
 
 ## Related
 

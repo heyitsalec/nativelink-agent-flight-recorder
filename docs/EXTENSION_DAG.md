@@ -1,7 +1,5 @@
 # Extension DAG
 
-Linear parent: [PER-1007](https://linear.app/gradschool/issue/PER-1007/nlfr-9-follow-on-evidence-proof-drawer-and-agent-simulation)
-
 ## Objective
 
 Extend NLFR past the MVP with:
@@ -13,10 +11,10 @@ Extend NLFR past the MVP with:
 
 ## Children
 
-- PER-1008: real NativeLink/Bazel artifact ingest hardening. Done.
-- PER-1009: canvas proof drawer fed by `proof.json`. Done.
-- PER-1010: agent simulation wrapper and provenance. Done.
-- PER-1011: extension integration proof and completion review. Done.
+- Real NativeLink/Bazel artifact ingest hardening. Done.
+- Canvas proof drawer fed by `proof.json`. Done.
+- Agent simulation wrapper and provenance. Done.
+- Extension integration proof and completion review. Done.
 
 ## Implemented Extensions
 

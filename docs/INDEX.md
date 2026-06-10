@@ -38,7 +38,7 @@ Solve a specific problem when you already know the goal.
 - [Export and compare run groups](wiki/how-to/export-and-compare-run-groups.md) — M9 compare lens
 - [Run tier1 live Bazel demo](wiki/how-to/run-tier1-live-bazel-demo.md)
 - [Adoption guide](ADOPTION_GUIDE.md) — 5-minute fixture vs 30-minute Nix paths
-- [CI recipe](CI_RECIPE.md) — GitHub Actions proof jobs (see GHA offline note below)
+- [CI recipe](CI_RECIPE.md) — GitHub Actions proof jobs
 - [Demo script](DEMO_SCRIPT.md) — Tier 1/2/3 rehearsal paths
 - [Dev environment](DEV_ENVIRONMENT.md) — local toolchain setup
 - [Media capture](MEDIA_CAPTURE.md) — hero GIF regeneration
@@ -82,7 +82,7 @@ do not imply live scheduler or fleet state.
 | [Agent loop provenance](diagrams/agent-loop-provenance.md) | M8 bounded provenance chain |
 | [Compare projection flow](diagrams/compare-projection-flow.md) | M9 `derived_v1` compare |
 | [Canvas projection boundary](diagrams/canvas-projection-boundary.md) | projection JSON only |
-| [CI proof lane](diagrams/ci-proof-lane.md) | local gates when GHA offline |
+| [CI proof lane](diagrams/ci-proof-lane.md) | CI jobs and local proof gates |
 
 Index: [diagrams/README.md](diagrams/README.md).
 
@@ -101,9 +101,9 @@ Index: [diagrams/README.md](diagrams/README.md).
 | **M7** worker identity | Conditional `worker_identity` when admin stdout attached pre-ingest + M7 regex | [Architecture track § Phase 3](ARCHITECTURE_TRACK.md), `scripts/worker-evidence-proof.sh` |
 | **M8** agent adapter | Bounded provenance (`model` + `prompt_sha256` only) | [Cursor adapter](../adapters/cursor/README.md), `scripts/record-agent-change.sh` |
 | **M9** multi-run compare | `derived_v1` deltas across run groups; compare lens | [How-to: export and compare](wiki/how-to/export-and-compare-run-groups.md), `scripts/compare-proof.sh` |
-| **Tier1 live Bazel** | Acts 1+2 with real Bazel via `tier1-agent-demo.sh` | [How-to: tier1](wiki/how-to/run-tier1-live-bazel-demo.md), [DAG mirror](dags/tier1-live-bazel.md) |
-| **LRE proof** | LRE substrate, Nix toolchain, cold/warm parity (x86_64-linux) | [DAG mirror](dags/lre-proof.md), `scripts/lre-cold-warm-proof.sh` |
-| **Fleet evidence v1** | Stdout ingest breadth for M7 parser; not fleet dashboards | [DAG mirror](dags/fleet-evidence-v1.md), [future fleet claims](dags/future-fleet-claims.md) |
+| **Tier1 live Bazel** | Acts 1+2 with real Bazel via `tier1-agent-demo.sh` | [How-to: tier1](wiki/how-to/run-tier1-live-bazel-demo.md), `scripts/tier1-live-bazel-proof.sh` |
+| **LRE proof** | LRE substrate, Nix toolchain, cold/warm parity (x86_64-linux) | [Dev environment § LRE](DEV_ENVIRONMENT.md#lre--proof-ladder-substrate--toolchain--cache-parity), `scripts/lre-cold-warm-proof.sh` |
+| **Fleet evidence v1** | Stdout ingest breadth for M7 parser; not fleet dashboards | [future fleet claims](dags/future-fleet-claims.md), [proof scripts matrix](wiki/reference/proof-scripts-matrix.md) |
 
 ## Canonical evidence flow
 
@@ -115,10 +115,9 @@ Every operator-facing doc should preserve this order (from [AGENTS.md](../AGENTS
 4. Export versioned projection JSON.
 5. Render the canvas from projection JSON only.
 
-## Local proof gates (GHA offline)
+## Local proof gates
 
-GitHub Actions may be **non-green**. Do not block doc review or local work on CI
-green. Use host-local gates instead:
+Host-local verification gates:
 
 ```bash
 uv run pytest -q
@@ -127,42 +126,11 @@ bash -n scripts/*.sh
 
 Optional when Nix is available: `nix develop --command ./scripts/lre-proof.sh`.
 
-Policy and merge rules:
-[sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md](sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md).
+## Milestone planning records
 
-## DAG mirrors (orchestration scope)
-
-Linear ticket scope and wave boundaries:
-[`docs/dags/`](dags/README.md).
-
-| Track | Mirror |
-|-------|--------|
-| Architecture (M1–M9) | [dags/architecture-track.md](dags/architecture-track.md) |
-| M5–M9 umbrella | [dags/m5-m9-umbrella.md](dags/m5-m9-umbrella.md) |
-| Docs excellence | [dags/docs-excellence.md](dags/docs-excellence.md) |
-| Tier1 live Bazel | [dags/tier1-live-bazel.md](dags/tier1-live-bazel.md) |
-| LRE proof | [dags/lre-proof.md](dags/lre-proof.md) |
-| Fleet evidence v1 | [dags/fleet-evidence-v1.md](dags/fleet-evidence-v1.md) |
-
-## Maintainer-only: broker handoffs
-
-> **Operators and evaluators:** skip this section. You do not need broker
-> handoffs to run proofs or read the wiki.
-
-Broker-coordinated sessions write rich artifacts under
-[`docs/sessions/handoffs/`](sessions/handoffs/README.md). Parent chats carry
-JSON summaries and paths only — not full handoff bodies in chat.
-
-| DAG | Handoff directory |
-|-----|-------------------|
-| M5–M9 umbrella | [sessions/handoffs/m5-m9-umbrella/](sessions/handoffs/m5-m9-umbrella/) |
-| Frontier / GHA offline | [sessions/handoffs/frontier-wave/](sessions/handoffs/frontier-wave/) |
-| LRE proof | [sessions/handoffs/lre-proof/](sessions/handoffs/lre-proof/) |
-| Fleet evidence v1 | [sessions/handoffs/fleet-evidence-v1/](sessions/handoffs/fleet-evidence-v1/) |
-| Tier1 live Bazel | [sessions/handoffs/tier1-live-bazel/](sessions/handoffs/tier1-live-bazel/) |
-| Doc capture | [sessions/handoffs/nlfr-doc-capture/](sessions/handoffs/nlfr-doc-capture/) |
-
-Template: [HANDOFF_TEMPLATE.md](sessions/handoffs/HANDOFF_TEMPLATE.md).
+Short planning records for shipped milestones live under
+[`docs/dags/`](dags/README.md). How this repo was built:
+[METHOD.md](METHOD.md).
 
 ## Wiki hub
 

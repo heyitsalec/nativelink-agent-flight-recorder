@@ -17,15 +17,14 @@ These diagrams describe **recorded facts and projection boundaries** — not liv
 | Compare projection flow | [compare-projection-flow.md](compare-projection-flow.md) | `derived_v1` |
 | Canvas projection boundary | [canvas-projection-boundary.md](canvas-projection-boundary.md) | projection JSON only |
 | CI proof lane | [ci-proof-lane.md](ci-proof-lane.md) | `collectable_v1` when green; honest blocker otherwise |
-| Broker orchestration | [broker-orchestration.md](broker-orchestration.md) | maintainer-only; disjoint `write_scope` + local proof gates |
 
 ## Canonical flow (one sentence)
 
 Run Bazel through a NativeLink-backed mode → capture SHA-256 artifacts → ingest SQLite → export versioned projection JSON → render canvas from projection JSON only. See [AGENTS.md](../../AGENTS.md).
 
-## Local proof (GHA offline tolerated)
+## Local proof gates
 
-While GitHub Actions may be non-green, validate diagram claims locally:
+Validate diagram claims locally:
 
 ```bash
 uv run pytest -q
@@ -33,8 +32,6 @@ bash -n scripts/*.sh
 npm --prefix apps/canvas run test:truth
 ./scripts/record-proof.sh
 ```
-
-See [gha-offline-proof-shift.md](../sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md).
 
 ---
 

@@ -79,8 +79,6 @@ nix develop --command ./scripts/agent-loop-proof.sh
 nix develop --command ./scripts/lre-cold-warm-proof.sh
 ```
 
-Handoff: [gha-offline-proof-shift.md](../sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md).
-
 ## Honesty notes
 
 | Lane | `source_kind` when job succeeds | `confidence` | When job fails / GHA offline |
@@ -91,4 +89,4 @@ Handoff: [gha-offline-proof-shift.md](../sessions/handoffs/frontier-wave/wave-1/
 | `lre-*` jobs | `collectable_v1` or blocker artifact | `medium` | Do not claim CI green; use `docs/proof-samples/lre-cold-warm-proof-blocker-sample.json` |
 | `verify-demo-fixture` | `simulated_v1` | `medium` | Fixture path — not live Bazel proof |
 
-**Evidence refs:** `.github/workflows/nlfr-proof.yml`, `data/*/summary.json`, `data/*/environment-blocker.json`, `docs/dags/m5-ci-proof.md`.
+**Evidence refs:** `.github/workflows/nlfr-proof.yml`, `data/*/summary.json`, `data/*/environment-blocker.json`.

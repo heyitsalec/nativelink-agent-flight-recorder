@@ -24,8 +24,6 @@ nix develop --command ./scripts/lre-cold-warm-proof.sh
 nix develop --command ./scripts/tier1-live-bazel-proof.sh
 ```
 
-Handoff: [GHA offline proof shift](sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md) · [Wiki hub § GHA offline](wiki/README.md#gha-offline)
-
 Full restore procedure when Actions return: [GHA_RESTORE_RUNBOOK.md](GHA_RESTORE_RUNBOOK.md).
 
 ## Sustained-green criteria
@@ -117,7 +115,7 @@ Nix hosts may additionally run the per-job substitutes in [Local substitutes (by
 - [ ] Redacted CI summaries copied to [`proof-samples/`](proof-samples/) per mapping in [GHA_RESTORE_RUNBOOK.md](GHA_RESTORE_RUNBOOK.md#23-map-ci--local-source--committed-sample).
 - [ ] [`proof-samples/README.md`](proof-samples/README.md) provenance updated (Linux CI).
 - [ ] [`TRYOUT_PACKET.md`](TRYOUT_PACKET.md) / [`ONE_PAGER.md`](ONE_PAGER.md) refreshed if metrics changed.
-- [ ] [`gha-offline-proof-shift.md`](sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md) marked restored; CI gate re-enabled for merge policy.
+- [ ] CI gate re-enabled for merge policy.
 - [ ] `uv run pytest -q` and `bash -n scripts/*.sh` pass after sample commits.
 
 ### Policy flip
@@ -228,4 +226,4 @@ After a green CI run, redact absolute paths and copy summaries to [`proof-sample
 - Do not claim M9 compare from tier1 dry-runs alone — run `compare export` or `compare-proof.sh`.
 - Document which job or local script produced which claim in [`ADOPTION_GUIDE.md`](ADOPTION_GUIDE.md).
 
-See also: [`dags/m5-ci-proof.md`](dags/m5-ci-proof.md) · [Wiki hub](wiki/README.md)
+See also: [Wiki hub](wiki/README.md)

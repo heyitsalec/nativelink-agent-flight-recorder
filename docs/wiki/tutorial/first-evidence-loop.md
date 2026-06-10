@@ -87,8 +87,6 @@ Do not wait for GitHub Actions.
 uv run pytest -q
 ```
 
-Policy: [GHA offline proof shift](../../sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md).
-
 ## Next steps
 
 | Goal | Page |

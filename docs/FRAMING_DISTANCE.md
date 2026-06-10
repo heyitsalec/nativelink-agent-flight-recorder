@@ -1,12 +1,12 @@
 # Framing Distance Table
 
 > **Historical snapshot.** This framing distance table captures Ring 1–3
-> percentages after the M2–M4 live proof pass (PER-1053).
+> percentages after the M2–M4 live proof pass.
 > For current product truth and milestone status, use **[ONE_PAGER.md](ONE_PAGER.md)**
 > and **[ARCHITECTURE_TRACK.md](ARCHITECTURE_TRACK.md)**.
 > Deep dives: **[Wiki hub](wiki/README.md)**.
 
-Date: 2026-06-06 · Linear [PER-1053](https://linear.app/gradschool/issue/PER-1053)
+Date: 2026-06-06
 
 | Ring | Target | Status after M2–M4 live proofs |
 |------|--------|--------------------------------|

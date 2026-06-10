@@ -27,9 +27,8 @@ those projections may say — not invented backend state.
 
 **Provenance today:** samples are sourced from author Nix runs on a development
 host (tag `v0.2.0-mvp`). Promotion from the first green GitHub Actions run is
-documented in [`../GITHUB_RELEASE.md`](../GITHUB_RELEASE.md) — deferred while
-GHA is offline per
-[`gha-offline-proof-shift.md`](../sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md).
+documented in [`../GITHUB_RELEASE.md`](../GITHUB_RELEASE.md) — deferred until
+the first sustained green public CI run.
 
 ## GHA restore promotion
 

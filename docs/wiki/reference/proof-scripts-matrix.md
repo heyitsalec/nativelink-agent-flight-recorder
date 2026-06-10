@@ -79,10 +79,9 @@ How-to: [export and compare run groups](../how-to/export-and-compare-run-groups.
 | Script | Claim | Artifact | Notes |
 |--------|-------|----------|-------|
 | `scripts/tier1-live-bazel-proof.sh` | Tier1 Acts 1+2 live Bazel | `data/tier1-live-bazel/summary.json` | No LRE / placement |
-| `scripts/tier1-bazel-ci-proof.sh` | CI-oriented tier1 Bazel slice | per env | See [ci-bazel-tier1](../../dags/ci-bazel-tier1.md) |
+| `scripts/tier1-bazel-ci-proof.sh` | CI-oriented tier1 Bazel slice | per env | Isolated `//tasks:priority_test` per act |
 
-How-to: [run tier1 live Bazel demo](../how-to/run-tier1-live-bazel-demo.md).  
-DAG: [tier1-live-bazel](../../dags/tier1-live-bazel.md).
+How-to: [run tier1 live Bazel demo](../how-to/run-tier1-live-bazel-demo.md).
 
 ## LRE proof ladder
 
@@ -92,10 +91,8 @@ DAG: [tier1-live-bazel](../../dags/tier1-live-bazel.md).
 | `scripts/lre-nix-toolchain-proof.sh` | 2 | `lre_bazelrc_generated` | `data/lre-nix-toolchain-proof/summary.json` |
 | `scripts/lre-cold-warm-proof.sh` | 4 | `lre_cache_parity_observed` | `data/lre-cold-warm-proof/summary.json` |
 
-**Ceiling:** x86_64-linux green path; darwin may emit blocker samples. CI parity
-deferred while GHA offline — [GHA offline proof shift](../../sessions/handoffs/frontier-wave/wave-1/gha-offline-proof-shift.md).
+**Ceiling:** x86_64-linux green path; darwin may emit blocker samples.
 
-DAG: [lre-proof](../../dags/lre-proof.md).  
 Samples: [proof-samples/lre-cold-warm-*](../../proof-samples/README.md).
 
 ## Fleet evidence v1
@@ -105,15 +102,13 @@ scripts. Does **not** add fleet dashboards or scheduler claims.
 
 | Script | Stdout attach status | DAG |
 |--------|---------------------|-----|
-| `local-exec-proof.sh` | Landed | [fleet-evidence-v1](../../dags/fleet-evidence-v1.md) |
+| `local-exec-proof.sh` | Landed | [future fleet claims](../../dags/future-fleet-claims.md) |
 | `worker-evidence-proof.sh` | Landed | same |
 | `agent-loop-proof.sh` | Pending breadth worker | same |
 | `cold-warm-cache-proof.sh` | Pending breadth worker | same |
 
 Claim ceiling: `stdout_ingest_breadth` (`collectable_v1`, `high`).  
 Unsupported: `scheduler_assignment`, `queue_time`, `action_placement`, `load_distribution`.
-
-Research: [fleet-evidence-v1 wave-0 research](../../sessions/handoffs/fleet-evidence-v1/wave-0/research-nativelink-stdout-formats.md).
 
 ## Canvas capture
 
