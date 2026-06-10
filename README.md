@@ -1,5 +1,9 @@
 # NativeLink Agent Flight Recorder
 
+[![NLFR proof](https://github.com/heyitsalec/nativelink-agent-flight-recorder/actions/workflows/nlfr-proof.yml/badge.svg)](https://github.com/heyitsalec/nativelink-agent-flight-recorder/actions/workflows/nlfr-proof.yml)
+[![Cache-only gate](https://github.com/heyitsalec/nativelink-agent-flight-recorder/actions/workflows/nlfr-cache-only-gate.yml/badge.svg)](https://github.com/heyitsalec/nativelink-agent-flight-recorder/actions/workflows/nlfr-cache-only-gate.yml)
+[![Live canvas](https://img.shields.io/badge/canvas-live%20demo-2ea44f)](https://heyitsalec.github.io/nativelink-agent-flight-recorder/?view=two-act-spark)
+
 **A local-first proof recorder for AI-agent validation loops with NativeLink and Bazel.**
 
 When AI writes the code, NativeLink makes validating it fast — NLFR makes
@@ -47,8 +51,7 @@ blocker instead of faking success
 
 1. **Hosted canvas** —
    <https://heyitsalec.github.io/nativelink-agent-flight-recorder/?view=two-act-spark>
-   *(live at public release — until the repo flips public, use the quickstart
-   below)*.
+   — the live two-act run, zero install.
 2. **One proof JSON** —
    [`docs/proof-samples/two-act-spark-live-summary-sample.json`](docs/proof-samples/two-act-spark-live-summary-sample.json):
    act 1 red and attributed to the hidden target, act 2 green with warm cache

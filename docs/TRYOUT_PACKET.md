@@ -30,8 +30,7 @@ renders a canvas from those projections only — including what remains unproven
 
 1. **Hosted canvas:**
    <https://heyitsalec.github.io/nativelink-agent-flight-recorder/?view=two-act-spark>
-   *(live at public release — before the flip, use the screenshots below or the
-   30-minute path)*.
+   — the live two-act run, zero install.
 2. **Two-act proof JSON:**
    [`proof-samples/two-act-spark-live-summary-sample.json`](proof-samples/two-act-spark-live-summary-sample.json).
    The `checks` block is the story: `act1_validation_red`,
