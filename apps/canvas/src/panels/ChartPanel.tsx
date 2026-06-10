@@ -137,6 +137,47 @@ function centerTransform(svg: SVGSVGElement): ZoomTransform {
   return zoomIdentity.translate(box.width / 2, box.height / 2).scale(scale);
 }
 
+/** Padding kept between the fitted graph and the svg edge, in px. */
+const FIT_PADDING_PX = 48;
+/** Never zoom in past this when fitting — matches the old default framing. */
+const MAX_FIT_SCALE = 0.95;
+/** Halo, kind/label text, provenance badge, and confidence text all render
+ *  beyond the node body; reserve room so fitted nodes keep them on-screen. */
+const NODE_FIT_MARGIN = 64;
+
+function fitTransform(svg: SVGSVGElement, nodes: PositionedNode[]): ZoomTransform {
+  const box = svg.getBoundingClientRect();
+  if (nodes.length === 0 || box.width <= 0 || box.height <= 0) {
+    return centerTransform(svg);
+  }
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (const node of nodes) {
+    const reach = node.radius + NODE_FIT_MARGIN;
+    minX = Math.min(minX, node.x - reach);
+    maxX = Math.max(maxX, node.x + reach);
+    minY = Math.min(minY, node.y - reach);
+    maxY = Math.max(maxY, node.y + reach);
+  }
+  const spanX = Math.max(maxX - minX, 1);
+  const spanY = Math.max(maxY - minY, 1);
+  const scale = Math.max(
+    0.2,
+    Math.min(
+      MAX_FIT_SCALE,
+      (box.width - FIT_PADDING_PX * 2) / spanX,
+      (box.height - FIT_PADDING_PX * 2) / spanY,
+    ),
+  );
+  const centerX = (minX + maxX) / 2;
+  const centerY = (minY + maxY) / 2;
+  return zoomIdentity
+    .translate(box.width / 2 - centerX * scale, box.height / 2 - centerY * scale)
+    .scale(scale);
+}
+
 export function ActionGraphCanvasPanel(instance: ComponentInstance) {
   const { bindings, graph, route, routeActions } = useViewContext();
   const zoomRef = useOptionalZoomControllerRef();
@@ -179,14 +220,23 @@ export function ActionGraphCanvasPanel(instance: ComponentInstance) {
   );
   const selectedId = route.selectedId;
 
+  // Keep the latest visible nodes available to the zoom-init effect and the
+  // Reset handler without re-running them (and stomping user zoom) whenever
+  // selection changes which nodes are visible.
+  const visibleNodesRef = useRef<PositionedNode[]>(visibleNodes);
+  useEffect(() => {
+    visibleNodesRef.current = visibleNodes;
+  }, [visibleNodes]);
+
   useEffect(() => {
     if (!svgRef.current) return;
+    const fit = fitTransform(svgRef.current, visibleNodesRef.current);
     const behavior = zoom<SVGSVGElement, unknown>()
-      .scaleExtent([minScale, maxScale])
+      .scaleExtent([Math.min(minScale, fit.k), maxScale])
       .on("zoom", (event) => setTransform(event.transform));
     behaviorRef.current = behavior;
     select(svgRef.current).call(behavior);
-    select(svgRef.current).call(behavior.transform, centerTransform(svgRef.current));
+    select(svgRef.current).call(behavior.transform, fit);
   }, [minScale, maxScale]);
 
   useEffect(() => {
@@ -202,17 +252,19 @@ export function ActionGraphCanvasPanel(instance: ComponentInstance) {
       },
       reset: () => {
         if (!svgRef.current || !behaviorRef.current) return;
+        const fit = fitTransform(svgRef.current, visibleNodesRef.current);
+        behaviorRef.current.scaleExtent([Math.min(minScale, fit.k), maxScale]);
         select(svgRef.current)
           .transition()
           .duration(420)
-          .call(behaviorRef.current.transform, centerTransform(svgRef.current));
+          .call(behaviorRef.current.transform, fit);
       },
       getTransform: () => transform,
     };
     return () => {
       if (zoomRef.current) zoomRef.current = null;
     };
-  }, [zoomRef, transform]);
+  }, [zoomRef, transform, minScale, maxScale]);
 
   return (
     <section className="canvas-stage" aria-label="NativeLink evidence canvas">
