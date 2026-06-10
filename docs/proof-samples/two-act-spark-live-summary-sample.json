@@ -1,0 +1,150 @@
+{
+  "act1": {
+    "agent_node": {
+      "label": "two-act-spark-act1",
+      "model": "claude-opus-4-8[1m]",
+      "provenance_class": "receipt_verified_v1",
+      "receipt_verified": true,
+      "source_kind": "collectable_v1"
+    },
+    "cache_metrics": {
+      "hit_rate": 0.0,
+      "hits": 0,
+      "misses": 4,
+      "unknown": 0
+    },
+    "ingest": {
+      "counts": {
+        "actions": 2,
+        "cache_events": 4,
+        "failures": 1,
+        "proof_blocks": 0,
+        "targets": 5
+      },
+      "database": "<repo>/data/two-act-spark/nlfr.sqlite",
+      "run_id": "runs_b1b478d7a06181c7a617444c",
+      "run_key": "two-act-underspec-act1:cache-only:2026-06-10T16:52:21.158511Z",
+      "run_metadata": {
+        "artifact_root": "<repo>/data/two-act-spark/runs/run_2c59084cb1dee3245ea4e02d/artifacts",
+        "mode": "cache-only",
+        "run_group": "two-act-spark-act1",
+        "run_id": "run_2c59084cb1dee3245ea4e02d",
+        "run_key": "two-act-underspec-act1:cache-only:2026-06-10T16:52:21.158511Z",
+        "scenario": "two-act-underspec-act1"
+      }
+    },
+    "receipt": {
+      "cli": "claude",
+      "cli_version": "2.1.170 (Claude Code)",
+      "confidence": "high",
+      "model_resolved": "claude-opus-4-8[1m]",
+      "num_turns": 1,
+      "prompt_sha256": "0f631e165958418598ec4001ba69264dda2223f46419529150032d1ecc5bb57c",
+      "redaction_state": "redacted",
+      "response_sha256": "68a96a92ccf151fadc3067456f41f1f6f63b2ef72dd40cf6574432609334ab8a",
+      "session_id": "031c4fa8-83dd-426c-a201-be83f7dd77a2",
+      "source_kind": "collectable_v1",
+      "status": "success",
+      "usage": {
+        "cache_creation_input_tokens": 2804,
+        "cache_read_input_tokens": 15334,
+        "input_tokens": 14965,
+        "output_tokens": 471
+      }
+    },
+    "run_group": "two-act-spark-act1",
+    "run_id": "run_2c59084cb1dee3245ea4e02d",
+    "status": "failed"
+  },
+  "act2": {
+    "agent_node": {
+      "label": "two-act-spark-act2",
+      "model": "claude-opus-4-8[1m]",
+      "provenance_class": "receipt_verified_v1",
+      "receipt_verified": true,
+      "source_kind": "collectable_v1"
+    },
+    "cache_metrics": {
+      "hit_rate": 0.5,
+      "hits": 2,
+      "misses": 2,
+      "unknown": 0
+    },
+    "failure_evidence_source": "act1 recorded artifacts (act1-failure-excerpt.txt)",
+    "ingest": {
+      "counts": {
+        "actions": 2,
+        "cache_events": 4,
+        "failures": 0,
+        "proof_blocks": 0,
+        "targets": 5
+      },
+      "database": "<repo>/data/two-act-spark/nlfr.sqlite",
+      "run_id": "runs_e522b8d8b2cd019e4c5bfb6c",
+      "run_key": "two-act-underspec-act2:cache-only:2026-06-10T16:52:47.952866Z",
+      "run_metadata": {
+        "artifact_root": "<repo>/data/two-act-spark/runs/run_1101abdd7b147f0a313cfab3/artifacts",
+        "mode": "cache-only",
+        "run_group": "two-act-spark-act2",
+        "run_id": "run_1101abdd7b147f0a313cfab3",
+        "run_key": "two-act-underspec-act2:cache-only:2026-06-10T16:52:47.952866Z",
+        "scenario": "two-act-underspec-act2"
+      }
+    },
+    "receipt": {
+      "cli": "claude",
+      "cli_version": "2.1.170 (Claude Code)",
+      "confidence": "high",
+      "model_resolved": "claude-opus-4-8[1m]",
+      "num_turns": 1,
+      "prompt_sha256": "f18e25dca1ef668440a672409a5dbf96310e44ffaa3bc8b5ba6d77b6f2e58366",
+      "redaction_state": "redacted",
+      "response_sha256": "53b5d4eb0a2b662d69597d8a8c7a31b5a8de90d6427873bb88a6524b25f09bdb",
+      "session_id": "79341d14-acce-43b9-9801-5c5cc740e6dd",
+      "source_kind": "collectable_v1",
+      "status": "success",
+      "usage": {
+        "cache_creation_input_tokens": 3612,
+        "cache_read_input_tokens": 15334,
+        "input_tokens": 14969,
+        "output_tokens": 1118
+      }
+    },
+    "run_group": "two-act-spark-act2",
+    "run_id": "run_1101abdd7b147f0a313cfab3",
+    "status": "completed"
+  },
+  "agent_cli": "claude",
+  "agent_leg_live": true,
+  "agent_leg_source_kind": "collectable_v1",
+  "checks": {
+    "act1_agent_node_in_graph": true,
+    "act1_receipt_present": true,
+    "act1_red_attributed_to_hidden_target": true,
+    "act1_validation_red": true,
+    "act2_receipt_present": true,
+    "act2_validation_green": true,
+    "act2_warm_cache_hits": true,
+    "compare_projection_exported": true
+  },
+  "confidence": "high",
+  "evidence_refs": [
+    "act1-run.json",
+    "act1-failure-classification.json",
+    "act2-run.json",
+    "receipts/act1-receipt.json",
+    "receipts/act2-receipt.json",
+    "act1-failure-excerpt.txt",
+    "projections/act1-proof.json",
+    "projections/act2-proof.json",
+    "projections/compare-act1-vs-act2.json",
+    "nativelink.stdout.txt",
+    "nativelink.stderr.txt"
+  ],
+  "redaction_state": "safe",
+  "scenario_id": "two-act-underspec",
+  "scenario_path": "<repo>/demo/scenarios/two-act-underspec.json",
+  "source_kind": "collectable_v1",
+  "spark_outcome": "two_act_complete",
+  "validation_leg_source_kind": "collectable_v1"
+}

@@ -33,13 +33,16 @@ renders a canvas from those projections only — including what remains unproven
    *(live at public release — before the flip, use the screenshots below or the
    30-minute path)*.
 2. **Two-act proof JSON:**
-   [`proof-samples/two-act-spark-stub-summary-sample.json`](proof-samples/two-act-spark-stub-summary-sample.json).
+   [`proof-samples/two-act-spark-live-summary-sample.json`](proof-samples/two-act-spark-live-summary-sample.json).
    The `checks` block is the story: `act1_validation_red`,
    `act1_red_attributed_to_hidden_target`, `act1_receipt_present`,
    `act2_validation_green`, `act2_warm_cache_hits`,
    `compare_projection_exported` — all `true`. Validation/cache legs are
-   `collectable_v1` (real Bazel + NativeLink); the agent leg is the
-   deterministic stub, labeled `simulated_v1` / `stub_receipt_v1`.
+   `collectable_v1` (real Bazel + NativeLink); the agent legs carry live
+   `receipt_verified_v1` receipts (server-resolved `claude-opus-4-8`, session
+   id, token usage, response SHA-256). The deterministic-stub variant
+   ([`two-act-spark-stub-summary-sample.json`](proof-samples/two-act-spark-stub-summary-sample.json))
+   is the zero-token CI mechanics gate.
 3. **Cache numbers:**
    [`proof-samples/cold-warm-summary.json`](proof-samples/cold-warm-summary.json)
    — cold 8.17 s at `hit_rate` 0.0 → warm 5.48 s at `hit_rate` 1.0
@@ -113,13 +116,14 @@ The two-worker run proves two workers configured AND endpoints opened live —
 not work distributed across workers. Redacted copies of every summary:
 [`proof-samples/`](proof-samples/README.md).
 
-**Two-act live:** running `./scripts/two-act-spark-proof.sh` with an
-authenticated `claude` CLI executes the same scenario with a live agent and
-upgrades receipts to `receipt_verified_v1` through the same pipeline. Status:
-pending an operator re-auth — no live-LLM claim is made until that run lands.
-The honest blocker and the receipt shape are already committed:
-[`two-act-spark-live-blocker-sample.json`](proof-samples/two-act-spark-live-blocker-sample.json) ·
-[`two-act-spark-live-receipt-sample.json`](proof-samples/two-act-spark-live-receipt-sample.json).
+**Two-act live:** the committed run IS the live run —
+`./scripts/two-act-spark-proof.sh` with an authenticated `claude` CLI, agent
+legs `receipt_verified_v1`
+([summary](proof-samples/two-act-spark-live-summary-sample.json) ·
+[receipt](proof-samples/two-act-spark-live-receipt-sample.json)). On a host
+where the CLI cannot authenticate, the same script records an honest
+`environment_blocker` instead of faking success
+([blocker sample](proof-samples/two-act-spark-live-blocker-sample.json)).
 
 ## Agent Receipts — the honesty ladder
 
@@ -167,7 +171,7 @@ does not claim scheduler assignment, queue time, or action placement.
 | **M8** agent adapter | `scripts/record-agent-change.sh`, `scripts/agent-loop-proof.sh` | mixed: `collectable_v1` validation; `simulated_v1` agent leg | `model` + `prompt_sha256` only — never raw prompts. |
 | **M9** compare | `scripts/compare-proof.sh`, `nlfr compare export` | `derived_v1` | Five-dimension compare across run groups. No new fleet claims. |
 | **Tier 1** live Bazel | `scripts/tier1-live-bazel-proof.sh` | `collectable_v1`, `high` | Acts 1+2 with `bazel_validated: true` via `cursor_adapter_v1` — not pytest fallback. Samples: [`agent-bugfix-summary.json`](proof-samples/agent-bugfix-summary.json) · [`agent-feature-summary.json`](proof-samples/agent-feature-summary.json). |
-| **Two-act spark** | `scripts/two-act-spark-proof.sh` → [stub sample](proof-samples/two-act-spark-stub-summary-sample.json) | mixed: `collectable_v1` validation/cache; `simulated_v1` stub agent leg | Full fail→fix mechanics under real Bazel + NativeLink; agent receipts upgrade to `receipt_verified_v1` when the live run lands. |
+| **Two-act spark** | `scripts/two-act-spark-proof.sh` → [live sample](proof-samples/two-act-spark-live-summary-sample.json) · [stub sample](proof-samples/two-act-spark-stub-summary-sample.json) | live: `collectable_v1` + `receipt_verified_v1` agent legs; stub variant: `simulated_v1` agent leg | Recorded fail→fix under real Bazel + NativeLink with live Claude receipts; the stub variant is the zero-token CI mechanics gate. |
 
 Full catalog with every redacted sample: [`proof-samples/README.md`](proof-samples/README.md).
 
