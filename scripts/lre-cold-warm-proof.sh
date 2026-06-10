@@ -36,7 +36,7 @@ payload = {
     "redaction_state": "safe",
     "evidence_refs": [
         "script:lre-cold-warm-proof.sh",
-        "docs/dags/lre-proof.md",
+        "docs/LRE_LINUX_PROOF.md",
         "demo/nativelink/lre.json5",
     ],
     "claim_boundary": {

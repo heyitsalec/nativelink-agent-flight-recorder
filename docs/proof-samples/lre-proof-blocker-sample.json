@@ -5,7 +5,7 @@
   "source_kind": "collectable_v1",
   "confidence": "high",
   "redaction_state": "safe",
-  "evidence_refs": ["script:lre-proof.sh", "docs/dags/lre-proof.md"],
+  "evidence_refs": ["script:lre-proof.sh", "docs/LRE_LINUX_PROOF.md"],
   "claim_boundary": {
     "supported": [
       "cache-only proof",

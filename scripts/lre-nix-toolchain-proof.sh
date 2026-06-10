@@ -31,7 +31,7 @@ payload = {
     "redaction_state": "safe",
     "evidence_refs": [
         "script:lre-nix-toolchain-proof.sh",
-        "docs/dags/lre-proof.md",
+        "docs/LRE_LINUX_PROOF.md",
         "flake.nix",
     ],
     "claim_boundary": {
