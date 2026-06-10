@@ -35,6 +35,12 @@ README reference frames.
 | [canvas-mobile.png](../images/canvas-mobile.png) | Mobile layout |
 | [canvas-operator-flow.webm](../images/canvas-operator-flow.webm) | Operator flow (WebM) |
 
+Two-act spark stills (receipt badges, receipt pane, compare provenance card)
+are Playwright baselines committed under
+[`apps/canvas/baselines/screenshots/`](../../apps/canvas/baselines/screenshots/)
+— rendered from committed projection JSON; agent legs in those frames are
+stub-labeled (`stub_receipt_v1`), not live receipts.
+
 Fresh capture (canvas server required):
 
 ```bash

@@ -10,6 +10,8 @@ entry; this index is the Diátaxis hub. Deep pages live under
 
 | I want to… | Go to |
 |------------|-------|
+| Evaluate NLFR fast (5/30-min/deep paths) | [Tryout packet](TRYOUT_PACKET.md) |
+| See the two-act spark (recorded agent fail → fix, receipts) | [Proof samples § two-act](proof-samples/README.md#two-act-live-spark--verifiable-agent-receipts-r2) |
 | Run my first fixture-backed evidence loop (~5 min) | [Tutorial: first evidence loop](wiki/tutorial/first-evidence-loop.md) |
 | Run real Nix proof on an independent host (~30+ min) | [Tutorial: first Nix proof](wiki/tutorial/first-nix-proof.md) |
 | Export projections or compare run groups (M9) | [How-to: export and compare](wiki/how-to/export-and-compare-run-groups.md) |
