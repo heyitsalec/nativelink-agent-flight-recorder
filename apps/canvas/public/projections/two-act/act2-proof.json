@@ -1,0 +1,248 @@
+{
+  "blocks": [
+    {
+      "claims": [
+        "This packet can prove recorded commands, artifacts, statuses, and cache events present in the local evidence spine.",
+        "This packet does not claim remote worker assignment, queue timing, or opaque SaaS telemetry."
+      ],
+      "confidence": "high",
+      "evidence_refs": [
+        "artifact:run.json"
+      ],
+      "id": "scope",
+      "kind": "derived_summary",
+      "metrics": {},
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "summary": "Local recorded evidence for AI-generated code validation (cache-only mode).",
+      "title": "Proof Scope"
+    },
+    {
+      "claims": [],
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_0979df63efc3bc7e6fc12944",
+        "bazel:bep-profile-execution-log"
+      ],
+      "id": "invocations",
+      "kind": "derived_summary",
+      "metrics": {
+        "unknown": 1
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "summary": "NativeLink and Bazel command outcomes captured by the recorder.",
+      "title": "Invocation Results"
+    },
+    {
+      "claims": [],
+      "confidence": "high",
+      "evidence_refs": [
+        "collectable_v1:bazel.execution-log.json"
+      ],
+      "id": "cache",
+      "kind": "derived_summary",
+      "metrics": {
+        "hit_rate": 0.5,
+        "hits": 2,
+        "misses": 2,
+        "unknown": 0
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "summary": "Cache hit/miss records extracted from available Bazel evidence.",
+      "title": "Cache Evidence"
+    },
+    {
+      "claims": [
+        "Remote execution configuration evidence requires a recorded invocation with --remote_executor.",
+        "Worker proof requires direct worker log or admin evidence."
+      ],
+      "confidence": "unknown",
+      "evidence_refs": [],
+      "id": "remote_execution",
+      "kind": "derived_summary",
+      "metrics": {
+        "queue_time_observed": false,
+        "remote_executor_endpoints": 0,
+        "remote_executor_invocations": 0,
+        "remote_executor_overrides": 0,
+        "scheduler_assignment_observed": false,
+        "worker_identity_observed": false
+      },
+      "payload": {
+        "remote_executor_endpoints": [],
+        "unsupported_claims": [
+          "worker_identity",
+          "action_placement",
+          "queue_time",
+          "scheduler_assignment",
+          "load_distribution"
+        ]
+      },
+      "redaction_state": "unknown",
+      "source_kind": "future",
+      "summary": "No Bazel remote execution configuration was observed in recorded invocations.",
+      "title": "Remote Execution Boundary"
+    },
+    {
+      "claims": [],
+      "confidence": "high",
+      "evidence_refs": [
+        "collectable_v1:bazel.bep.json"
+      ],
+      "id": "validation",
+      "kind": "derived_summary",
+      "metrics": {
+        "actions": 2,
+        "failures": 0,
+        "targets": 5
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "summary": "Targets, actions, and failures visible to the recorder.",
+      "title": "Validation Surface"
+    },
+    {
+      "claims": [],
+      "confidence": "medium",
+      "evidence_refs": [
+        "invocation:invocations_11c433ef48e224ae417a9d2c",
+        "scenario:two-act-underspec-act2",
+        "agent:two-act-spark-act2",
+        "run:run_0979df63efc3bc7e6fc12944",
+        "prompt:sha256:ac6eaaf9c46807dc0e885f8a19ad97b45508bffb4886cd1030b96ba8e7aeb055",
+        "adapter:two-act-spark-proof.sh",
+        "artifact:agent-receipt.json",
+        "receipt:sha256:909cc0ec7e1a6087e05d8475b83276d8706932c13f99763961739119a079de40",
+        "session:stub-act2-ac6eaaf9c468",
+        "cli:spark-stub-claude.sh",
+        "response:sha256:caeac5b35a0583dde4ec9ad3beaccb5b764194701673e186b5790f573a1b797f"
+      ],
+      "id": "artifacts",
+      "kind": "derived_summary",
+      "metrics": {
+        "artifacts": 5
+      },
+      "redaction_state": "redacted",
+      "source_kind": "collectable_v1",
+      "summary": "Immutable files referenced by the proof packet.",
+      "title": "Artifact Chain"
+    },
+    {
+      "confidence": "medium",
+      "evidence_refs": [
+        "scenario:two-act-underspec-act2",
+        "agent:two-act-spark-act2",
+        "run:run_0979df63efc3bc7e6fc12944",
+        "prompt:sha256:ac6eaaf9c46807dc0e885f8a19ad97b45508bffb4886cd1030b96ba8e7aeb055",
+        "adapter:two-act-spark-proof.sh",
+        "artifact:agent-receipt.json",
+        "receipt:sha256:909cc0ec7e1a6087e05d8475b83276d8706932c13f99763961739119a079de40",
+        "session:stub-act2-ac6eaaf9c468"
+      ],
+      "id": "proof_blocks_89e02aadc9b3d48376c20a39",
+      "kind": "agent_provenance",
+      "payload": {
+        "agent": {
+          "input_signal": "redacted: prompt withheld, hash retained",
+          "kind": "claude_code_adapter_v1",
+          "model": "stub-deterministic-model",
+          "model_label_operator": "stub-deterministic-model",
+          "name": "two-act-spark-act2",
+          "prompt_sha256": "ac6eaaf9c46807dc0e885f8a19ad97b45508bffb4886cd1030b96ba8e7aeb055",
+          "provenance_class": "stub_receipt_v1",
+          "receipt": {
+            "captured_at": "2026-06-10T15:54:20.990678Z",
+            "cli_name": "spark-stub-claude.sh",
+            "cli_version": "stub-claude 1.0.0 (deterministic spark fixture)",
+            "live": false,
+            "model_requested": null,
+            "model_resolved": "stub-deterministic-model",
+            "num_turns": 1,
+            "prompt_sha256": "ac6eaaf9c46807dc0e885f8a19ad97b45508bffb4886cd1030b96ba8e7aeb055",
+            "receipt_sha256": "909cc0ec7e1a6087e05d8475b83276d8706932c13f99763961739119a079de40",
+            "response_sha256": "caeac5b35a0583dde4ec9ad3beaccb5b764194701673e186b5790f573a1b797f",
+            "schema_version": "nlfr.agent_receipt.v1",
+            "session_id": "stub-act2-ac6eaaf9c468",
+            "status": "success",
+            "usage": {
+              "input_tokens": 831,
+              "output_tokens": 169
+            }
+          }
+        },
+        "build": {
+          "artifact_root": "/Users/alecbot/Documents/nlfr-wt-b/data/two-act-spark-stub/runs/run_0979df63efc3bc7e6fc12944/artifacts",
+          "run_id": "run_0979df63efc3bc7e6fc12944",
+          "run_key": "two-act-underspec-act2:cache-only:2026-06-10T15:54:21.097828Z",
+          "status": "completed"
+        },
+        "change": {
+          "affected_paths": [
+            "tasks/escalation.py"
+          ],
+          "after_hashes": {
+            "tasks/escalation.py": "25efe56c29474e742af6127d0dacec8d647e34757d3648ff35753c2d22768c95"
+          },
+          "before_hashes": {
+            "tasks/escalation.py": "f3621c8f9aa90966320ef8c4d626010477d892661d5a0ec9522d2273953138b0"
+          },
+          "change_class": "bounded_agent_v1",
+          "patch_applied": true
+        },
+        "confidence": "medium",
+        "evidence_refs": [
+          "scenario:two-act-underspec-act2",
+          "agent:two-act-spark-act2",
+          "run:run_0979df63efc3bc7e6fc12944",
+          "prompt:sha256:ac6eaaf9c46807dc0e885f8a19ad97b45508bffb4886cd1030b96ba8e7aeb055",
+          "adapter:two-act-spark-proof.sh",
+          "artifact:agent-receipt.json",
+          "receipt:sha256:909cc0ec7e1a6087e05d8475b83276d8706932c13f99763961739119a079de40",
+          "session:stub-act2-ac6eaaf9c468"
+        ],
+        "generated_at": "2026-06-10T15:54:25.645365Z",
+        "mode": "cache-only",
+        "redaction_state": "safe",
+        "run_group": "two-act-spark-stub-act2",
+        "scenario_id": "two-act-underspec-act2",
+        "schema_version": "nlfr.agent_provenance.v1",
+        "source_kind": "simulated_v1",
+        "title": "Bounded agent change with hashed prompt provenance",
+        "workspace": "/private/tmp/nix-shell.ipMZIK/nlfr-two-act.UNSRP7/workspace"
+      },
+      "redaction_state": "safe",
+      "source_kind": "simulated_v1",
+      "summary": "two-act-underspec-act2 change recorded with status completed.",
+      "title": "Agent Provenance: two-act-spark-act2"
+    }
+  ],
+  "generated_at": "2026-06-10T15:54:25.879752Z",
+  "projection_kind": "proof_packet",
+  "retention": {
+    "claims": [
+      "Run-group discovery is index-only via nlfr compare index.",
+      "NLFR v1 does not auto-purge SQLite rows or artifact files.",
+      "Artifact and database growth is operator-managed."
+    ],
+    "confidence": "high",
+    "discovery": "index_only",
+    "evidence_refs": [],
+    "lifecycle": "operator_managed",
+    "purge": "no_auto_purge",
+    "redaction_state": "safe",
+    "source_kind": "derived_v1",
+    "version": 1
+  },
+  "run_group": "two-act-spark-stub-act2",
+  "schema_version": 1,
+  "summary": {
+    "actions": 2,
+    "artifacts": 5,
+    "cache_events": 4,
+    "failures": 0,
+    "runs": 1,
+    "targets": 5
+  }
+}

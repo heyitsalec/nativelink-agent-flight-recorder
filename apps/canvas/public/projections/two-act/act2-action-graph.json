@@ -1,0 +1,755 @@
+{
+  "edges": [
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_0979df63efc3bc7e6fc12944",
+        "path:tasks/escalation.py"
+      ],
+      "from": "agent:proof_blocks_89e02aadc9b3d48376c20a39",
+      "id": "authored_change:agent:proof_blocks_89e02aadc9b3d48376c20a39:changes_9c4b3002e993f3961bab74f6",
+      "kind": "authored_change",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "changes_9c4b3002e993f3961bab74f6"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_0979df63efc3bc7e6fc12944",
+        "path:tasks/escalation.py"
+      ],
+      "from": "changes_9c4b3002e993f3961bab74f6",
+      "id": "validated_by:changes_9c4b3002e993f3961bab74f6:runs_2213789efb618e86d0e74777",
+      "kind": "validated_by",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "runs_2213789efb618e86d0e74777"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_0979df63efc3bc7e6fc12944",
+        "bazel:bep-profile-execution-log"
+      ],
+      "from": "runs_2213789efb618e86d0e74777",
+      "id": "recorded_invocation:runs_2213789efb618e86d0e74777:invocations_11c433ef48e224ae417a9d2c",
+      "kind": "recorded_invocation",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "invocations_11c433ef48e224ae417a9d2c"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "invocation:invocations_11c433ef48e224ae417a9d2c"
+      ],
+      "from": "runs_2213789efb618e86d0e74777",
+      "id": "recorded_artifact:runs_2213789efb618e86d0e74777:artifacts_2e9670d9c79d0b3967096aa3",
+      "kind": "recorded_artifact",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "artifacts_2e9670d9c79d0b3967096aa3"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "invocation:invocations_11c433ef48e224ae417a9d2c"
+      ],
+      "from": "runs_2213789efb618e86d0e74777",
+      "id": "recorded_artifact:runs_2213789efb618e86d0e74777:artifacts_34f452dfa491a0f142988dd7",
+      "kind": "recorded_artifact",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "artifacts_34f452dfa491a0f142988dd7"
+    },
+    {
+      "confidence": "medium",
+      "evidence_refs": [
+        "scenario:two-act-underspec-act2",
+        "agent:two-act-spark-act2",
+        "run:run_0979df63efc3bc7e6fc12944",
+        "prompt:sha256:ac6eaaf9c46807dc0e885f8a19ad97b45508bffb4886cd1030b96ba8e7aeb055",
+        "adapter:two-act-spark-proof.sh",
+        "artifact:agent-receipt.json",
+        "receipt:sha256:909cc0ec7e1a6087e05d8475b83276d8706932c13f99763961739119a079de40",
+        "session:stub-act2-ac6eaaf9c468"
+      ],
+      "from": "runs_2213789efb618e86d0e74777",
+      "id": "recorded_artifact:runs_2213789efb618e86d0e74777:artifacts_4ce3982663ec65a6943ae4bf",
+      "kind": "recorded_artifact",
+      "redaction_state": "safe",
+      "source_kind": "simulated_v1",
+      "to": "artifacts_4ce3982663ec65a6943ae4bf"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_0979df63efc3bc7e6fc12944"
+      ],
+      "from": "runs_2213789efb618e86d0e74777",
+      "id": "recorded_artifact:runs_2213789efb618e86d0e74777:artifacts_920380014b8712e1eff9de85",
+      "kind": "recorded_artifact",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "artifacts_920380014b8712e1eff9de85"
+    },
+    {
+      "confidence": "medium",
+      "evidence_refs": [
+        "run:run_0979df63efc3bc7e6fc12944",
+        "receipt:sha256:909cc0ec7e1a6087e05d8475b83276d8706932c13f99763961739119a079de40",
+        "prompt:sha256:ac6eaaf9c46807dc0e885f8a19ad97b45508bffb4886cd1030b96ba8e7aeb055",
+        "cli:spark-stub-claude.sh",
+        "response:sha256:caeac5b35a0583dde4ec9ad3beaccb5b764194701673e186b5790f573a1b797f",
+        "session:stub-act2-ac6eaaf9c468"
+      ],
+      "from": "runs_2213789efb618e86d0e74777",
+      "id": "recorded_artifact:runs_2213789efb618e86d0e74777:artifacts_bd3a920263a211407cbbbd12",
+      "kind": "recorded_artifact",
+      "redaction_state": "redacted",
+      "source_kind": "simulated_v1",
+      "to": "artifacts_bd3a920263a211407cbbbd12"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "collectable_v1:bazel.bep.json"
+      ],
+      "from": "runs_2213789efb618e86d0e74777",
+      "id": "evaluated_target:runs_2213789efb618e86d0e74777:targets_6951d4e466bf56b280047a81",
+      "kind": "evaluated_target",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "targets_6951d4e466bf56b280047a81"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "collectable_v1:bazel.bep.json"
+      ],
+      "from": "runs_2213789efb618e86d0e74777",
+      "id": "evaluated_target:runs_2213789efb618e86d0e74777:targets_6a514ff149e50bc3ef26d5fb",
+      "kind": "evaluated_target",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "targets_6a514ff149e50bc3ef26d5fb"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "collectable_v1:bazel.bep.json"
+      ],
+      "from": "runs_2213789efb618e86d0e74777",
+      "id": "evaluated_target:runs_2213789efb618e86d0e74777:targets_7baca79081b20e1a4d7ecac5",
+      "kind": "evaluated_target",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "targets_7baca79081b20e1a4d7ecac5"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "collectable_v1:bazel.bep.json"
+      ],
+      "from": "runs_2213789efb618e86d0e74777",
+      "id": "evaluated_target:runs_2213789efb618e86d0e74777:targets_8c3f8237e59bcfbeb5fb1e1d",
+      "kind": "evaluated_target",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "targets_8c3f8237e59bcfbeb5fb1e1d"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "collectable_v1:bazel.bep.json"
+      ],
+      "from": "runs_2213789efb618e86d0e74777",
+      "id": "evaluated_target:runs_2213789efb618e86d0e74777:targets_c6f065f1c1df17ff26996eed",
+      "kind": "evaluated_target",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "targets_c6f065f1c1df17ff26996eed"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "collectable_v1:bazel.bep.json"
+      ],
+      "from": "targets_c6f065f1c1df17ff26996eed",
+      "id": "produced_action:targets_c6f065f1c1df17ff26996eed:actions_19770a6507fc33a73dacade9",
+      "kind": "produced_action",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "actions_19770a6507fc33a73dacade9"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "collectable_v1:bazel.bep.json"
+      ],
+      "from": "targets_8c3f8237e59bcfbeb5fb1e1d",
+      "id": "produced_action:targets_8c3f8237e59bcfbeb5fb1e1d:actions_943659a5a399684afc345273",
+      "kind": "produced_action",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "actions_943659a5a399684afc345273"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "collectable_v1:bazel.execution-log.json"
+      ],
+      "from": "targets_c6f065f1c1df17ff26996eed",
+      "id": "observed_cache_event:targets_c6f065f1c1df17ff26996eed:cache_events_35f6b78fb21a6f7b36c64eb7",
+      "kind": "observed_cache_event",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "cache_events_35f6b78fb21a6f7b36c64eb7"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "collectable_v1:bazel.execution-log.json"
+      ],
+      "from": "targets_8c3f8237e59bcfbeb5fb1e1d",
+      "id": "observed_cache_event:targets_8c3f8237e59bcfbeb5fb1e1d:cache_events_479cfc3c71fcc6eae3078174",
+      "kind": "observed_cache_event",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "cache_events_479cfc3c71fcc6eae3078174"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "collectable_v1:bazel.execution-log.json"
+      ],
+      "from": "targets_8c3f8237e59bcfbeb5fb1e1d",
+      "id": "observed_cache_event:targets_8c3f8237e59bcfbeb5fb1e1d:cache_events_c1c81f350b2b9b4d746a2b6a",
+      "kind": "observed_cache_event",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "cache_events_c1c81f350b2b9b4d746a2b6a"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "collectable_v1:bazel.execution-log.json"
+      ],
+      "from": "targets_c6f065f1c1df17ff26996eed",
+      "id": "observed_cache_event:targets_c6f065f1c1df17ff26996eed:cache_events_af5a5481e7345047bc2edc87",
+      "kind": "observed_cache_event",
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "to": "cache_events_af5a5481e7345047bc2edc87"
+    }
+  ],
+  "generated_at": "2026-06-10T15:54:25.831799Z",
+  "nodes": [
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "artifact:run.json"
+      ],
+      "id": "runs_2213789efb618e86d0e74777",
+      "kind": "run",
+      "label": "two-act-underspec-act2",
+      "payload": {
+        "ended_at": "2026-06-10T15:54:25.645957Z",
+        "mode": "cache-only",
+        "run_group": "two-act-spark-stub-act2",
+        "scenario": "two-act-underspec-act2",
+        "started_at": "2026-06-10T15:54:21.098657Z",
+        "status": "completed"
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": "completed"
+    },
+    {
+      "confidence": "medium",
+      "evidence_refs": [
+        "scenario:two-act-underspec-act2",
+        "agent:two-act-spark-act2",
+        "run:run_0979df63efc3bc7e6fc12944",
+        "prompt:sha256:ac6eaaf9c46807dc0e885f8a19ad97b45508bffb4886cd1030b96ba8e7aeb055",
+        "adapter:two-act-spark-proof.sh",
+        "artifact:agent-receipt.json",
+        "receipt:sha256:909cc0ec7e1a6087e05d8475b83276d8706932c13f99763961739119a079de40",
+        "session:stub-act2-ac6eaaf9c468"
+      ],
+      "id": "agent:proof_blocks_89e02aadc9b3d48376c20a39",
+      "kind": "agent",
+      "label": "two-act-spark-act2",
+      "payload": {
+        "agent_kind": "claude_code_adapter_v1",
+        "agent_name": "two-act-spark-act2",
+        "change_class": "bounded_agent_v1",
+        "input_signal": "redacted: prompt withheld, hash retained",
+        "model": "stub-deterministic-model",
+        "prompt_sha256": "ac6eaaf9c46807dc0e885f8a19ad97b45508bffb4886cd1030b96ba8e7aeb055",
+        "provenance_class": "stub_receipt_v1",
+        "receipt_captured_at": "2026-06-10T15:54:20.990678Z",
+        "receipt_cli_version": "stub-claude 1.0.0 (deterministic spark fixture)",
+        "receipt_model_resolved": "stub-deterministic-model",
+        "receipt_response_sha256": "caeac5b35a0583dde4ec9ad3beaccb5b764194701673e186b5790f573a1b797f",
+        "receipt_session_id": "stub-act2-ac6eaaf9c468",
+        "receipt_sha256": "909cc0ec7e1a6087e05d8475b83276d8706932c13f99763961739119a079de40",
+        "receipt_usage": {
+          "input_tokens": 831,
+          "output_tokens": 169
+        },
+        "receipt_verified": false,
+        "scenario_id": "two-act-underspec-act2",
+        "status": "completed"
+      },
+      "redaction_state": "safe",
+      "source_kind": "simulated_v1",
+      "status": "completed"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_0979df63efc3bc7e6fc12944",
+        "path:tasks/escalation.py"
+      ],
+      "id": "changes_9c4b3002e993f3961bab74f6",
+      "kind": "change",
+      "label": "tasks/escalation.py",
+      "payload": {
+        "after_hash": "25efe56c29474e742af6127d0dacec8d647e34757d3648ff35753c2d22768c95",
+        "before_hash": "f3621c8f9aa90966320ef8c4d626010477d892661d5a0ec9522d2273953138b0",
+        "change_kind": "generic_path",
+        "path": "tasks/escalation.py",
+        "run_id": "runs_2213789efb618e86d0e74777",
+        "summary": "generic run touched tasks/escalation.py"
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": null
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_0979df63efc3bc7e6fc12944",
+        "bazel:bep-profile-execution-log"
+      ],
+      "id": "invocations_11c433ef48e224ae417a9d2c",
+      "kind": "invocation",
+      "label": "bazel",
+      "payload": {
+        "command": [
+          "/nix/store/dnb95kawcy9lhr6nd6jpjr7inm3dz7m7-bazel/bin/bazel",
+          "--output_base=/Users/alecbot/Documents/nlfr-wt-b/data/two-act-spark-stub/bazel-output-act2",
+          "test",
+          "//...",
+          "--build_event_json_file=/Users/alecbot/Documents/nlfr-wt-b/data/two-act-spark-stub/runs/run_0979df63efc3bc7e6fc12944/artifacts/bazel.bep.json",
+          "--profile=/Users/alecbot/Documents/nlfr-wt-b/data/two-act-spark-stub/runs/run_0979df63efc3bc7e6fc12944/artifacts/bazel.profile.json",
+          "--execution_log_json_file=/Users/alecbot/Documents/nlfr-wt-b/data/two-act-spark-stub/runs/run_0979df63efc3bc7e6fc12944/artifacts/bazel.execution-log.json",
+          "--remote_cache=grpc://127.0.0.1:50051",
+          "--remote_instance_name=main",
+          "--remote_upload_local_results=true",
+          "--remote_download_toplevel",
+          "--test_output=errors"
+        ],
+        "cwd": "/private/tmp/nix-shell.ipMZIK/nlfr-two-act.UNSRP7/workspace",
+        "ended_at": "2026-06-10T15:54:25.643021Z",
+        "exit_code": 0,
+        "invocation_kind": "bazel",
+        "run_id": "runs_2213789efb618e86d0e74777",
+        "started_at": "2026-06-10T15:54:21.098951Z"
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": 0
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "invocation:invocations_11c433ef48e224ae417a9d2c"
+      ],
+      "id": "artifacts_2e9670d9c79d0b3967096aa3",
+      "kind": "artifact",
+      "label": "bazel.stdout.txt",
+      "payload": {
+        "artifact_key": "bazel.stdout.txt",
+        "artifact_path": "bazel.stdout.txt",
+        "content_type": "text/plain",
+        "manifest_path": "artifact_manifest.json",
+        "producer_command": [
+          "/nix/store/dnb95kawcy9lhr6nd6jpjr7inm3dz7m7-bazel/bin/bazel",
+          "--output_base=/Users/alecbot/Documents/nlfr-wt-b/data/two-act-spark-stub/bazel-output-act2",
+          "test",
+          "//...",
+          "--build_event_json_file=/Users/alecbot/Documents/nlfr-wt-b/data/two-act-spark-stub/runs/run_0979df63efc3bc7e6fc12944/artifacts/bazel.bep.json",
+          "--profile=/Users/alecbot/Documents/nlfr-wt-b/data/two-act-spark-stub/runs/run_0979df63efc3bc7e6fc12944/artifacts/bazel.profile.json",
+          "--execution_log_json_file=/Users/alecbot/Documents/nlfr-wt-b/data/two-act-spark-stub/runs/run_0979df63efc3bc7e6fc12944/artifacts/bazel.execution-log.json",
+          "--remote_cache=grpc://127.0.0.1:50051",
+          "--remote_instance_name=main",
+          "--remote_upload_local_results=true",
+          "--remote_download_toplevel",
+          "--test_output=errors"
+        ],
+        "run_id": "runs_2213789efb618e86d0e74777",
+        "sha256": "cd6b61ea9fec5ff9e6fc345db685b699e5b7f850290b40470807e8b17c7a3308",
+        "size_bytes": 357
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": null
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "invocation:invocations_11c433ef48e224ae417a9d2c"
+      ],
+      "id": "artifacts_34f452dfa491a0f142988dd7",
+      "kind": "artifact",
+      "label": "bazel.stderr.txt",
+      "payload": {
+        "artifact_key": "bazel.stderr.txt",
+        "artifact_path": "bazel.stderr.txt",
+        "content_type": "text/plain",
+        "manifest_path": "artifact_manifest.json",
+        "producer_command": [
+          "/nix/store/dnb95kawcy9lhr6nd6jpjr7inm3dz7m7-bazel/bin/bazel",
+          "--output_base=/Users/alecbot/Documents/nlfr-wt-b/data/two-act-spark-stub/bazel-output-act2",
+          "test",
+          "//...",
+          "--build_event_json_file=/Users/alecbot/Documents/nlfr-wt-b/data/two-act-spark-stub/runs/run_0979df63efc3bc7e6fc12944/artifacts/bazel.bep.json",
+          "--profile=/Users/alecbot/Documents/nlfr-wt-b/data/two-act-spark-stub/runs/run_0979df63efc3bc7e6fc12944/artifacts/bazel.profile.json",
+          "--execution_log_json_file=/Users/alecbot/Documents/nlfr-wt-b/data/two-act-spark-stub/runs/run_0979df63efc3bc7e6fc12944/artifacts/bazel.execution-log.json",
+          "--remote_cache=grpc://127.0.0.1:50051",
+          "--remote_instance_name=main",
+          "--remote_upload_local_results=true",
+          "--remote_download_toplevel",
+          "--test_output=errors"
+        ],
+        "run_id": "runs_2213789efb618e86d0e74777",
+        "sha256": "9129633b3f6da5069e397d68fc3f5d8f1064f8c31f1e305602040345fb87fa28",
+        "size_bytes": 840
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": null
+    },
+    {
+      "confidence": "medium",
+      "evidence_refs": [
+        "scenario:two-act-underspec-act2",
+        "agent:two-act-spark-act2",
+        "run:run_0979df63efc3bc7e6fc12944",
+        "prompt:sha256:ac6eaaf9c46807dc0e885f8a19ad97b45508bffb4886cd1030b96ba8e7aeb055",
+        "adapter:two-act-spark-proof.sh",
+        "artifact:agent-receipt.json",
+        "receipt:sha256:909cc0ec7e1a6087e05d8475b83276d8706932c13f99763961739119a079de40",
+        "session:stub-act2-ac6eaaf9c468"
+      ],
+      "id": "artifacts_4ce3982663ec65a6943ae4bf",
+      "kind": "artifact",
+      "label": "agent-provenance.json",
+      "payload": {
+        "artifact_key": "agent-provenance.json",
+        "artifact_path": "agent-provenance.json",
+        "content_type": "application/json",
+        "manifest_path": "artifact_manifest.json",
+        "producer_command": [
+          "nlfr",
+          "run",
+          "--mode",
+          "cache-only"
+        ],
+        "run_id": "runs_2213789efb618e86d0e74777",
+        "sha256": "8a97407783d00b36159aa79465e3a5a2d1a878069cb5487530886bfbcb0b7683",
+        "size_bytes": 2731
+      },
+      "redaction_state": "safe",
+      "source_kind": "simulated_v1",
+      "status": null
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "run:run_0979df63efc3bc7e6fc12944"
+      ],
+      "id": "artifacts_920380014b8712e1eff9de85",
+      "kind": "artifact",
+      "label": "run.json",
+      "payload": {
+        "artifact_key": "run.json",
+        "artifact_path": "run.json",
+        "content_type": "application/json",
+        "manifest_path": "artifact_manifest.json",
+        "producer_command": [
+          "nlfr",
+          "run",
+          "--mode",
+          "cache-only"
+        ],
+        "run_id": "runs_2213789efb618e86d0e74777",
+        "sha256": "f888387e7b200313b6bd058e23f3ecc5df834eb22a54facc8d727503490a5bb4",
+        "size_bytes": 4964
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": null
+    },
+    {
+      "confidence": "medium",
+      "evidence_refs": [
+        "run:run_0979df63efc3bc7e6fc12944",
+        "receipt:sha256:909cc0ec7e1a6087e05d8475b83276d8706932c13f99763961739119a079de40",
+        "prompt:sha256:ac6eaaf9c46807dc0e885f8a19ad97b45508bffb4886cd1030b96ba8e7aeb055",
+        "cli:spark-stub-claude.sh",
+        "response:sha256:caeac5b35a0583dde4ec9ad3beaccb5b764194701673e186b5790f573a1b797f",
+        "session:stub-act2-ac6eaaf9c468"
+      ],
+      "id": "artifacts_bd3a920263a211407cbbbd12",
+      "kind": "artifact",
+      "label": "agent-receipt.json",
+      "payload": {
+        "artifact_key": "agent-receipt.json",
+        "artifact_path": "agent-receipt.json",
+        "content_type": "application/json",
+        "manifest_path": "artifact_manifest.json",
+        "producer_command": [
+          "nlfr",
+          "agent-invoke"
+        ],
+        "run_id": "runs_2213789efb618e86d0e74777",
+        "sha256": "26b971ce1cd2b0a0569d55538cdcbd203db2c68ab4b89c8e4744233a52b8eeb3",
+        "size_bytes": 1449
+      },
+      "redaction_state": "redacted",
+      "source_kind": "simulated_v1",
+      "status": null
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "collectable_v1:bazel.bep.json"
+      ],
+      "id": "targets_6951d4e466bf56b280047a81",
+      "kind": "target",
+      "label": "//tasks:priority",
+      "payload": {
+        "label": "//tasks:priority",
+        "run_id": "runs_2213789efb618e86d0e74777",
+        "status": "PASSED",
+        "target_kind": "py_library rule"
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": "PASSED"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "collectable_v1:bazel.bep.json"
+      ],
+      "id": "targets_6a514ff149e50bc3ef26d5fb",
+      "kind": "target",
+      "label": "//tasks:escalation",
+      "payload": {
+        "label": "//tasks:escalation",
+        "run_id": "runs_2213789efb618e86d0e74777",
+        "status": "PASSED",
+        "target_kind": "py_library rule"
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": "PASSED"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "collectable_v1:bazel.bep.json"
+      ],
+      "id": "targets_7baca79081b20e1a4d7ecac5",
+      "kind": "target",
+      "label": "//tasks:policy",
+      "payload": {
+        "label": "//tasks:policy",
+        "run_id": "runs_2213789efb618e86d0e74777",
+        "status": "PASSED",
+        "target_kind": "py_library rule"
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": "PASSED"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "collectable_v1:bazel.bep.json"
+      ],
+      "id": "targets_8c3f8237e59bcfbeb5fb1e1d",
+      "kind": "target",
+      "label": "//tasks:escalation_policy_test",
+      "payload": {
+        "label": "//tasks:escalation_policy_test",
+        "run_id": "runs_2213789efb618e86d0e74777",
+        "status": "PASSED",
+        "target_kind": "py_test rule"
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": "PASSED"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "collectable_v1:bazel.bep.json"
+      ],
+      "id": "targets_c6f065f1c1df17ff26996eed",
+      "kind": "target",
+      "label": "//tasks:priority_test",
+      "payload": {
+        "label": "//tasks:priority_test",
+        "run_id": "runs_2213789efb618e86d0e74777",
+        "status": "PASSED",
+        "target_kind": "py_test rule"
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": "PASSED"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "collectable_v1:bazel.bep.json"
+      ],
+      "id": "actions_19770a6507fc33a73dacade9",
+      "kind": "action",
+      "label": "BazelTest",
+      "payload": {
+        "action_key": "//tasks:priority_test:test:run=1:shard=1:attempt=1",
+        "mnemonic": "BazelTest",
+        "run_id": "runs_2213789efb618e86d0e74777",
+        "status": "PASSED",
+        "target_id": "targets_c6f065f1c1df17ff26996eed"
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": "PASSED"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "collectable_v1:bazel.bep.json"
+      ],
+      "id": "actions_943659a5a399684afc345273",
+      "kind": "action",
+      "label": "BazelTest",
+      "payload": {
+        "action_key": "//tasks:escalation_policy_test:test:run=1:shard=1:attempt=1",
+        "mnemonic": "BazelTest",
+        "run_id": "runs_2213789efb618e86d0e74777",
+        "status": "PASSED",
+        "target_id": "targets_8c3f8237e59bcfbeb5fb1e1d"
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": "PASSED"
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "collectable_v1:bazel.execution-log.json"
+      ],
+      "id": "cache_events_35f6b78fb21a6f7b36c64eb7",
+      "kind": "cache_event",
+      "label": "remote_cache_hit",
+      "payload": {
+        "digest": "e64adb6e658838ccf970415430c784cca4ee22fa95e929cc5be859b547985dd3/153",
+        "event_key": "//tasks:priority_test:TestRunner:e64adb6e658838ccf970415430c784cca4ee22fa95e929cc5be859b547985dd3/153",
+        "event_kind": "remote_cache_hit",
+        "hit": 1,
+        "run_id": "runs_2213789efb618e86d0e74777",
+        "target_id": "targets_c6f065f1c1df17ff26996eed"
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": null
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "collectable_v1:bazel.execution-log.json"
+      ],
+      "id": "cache_events_479cfc3c71fcc6eae3078174",
+      "kind": "cache_event",
+      "label": "cache_miss",
+      "payload": {
+        "digest": "520d54c26ca7f5e4def1e99767cf5ef3a7880e8bce6d9ba5d53451db1a0145ec/148",
+        "event_key": "//tasks:escalation_policy_test:TestRunner:520d54c26ca7f5e4def1e99767cf5ef3a7880e8bce6d9ba5d53451db1a0145ec/148",
+        "event_kind": "cache_miss",
+        "hit": 0,
+        "run_id": "runs_2213789efb618e86d0e74777",
+        "target_id": "targets_8c3f8237e59bcfbeb5fb1e1d"
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": null
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "collectable_v1:bazel.execution-log.json"
+      ],
+      "id": "cache_events_c1c81f350b2b9b4d746a2b6a",
+      "kind": "cache_event",
+      "label": "cache_miss",
+      "payload": {
+        "digest": "477732c4237d0bf075eaa1b64b38f1d3f9923513d7e23f2e92c4d36209f7b223/153",
+        "event_key": "//tasks:escalation_policy_test:TestRunner:477732c4237d0bf075eaa1b64b38f1d3f9923513d7e23f2e92c4d36209f7b223/153",
+        "event_kind": "cache_miss",
+        "hit": 0,
+        "run_id": "runs_2213789efb618e86d0e74777",
+        "target_id": "targets_8c3f8237e59bcfbeb5fb1e1d"
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": null
+    },
+    {
+      "confidence": "high",
+      "evidence_refs": [
+        "collectable_v1:bazel.execution-log.json"
+      ],
+      "id": "cache_events_af5a5481e7345047bc2edc87",
+      "kind": "cache_event",
+      "label": "remote_cache_hit",
+      "payload": {
+        "digest": "38a8592cc29aae21eafcfa2761efb1fbb698b83c5312dabb6d5cad559906c188/148",
+        "event_key": "//tasks:priority_test:TestRunner:38a8592cc29aae21eafcfa2761efb1fbb698b83c5312dabb6d5cad559906c188/148",
+        "event_kind": "remote_cache_hit",
+        "hit": 1,
+        "run_id": "runs_2213789efb618e86d0e74777",
+        "target_id": "targets_c6f065f1c1df17ff26996eed"
+      },
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "status": null
+    }
+  ],
+  "projection_kind": "action_graph",
+  "run_group": "two-act-spark-stub-act2",
+  "schema_version": 1,
+  "summary": {
+    "agents": 1,
+    "cache_events": 4,
+    "changes": 1,
+    "edges": 19,
+    "failures": 0,
+    "invocation_statuses": {
+      "unknown": 1
+    },
+    "max_visible_nodes": 8,
+    "nodes": 20,
+    "runs": 1,
+    "target_statuses": {
+      "PASSED": 5
+    }
+  }
+}

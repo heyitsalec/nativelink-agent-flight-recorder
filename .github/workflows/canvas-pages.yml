@@ -1,0 +1,81 @@
+# Canvas GitHub Pages deploy — zero-install demo surface.
+#
+# INERT UNTIL FLIP TIME: Actions is billing-blocked while this repo is private,
+# so this workflow will not run yet. That is expected. At public-flip time the
+# coordinator must:
+#   1. Settings -> Pages -> Source: "GitHub Actions" (enables the github-pages
+#      environment this workflow deploys to).
+#   2. Re-run this workflow (push to main or workflow_dispatch).
+# The site then serves at:
+#   https://heyitsalec.github.io/nativelink-agent-flight-recorder/
+#
+# What it serves (committed projections only — never bare simulated fixtures
+# as the default view):
+#   - default view: canvas-dev dogfood projections (collectable_v1) from
+#     apps/canvas/public/projections/
+#   - ?view=two-act-spark: two-act spark lens from
+#     apps/canvas/public/projections/two-act/ (stub run today; drop the live
+#     data/two-act-spark/projections/*.json over those files, same names, to
+#     upgrade to receipt_verified_v1)
+#   - ?view=tier1-demo: tier1 compare demo
+#
+# Manual fallback (no Actions needed), from repo root on main:
+#   CANVAS_BASE=/nativelink-agent-flight-recorder/ npm --prefix apps/canvas run build \
+#     && npx --yes gh-pages -d apps/canvas/dist
+#   (then Settings -> Pages -> Source: "Deploy from a branch" -> gh-pages)
+name: Canvas Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/canvas/**"
+      - ".github/workflows/canvas-pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: canvas-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build canvas (Pages base path)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/canvas/package-lock.json
+
+      - name: Install canvas dependencies
+        run: npm --prefix apps/canvas ci
+
+      - name: Build with project-pages base path
+        env:
+          CANVAS_BASE: /nativelink-agent-flight-recorder/
+        run: npm --prefix apps/canvas run build
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/canvas/dist
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

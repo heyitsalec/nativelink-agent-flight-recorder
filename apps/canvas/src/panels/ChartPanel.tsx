@@ -23,6 +23,7 @@ import {
   remoteLensModel,
   sortRunwayNodes,
 } from "../pageModel";
+import { provenanceBadge, type ProvenanceBadge } from "../receiptModel";
 import type { PositionedNode, SourceKind } from "../types";
 import type { ComponentInstance, ViewModeId } from "../view/types";
 import { useViewContext } from "../view/ViewContext";
@@ -314,6 +315,28 @@ function workerStatusLabel(node: PositionedNode): string | null {
   return null;
 }
 
+function NodeProvenanceBadge({ badge, y }: { badge: ProvenanceBadge; y: number }) {
+  const width = badge.label.length * 5.6 + (badge.live ? 30 : 18);
+  return (
+    <g
+      className={`node-provenance-badge provenance--${badge.tone}`}
+      data-testid="agent-provenance-badge"
+      data-provenance-class={badge.provenanceClass}
+      transform={`translate(0,${y})`}
+      aria-label={`agent provenance: ${badge.label}`}
+    >
+      <title>{badge.hint}</title>
+      <rect x={-width / 2} y={-9} width={width} height={18} rx={9} />
+      {badge.live && (
+        <circle className="provenance-live-dot" cx={-width / 2 + 10} cy={0} r={3.2} />
+      )}
+      <text textAnchor="middle" x={badge.live ? 5 : 0} y={3.4}>
+        {badge.label}
+      </text>
+    </g>
+  );
+}
+
 function GraphNode({
   node,
   selected,
@@ -326,13 +349,14 @@ function GraphNode({
   onSelect: () => void;
 }) {
   const remoteWorker = isRemoteWorkerKind(node.kind);
+  const agentBadge = node.kind === "agent" ? provenanceBadge(node.payload) : null;
   const shortLabel =
     node.label.length > (remoteWorker ? 22 : 26)
       ? `${node.label.slice(0, remoteWorker ? 20 : 24)}...`
       : node.label;
   const statusLabel = remoteWorker ? workerStatusLabel(node) : null;
   const labelY = remoteWorker ? 13 : 15;
-  const confidenceY = node.radius + (remoteWorker ? 30 : 24);
+  const confidenceY = node.radius + (remoteWorker ? 30 : agentBadge ? 40 : 24);
 
   return (
     <g
@@ -379,6 +403,7 @@ function GraphNode({
           {statusLabel}
         </text>
       )}
+      {agentBadge && <NodeProvenanceBadge badge={agentBadge} y={node.radius + 19} />}
       <text className="node-confidence" textAnchor="middle" y={confidenceY}>
         {node.confidence}
       </text>

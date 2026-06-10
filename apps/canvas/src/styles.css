@@ -1653,3 +1653,306 @@ input {
     bottom: 12px;
   }
 }
+
+/* === Agent receipt provenance (R3 demo surface) === */
+
+/* SVG badge under agent graph nodes */
+.node-provenance-badge rect {
+  fill: rgba(255, 255, 255, 0.95);
+  stroke: #64748b;
+  stroke-width: 1.1;
+}
+
+.node-provenance-badge text {
+  font-size: 9px;
+  font-weight: 780;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  fill: #475569;
+  pointer-events: none;
+}
+
+.node-provenance-badge.provenance--verified rect {
+  fill: #e9f8f3;
+  stroke: #16806f;
+}
+
+.node-provenance-badge.provenance--verified text {
+  fill: #0f5d50;
+}
+
+.node-provenance-badge.provenance--stub rect {
+  fill: #eef0fb;
+  stroke: #5961a8;
+}
+
+.node-provenance-badge.provenance--stub text {
+  fill: #434b8f;
+}
+
+.node-provenance-badge.provenance--asserted rect {
+  fill: #fdf3e7;
+  stroke: #bf741a;
+}
+
+.node-provenance-badge.provenance--asserted text {
+  fill: #94560f;
+}
+
+@keyframes provenance-live-pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.node-provenance-badge .provenance-live-dot {
+  fill: #16806f;
+  animation: provenance-live-pulse 1.8s ease-in-out infinite;
+}
+
+/* HTML provenance chip (inspector + compare cards) */
+.provenance-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid #64748b;
+  background: rgba(255, 255, 255, 0.92);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #475569;
+  white-space: nowrap;
+}
+
+.provenance-chip.provenance--verified {
+  border-color: #16806f;
+  background: #e9f8f3;
+  color: #0f5d50;
+}
+
+.provenance-chip.provenance--stub {
+  border-color: #5961a8;
+  background: #eef0fb;
+  color: #434b8f;
+}
+
+.provenance-chip.provenance--asserted {
+  border-color: #bf741a;
+  background: #fdf3e7;
+  color: #94560f;
+}
+
+.provenance-chip .provenance-live-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #16806f;
+  animation: provenance-live-pulse 1.8s ease-in-out infinite;
+}
+
+/* Receipt detail pane inside the evidence inspector */
+.receipt-pane {
+  margin: 14px 0 4px;
+  padding: 12px 14px;
+  border: 1px solid rgba(17, 24, 39, 0.12);
+  border-radius: 10px;
+  background: rgba(248, 250, 252, 0.85);
+}
+
+.receipt-pane-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 820;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #475569;
+}
+
+.receipt-pane-heading .provenance-chip {
+  margin-left: auto;
+}
+
+.receipt-pane-hint {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: #667085;
+}
+
+.receipt-grid {
+  margin-top: 10px;
+}
+
+.receipt-grid dd {
+  overflow-wrap: anywhere;
+}
+
+.receipt-usage {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-top: 10px;
+  font-size: 11px;
+  color: #475569;
+}
+
+.receipt-usage strong {
+  margin-right: 4px;
+  color: #18212f;
+}
+
+.receipt-hashes {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.receipt-hash {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.receipt-hash-label {
+  font-size: 10px;
+  font-weight: 760;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #667085;
+}
+
+.receipt-hash code {
+  font-size: 11px;
+  color: #18212f;
+  overflow-wrap: anywhere;
+}
+
+.receipt-hash-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid rgba(17, 24, 39, 0.16);
+  border-radius: 6px;
+  background: #ffffff;
+  font-size: 9px;
+  font-weight: 760;
+  text-transform: uppercase;
+  color: #475569;
+  cursor: pointer;
+}
+
+.receipt-hash-copy:hover {
+  border-color: #2b6f8f;
+  color: #2b6f8f;
+}
+
+/* Compare lens — agent provenance receipts side by side */
+.compare-provenance {
+  margin: 10px 0 4px;
+}
+
+.compare-provenance-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.provenance-side {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.provenance-side-title {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #667085;
+  overflow-wrap: anywhere;
+}
+
+.provenance-side-empty {
+  margin: 0;
+  font-size: 11px;
+  color: #667085;
+}
+
+.provenance-block {
+  padding: 10px 11px;
+  border: 1px solid rgba(17, 24, 39, 0.12);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.provenance-block.simulated_v1 {
+  border-color: rgba(89, 97, 168, 0.45);
+}
+
+.provenance-block.collectable_v1 {
+  border-color: rgba(22, 128, 111, 0.45);
+}
+
+.provenance-block-heading {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.provenance-block-heading .truth-dot {
+  margin-bottom: 0;
+}
+
+.provenance-block h4 {
+  margin: 8px 0 0;
+  font-size: 11px;
+  font-weight: 760;
+  color: #18212f;
+  overflow-wrap: anywhere;
+}
+
+.provenance-block-facts {
+  display: grid;
+  gap: 5px;
+  margin: 8px 0 0;
+}
+
+.provenance-block-facts div {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  gap: 6px;
+}
+
+.provenance-block-facts dt {
+  font-size: 9px;
+  font-weight: 760;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #667085;
+}
+
+.provenance-block-facts dd {
+  margin: 0;
+  font-size: 11px;
+  color: #18212f;
+  overflow-wrap: anywhere;
+}
+
+.provenance-block-facts code {
+  font-size: 10px;
+}

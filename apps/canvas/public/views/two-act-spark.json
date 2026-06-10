@@ -1,0 +1,265 @@
+{
+  "schema_version": "nlfr.view-spec.v1",
+  "view_id": "two-act-spark",
+  "title": "Two-Act Spark — Failure vs Fix",
+  "description": "Two-act spark lens: act 1 (agent authored from an underspecified spec, recorder caught the red leg) vs act 2 (agent fixed from recorded evidence, warm cache). Defaults to the committed stub-run projections (validation legs collectable_v1, agent legs stub_receipt_v1). Drop live projections from data/two-act-spark/projections/ into public/projections/two-act/ (same filenames) to upgrade this view to receipt_verified_v1 without spec changes.",
+  "generated_at": "2026-06-10T00:00:00.000Z",
+  "run_group": "two-act-spark-stub-act1",
+  "layout": {
+    "kind": "grid_shell_v1",
+    "columns": "minmax(0,1fr) 440px",
+    "rows": "auto auto minmax(0,1fr) auto",
+    "regions": {
+      "notice": {
+        "grid_area": "notice",
+        "slot": "banner"
+      },
+      "header": {
+        "grid_area": "header",
+        "slot": "topbar"
+      },
+      "primary": {
+        "grid_area": "primary",
+        "slot": "canvas"
+      },
+      "rail": {
+        "grid_area": "rail",
+        "slot": "inspector",
+        "width_px": 440
+      },
+      "operator": {
+        "grid_area": "operator",
+        "slot": "command_bar"
+      }
+    },
+    "responsive": {
+      "breakpoint_px": 720,
+      "collapse_rail": "bottom_sheet"
+    }
+  },
+  "components": [
+    {
+      "instance_id": "notice",
+      "component_kind": "projection_notice",
+      "region": "notice",
+      "projection_binding": "binding.action_graph",
+      "props": {
+        "tones": "fallback,collectable,simulated,mixed"
+      },
+      "data_testid": "projection-notice"
+    },
+    {
+      "instance_id": "topbar",
+      "component_kind": "topbar_summary",
+      "region": "header",
+      "projection_binding": "binding.action_graph",
+      "props": {
+        "show_remote_label": false
+      },
+      "data_testid": "topbar-summary"
+    },
+    {
+      "instance_id": "modes",
+      "component_kind": "mode_rail",
+      "region": "header",
+      "props": {
+        "modes": "graph,runway,proof,compare"
+      },
+      "data_testid": "canvas-mode-rail"
+    },
+    {
+      "instance_id": "zoom",
+      "component_kind": "zoom_controls",
+      "region": "header",
+      "props": {
+        "target_instance_id": "graph-main",
+        "scale_extent_min": 0.55,
+        "scale_extent_max": 2.35
+      },
+      "visible_when": {
+        "prop_truthy": "zoom_controls"
+      },
+      "data_testid": "zoom-controls"
+    },
+    {
+      "instance_id": "graph-main",
+      "component_kind": "action_graph_canvas",
+      "region": "primary",
+      "projection_binding": "binding.action_graph",
+      "props": {
+        "show_truth_legend": true,
+        "zoom_controls": true
+      },
+      "data_testid": "action-graph-svg"
+    },
+    {
+      "instance_id": "legend",
+      "component_kind": "truth_legend",
+      "region": "primary",
+      "props": {
+        "items": "collectable_v1,derived_v1,simulated_v1,future"
+      },
+      "visible_when": {
+        "prop_truthy": "show_truth_legend"
+      },
+      "data_testid": "truth-legend"
+    },
+    {
+      "instance_id": "runway-overlay",
+      "component_kind": "validation_runway",
+      "region": "primary",
+      "projection_binding": "binding.action_graph",
+      "visible_when": {
+        "mode": [
+          "runway"
+        ]
+      },
+      "data_testid": "validation-runway"
+    },
+    {
+      "instance_id": "proof-constellation",
+      "component_kind": "proof_constellation",
+      "region": "primary",
+      "projection_binding": "binding.proof_packet",
+      "props": {
+        "scope_block_id": "scope"
+      },
+      "visible_when": {
+        "mode": [
+          "proof"
+        ]
+      },
+      "data_testid": "proof-constellation"
+    },
+    {
+      "instance_id": "inspector-selected-node",
+      "component_kind": "evidence_inspector",
+      "region": "rail",
+      "projection_binding": "binding.action_graph",
+      "visible_when": {
+        "mode": [
+          "graph",
+          "runway"
+        ],
+        "mode_not": [
+          "proof",
+          "compare"
+        ],
+        "selected_node": true
+      },
+      "data_testid": "evidence-inspector"
+    },
+    {
+      "instance_id": "proof-drawer",
+      "component_kind": "proof_drawer",
+      "region": "rail",
+      "projection_binding": "binding.proof_packet",
+      "visible_when": {
+        "mode": [
+          "proof"
+        ]
+      },
+      "data_testid": "proof-drawer"
+    },
+    {
+      "instance_id": "compare-lens",
+      "component_kind": "compare_lens",
+      "region": "rail",
+      "projection_binding": "binding.compare",
+      "props": {
+        "empty_state_path_hint": "/projections/two-act/compare-act1-vs-act2.json"
+      },
+      "visible_when": {
+        "mode": [
+          "compare"
+        ],
+        "binding_missing_ok": "binding.compare"
+      },
+      "data_testid": "compare-lens"
+    },
+    {
+      "instance_id": "operator",
+      "component_kind": "operator_command_bar",
+      "region": "operator",
+      "props": {
+        "placeholder": "agent, fail, compare, proof, reset",
+        "commands": "cache,fail,proof,agent,compare,runway,reset"
+      },
+      "data_testid": "operator-chat"
+    }
+  ],
+  "bindings": {
+    "binding.action_graph": {
+      "projection_kind": "action_graph",
+      "path": "/projections/two-act/act1-action-graph.json",
+      "required": true,
+      "fallback": "fixture:sampleProjection",
+      "refresh": "on_run_group_change",
+      "notes": "Act 1 action graph — the recorded failure leg. Stub run committed; the live two-act run exports the identical filename under data/two-act-spark/projections/."
+    },
+    "binding.proof_packet": {
+      "projection_kind": "proof_packet",
+      "path": "/projections/two-act/act1-proof.json",
+      "required": true,
+      "fallback": "fixture:sampleProofPacket",
+      "refresh": "on_run_group_change",
+      "notes": "Act 1 proof packet, including the agent_provenance block with receipt hashes."
+    },
+    "binding.compare": {
+      "projection_kind": "compare",
+      "path": "/projections/two-act/compare-act1-vs-act2.json",
+      "required": false,
+      "fallback": "none",
+      "notes": "M9 compare across act1/act2 run groups; agent_provenance dimension renders receipts side by side."
+    }
+  },
+  "modes": [
+    {
+      "mode_id": "compare",
+      "label": "Compare Acts",
+      "icon": "git-compare",
+      "primary_component": "graph-main",
+      "rail_component": "compare-lens",
+      "default_focus": "derived",
+      "requires_binding": "binding.compare",
+      "data_testid": "canvas-mode-compare"
+    },
+    {
+      "mode_id": "graph",
+      "label": "Action Graph",
+      "icon": "git-branch",
+      "primary_component": "graph-main",
+      "rail_component": "inspector-selected-node",
+      "default_focus": "all",
+      "data_testid": "canvas-mode-graph"
+    },
+    {
+      "mode_id": "runway",
+      "label": "Validation Runway",
+      "icon": "route",
+      "primary_component": "graph-main",
+      "rail_component": "inspector-selected-node",
+      "default_focus": "all",
+      "data_testid": "canvas-mode-runway"
+    },
+    {
+      "mode_id": "proof",
+      "label": "Proof Packet",
+      "icon": "file-check-2",
+      "primary_component": "graph-main",
+      "rail_component": "proof-drawer",
+      "default_focus": "all",
+      "requires_binding": "binding.proof_packet",
+      "data_testid": "canvas-mode-proof"
+    }
+  ],
+  "source_kind": "derived_v1",
+  "confidence": "medium",
+  "evidence_refs": [
+    "view-spec:two-act-spark",
+    "projection:two-act/act1-action-graph.json",
+    "projection:two-act/compare-act1-vs-act2.json",
+    "script:two-act-spark-proof.sh"
+  ],
+  "redaction_state": "safe"
+}

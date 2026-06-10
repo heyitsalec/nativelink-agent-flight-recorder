@@ -1,10 +1,19 @@
-import { GitCompare, Maximize2, Network, ShieldCheck, X } from "lucide-react";
+import { useState } from "react";
+import { Copy, GitCompare, Maximize2, Network, ReceiptText, ShieldCheck, X } from "lucide-react";
 import {
   formatMetricValue,
   labelKind,
   type RemoteLensModel,
   unsupportedClaimsFromPayload,
 } from "../pageModel";
+import {
+  agentReceiptModel,
+  provenanceSide,
+  truncateHash,
+  type AgentReceiptModel,
+  type ProvenanceBadge,
+  type ProvenanceBlockSummary,
+} from "../receiptModel";
 import type { CompareProjection, PositionedNode, ProofBlock, ProofMetricValue } from "../types";
 import type { ComponentInstance } from "../view/types";
 import { useViewComponent, useViewContext } from "../view/ViewContext";
@@ -32,8 +41,92 @@ function failureMessage(node: PositionedNode): string | null {
   return node.label.trim() || null;
 }
 
+export function ProvenanceChip({ badge }: { badge: ProvenanceBadge }) {
+  return (
+    <span
+      className={`provenance-chip provenance--${badge.tone}`}
+      data-provenance-class={badge.provenanceClass}
+      title={badge.hint}
+    >
+      {badge.live && <span className="provenance-live-dot" aria-label="live receipt" />}
+      {badge.label}
+    </span>
+  );
+}
+
+function CopyHash({ label, value }: { label: string; value: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div className="receipt-hash">
+      <span className="receipt-hash-label">{label}</span>
+      <code title={value}>{truncateHash(value)}</code>
+      <button
+        className="receipt-hash-copy"
+        aria-label={`Copy ${label}`}
+        onClick={() => {
+          void navigator.clipboard?.writeText(value).then(() => {
+            setCopied(true);
+            window.setTimeout(() => setCopied(false), 1400);
+          });
+        }}
+      >
+        {copied ? "copied" : <Copy size={12} />}
+      </button>
+    </div>
+  );
+}
+
+function ReceiptDetailPane({ receipt }: { receipt: AgentReceiptModel }) {
+  const fields: { label: string; value: string | null }[] = [
+    { label: "Model", value: receipt.model },
+    { label: "Session", value: receipt.sessionId },
+    { label: "CLI version", value: receipt.cliVersion },
+    { label: "Captured at", value: receipt.capturedAt },
+  ];
+  const present = fields.filter((field) => field.value !== null);
+
+  return (
+    <section className="receipt-pane" aria-label="agent receipt" data-testid="receipt-detail-pane">
+      <div className="receipt-pane-heading">
+        <ReceiptText size={15} />
+        <span>Agent receipt</span>
+        <ProvenanceChip badge={receipt.badge} />
+      </div>
+      <p className="receipt-pane-hint">{receipt.badge.hint}</p>
+      {present.length > 0 && (
+        <dl className="truth-grid receipt-grid">
+          {present.map((field) => (
+            <div key={field.label}>
+              <dt>{field.label}</dt>
+              <dd>{field.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {receipt.usage.length > 0 && (
+        <div className="receipt-usage lens-metric-strip" aria-label="receipt token usage">
+          {receipt.usage.map((entry) => (
+            <span key={entry.label}>
+              <strong>{entry.value}</strong>
+              {entry.label}
+            </span>
+          ))}
+        </div>
+      )}
+      {receipt.hashes.length > 0 && (
+        <div className="receipt-hashes" aria-label="receipt hashes">
+          {receipt.hashes.map((hash) => (
+            <CopyHash key={hash.label} label={hash.label} value={hash.value} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function Inspector({ node, onClose }: { node: PositionedNode; onClose: () => void }) {
   const message = failureMessage(node);
+  const receipt = node.kind === "agent" ? agentReceiptModel(node.payload) : null;
 
   return (
     <aside
@@ -48,6 +141,7 @@ function Inspector({ node, onClose }: { node: PositionedNode; onClose: () => voi
         <p>{labelKind(node.kind)}</p>
         <h2>{node.label}</h2>
       </div>
+      {receipt && <ReceiptDetailPane receipt={receipt} />}
       {message && (
         <section className="failure-message-panel" aria-label="failure message">
           <span className="failure-message-label">Failure message</span>
@@ -306,7 +400,12 @@ export function CompareLensPanel(instance: ComponentInstance) {
           </div>
           <div className="compare-dimension-list">
             {projection.dimensions.map((dimension) => (
-              <CompareDimensionView key={dimension.id} dimension={dimension} />
+              <CompareDimensionView
+                key={dimension.id}
+                dimension={dimension}
+                leftRunGroup={projection.left_run_group}
+                rightRunGroup={projection.right_run_group}
+              />
             ))}
           </div>
         </>
@@ -320,11 +419,109 @@ export function CompareDimensionCardPanel(instance: ComponentInstance) {
   const dimensionId = stringProp(instance.props, "dimension_id");
   const projection = bindings.compareProjection;
   const dimension = projection?.dimensions.find((entry) => entry.id === dimensionId);
-  if (!dimension) return null;
-  return <CompareDimensionView dimension={dimension} />;
+  if (!dimension || !projection) return null;
+  return (
+    <CompareDimensionView
+      dimension={dimension}
+      leftRunGroup={projection.left_run_group}
+      rightRunGroup={projection.right_run_group}
+    />
+  );
 }
 
-function CompareDimensionView({ dimension }: { dimension: CompareProjection["dimensions"][number] }) {
+function ProvenanceBlockCard({ block }: { block: ProvenanceBlockSummary }) {
+  return (
+    <article className={`provenance-block ${block.sourceKind}`}>
+      <div className="provenance-block-heading">
+        <span className={`truth-dot ${block.sourceKind}`} />
+        {block.badge ? (
+          <ProvenanceChip badge={block.badge} />
+        ) : (
+          <span className="provenance-chip provenance--asserted">no provenance class</span>
+        )}
+      </div>
+      {block.title && <h4>{block.title}</h4>}
+      <dl className="provenance-block-facts">
+        {block.model && (
+          <div>
+            <dt>model</dt>
+            <dd>{block.model}</dd>
+          </div>
+        )}
+        {block.sessionId && (
+          <div>
+            <dt>session</dt>
+            <dd>
+              <code>{block.sessionId}</code>
+            </dd>
+          </div>
+        )}
+        {block.promptSha256Prefix && (
+          <div>
+            <dt>prompt sha256</dt>
+            <dd>
+              <code>{block.promptSha256Prefix}…</code>
+            </dd>
+          </div>
+        )}
+      </dl>
+    </article>
+  );
+}
+
+function ProvenanceSideColumn({
+  title,
+  side,
+}: {
+  title: string;
+  side: ReturnType<typeof provenanceSide>;
+}) {
+  return (
+    <div className="provenance-side">
+      <span className="provenance-side-title">{title}</span>
+      {side.blocks.length === 0 ? (
+        <p className="provenance-side-empty">
+          {side.present
+            ? "Provenance blocks recorded without receipt summaries."
+            : "No agent provenance block recorded."}
+        </p>
+      ) : (
+        side.blocks.map((block) => <ProvenanceBlockCard key={block.id} block={block} />)
+      )}
+    </div>
+  );
+}
+
+function AgentProvenanceCompare({
+  dimension,
+  leftRunGroup,
+  rightRunGroup,
+}: {
+  dimension: CompareProjection["dimensions"][number];
+  leftRunGroup: string;
+  rightRunGroup: string;
+}) {
+  const left = provenanceSide(dimension.left);
+  const right = provenanceSide(dimension.right);
+  return (
+    <div className="compare-provenance" data-testid="compare-agent-provenance">
+      <div className="compare-provenance-grid">
+        <ProvenanceSideColumn title={leftRunGroup} side={left} />
+        <ProvenanceSideColumn title={rightRunGroup} side={right} />
+      </div>
+    </div>
+  );
+}
+
+function CompareDimensionView({
+  dimension,
+  leftRunGroup,
+  rightRunGroup,
+}: {
+  dimension: CompareProjection["dimensions"][number];
+  leftRunGroup?: string;
+  rightRunGroup?: string;
+}) {
   const deltaEntries = Object.entries(dimension.delta ?? {}).filter(
     ([, value]) => value !== null && typeof value !== "object",
   );
@@ -338,6 +535,13 @@ function CompareDimensionView({ dimension }: { dimension: CompareProjection["dim
         </div>
       </div>
       <p className="compare-dimension-summary">{dimension.summary}</p>
+      {dimension.id === "agent_provenance" && (
+        <AgentProvenanceCompare
+          dimension={dimension}
+          leftRunGroup={leftRunGroup ?? "left run group"}
+          rightRunGroup={rightRunGroup ?? "right run group"}
+        />
+      )}
       <dl className="truth-grid compare-dimension-truth">
         <div>
           <dt>Source</dt>
