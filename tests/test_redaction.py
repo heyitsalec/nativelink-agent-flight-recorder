@@ -484,6 +484,208 @@ def test_scrub_local_paths_is_idempotent():
     assert count == 0
 
 
+def test_redaction_is_idempotent_over_every_detector():
+    """A second redaction pass over already-redacted text must be a NO-OP.
+
+    Regression for the export-then-re-check flow (PR #103's PR-comment exporter):
+    the exporter self-redacts, then an independent ``nlfr redact --check`` re-gates
+    the output before it is posted. That only works if redaction is idempotent.
+    It was not: the ``[REDACTED:url_credentials]`` placeholder sits between ``://``
+    and ``@`` and carries a ``:``, so it RE-matched the url_credentials detector —
+    the second ``--check`` reported a fresh finding and the feature refused to
+    post. The placeholder guard in ``_resolve_spans`` makes EVERY detector
+    idempotent; this seeds one blob with all of them and proves the second pass
+    finds nothing new and is byte-stable.
+    """
+
+    cfg = RedactionConfig(enable_hostname=True)  # every tier on, incl. hostname
+    seed = "\n".join(
+        [
+            "/Users/alice/proj/workspace",
+            "/private/tmp/ci-7f3a/run/bep.json",
+            "postgres://user:s3cr3tpass@db.example.com:5432/app",
+            f"key {FAKE_AWS_ACCESS_KEY_ID} used",
+            f"aws_secret_access_key={FAKE_AWS_SECRET}",
+            FAKE_GH_TOKEN,
+            FAKE_GITHUB_PAT,
+            FAKE_GITLAB_PAT,
+            FAKE_SLACK_TOKEN,
+            FAKE_JWT,
+            FAKE_PEM,
+            "Authorization: Bearer EXAMPLEFAKEBEARER1234567890",
+            "alice@example.com",
+            "203.0.113.42",
+            "api.internal.example.com",
+        ]
+    )
+
+    first = redact_text(seed, cfg)
+    assert first.findings, "seed must trip detectors on the first pass"
+    assert "[REDACTED:url_credentials]" in first.payload
+
+    # Re-running the SAME check over the redacted text finds nothing and does not
+    # change a byte — the contract the export-then-re-check gate relies on.
+    second = redact_text(first.payload, cfg)
+    assert second.findings == [], [f.detector for f in second.findings]
+    assert second.payload == first.payload
+
+    # A third pass stays stable too (guards against a two-step fixed point).
+    third = redact_text(second.payload, cfg)
+    assert third.findings == []
+    assert third.payload == first.payload
+
+
+def test_url_credentials_placeholder_does_not_re_match():
+    """The exact MAJOR-1 regression: a credentialed URL re-checks clean.
+
+    ``scheme://user:pass@host`` -> ``scheme://[REDACTED:url_credentials]@host``;
+    a second ``--check`` over that output used to report a fresh url_credentials
+    finding (the placeholder's ``:`` between ``://`` and ``@``). It must not.
+    """
+
+    # Default config: hostname detector is off, so the host survives; only the
+    # user:pass userinfo is scrubbed.
+    redacted = redact_text("postgres://user:s3cr3tpass@db.example.com/app").payload
+    assert redacted == "postgres://[REDACTED:url_credentials]@db.example.com/app"
+    # A second check over the redacted text (the export-then-re-check gate) is clean.
+    recheck = redact_text(redacted)
+    assert recheck.findings == [], [f.detector for f in recheck.findings]
+
+
+def test_untrusted_placeholder_shaped_text_does_not_hide_secrets():
+    """FAIL-SAFE: a real secret wrapped in bracket-shaped text is still detected.
+
+    The idempotency guard recognizes ONLY the engine's own emitted placeholders (a
+    fixed set of detector NAMES derived from the registry). A permissive
+    ``[REDACTED:<anything>]`` guard would let untrusted input hide a live secret
+    inside bracket shape and pass ``--check`` clean on the FIRST pass — the #71
+    leak class, failing unsafe. These seed first-pass input that already contains
+    placeholder-shaped text and assert every real secret is still caught.
+    """
+
+    # (a) real AWS key inside a literal, UNrecognized [REDACTED:...] wrapper.
+    a = redact_text("the leaked key was [REDACTED:AKIAABCDEFGHIJKLMNOP] in the log")
+    assert "aws_access_key_id" in _detectors(a), a.findings
+    assert "AKIAABCDEFGHIJKLMNOP" not in a.payload
+
+    # (b) real secret ADJACENT to a genuine self-emitted placeholder.
+    b = redact_text(f"ref [REDACTED:url_credentials] and key {FAKE_AWS_ACCESS_KEY_ID} here")
+    assert "aws_access_key_id" in _detectors(b), b.findings
+    assert FAKE_AWS_ACCESS_KEY_ID not in b.payload
+
+    # (c) user-written literal [REDACTED:abs_path] next to a REAL abs path.
+    c = redact_text("[REDACTED:abs_path] /private/tmp/real/secret.json")
+    assert "abs_path" in _detectors(c), c.findings
+    assert "/private/tmp/real/secret.json" not in c.payload
+
+    # (a-json) redact_payload path: a real secret in placeholder-shaped text is
+    # detected AND the node's redaction_state is honestly upgraded to redacted.
+    doc = {"note": "key [REDACTED:AKIAABCDEFGHIJKLMNOP] here", "redaction_state": "safe"}
+    result = redact_payload(doc, RedactionConfig())
+    assert "aws_access_key_id" in _detectors(result), result.findings
+    assert result.payload["redaction_state"] == "redacted"
+    assert "AKIAABCDEFGHIJKLMNOP" not in json.dumps(result.payload)
+
+
+def test_placeholder_vocabulary_is_derived_from_the_registry():
+    """The recognized-placeholder set is EXACTLY the engine's emitted tokens.
+
+    home_path (which emits ``${HOME}``, not a bracket token) is excluded; every
+    ``[REDACTED:<name>]`` detector — including abs_path — is included. Deriving the
+    vocabulary from the live registry (never a hardcoded list) is what keeps an
+    UNrecognized ``[REDACTED:<secret>]`` from being mistaken for a placeholder and
+    is what makes the fail-safe guarantee above hold as detectors are added.
+    """
+
+    from nlfr.redaction import DETECTORS, _PLACEHOLDER_NAMES
+
+    emitted = {detector.name for detector in DETECTORS if detector.name != "home_path"}
+    assert set(_PLACEHOLDER_NAMES) == emitted
+    assert "home_path" not in _PLACEHOLDER_NAMES
+    assert "abs_path" in _PLACEHOLDER_NAMES
+
+
+# Detectors whose match body is ARBITRARY (a placeholder-shaped substring can be
+# spliced inside a single match span). private_key_pem is the whole-block case; a
+# guard keyed on OVERLAP (not containment) would drop the entire span and leak the
+# key. Derived by inspection of the registry regexes: only patterns with a
+# free-form body (`[\s\S]*?`) can wrap a bracketed token — the token-shaped
+# detectors use character classes that exclude `[` / `]`.
+WHOLE_MATCH_SECRETS = {
+    "private_key_pem": (
+        "-----BEGIN RSA PRIVATE KEY-----",
+        "-----END RSA PRIVATE KEY-----",
+    ),
+}
+
+
+def test_whole_match_secret_wrapping_a_placeholder_is_never_dropped():
+    """FAIL-SAFE: a whole-match secret whose BODY contains a recognized placeholder
+    is still detected. The guard is CONTAINMENT, never overlap.
+
+    private_key_pem matches an entire BEGIN..END block via a free-form body. An
+    overlap-based idempotency guard would drop that whole span the moment its body
+    happened to contain a recognized ``[REDACTED:<name>]`` token — splicing one in
+    would leak the private key while ``--check`` reported clean (the #71 cardinal
+    sin). Containment only drops a candidate FULLY INSIDE a placeholder, so a
+    secret span that WRAPS or STRADDLES one is never dropped. Every one of the 14
+    recognized names is spliced mid-body and the secret must still be redacted.
+    """
+
+    from nlfr.redaction import _PLACEHOLDER_NAMES
+
+    body = "MIISECRETKEYMATERIALdoNotLeak"
+    for detector_name, (begin, end) in WHOLE_MATCH_SECRETS.items():
+        for placeholder_name in _PLACEHOLDER_NAMES:
+            poisoned = f"{begin}\n{body}1\n[REDACTED:{placeholder_name}]\n{body}2\n{end}"
+            result = redact_text(poisoned)
+            assert detector_name in _detectors(result), (placeholder_name, result.findings)
+            assert body not in result.payload, placeholder_name
+            assert f"[REDACTED:{detector_name}]" in result.payload, placeholder_name
+
+
+def test_poisoned_pem_variants_fail_safe_in_text_and_json():
+    """The reviewer's exact PEM shapes: mid-body, pre-END, verbatim, and JSON."""
+
+    begin, end = "-----BEGIN RSA PRIVATE KEY-----", "-----END RSA PRIVATE KEY-----"
+    body = "MIISECRETKEYMATERIALverbatim"
+
+    # (mid-body) a recognized placeholder in the middle of the key body.
+    mid = f"{begin}\n{body}\n[REDACTED:email]\n{body}\n{end}"
+    out_mid = redact_text(mid)
+    assert "private_key_pem" in _detectors(out_mid), out_mid.findings
+    assert body not in out_mid.payload  # the full key does not leak verbatim
+
+    # (placeholder on its own line immediately before END).
+    pre_end = f"{begin}\n{body}\n[REDACTED:abs_path]\n{end}"
+    out_pre = redact_text(pre_end)
+    assert "private_key_pem" in _detectors(out_pre), out_pre.findings
+    assert body not in out_pre.payload
+
+    # (JSON payload path) poisoned PEM under a safe-labelled node → detected and
+    # the node's redaction_state honestly upgraded.
+    doc = {"log": f"{begin}\n{body}\n[REDACTED:jwt]\n{end}", "redaction_state": "safe"}
+    res = redact_payload(doc, RedactionConfig())
+    assert "private_key_pem" in _detectors(res), res.findings
+    assert res.payload["redaction_state"] == "redacted"
+    assert body not in json.dumps(res.payload)
+
+
+def test_nested_placeholder_output_is_byte_stable_under_repeat_redaction():
+    """A secret wrapped in fake brackets redacts once, then re-runs are no-ops.
+
+    ``[REDACTED:AKIA...]`` redacts to a nested
+    ``[REDACTED:[REDACTED:aws_access_key_id]]``; the recognized INNER token is the
+    only contained span, so a 2nd and 3rd pass are byte-stable.
+    """
+
+    first = redact_text("the leaked key was [REDACTED:AKIAABCDEFGHIJKLMNOP] here").payload
+    second = redact_text(first).payload
+    third = redact_text(second).payload
+    assert first == second == third
+    assert "AKIAABCDEFGHIJKLMNOP" not in first
+
+
 def test_scrub_local_paths_roots_catches_single_segment_root_without_corruption():
     out, count = scrub_local_paths("/data", roots=["/data"])
     assert out == "[REDACTED:abs_path]/data"

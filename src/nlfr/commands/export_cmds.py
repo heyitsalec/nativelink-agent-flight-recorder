@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 import sys
 from pathlib import Path
 
@@ -15,6 +17,11 @@ from nlfr.projectors import (
 )
 from nlfr.projectors.common import write_or_print
 from nlfr.projectors.in_toto import EmptySubjectError
+from nlfr.projectors.pr_comment import (
+    build_pr_comment_summary,
+    pr_comment_exit_code,
+    render_pr_comment_markdown,
+)
 from nlfr.projectors.proof_markdown import export_proof_markdown, proof_markdown_exit_code
 
 
@@ -91,6 +98,70 @@ def export_proof(args: argparse.Namespace) -> int:
     return 0
 
 
+def export_proof_comment(args: argparse.Namespace) -> int:
+    """Render a COMPACT, redacted PR-comment summary plus its JSON sidecar.
+
+    Issue #87. Unlike ``proof export --format markdown`` (the verbose per-block
+    renderer), this emits the scannable summary that lands in a PR/review surface:
+    status, cache economics, the artifact-integrity rollup (local + remote_*
+    tiers), agent-receipt provenance presence, and an optional in-toto ref. Both
+    the markdown and the machine-readable JSON are routed through
+    :mod:`nlfr.redaction`, so a ``nlfr redact --check`` over either output is clean.
+    """
+
+    try:
+        conn = connect_readonly(args.db)
+    except UnreadableDatabaseError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+
+    proof = export_proof_packet(conn, run_group=args.run_group)
+    in_toto = _resolve_in_toto(args)
+    summary = build_pr_comment_summary(proof, in_toto=in_toto)
+    markdown = render_pr_comment_markdown(summary)
+
+    _write_or_print_text(markdown, args.output)
+
+    # The JSON sidecar (CI artifact). When --json-output is omitted but a markdown
+    # --output path is given, derive a sibling ``<stem>.json`` so both paired
+    # artifacts land by default; with neither path we only stream markdown.
+    json_output = args.json_output
+    if not json_output and args.output:
+        json_output = str(Path(args.output).with_suffix(".json"))
+    if json_output:
+        json_path = Path(json_output)
+        json_path.parent.mkdir(parents=True, exist_ok=True)
+        json_path.write_text(
+            json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+
+    if args.fail_on_validation:
+        return pr_comment_exit_code(summary)
+    return 0
+
+
+def _resolve_in_toto(args: argparse.Namespace) -> dict[str, object]:
+    """Resolve the honest in-toto attestation reference to cite (never fabricated).
+
+    ``--in-toto PATH`` cites a content digest of the *actually exported* file (so
+    the ref proves the attestation exists without leaking its filesystem path); a
+    missing path honestly reports ``exported: false``. ``--in-toto-ref REF`` cites
+    a caller-supplied string (redacted downstream). Neither flag -> not exported.
+    """
+
+    path = getattr(args, "in_toto", None)
+    if path:
+        file_path = Path(path)
+        if file_path.is_file():
+            digest = hashlib.sha256(file_path.read_bytes()).hexdigest()
+            return {"exported": True, "ref": f"sha256:{digest[:12]}"}
+        return {"exported": False, "ref": None}
+    ref = getattr(args, "in_toto_ref", None)
+    if ref:
+        return {"exported": True, "ref": str(ref)}
+    return {"exported": False, "ref": None}
+
+
 def _write_or_print_text(text: str, output: str | None) -> None:
     if output:
         path = Path(output)
@@ -156,6 +227,7 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
     )
     proof_subparsers = proof.add_subparsers(dest="proof_command", metavar="command", required=True)
     _add_proof_export_command(proof_subparsers)
+    _add_proof_comment_command(proof_subparsers)
 
 
 def _add_proof_export_command(
@@ -227,3 +299,55 @@ def _add_proof_export_command(
         ),
     )
     parser.set_defaults(handler=export_proof)
+
+
+def _add_proof_comment_command(
+    subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
+) -> None:
+    """Add ``proof comment`` — the compact PR-comment / CI-artifact summary."""
+
+    parser = subparsers.add_parser(
+        "comment",
+        help="render a compact redacted PR-comment summary + JSON sidecar",
+        description=(
+            "Render a COMPACT, redacted proof-packet summary for a PR comment "
+            "(markdown) plus a machine-readable JSON sidecar for CI attachment. "
+            "Distinct from 'proof export --format markdown', which emits every "
+            "block; this is the scannable review-surface summary."
+        ),
+    )
+    parser.add_argument(
+        "--run-group",
+        default="latest",
+        help="run group id to summarize",
+    )
+    parser.add_argument(
+        "--db",
+        default="data/nlfr/nlfr.sqlite",
+        help="SQLite database path",
+    )
+    parser.add_argument(
+        "--output",
+        help="markdown output path (default: stdout). A sibling <stem>.json "
+        "sidecar is written alongside it unless --json-output overrides.",
+    )
+    parser.add_argument(
+        "--json-output",
+        help="explicit path for the machine-readable JSON sidecar",
+    )
+    parser.add_argument(
+        "--in-toto",
+        help="path to an exported in-toto attestation to cite by content digest "
+        "(a missing path is reported honestly as not exported)",
+    )
+    parser.add_argument(
+        "--in-toto-ref",
+        help="literal in-toto attestation reference string to cite "
+        "(redacted before it reaches the output)",
+    )
+    parser.add_argument(
+        "--fail-on-validation",
+        action="store_true",
+        help="exit 1 when validation failures are present",
+    )
+    parser.set_defaults(handler=export_proof_comment)

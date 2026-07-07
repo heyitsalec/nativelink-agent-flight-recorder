@@ -434,6 +434,43 @@ DETECTORS: list[Detector] = SECRET_DETECTORS + PATH_DETECTORS + PII_DETECTORS
 
 
 # ---------------------------------------------------------------------------
+# Idempotency: recognize ONLY the engine's own emitted placeholders
+# ---------------------------------------------------------------------------
+#
+# Redaction must be idempotent: a second pass over already-redacted text has to
+# be a no-op, or the documented "self-redact at export, then re-gate with an
+# independent ``nlfr redact --check``" flow fails on its own output. The failure
+# is real: ``[REDACTED:url_credentials]`` carries a ``:`` and, sitting between
+# ``://`` and ``@`` after a ``scheme://user:pass@host`` scrub, RE-matches the
+# ``url_credentials`` detector, so a second ``--check`` reports a fresh finding
+# even though the secret is already gone.
+#
+# The guard (:func:`_resolve_spans`) drops candidate spans overlapping a
+# placeholder — but it MUST recognize ONLY the exact tokens this engine emits,
+# never an arbitrary ``[REDACTED:<anything>]`` shape. A permissive
+# ``\[REDACTED:[^]]*\]`` would let an attacker hide a real secret inside
+# bracket-shaped text (``[REDACTED:AKIA…realkey…]``) and pass ``--check`` clean on
+# the FIRST pass — a fail-UNSAFE leak. So the vocabulary is DERIVED from the
+# registry: a detector emits ``[REDACTED:<name>]`` exactly when its replacement is
+# the default (home_path is the sole exception — it emits ``${HOME}``). The
+# interior of a recognized token is therefore always a fixed detector *name*,
+# never variable secret content, so a recognized token can never conceal a
+# secret; anything wrapped in an UNrecognized ``[REDACTED:x]`` is still scanned.
+_PLACEHOLDER_NAMES: tuple[str, ...] = tuple(
+    sorted(
+        detector.name
+        for detector in DETECTORS
+        if detector.replacement_text() == _REDACTED.format(name=detector.name)
+    )
+)
+
+#: Matches ONLY an engine-emitted ``[REDACTED:<known-detector-name>]`` token.
+_PLACEHOLDER_RE = re.compile(
+    r"\[REDACTED:(?:" + "|".join(re.escape(name) for name in _PLACEHOLDER_NAMES) + r")\]"
+)
+
+
+# ---------------------------------------------------------------------------
 # Projection-boundary local-path scrubbing (issue #60)
 # ---------------------------------------------------------------------------
 #
@@ -589,11 +626,33 @@ class RedactionResult:
 # ---------------------------------------------------------------------------
 
 
+def _contained_in_any(start: int, end: int, spans: list[Span]) -> bool:
+    """True when ``[start, end)`` is FULLY CONTAINED within some span in ``spans``.
+
+    Containment (``span_start <= start and end <= span_end``), NOT mere overlap,
+    is the safe idempotency test. A recognized ``[REDACTED:<name>]`` placeholder's
+    entire interior is a fixed detector NAME (never a secret), so the only
+    candidate spans fully inside one are false re-matches of the placeholder's own
+    text — e.g. ``url_credentials`` re-matching ``[REDACTED:url_credentials]`` —
+    which is exactly what must be dropped for idempotency. A candidate that WRAPS
+    a placeholder (a ``private_key_pem`` block whose arbitrary body happens to
+    contain ``[REDACTED:email]``) or STRADDLES its boundary is NOT contained, so a
+    real secret is never dropped. An overlap test would drop the whole PEM span
+    and leak the key — the fail-unsafe #71 class this guard must avoid.
+    """
+
+    return any(span_start <= start and end <= span_end for span_start, span_end in spans)
+
+
 def _resolve_spans(value: str, key: str | None, config: RedactionConfig):
     """Collect enabled-detector spans and greedily pick non-overlapping ones.
 
     Deterministic: sort by (start, longest-first, registry-order); earliest
-    wins, longest breaks ties, registry order is the final tie-break.
+    wins, longest breaks ties, registry order is the final tie-break. A candidate
+    is dropped only when it is FULLY CONTAINED within an already-written
+    ``[REDACTED:<known-name>]`` placeholder, so redaction is idempotent (a re-run
+    over redacted text finds nothing new) WITHOUT ever dropping a real secret that
+    merely wraps or straddles a placeholder.
     """
 
     candidates = []
@@ -603,6 +662,19 @@ def _resolve_spans(value: str, key: str | None, config: RedactionConfig):
         for start, end in detector.find(value, key):
             if end > start:
                 candidates.append((start, end, idx, detector))
+
+    # Idempotency guard: drop a candidate ONLY when it is fully contained within a
+    # placeholder we already wrote, so a second pass over redacted text is a no-op
+    # (see _PLACEHOLDER_RE) WITHOUT ever dropping a real secret that wraps or
+    # straddles a placeholder. This is what keeps the export-then-re-check flow
+    # from failing on its own output while staying fail-safe.
+    placeholders = [match.span() for match in _PLACEHOLDER_RE.finditer(value)]
+    if placeholders:
+        candidates = [
+            candidate
+            for candidate in candidates
+            if not _contained_in_any(candidate[0], candidate[1], placeholders)
+        ]
 
     candidates.sort(key=lambda c: (c[0], -(c[1] - c[0]), c[2]))
     chosen: list[tuple[int, int, Detector]] = []

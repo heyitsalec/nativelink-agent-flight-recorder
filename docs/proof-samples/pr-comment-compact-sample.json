@@ -1,0 +1,56 @@
+{
+  "agent_receipt": {
+    "agents": [
+      {
+        "model": "composer-2.5",
+        "name": "demo-agent",
+        "prompt_sha256_prefix": "aaaaaaaaaaaa"
+      }
+    ],
+    "count": 1,
+    "present": true
+  },
+  "artifact_verification": {
+    "local": {
+      "mismatched": 0,
+      "missing": 1,
+      "present-unverified": 0,
+      "verified": 1
+    },
+    "remote": {
+      "mismatch": 0,
+      "missing": 0,
+      "present": 0,
+      "verified": 1
+    },
+    "total": 4,
+    "unverified_remote": 1
+  },
+  "build_tool": {
+    "recorded": false,
+    "tool": "bazel",
+    "versions": []
+  },
+  "cache": {
+    "cache_events": 3,
+    "hit_rate": 0.6666666666666666,
+    "hits": 2,
+    "misses": 1,
+    "unknown": 0
+  },
+  "confidence": "high",
+  "generated_at": "2026-07-07T00:00:00.000000Z",
+  "in_toto": {
+    "exported": true,
+    "ref": "sha256:deadbeefcafe"
+  },
+  "projection_kind": "pr_comment",
+  "redaction_state": "safe",
+  "run_group": "record-proof",
+  "schema_version": 1,
+  "source_kind": "derived_v1",
+  "status": {
+    "failures": 0,
+    "status": "ok"
+  }
+}

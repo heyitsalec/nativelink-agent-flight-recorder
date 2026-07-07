@@ -86,6 +86,8 @@ Non-strict (scrub and upload a redacted mirror instead of failing):
 | `artifact-name` | `nlfr-proof` | Name of the uploaded artifact. |
 | `nlfr-version` | `""` (latest) | Pin the PyPI version of `nlfr`. |
 | `strict-redact` | `true` | `true`: fail on findings before upload. `false`: scrub to a mirror and upload only the mirror. |
+| `post-pr-comment` | `false` | Opt in to post a compact proof summary as a PR comment (see below). |
+| `in-toto-ref` | `""` | Optional in-toto attestation reference to cite in that comment. |
 
 ### Outputs
 
@@ -94,6 +96,38 @@ Non-strict (scrub and upload a redacted mirror instead of failing):
 | `evidence-dir` | Directory of recorded evidence. |
 | `proof-path` | Proof-packet projection, if produced. |
 | `redact-status` | `clean` \| `scrubbed` \| `blocked` \| `blocked-symlinks` \| `empty`. |
+
+### Optional: post the compact proof comment to the PR
+
+Set `post-pr-comment: true` to land NLFR's honest evidence in the review surface
+(issue #87). On a `pull_request` event the action renders the **compact** summary
+with `nlfr proof comment`, **re-gates both the markdown and its JSON sidecar
+through `nlfr redact --check`**, and only then posts the markdown as a PR comment
+— the same un-droppable sharing boundary as the evidence upload. A redact finding
+fails the step and posts nothing; a blocked evidence gate skips it entirely.
+
+`permissions` is a **job-level** (or workflow-level) key — never a step key — so
+declare it on the job, matching this repo's own workflows:
+
+```yaml
+on: pull_request
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write        # required to post the comment
+    steps:
+      - uses: actions/checkout@v4
+      - uses: heyitsalec/nativelink-agent-flight-recorder@v0
+        with:
+          command: bazel test //...
+          post-pr-comment: true
+```
+
+See the full recipe (rendering, gating, `gh pr comment` / `gh api`, JSON
+artifact) in [Post a compact proof summary as a PR comment](pr-comment-proof.md).
 
 ## Buildkite
 
