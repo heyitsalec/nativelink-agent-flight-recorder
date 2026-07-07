@@ -32,7 +32,7 @@ Historical restore procedure (Actions are live now): [GHA_RESTORE_RUNBOOK.md](GH
 
 | Criterion | `NLFR proof` (`nlfr-proof.yml`) | `NLFR cache-only gate` |
 |-----------|--------------------------------|------------------------|
-| Jobs green on one run | All **five** per-push jobs (2 LRE jobs are `schedule`/`workflow_dispatch`-only, non-blocking) | `cache-only-gate` only |
+| Jobs green on one run | All **four** blocking per-push jobs (`lre-nix-ci` runs per-push but is `continue-on-error`/non-blocking, #100; 2 other LRE jobs are `schedule`/`workflow_dispatch`-only) | `cache-only-gate` only |
 | Consecutive greens | **≥3** on `main` (no intervening failure) | **1** green sufficient for doctor contract |
 | Artifact promotion | Required before `proof-samples/` Linux CI provenance | Not a promotion source |
 | Local substitute | [`verify-gha-readiness.sh`](../scripts/verify-gha-readiness.sh) | [`cache-only-ci-gate.sh`](../scripts/cache-only-ci-gate.sh) |
