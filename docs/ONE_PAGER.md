@@ -25,8 +25,10 @@ NLFR is a local-first black-box recorder for agent validation loops:
 
 ## What is proven today (Nix, tag `v0.2.0-mvp`)
 
-- Cold/warm NativeLink cache proof (exit 0; cold `hit_rate` 0.0 / 8.17s vs warm
-  `hit_rate` 1.0 / 5.48s — `collectable_v1`).
+- Cold/warm NativeLink cache proof (exit 0; cold `hit_rate` 0.0 / 9.04s vs warm
+  `hit_rate` 1.0 / 6.12s — `collectable_v1`; latest CI numbers, recorded by run
+  [`28862144465`](https://github.com/heyitsalec/nativelink-agent-flight-recorder/actions/runs/28862144465)
+  on `main` under Bazel 7.4.1 in Nix).
 - One-process local remote-executor smoke (`worker_endpoints_ready`).
 - Two-worker live endpoint readiness in Nix (`worker_endpoints_ready`,
   `expected_workers=2`, `configured_workers=2`, no environment blocker;
@@ -58,6 +60,27 @@ NLFR is a local-first black-box recorder for agent validation loops:
   (parsed live-CLI receipt) > `stub_receipt_v1` (deterministic stub, CI
   mechanics gate) > `operator_asserted_v1` (claim without a receipt).
 
+## Shipped tooling (no Nix required)
+
+These work against any Bazel repo, no NativeLink deployment:
+
+- **`nlfr record -- bazel test //your:target`** — one-command evidence capture on
+  any Bazel repo, no NLFR config
+  ([how-to](wiki/how-to/record-your-own-build.md)).
+- **Independent artifact-integrity verification** — recorded SHA-256 digests
+  re-checked and surfaced as an `artifact_verification` rollup in proof packets.
+- **in-toto Statement export** — `nlfr proof export --format in-toto` emits an
+  unsigned, DSSE-ready in-toto v1 Statement; sign externally with cosign
+  ([how-to](wiki/how-to/export-in-toto-attestation.md)). NLFR makes no claim of
+  auditor acceptance — it is evidence that plugs into an existing safety case.
+- **Contract-enforced projections** — projection JSON shape is CI-gated against
+  committed JSON contracts ([contracts](wiki/reference/contracts/README.md)).
+- **Verified receipts for the Claude and Gemini CLIs** — the Claude receipt is
+  live-proven in the committed two-act run; the Gemini parser is fixture-tested
+  (live validation env-gated, pending a host with that CLI).
+- **`nlfr db upgrade` / `nlfr db gc`** — schema migration and
+  operator-consented evidence retention ([CLI](wiki/reference/cli.md#db-upgrade)).
+
 ## What is explicitly unproven
 
 Scheduler assignment, queue time, action placement, load distribution,
@@ -79,7 +102,12 @@ dashboard UI — queue time, placement, and work distribution remain unproven.
 
 ## Audience
 
-Platform teams, NativeLink buyers, investors, and skeptical engineers evaluating
+**Primary: the platform engineer on a Bazel-heavy team** (A/V, robotics,
+safety-critical) who has to show *what actually ran* when an agent wrote the
+code — and needs attestable, truth-labeled evidence rather than a chat
+transcript.
+
+Secondary: NativeLink buyers, investors, and skeptical engineers evaluating
 agentic validation infrastructure.
 
 ## Repo

@@ -4,15 +4,62 @@
 [![Cache-only gate](https://github.com/heyitsalec/nativelink-agent-flight-recorder/actions/workflows/nlfr-cache-only-gate.yml/badge.svg)](https://github.com/heyitsalec/nativelink-agent-flight-recorder/actions/workflows/nlfr-cache-only-gate.yml)
 [![Live canvas](https://img.shields.io/badge/canvas-live%20demo-2ea44f)](https://heyitsalec.github.io/nativelink-agent-flight-recorder/?view=two-act-spark)
 
-**A local-first proof recorder for AI-agent validation loops with NativeLink and Bazel.**
+**Point NLFR at your Bazel repo in one command — and walk away with
+truth-labeled, attestable build evidence instead of a chat transcript.**
 
-When AI writes the code, NativeLink makes validating it fast — NLFR makes
-validating it trustworthy. NLFR captures immutable build evidence, normalizes
-it into SQLite, exports truth-labeled projection JSON, and renders a sparse
-Action Graph canvas from that projection only — never from invented backend
-state.
+```bash
+# Install today (stdlib-only recorder, zero runtime deps — no clone needed):
+uv tool install "git+https://github.com/heyitsalec/nativelink-agent-flight-recorder.git"
+
+# Record any bazel invocation on ANY Bazel repo — no NLFR config, no NativeLink deploy:
+nlfr record -- bazel test //your:target
+```
+
+That one command captures the build immutably, normalizes it into SQLite, and
+exports projection JSON in which **every claim is truth-labeled** —
+`source_kind` / `confidence` / `evidence_refs` / `redaction_state` on every row.
+You can then **attest the result** as an in-toto v1 Statement (cosign-ready):
+evidence that plugs into your existing safety case / provenance stack
+(SLSA · in-toto · Sigstore), not a transcript you have to trust. NLFR does not
+sign for you and makes **no claim of auditor acceptance** — the honest boundary
+is stated everywhere it matters.
+
+Built for the platform engineer on a Bazel-heavy team (A/V, robotics,
+safety-critical) who has to show *what actually ran* when an agent wrote the code.
+
+### What ships today
+
+| Capability | What it does |
+| --- | --- |
+| **`nlfr record`** | One-command evidence capture on any Bazel repo — wrap any `bazel` invocation ([how-to](docs/wiki/how-to/record-your-own-build.md)). |
+| **Artifact-integrity verification** | Recorded SHA-256 digests re-checked and surfaced as an `artifact_verification` rollup in proof packets and the in-toto predicate. |
+| **in-toto export** | `nlfr proof export --format in-toto` → unsigned, DSSE-ready in-toto v1 Statement; sign externally with cosign ([how-to](docs/wiki/how-to/export-in-toto-attestation.md)). |
+| **Contract-enforced projections** | Projection JSON shape is CI-gated against committed JSON contracts ([contracts](docs/wiki/reference/contracts/README.md)). |
+| **Verified agent receipts** | `receipt_verified_v1` receipts — model, session, token usage, prompt/response SHA-256; raw prompt structurally absent. Claude is live-proven in the committed two-act run; the Gemini parser is fixture-tested (live validation env-gated). |
+| **`nlfr db upgrade` / `db gc`** | Schema migration and operator-consented evidence retention ([CLI reference](docs/wiki/reference/cli.md#db-upgrade)). |
+
+The recorder is a stdlib-only Python package with **zero runtime dependencies**.
+Full install matrix (git, local wheel, PyPI-when-published):
+[Quickstart](#quickstart-no-nix-no-nativelink-required). The hosted canvas and
+two-act demo run from a clone.
+
+## See it in 60 seconds
+
+1. **Hosted canvas** —
+   <https://heyitsalec.github.io/nativelink-agent-flight-recorder/?view=two-act-spark>
+   — the live two-act run, zero install.
+2. **One proof JSON** —
+   [`docs/proof-samples/two-act-spark-live-summary-sample.json`](docs/proof-samples/two-act-spark-live-summary-sample.json):
+   act 1 red and attributed to the hidden target, act 2 green with warm cache
+   hits, live `receipt_verified_v1` agent receipts on both acts, compare
+   projection exported — every leg truth-labeled.
+3. **One pager** — [`docs/ONE_PAGER.md`](docs/ONE_PAGER.md): thesis, proven
+   claims, and the explicitly unproven boundaries.
 
 ## The two-act story: the recorder catches an agent being wrong
+
+The differentiated proof point, rendered from committed evidence — not a
+narrative you have to take on faith.
 
 **Act 1** — an agent writes a patch from an underspecified task. A hidden Bazel
 requirement it cannot see catches it: real `bazel test` through the NativeLink
@@ -47,19 +94,6 @@ A deterministic stub path keeps the same mechanics testable without LLM tokens
 blocker instead of faking success
 ([sample](docs/proof-samples/two-act-spark-live-blocker-sample.json)).
 
-## See it in 60 seconds
-
-1. **Hosted canvas** —
-   <https://heyitsalec.github.io/nativelink-agent-flight-recorder/?view=two-act-spark>
-   — the live two-act run, zero install.
-2. **One proof JSON** —
-   [`docs/proof-samples/two-act-spark-live-summary-sample.json`](docs/proof-samples/two-act-spark-live-summary-sample.json):
-   act 1 red and attributed to the hidden target, act 2 green with warm cache
-   hits, live `receipt_verified_v1` agent receipts on both acts, compare
-   projection exported — every leg truth-labeled.
-3. **One pager** — [`docs/ONE_PAGER.md`](docs/ONE_PAGER.md): thesis, proven
-   claims, and the explicitly unproven boundaries.
-
 ## Quickstart (no Nix, no NativeLink required)
 
 ### Install the `nlfr` CLI (pip / uvx)
@@ -93,7 +127,7 @@ The hosted canvas and two-act demo run from the cloned repo:
 git clone https://github.com/heyitsalec/nativelink-agent-flight-recorder.git
 cd nativelink-agent-flight-recorder
 uv sync
-uv run pytest -q                  # expected: 228 passed, 3 skipped
+uv run pytest -q                  # the full suite must pass (480+ tests as of 2026-07)
 npm --prefix apps/canvas install
 npm --prefix apps/canvas run dev  # http://127.0.0.1:5173/
 ```
@@ -106,19 +140,24 @@ never invents backend state. Real NativeLink proof runs need Nix — see
 
 ## The cache numbers
 
-Real cold/warm NativeLink cache proof — NativeLink 1.3.2, Bazel 9.1.1, inside
-`nix develop`:
+Real cold/warm NativeLink cache proof, inside `nix develop`:
 
 | Leg | Wall time | Cache hit rate |
 | --- | --- | --- |
-| Cold | 8.17 s | 0.0 (0 hits / 2 misses) |
-| Warm | 5.48 s | 1.0 (2 hits / 0 misses) |
+| Cold | 9.04 s | 0.0 (0 hits / 2 misses) |
+| Warm | 6.12 s | 1.0 (2 hits / 0 misses) |
 
-Same target, 2.7 s faster on a deliberately tiny fixture workload — the point
+Same target, ~2.9 s faster on a deliberately tiny fixture workload — the point
 is the recorded, inspectable evidence trail, not the absolute seconds.
-Evidence:
-[`docs/proof-samples/cold-warm-summary.json`](docs/proof-samples/cold-warm-summary.json)
-(`collectable_v1`, `high`). Reproduce: `scripts/cold-warm-cache-proof.sh`.
+
+<sub>Recorded by CI run
+[`28862144465`](https://github.com/heyitsalec/nativelink-agent-flight-recorder/actions/runs/28862144465)
+on `main` (2026-07-07) under Bazel **7.4.1** — bazelisk-resolved from the demo
+workspace's pinned `.bazelversion`, in Nix with NativeLink from `flake.nix`
+(`collectable_v1`, `high`). Reproduce: `scripts/cold-warm-cache-proof.sh`. The
+committed [`cold-warm-summary.json`](docs/proof-samples/cold-warm-summary.json)
+shows the `summary.json` shape from an earlier reference recording — wall-clock
+seconds drift run to run; the hit-rate pattern (cold 0.0 → warm 1.0) does not.</sub>
 
 ## Truth labels and explicit limits
 
@@ -218,8 +257,9 @@ fixture ingest, export, and simulated-agent commands:
 ### Real NativeLink proof (Nix)
 
 Outside `nix develop`, real-tool scripts record truth-labeled
-`environment_blocker` evidence. Inside Nix (NativeLink 1.3.2, Bazel 9.1.1) the
-recorder has proven cold/warm cache, one-process local-exec, live two-worker
+`environment_blocker` evidence. Inside Nix (NativeLink from `flake.nix`; Bazel
+bazelisk-resolved from each workspace's `.bazelversion` — 7.4.1 for the bundled
+demo) the recorder has proven cold/warm cache, one-process local-exec, live two-worker
 endpoint readiness, worker admin stdout (M7), agent-loop closure, tier1 live
 Bazel, two-act spark mechanics, and LRE readiness probes:
 
@@ -304,17 +344,20 @@ Start at the [documentation hub](docs/INDEX.md) for the two-hop review map
 | Contributor rules | [Contributing](docs/CONTRIBUTING.md) |
 
 Depth pages live under [`docs/wiki/`](docs/wiki/) (evidence loop, truth labels,
-ADR-lite decisions). How this repo was built: [docs/METHOD.md](docs/METHOD.md).
+ADR-lite decisions). How this repo was built:
+[docs/internal/METHOD.md](docs/internal/METHOD.md).
 
 ## Status And Limits
 
 NLFR v1 is an evidence-first recorder MVP, not a hosted SaaS, multi-tenant
 control plane, or full remote-execution fleet dashboard.
 
-**CI status:** GitHub Actions runs are restored with the public release. Until
-the first sustained green public run, the canonical verification is local:
-`uv run pytest -q` and `./scripts/verify-demo.sh`. The CI matrix is documented
-in [docs/CI_RECIPE.md](docs/CI_RECIPE.md).
+**CI status:** GitHub Actions runs on every push to `main` and the recorded runs
+are green — see the **NLFR proof** and **Cache-only gate** badges at the top of
+this README. Local gates (`uv run pytest -q` and `./scripts/verify-demo.sh`)
+remain the reproducible canonical verification anyone can run without our
+infrastructure. The CI matrix is documented in
+[docs/CI_RECIPE.md](docs/CI_RECIPE.md).
 
 **M5–M9 + two-act spark (landed):**
 
@@ -331,7 +374,7 @@ Out of scope for v1: SaaS/auth/billing/multi-tenancy, fleet scheduler dashboards
 OTLP/Jaeger clone, persistent worker security claims, and unsupported
 worker/action/queue-time correlation beyond direct artifact evidence.
 
-Implementation plan: [docs/IMPLEMENTATION_DAG.md](docs/IMPLEMENTATION_DAG.md).
+Implementation plan: [docs/internal/IMPLEMENTATION_DAG.md](docs/internal/IMPLEMENTATION_DAG.md).
 
 ## Contributing
 

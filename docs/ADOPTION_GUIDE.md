@@ -2,11 +2,39 @@
 
 ← [Docs index](INDEX.md) · [Wiki hub](wiki/README.md)
 
-**Quadrant:** How-to · **Audience:** evaluators who are not on the author's Mac.
+**Quadrant:** How-to · **Audience:** evaluators without the maintainer's local Nix setup.
 
-## Init path (one-command record)
+## Record your own Bazel build (one command)
 
-Fastest way to scaffold NLFR in this repo and record a single Bazel target:
+The fastest path to real NLFR evidence is to point it at **your own repo** — no
+NLFR config, no NativeLink deployment, no clone:
+
+```bash
+# Install the stdlib-only recorder (zero runtime deps):
+uv tool install "git+https://github.com/heyitsalec/nativelink-agent-flight-recorder.git"
+
+# Wrap any bazel invocation you already run:
+nlfr record -- bazel test //your:target
+```
+
+It captures the build immutably, ingests it into SQLite, and writes projection
+JSON (action graph + proof packet), printing the run group, status, exit code,
+and evidence dir. A failing build is a valid recording — the red result is
+captured as evidence, never masked. If `bazel`/`bazelisk` is missing from
+`PATH`, `nlfr record` refuses fast with exit `127` and an actionable message
+(nothing is written; see the exit-code contract in the how-to). NativeLink is
+not required — cache evidence simply appears only when your Bazel is configured
+against a remote cache. Full options (run-group, workspace root, output dir,
+machine-readable summary):
+[How-to: record your own Bazel build](wiki/how-to/record-your-own-build.md).
+
+Adopting a larger existing monorepo with `nlfr init` + a committed `nlfr.toml`:
+[How-to: adopt existing Bazel monorepo](wiki/how-to/adopt-existing-bazel-monorepo.md).
+
+### No Bazel repo handy? Record the bundled demo
+
+To watch the same flow without your own repo, record against the committed
+`demo/bazel-monorepo` fixture from a clone:
 
 ```bash
 uv sync
@@ -15,18 +43,11 @@ uv sync
 ./scripts/record-this-target.sh //tasks:priority_test
 ```
 
-Under the hood:
-
-1. `nlfr init` writes `nlfr.toml` plus `data/.nlfr/init.json` with workspace,
-   database (`data/nlfr/nlfr.sqlite`), and run-group (`latest`) defaults.
-2. `nlfr run --mode cache-only` records `//tasks:priority_test` against
-   `demo/bazel-monorepo` into `data/nlfr/`.
-
+Under the hood `nlfr init` writes `nlfr.toml` plus `data/.nlfr/init.json`
+(workspace, database, run-group defaults), then `nlfr run --mode cache-only`
+records `//tasks:priority_test` against `demo/bazel-monorepo` into `data/nlfr/`.
 `init` is idempotent — re-running does not clobber an existing `nlfr.toml` unless
-you pass `--force`. When Bazel or NativeLink are absent, `run` still records an
-`environment_blocker` artifact (honest failure, not a silent skip).
-
-Adopting a **different** Bazel monorepo: [How-to: adopt existing Bazel monorepo](wiki/how-to/adopt-existing-bazel-monorepo.md).
+you pass `--force`.
 
 Proof:
 

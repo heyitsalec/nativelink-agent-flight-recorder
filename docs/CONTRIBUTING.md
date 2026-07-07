@@ -5,7 +5,7 @@ spine: capture artifacts, ingest SQLite, export truth-labeled projection JSON,
 render canvas from projections only.
 
 ← [Docs index](INDEX.md) · [Architecture track](ARCHITECTURE_TRACK.md) ·
-[Usefulness roadmap](USEFULNESS_ROADMAP.md) · [Implementation DAG (historical)](IMPLEMENTATION_DAG.md)
+[Usefulness roadmap](USEFULNESS_ROADMAP.md) · [Implementation DAG (historical)](internal/IMPLEMENTATION_DAG.md)
 
 ## Before you open a PR
 

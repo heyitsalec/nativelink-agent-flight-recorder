@@ -1,7 +1,7 @@
 # NLFR implementation walkthrough
 
 This file is a code tour. It explains the important implementation files and how
-they fit together. Read it alongside [`WALKTHROUGH.md`](WALKTHROUGH.md).
+they fit together. Read it alongside [`WALKTHROUGH.md`](../WALKTHROUGH.md).
 
 ## Top-level structure
 
