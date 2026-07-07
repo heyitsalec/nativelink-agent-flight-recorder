@@ -142,6 +142,11 @@ payload (`.dsseEnvelope.payload`, base64) yields **NLFR's Statement byte-for-byt
 — identical `_type`, `predicateType`, and `subject[]` — which is exactly what a
 downstream verifier expects.
 
+> This exact sign → verify → decode → byte-compare round-trip is exercised in CI
+> by the non-blocking `attestation-smoke` workflow (`.github/workflows/attestation-smoke.yml`),
+> so a future cosign whose interface drifts from the `--statement` flow shown here
+> surfaces as a visible red check rather than silently breaking this guide.
+
 > The exact signer configuration (local key vs. KMS vs. keyless OIDC) depends on
 > your policy; swap `--key cosign.key` for your signer. The load-bearing,
 > non-negotiable part is `--statement` (not `--predicate`): it is what keeps NLFR's
