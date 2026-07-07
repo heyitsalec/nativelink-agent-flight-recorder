@@ -213,8 +213,17 @@ copies-and-redacts (write → an output dir mirroring the tree) every regular fi
 honoring both formats. It **skips honestly, never silently**: binaries
 (null-byte sniff → `skipped:binary`, a secret in a binary is out of scope) and
 SQLite databases (`skipped:database` — local evidence, not meant for upload) are
-reported in the check output and left out of a redacted mirror. `--check` exits 1
-if *any* file has a finding; skips alone never fail the gate. This is the gate
+reported in the check output and left out of a redacted mirror. The binary/DB
+safety sniff **always runs first and outranks `--format`** — `--format text` over
+an `nlfr.sqlite` skips the database, never decodes it into a corrupted copy;
+`--format` only disambiguates text-vs-json for files that pass the sniff. **Symlinks
+are never followed**: a directory or file link, at any depth, is reported as
+`skipped:symlink` and left out of both the scan and the written mirror (which
+therefore contains zero symlinks) — an alias would double-count evidence and a
+link can smuggle out-of-scope filesystem content into a tree told to be safe to
+share. Pass the real path explicitly if you mean to include it. `--check` exits 1
+if *any* file has a finding; skips alone never fail the gate (but the report
+always makes the non-scan visible). This is the gate
 the [record how-to CI snippets](../how-to/record-your-own-build.md#ci-snippets)
 run before uploading a raw evidence tree.
 

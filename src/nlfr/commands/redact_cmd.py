@@ -27,8 +27,14 @@ directory / tree (``INPUT`` is a directory)::
     honoring the JSON/text auto-detect. Binaries are skipped honestly (null-byte
     sniff → reported ``skipped:binary`` — a secret in a binary is out of scope,
     and the report SAYS so) and SQLite databases are skipped as
-    ``skipped:database`` (local evidence, not meant for upload). ``--check`` exits
-    1 if ANY file has a finding; skips never fail the gate on their own.
+    ``skipped:database`` (local evidence, not meant for upload). **Symlinks are
+    never followed** — a directory or file link (at any depth) is reported as
+    ``skipped:symlink`` and left out of the scan and the written mirror: an alias
+    would double-count evidence and a link can smuggle out-of-scope filesystem
+    content into a tree told to be "safe to share". Pass the real path explicitly
+    if you mean to include it. ``--check`` exits 1 if ANY file has a finding;
+    skips never fail the gate on their own (but the report always makes the
+    non-scan visible).
 
 This is defense-in-depth pattern matching, **not** a guarantee: a free-standing
 high-entropy secret with no prefix and no contextual marker is not detectable by
@@ -58,11 +64,17 @@ from nlfr.redaction import (
 
 _SKIP_BINARY = "binary"
 _SKIP_DATABASE = "database"
+_SKIP_SYMLINK = "symlink"
 
 _SKIP_NOTE = {
     _SKIP_BINARY: "binary — not scanned; a secret in a binary is out of scope",
     _SKIP_DATABASE: (
         "SQLite database — local evidence, not meant for upload; not scanned"
+    ),
+    _SKIP_SYMLINK: (
+        "symlink — never followed; an alias would double-count evidence and a "
+        "link can smuggle out-of-scope content into a shared mirror. Pass the "
+        "real path explicitly if intended"
     ),
 }
 
@@ -87,19 +99,24 @@ def _summary(counts) -> str:
 def _classify(data: bytes, fmt: str | None) -> str:
     """Decide how to treat a file's raw bytes: json / text / binary / database.
 
-    An explicit ``--format`` wins (the operator's deliberate choice). Otherwise a
-    SQLite database and a NUL-carrying binary are skipped honestly, and the
-    remainder is JSON when it parses, else plain text.
+    The binary/DB *safety sniff always runs first* and outranks ``--format``: a
+    SQLite database or a NUL-carrying binary is skipped honestly whatever the
+    operator forced, because ``--format text`` over ``nlfr.sqlite`` would decode
+    the database with ``errors="replace"`` and re-encode a CORRUPTED copy into
+    the "safe" mirror (issue: ``--help`` promises "binaries and SQLite databases
+    are always skipped"). ``--format`` only disambiguates text-vs-json for the
+    files that pass the sniff; auto-detect (no ``--format``) is JSON when it
+    parses, else plain text.
     """
 
-    if fmt == "json":
-        return "json"
-    if fmt == "text":
-        return "text"
     if is_sqlite_bytes(data):
         return _SKIP_DATABASE
     if is_binary_bytes(data):
         return _SKIP_BINARY
+    if fmt == "json":
+        return "json"
+    if fmt == "text":
+        return "text"
     text = data.decode("utf-8", errors="replace")
     try:
         json.loads(text)
@@ -194,8 +211,64 @@ def _redact_file(args: argparse.Namespace, path: Path) -> int:
 # --------------------------------------------------------------------------- tree
 
 
+def _has_symlink_ancestor(rel: Path, root: Path) -> bool:
+    """True when any *ancestor directory* of ``root / rel`` (below root) is a link.
+
+    Defense in depth so behaviour is identical across Python versions: even if a
+    future ``rglob`` were to descend through a directory symlink (the
+    ``follow_symlinks`` default has drifted across 3.12/3.13/3.14), an entry that
+    lives *under* a symlinked directory is silently ignored here — the link
+    itself is already reported once as ``skipped:symlink``; its subtree is never
+    scanned, read, or copied.
+    """
+
+    cur = root
+    for part in rel.parts[:-1]:  # ancestors only — never the leaf itself
+        cur = cur / part
+        if cur.is_symlink():
+            return True
+    return False
+
+
+def _walk_tree(root: Path) -> tuple[list[Path], list[Path]]:
+    """Return ``(files, symlinks)`` under ``root`` — links reported, never followed.
+
+    ``root.rglob("*")`` in current pathlib does not descend into a directory
+    symlink, but it DOES list the link entry, and a *file* symlink still satisfies
+    ``is_file()`` — so the old ``if p.is_file()`` filter silently dropped a
+    directory link (its content, reachable only through the alias, was never
+    scanned: a false-clean gate) while FOLLOWING a file link (reading, and in
+    write mode copying, out-of-scope target content into the "safe" mirror).
+
+    This walk reports every symlink (directory or file, at any depth) exactly once
+    as a ``skipped:symlink`` entry and never traverses, reads, or copies it. The
+    :func:`_has_symlink_ancestor` guard makes the non-follow guarantee independent
+    of pathlib's version-drifting ``follow_symlinks`` default.
+    """
+
+    files: list[Path] = []
+    symlinks: list[Path] = []
+    for path in sorted(root.rglob("*")):
+        rel = path.relative_to(root)
+        if path.is_symlink():
+            symlinks.append(rel)
+            continue
+        if _has_symlink_ancestor(rel, root):
+            continue
+        if path.is_file():
+            files.append(path)
+    return files, symlinks
+
+
 def _redact_tree(args: argparse.Namespace, root: Path) -> int:
-    """Scan (check) or copy-and-redact (write) every regular file under ``root``."""
+    """Scan (check) or copy-and-redact (write) every regular file under ``root``.
+
+    Symlinks are never followed: they are reported as ``skipped:symlink`` and
+    excluded from both the scan and the written mirror (which therefore contains
+    zero symlinks). Binaries and SQLite databases are likewise reported-and-
+    skipped. Skips never fail the ``--check`` gate on their own, but the report
+    always makes the non-scan visible.
+    """
 
     check = args.check
     if not check and args.output is None:
@@ -207,10 +280,14 @@ def _redact_tree(args: argparse.Namespace, root: Path) -> int:
 
     out_root = Path(args.output) if args.output is not None else None
     config = _config_from_args(args, redact=not check)
-    files = sorted(p for p in root.rglob("*") if p.is_file())
+    files, symlinks = _walk_tree(root)
 
     findings_by_file: list[tuple[Path, str, RedactionResult]] = []
-    skipped: dict[str, list[Path]] = {_SKIP_BINARY: [], _SKIP_DATABASE: []}
+    skipped: dict[str, list[Path]] = {
+        _SKIP_BINARY: [],
+        _SKIP_DATABASE: [],
+        _SKIP_SYMLINK: list(symlinks),
+    }
     parse_errors: list[tuple[Path, str]] = []
     wrote = {"json": 0, "text": 0}
     total = Counter()
@@ -256,7 +333,8 @@ def _emit_tree_check(
         f"nlfr redact --check: scanned {scanned} file(s) under {root} — "
         f"{len(findings_by_file)} with finding(s), "
         f"{len(skipped[_SKIP_BINARY])} binary skipped, "
-        f"{len(skipped[_SKIP_DATABASE])} database skipped.",
+        f"{len(skipped[_SKIP_DATABASE])} database skipped, "
+        f"{len(skipped[_SKIP_SYMLINK])} symlink skipped.",
         file=stream,
     )
     for rel, kind, result in findings_by_file:
@@ -268,14 +346,11 @@ def _emit_tree_check(
             f"  {rel}: forced --format json but not valid JSON: {exc}",
             file=sys.stderr,
         )
-    if skipped[_SKIP_BINARY]:
-        print(f"skipped:binary ({_SKIP_NOTE[_SKIP_BINARY]}):", file=stream)
-        for rel in skipped[_SKIP_BINARY]:
-            print(f"  {rel}", file=stream)
-    if skipped[_SKIP_DATABASE]:
-        print(f"skipped:database ({_SKIP_NOTE[_SKIP_DATABASE]}):", file=stream)
-        for rel in skipped[_SKIP_DATABASE]:
-            print(f"  {rel}", file=stream)
+    for kind in (_SKIP_BINARY, _SKIP_DATABASE, _SKIP_SYMLINK):
+        if skipped[kind]:
+            print(f"skipped:{kind} ({_SKIP_NOTE[kind]}):", file=stream)
+            for rel in skipped[kind]:
+                print(f"  {rel}", file=stream)
     return 1 if failed else 0
 
 
@@ -293,12 +368,15 @@ def _emit_tree_write(
         f"{out_root} ({wrote['json']} json, {wrote['text']} text); "
         f"redacted {spans} span(s) [{parts}]; skipped "
         f"{len(skipped[_SKIP_BINARY])} binary, {len(skipped[_SKIP_DATABASE])} "
-        "database (not copied into the redacted mirror)."
+        f"database, {len(skipped[_SKIP_SYMLINK])} symlink (not copied into the "
+        "redacted mirror)."
     )
     for rel in skipped[_SKIP_BINARY]:
         print(f"  skipped:binary (not copied): {rel}")
     for rel in skipped[_SKIP_DATABASE]:
         print(f"  skipped:database (local evidence, not copied): {rel}")
+    for rel in skipped[_SKIP_SYMLINK]:
+        print(f"  skipped:symlink (never followed, not copied): {rel}")
     for rel, exc in parse_errors:
         print(
             f"  skipped ({rel}: forced --format json but invalid JSON): {exc}",
