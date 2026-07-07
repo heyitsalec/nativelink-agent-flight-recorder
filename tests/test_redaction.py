@@ -40,6 +40,12 @@ COMMITTED_ROOTS = [
 FAKE_AWS_ACCESS_KEY_ID = "AKIAIOSFODNN7EXAMPLE"
 FAKE_AWS_SECRET = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"  # 40 chars, base64-ish
 FAKE_GH_TOKEN = "ghp_" + "A" * 36
+# Fine-grained PAT: the prefix is assembled from fragments (never a contiguous
+# ``github_pat_`` literal) — same technique as the Slack fixture below — so
+# GitHub push protection cannot flag this synthetic token, while the runtime
+# value still exercises the github_pat detector. Body is 82 chars of [A-Za-z0-9]
+# (GitHub's documented 22 + "_" + 59 shape length).
+FAKE_GITHUB_PAT = "github" + "_pat_" + ("A1b2C3d4E5" * 9)[:82]
 FAKE_GITLAB_PAT = "glpat-" + "EXAMPLE1234567890abcd"
 # Assembled from fragments (never a contiguous literal) so GitHub push
 # protection cannot match a synthetic-but-real-shaped Slack token; the runtime
@@ -61,6 +67,7 @@ POSITIVE_CASES = [
     ("aws_access_key_id", {"note": f"key {FAKE_AWS_ACCESS_KEY_ID} used"}),
     ("aws_secret_access_key", {"aws_secret_access_key": FAKE_AWS_SECRET}),
     ("github_token", {"gh": FAKE_GH_TOKEN}),
+    ("github_pat", {"gh": FAKE_GITHUB_PAT}),
     ("gitlab_pat", {"gl": FAKE_GITLAB_PAT}),
     ("slack_token", {"sl": FAKE_SLACK_TOKEN}),
     ("private_key_pem", {"pem": FAKE_PEM}),
@@ -101,6 +108,12 @@ def test_redaction_examples_are_masked_not_leaked() -> None:
 NEGATIVE_CASES = [
     ("sha256_digest", {"digest": "5b326db8593b9713861de82dea61a2b9d01d04a95f2919dc88f35dba5820932d"}),
     ("sha1_under_secret_key", {"aws_secret_access_key": "a" * 40}),  # pure hex == SHA-1 shape
+    # G3: an uppercase / mixed-case 40-hex digest under a credential-ish key must
+    # NOT be mislabelled an AWS secret. The SHA reject is case-insensitive.
+    ("sha1_upper_under_secret_key", {"aws_secret_access_key": "A" * 40}),
+    ("hex40_upper_under_secret_key", {"aws_secret_access_key": "ABCDEF0123456789" * 2 + "ABCDEF01"}),
+    ("hex40_mixed_under_secret_key", {"aws_secret_access_key": "AbCdEf0123456789" * 2 + "AbCdEf01"}),
+    ("hex64_upper_under_secret_key", {"secret": "ABCDEF0123456789" * 4}),  # 64-hex, uppercase
     ("bazel_label", {"target": "//tasks:escalation_policy_test"}),
     ("bazel_external_repo", {"target": "@local-remote-execution//examples:lre-cc"}),
     ("loopback_grpc", {"flag": "--remote_cache=grpc://127.0.0.1:50051"}),
@@ -132,6 +145,62 @@ def test_sha256_digest_stream_untouched() -> None:
     obj = {"a": "0" * 64, "b": "f" * 64, "c": "deadbeef" * 8}
     result = redact_json_text(json.dumps(obj))
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# G1: fine-grained github_pat_ tokens (invisible to the classic gh_ detector)
+# ---------------------------------------------------------------------------
+
+
+def test_github_fine_grained_pat_is_detected() -> None:
+    """github_pat_ tokens are their own shape; the classic gh[pousr]_ detector
+    cannot see them, so a dedicated detector must fire."""
+    assert len(FAKE_GITHUB_PAT) == len("github_pat_") + 82  # documented shape
+    result = redact_json_text(json.dumps({"note": FAKE_GITHUB_PAT}))
+    assert "github_pat" in _detectors(result)
+    dumped = json.dumps(result.payload)
+    assert "[REDACTED:github_pat]" in dumped
+    assert FAKE_GITHUB_PAT not in dumped
+
+
+def test_github_pat_prefix_lookalikes_not_flagged() -> None:
+    """The bare prefix, a short tail, or a plain word beginning 'github_pat...'
+    is not a token and must not be flagged."""
+    obj = {
+        "a": "github_pat_short",  # tail < 50 chars
+        "b": "github_pattern_matcher",  # not the github_pat_ prefix
+    }
+    assert redact_json_text(json.dumps(obj)).findings == []
+
+
+# ---------------------------------------------------------------------------
+# G2: AWS secret pasted into narrative / log text (in-text marker path)
+# ---------------------------------------------------------------------------
+
+
+def test_aws_secret_detected_in_narrative_log_text() -> None:
+    """A secret captured in stdout/log text — credential *name* in the body, an
+    innocuous JSON key — is caught by the in-text ``KEY=value`` marker path."""
+    obj = {"stdout": f"env dump: aws_secret_access_key={FAKE_AWS_SECRET} (captured)"}
+    result = redact_json_text(json.dumps(obj))
+    assert "aws_secret_access_key" in _detectors(result)
+    assert FAKE_AWS_SECRET not in json.dumps(result.payload)
+
+
+def test_aws_secret_detected_in_embedded_json_string() -> None:
+    """A ``"SecretAccessKey": "…"`` pair embedded *inside* a string value (e.g. a
+    captured API response) is caught even though the outer key is innocuous."""
+    obj = {"response_body": f'{{"SecretAccessKey": "{FAKE_AWS_SECRET}", "ok": true}}'}
+    result = redact_json_text(json.dumps(obj))
+    assert "aws_secret_access_key" in _detectors(result)
+    assert FAKE_AWS_SECRET not in json.dumps(result.payload)
+
+
+def test_aws_secret_in_text_still_rejects_hex_digest() -> None:
+    """The in-text path shares the digest reject: a marker followed by a pure-hex
+    (any case) 40-char value is a digest, not a secret."""
+    obj = {"stdout": "secret_access_key=" + "ABCDEF0123456789" * 2 + "ABCDEF01"}
+    assert redact_json_text(json.dumps(obj)).findings == []
 
 
 # ---------------------------------------------------------------------------

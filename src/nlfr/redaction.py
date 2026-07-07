@@ -8,16 +8,34 @@ Two things happen here, honestly labelled:
 1. **Home-path scrubbing** (legacy behaviour, preserved): ``/Users/<name>`` and
    ``/home/<name>`` prefixes collapse to ``${HOME}``.
 2. **Secret-pattern detection**: a registry of named detectors finds credential
-   shapes (AWS keys, GitHub/GitLab/Slack tokens, PEM private keys, bearer
+   shapes (AWS access-key ids + secret keys, GitHub classic *and* fine-grained
+   (``github_pat_``) tokens, GitLab/Slack tokens, PEM private keys, bearer
    credentials, JWTs, URL userinfo) and a separate **PII tier** (emails, public
    IPv4, hostnames). Matched spans are replaced with ``[REDACTED:<detector>]``.
+
+**Scope and limits — read this before trusting a published projection.**
+This layer is *defense-in-depth pattern matching, not a guarantee.* It reliably
+catches credentials that carry a recognizable **shape**: a known prefix
+(``AKIA`` / ``ghp_`` / ``github_pat_`` / ``glpat-`` / ``xox…``), a structural
+marker (a PEM header, a ``Bearer …`` scheme, a ``secret_access_key=…`` /
+``"SecretAccessKey": …`` assignment), or a credential-named JSON key. It
+**cannot** catch a *free-standing high-entropy secret* that has no prefix and no
+contextual marker — e.g. a bare 40-char AWS secret access key pasted into
+narrative log/stdout text with nothing around it — because a context-free
+"high-entropy string" rule would false-positive over the SHA-1/SHA-256 digests
+and base64 payloads that fill NLFR's corpus. Operators handling sensitive
+workspaces must treat published projections as *scrubbed on a best-effort
+basis*, not as *proven secret-free*, and should review evidence at the source
+rather than relying on regex redaction alone.
 
 Design constraints that keep the detectors honest on NLFR's own corpus:
 
 * NLFR projection JSON is *full* of 64-hex SHA-256 digests and 40-hex SHA-1
   shapes. **No detector flags a bare hex digest.** The AWS secret-key detector
-  only fires on a 40-char base64-ish value that is (a) under a credential-ish
-  key and (b) *not* pure lowercase hex — so it can never collide with SHA-1.
+  fires on a 40-char base64-ish value only when it is either (a) under a
+  credential-ish key or (b) introduced by an in-text ``secret_access_key=…``
+  marker — and in *both* paths a value that is pure hex (upper- **or** lowercase)
+  or all-digits is rejected, so it can never collide with a SHA-1/SHA-256 digest.
 * Loopback / link-local endpoints are **not** sensitive: ``grpc://127.0.0.1``
   and friends are excluded from the IPv4 detector.
 * Bazel labels (``//foo:bar``), file names (``flake.nix``), Python module paths
@@ -119,6 +137,14 @@ _AWS_ACCESS_KEY_ID = re.compile(r"(?<![A-Z0-9])AKIA[0-9A-Z]{16}(?![A-Z0-9])")
 
 _GITHUB_TOKEN = re.compile(r"\bgh[pousr]_[A-Za-z0-9]{36,255}\b")
 
+# Fine-grained personal access tokens: prefix ``github_pat_`` then GitHub's
+# documented 82-char body (22 alnum + ``_`` + 59 alnum, char set ``[A-Za-z0-9_]``
+# — the same shape gitleaks matches as ``github_pat_[0-9a-zA-Z_]{82}``). The
+# classic ``gh[pousr]_`` detector above cannot see these (``github_pat_`` has no
+# ``gh[pousr]_`` prefix), so without this they are entirely undetected. Tail
+# bounded ``{50,255}`` — tolerant of length drift while staying distinctive.
+_GITHUB_FINE_GRAINED_PAT = re.compile(r"\bgithub_pat_[A-Za-z0-9_]{50,255}\b")
+
 _GITLAB_PAT = re.compile(r"\bglpat-[A-Za-z0-9_-]{20,}")
 
 _SLACK_TOKEN = re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{10,}")
@@ -147,8 +173,24 @@ _AUTH_CREDENTIAL = re.compile(
 _AWS_SECRET_CANDIDATE = re.compile(
     r"(?<![A-Za-z0-9/+])[A-Za-z0-9/+]{40}(?![A-Za-z0-9/+=])"
 )
-_SHA1_HEX = re.compile(r"[0-9a-f]{40}")
+# Reject pure-hex digests. Case-INSENSITIVE on purpose: SHA digests in NLFR are
+# lowercase, but an uppercase/mixed-case 40-hex string in evidence is still a
+# digest, not a live secret — matching only ``[0-9a-f]`` here would let an
+# UPPERCASE 40-hex under a credential-ish key be mislabelled an AWS secret.
+_SHA1_HEX = re.compile(r"[0-9a-fA-F]{40}")
 _ALL_DIGITS = re.compile(r"[0-9]+")
+
+# In-text credential marker: an AWS secret-access-key name, a ``:`` or ``=``
+# separator (JSON ``"SecretAccessKey": "…"`` or shell ``KEY=…``, optional
+# quotes/whitespace), then a 40-char base64-ish value. This catches the
+# realistic log/stdout-capture case where the credential *name* lives inside a
+# string body rather than as the JSON key — without going context-free.
+_AWS_SECRET_IN_TEXT = re.compile(
+    r"(?i)(?:aws[_-]?)?secret[_-]?access[_-]?key"
+    r"['\"]?\s*[:=]\s*['\"]?"
+    r"(?P<val>[A-Za-z0-9/+]{40})"
+    r"(?![A-Za-z0-9/+=])"
+)
 
 #: Key names that make a 40-char base64-ish value look like a live secret.
 #: Deliberately excludes bare ``token`` (NLFR JSON has ``input_tokens`` etc.).
@@ -160,22 +202,41 @@ _SECRET_KEY_CONTEXT = re.compile(
 _HOME_PATH = re.compile(r"/(?:Users|home)/[^/\s\"'\\]+")
 
 
-def _aws_secret_finder(value: str, key: str | None) -> Iterable[Span]:
-    """Flag 40-char base64-ish secrets, but only under a credential-ish key.
+def _is_aws_secret_shape(text: str) -> bool:
+    """A 40-char base64-ish window is a *candidate* secret unless it is a digest.
 
-    Rejects pure-hex (SHA-1) and all-digit windows so NLFR's ubiquitous digests
-    never trip it.
+    Pure hex (upper- or lowercase — an SHA-1/short digest) and all-digit windows
+    are NLFR's ubiquitous non-secret shapes, so they are rejected in every path.
     """
 
-    if not key or not _SECRET_KEY_CONTEXT.search(key):
-        return
-    for match in _AWS_SECRET_CANDIDATE.finditer(value):
-        text = match.group(0)
-        if _SHA1_HEX.fullmatch(text):
-            continue
-        if _ALL_DIGITS.fullmatch(text):
-            continue
-        yield match.span(0)
+    if _SHA1_HEX.fullmatch(text):
+        return False
+    if _ALL_DIGITS.fullmatch(text):
+        return False
+    return True
+
+
+def _aws_secret_finder(value: str, key: str | None) -> Iterable[Span]:
+    """Flag 40-char base64-ish AWS secret keys via two contextual paths.
+
+    Path 1 (JSON key context): under a credential-ish JSON *key*, any 40-char
+    base64-ish value is a candidate. Path 2 (in-text marker): a
+    ``secret_access_key=…`` / ``"SecretAccessKey": …`` assignment *inside* a
+    string body (e.g. a stdout/log capture under an innocuous key) flags the
+    value that follows the marker. Both paths reject digests via
+    :func:`_is_aws_secret_shape`. Spans are de-duplicated so a value that matches
+    both paths is reported once.
+    """
+
+    spans: set[Span] = set()
+    if key and _SECRET_KEY_CONTEXT.search(key):
+        for match in _AWS_SECRET_CANDIDATE.finditer(value):
+            if _is_aws_secret_shape(match.group(0)):
+                spans.add(match.span(0))
+    for match in _AWS_SECRET_IN_TEXT.finditer(value):
+        if _is_aws_secret_shape(match.group("val")):
+            spans.add(match.span("val"))
+    yield from sorted(spans)
 
 
 SECRET_DETECTORS: list[Detector] = [
@@ -183,6 +244,7 @@ SECRET_DETECTORS: list[Detector] = [
     Detector("private_key_pem", "secret", _regex_finder(_PRIVATE_KEY_PEM)),
     Detector("aws_access_key_id", "secret", _regex_finder(_AWS_ACCESS_KEY_ID)),
     Detector("github_token", "secret", _regex_finder(_GITHUB_TOKEN)),
+    Detector("github_pat", "secret", _regex_finder(_GITHUB_FINE_GRAINED_PAT)),
     Detector("gitlab_pat", "secret", _regex_finder(_GITLAB_PAT)),
     Detector("slack_token", "secret", _regex_finder(_SLACK_TOKEN)),
     Detector("jwt", "secret", _regex_finder(_JWT)),

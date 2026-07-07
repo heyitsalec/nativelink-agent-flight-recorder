@@ -50,6 +50,14 @@ python3 scripts/redact-projection.py "$PROJECTIONS/action-graph.raw.json" "$PUBL
 python3 scripts/redact-projection.py "$PROJECTIONS/runway.raw.json" "$PUBLIC/runway.json"
 python3 scripts/redact-projection.py "$PROJECTIONS/proof.raw.json" "$PUBLIC/proof.json"
 
+# --check gate: redact mode deliberately passes some findings through (a
+# secret-shaped KEY is reported, never rewritten). Re-scan each *published*
+# file so any surviving finding aborts the publish loudly (set -e -> non-zero).
+echo "== Verify published projections carry no surviving findings (--check gate) =="
+for published in "$PUBLIC/action-graph.json" "$PUBLIC/runway.json" "$PUBLIC/proof.json"; do
+  python3 scripts/redact-projection.py --check "$published"
+done
+
 echo "== Rebuild canvas so dist serves updated projections =="
 npm --prefix apps/canvas run build
 

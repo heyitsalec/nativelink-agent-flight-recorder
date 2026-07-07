@@ -27,9 +27,17 @@ check (scan only, CI gate)::
 Detectors
 ---------
 Secret tier (always on): home_path, private_key_pem, aws_access_key_id,
-aws_secret_access_key (only under a credential-ish key; never a bare hex
-digest), github_token, gitlab_pat, slack_token, jwt, url_credentials,
+aws_secret_access_key (under a credential-ish key *or* introduced by an in-text
+``secret_access_key=…`` marker; never a bare hex digest, upper- or lowercase),
+github_token (classic ``gh[pousr]_``), github_pat (fine-grained
+``github_pat_``), gitlab_pat, slack_token, jwt, url_credentials,
 authorization_credential.
+
+This is defense-in-depth pattern matching, **not** a guarantee: a free-standing
+high-entropy secret with no prefix and no contextual marker is not detectable by
+regex without false-positiving over this corpus's SHA digests. See the module
+docstring in ``src/nlfr/redaction.py`` and the redaction section of
+``docs/wiki/reference/truth-labels.md``.
 
 PII tier: email (on; --no-email) and ipv4 (on, loopback/link-local excluded;
 --no-ip) are redacted by default. hostname is **opt-in** (--hostname): in this
