@@ -342,6 +342,7 @@ Start at the [documentation hub](docs/INDEX.md) for the two-hop review map
 | Compare lens + M9 proof | [Compare runs](docs/wiki/compare-runs.md) |
 | Proof samples + tryout | [proof-samples/](docs/proof-samples/README.md) |
 | Contributor rules | [Contributing](docs/CONTRIBUTING.md) |
+| Security policy + threat model | [SECURITY.md](SECURITY.md) · [threat model](docs/SECURITY_MODEL.md) |
 
 Depth pages live under [`docs/wiki/`](docs/wiki/) (evidence loop, truth labels,
 ADR-lite decisions). How this repo was built:
