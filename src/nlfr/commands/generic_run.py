@@ -63,6 +63,7 @@ def run_generic(args: argparse.Namespace) -> int:
 
     change_paths = list(args.change_path or [])
     before_hashes = _file_hashes(workspace, change_paths)
+    git_baselines = _git_baselines_from_sidecar(args.provenance_sidecar)
 
     runner = ProcessRunner(artifact_dir=artifact_root)
     results: list[ProcessResult] = []
@@ -80,8 +81,10 @@ def run_generic(args: argparse.Namespace) -> int:
         )
 
     after_hashes = _file_hashes(workspace, change_paths)
-    change_details = _derive_change_details(change_paths, before_hashes, after_hashes)
-    _warn_never_observed_paths(change_details)
+    change_details = _derive_change_details(
+        change_paths, before_hashes, after_hashes, git_baselines
+    )
+    _warn_unobservable_paths(change_details)
     _record_changes(
         conn,
         run_key=run_key,
@@ -89,6 +92,7 @@ def run_generic(args: argparse.Namespace) -> int:
         change_paths=change_paths,
         before_hashes=before_hashes,
         after_hashes=after_hashes,
+        git_baselines=git_baselines,
         run_id=run_id,
     )
 
@@ -249,24 +253,117 @@ def _sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+# Per-path change notes. Kept as constants so the stderr warnings and the JSON
+# evidence can never drift apart.
+_NOTE_NEVER_OBSERVED = "path never observed on disk"
+_NOTE_UNOBSERVABLE = (
+    "file already at its final state when recording began; change not observable "
+    "in the recording window (no git baseline available)"
+)
+
+
+def _extract_git_baselines(
+    sidecar: dict[str, Any] | None,
+) -> dict[str, dict[str, Any]]:
+    """Pull attestable git baselines out of a provenance sidecar.
+
+    The sidecar's optional ``git_baseline`` block maps a change path to its
+    PRE-EDIT state captured from the git object store. This is verifiable
+    evidence — the committed bytes survive a working-tree edit, so a skeptic can
+    recompute it with ``git show <commit>:<path> | sha256sum``. Only paths git
+    could attest appear here; untracked or non-repo paths are absent and fall
+    back to the recorder's own before/after observation window.
+    """
+
+    if not isinstance(sidecar, dict):
+        return {}
+    raw = sidecar.get("git_baseline")
+    if not isinstance(raw, dict):
+        return {}
+    baselines: dict[str, dict[str, Any]] = {}
+    for path, entry in raw.items():
+        if not isinstance(entry, dict):
+            continue
+        source = entry.get("source")
+        if not isinstance(source, dict) or source.get("kind") != "git_head":
+            continue
+        baselines[path] = {
+            "baseline_sha256": entry.get("baseline_sha256"),
+            "source": source,
+        }
+    return baselines
+
+
+def _git_baselines_from_sidecar(
+    sidecar_path: str | None,
+) -> dict[str, dict[str, Any]]:
+    """Read git baselines from a sidecar path without full validation.
+
+    Full sidecar validation happens later in ``_record_agent_provenance``; this
+    tolerant read only needs the (optional) ``git_baseline`` block so the change
+    derivation and the stderr warnings can run at the recorded-hashes stage.
+    """
+
+    if not sidecar_path:
+        return {}
+    try:
+        sidecar = json.loads(Path(sidecar_path).read_text())
+    except (OSError, ValueError):
+        return {}
+    return _extract_git_baselines(sidecar)
+
+
+def _baseline_evidence_ref(source: dict[str, Any]) -> str | None:
+    """A commit-pinned, directly verifiable evidence ref for a git baseline.
+
+    ``source.ref`` is symbolic (``git:HEAD:<path>``) because HEAD is what the
+    adapter read at record time; HEAD moves, so the evidence ref pins the
+    resolved commit as ``git:<commit>:<path>`` — verifiable with
+    ``git show <commit>:<path> | sha256sum``.
+    """
+
+    ref = source.get("ref")
+    commit = source.get("commit")
+    if not isinstance(ref, str) or not commit:
+        return None
+    parts = ref.split(":", 2)
+    if len(parts) == 3 and parts[0] == "git":
+        return f"git:{commit}:{parts[2]}"
+    return ref
+
+
 def _derive_change_details(
     change_paths: list[str],
     before_hashes: dict[str, str | None],
     after_hashes: dict[str, str | None],
+    git_baselines: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, dict[str, Any]]:
-    """Derive per-path change evidence from the ALREADY-RECORDED hashes.
+    """Derive per-path change evidence honestly, by OBSERVATION MODE.
 
-    ``changed`` is computed as ``before_sha256 != after_sha256`` — never asserted.
-    The mapping between hash states and ``changed`` is exactly:
+    ``changed`` is always derived, never asserted. What it is derived *against*
+    depends on what the recorder could actually OBSERVE:
 
-    - ``sha == sha`` (identical bytes) -> ``changed=false``
-    - ``sha != sha'`` (edited) -> ``changed=true``
-    - ``null -> sha`` (file appeared) / ``sha -> null`` (deleted) -> ``changed=true``
-    - ``null == null`` (absent on both sides) -> ``changed=false`` and a ``note``,
-      so an operator typo in ``--change-path`` stays visible in the evidence
-      instead of being silently recorded as a completed change.
+    - **git baseline present** (``changed_basis="git_baseline"``): the pre-edit
+      bytes came from ``git show HEAD:<path>`` — verifiable evidence that
+      survives the documented edit-first workflow. ``changed`` is
+      ``baseline_sha256 != after_sha256``. A ``null`` baseline means the path
+      was absent at HEAD, so a present ``after`` is an honest *appeared*. The
+      baseline is git-object evidence — labeled explicitly via ``baseline_source``
+      and never conflated with the recorder's own before/after window.
+    - **no git baseline** (``changed_basis="recorder_window"``): fall back to the
+      recorder's own before/after sample. ``changed`` is ``before != after``.
+
+      - ``sha != sha'`` (edited in window) / ``null -> sha`` (appeared) /
+        ``sha -> null`` (deleted) -> ``changed=true``.
+      - ``null == null`` (never on disk) -> ``changed=false`` + a note, so an
+        operator typo in ``--change-path`` stays visible.
+      - ``sha == sha`` with no baseline -> the file was already at its final
+        state when recording began; the recorder CANNOT attest whether the agent
+        changed it. ``changed=false`` + an explicit unobservable note (the
+        flagship edit-first case — recorded honestly, never silent; issue #52).
     """
 
+    git_baselines = git_baselines or {}
     details: dict[str, dict[str, Any]] = {}
     for path in change_paths:
         before = before_hashes.get(path)
@@ -274,22 +371,44 @@ def _derive_change_details(
         entry: dict[str, Any] = {
             "before_sha256": before,
             "after_sha256": after,
-            "changed": before != after,
         }
-        if before is None and after is None:
-            entry["note"] = "path never observed on disk"
+        baseline = git_baselines.get(path)
+        if baseline is not None:
+            baseline_sha = baseline.get("baseline_sha256")
+            entry["baseline_sha256"] = baseline_sha
+            entry["baseline_source"] = baseline.get("source")
+            entry["changed"] = baseline_sha != after
+            entry["changed_basis"] = "git_baseline"
+        else:
+            entry["changed"] = before != after
+            entry["changed_basis"] = "recorder_window"
+            if before is None and after is None:
+                entry["note"] = _NOTE_NEVER_OBSERVED
+            elif before is not None and before == after:
+                entry["note"] = _NOTE_UNOBSERVABLE
         details[path] = entry
     return details
 
 
-def _warn_never_observed_paths(change_details: dict[str, dict[str, Any]]) -> None:
-    """Emit an honest stderr warning for each --change-path never seen on disk."""
+def _warn_unobservable_paths(change_details: dict[str, dict[str, Any]]) -> None:
+    """Emit an honest stderr warning for each path the recorder could not attest."""
 
     for path, entry in change_details.items():
-        if entry.get("note"):
+        note = entry.get("note")
+        if note == _NOTE_NEVER_OBSERVED:
             print(
                 f"warning: --change-path {path!r} was never observed on disk "
                 "(before and after hashes both absent); recorded as changed=false",
+                file=sys.stderr,
+            )
+        elif note == _NOTE_UNOBSERVABLE:
+            print(
+                f"warning: --change-path {path!r} was already at its final state "
+                "when recording began and no git baseline is available, so the "
+                "recorder cannot attest whether the agent changed it (recorded as "
+                "changed=false). Record inside a git-tracked workspace so the "
+                "pre-edit state is captured from HEAD, or perform the edit inside "
+                "--command.",
                 file=sys.stderr,
             )
 
@@ -303,8 +422,16 @@ def _record_changes(
     before_hashes: dict[str, str | None],
     after_hashes: dict[str, str | None],
     run_id: str,
+    git_baselines: dict[str, dict[str, Any]] | None = None,
 ) -> None:
+    git_baselines = git_baselines or {}
     for path in change_paths:
+        evidence_refs = [f"run:{run_id}", f"path:{path}"]
+        baseline = git_baselines.get(path)
+        if baseline is not None and isinstance(baseline.get("source"), dict):
+            ref = _baseline_evidence_ref(baseline["source"])
+            if ref:
+                evidence_refs.append(ref)
         upsert_change(
             conn,
             stable_key=f"{run_key}:change:{path}",
@@ -316,7 +443,7 @@ def _record_changes(
             summary=f"generic run touched {path}",
             source_kind="collectable_v1",
             confidence="high",
-            evidence_refs=[f"run:{run_id}", f"path:{path}"],
+            evidence_refs=evidence_refs,
             redaction_state="safe",
         )
 
@@ -581,6 +708,7 @@ def _agent_provenance_payload(
     mode: str = "generic",
 ) -> dict[str, Any]:
     agent_side = sidecar["agent"]
+    git_baselines = _extract_git_baselines(sidecar)
     scenario_id = scenario or "agent-change"
     agent_name = str(agent_side.get("name") or "cursor-agent-change")
     prompt_sha = str(agent_side["prompt_sha256"])
@@ -593,6 +721,14 @@ def _agent_provenance_payload(
     adapter = sidecar.get("adapter")
     if isinstance(adapter, str) and adapter:
         evidence_refs.append(f"adapter:{adapter}")
+    # Verifiable pre-edit evidence: a skeptic can recompute each git baseline via
+    # `git show <commit>:<path> | sha256sum` and match it against baseline_sha256.
+    for baseline in git_baselines.values():
+        source = baseline.get("source")
+        if isinstance(source, dict):
+            ref = _baseline_evidence_ref(source)
+            if ref and ref not in evidence_refs:
+                evidence_refs.append(ref)
 
     # Receipt-verified agent provenance: a live Claude CLI receipt upgrades the
     # agent leg to collectable_v1 with the SERVER-resolved model id. Without a
@@ -616,10 +752,14 @@ def _agent_provenance_payload(
             agent_source_kind = "simulated_v1"
             agent_confidence = "medium"
 
-    # patch_applied is DERIVED from the recorded hashes, never asserted. A change
-    # is real only when a path's before/after SHA-256 differ; identical hashes and
-    # never-observed paths (null == null) are honestly changed=false.
-    change_details = _derive_change_details(change_paths, before_hashes, after_hashes)
+    # patch_applied is DERIVED, never asserted, and by OBSERVATION MODE: against
+    # the git baseline (pre-edit HEAD bytes) when the adapter captured one — which
+    # makes the documented edit-first flow evidence-backed — else against the
+    # recorder's own before/after window. Identical hashes with no baseline are an
+    # honest, LOUD changed=false (unobservable), not a silent one.
+    change_details = _derive_change_details(
+        change_paths, before_hashes, after_hashes, git_baselines
+    )
     patch_applied = any(entry["changed"] for entry in change_details.values())
 
     return {

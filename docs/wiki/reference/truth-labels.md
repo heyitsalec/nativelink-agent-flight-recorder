@@ -68,11 +68,28 @@ which is orthogonal to `source_kind` (how the value entered the system):
 | `receipt_verified_v1` | A live `nlfr agent-invoke` receipt pinning the server-resolved model id, session id, and `response_sha256` | Server-verified |
 
 `operator_asserted_v1` proves only that the recorded bytes changed (the
-`patch_applied` flag is **derived** from the before/after SHA-256, never asserted)
+`patch_applied` flag is **derived**, never asserted — see observation modes below)
 and that the operator asserted this model over this prompt hash — **not** that the
 named model authored the edit. The [Cursor adapter](../../../adapters/cursor/README.md)
 path tops out at `operator_asserted_v1` because `record-agent-change.sh` cannot
 attach a receipt; `receipt_verified_v1` requires `nlfr agent-invoke`.
+
+### Change observation modes (what `changed` / `patch_applied` is derived against)
+
+A bounded change is only as honest as what the recorder could **observe**. Each
+per-path entry in the change block records `changed_basis`:
+
+| `changed_basis` | When | `changed` derived from | Note |
+|-----------------|------|------------------------|------|
+| `git_baseline` | Git-tracked path; adapter captured the pre-edit bytes from `git show HEAD:<path>` | `baseline_sha256 != after_sha256` | Verifiable evidence (git object store); `baseline_source` carries `{kind: git_head, commit, ref}` and the commit-pinned ref is added to `evidence_refs`. Attests **"differs from HEAD"** — works even when the edit landed *before* recording. |
+| `recorder_window` | No git baseline | `before_sha256 != after_sha256` | The recorder's own before/after sample. Observes an edit made **inside** `--command`. |
+
+When there is **no** git baseline and `before == after` (both non-null), the file
+was already at its final state when recording began: the change is **not
+observable**. This is recorded as `changed=false` with an explicit note **and a
+stderr warning** — never a silent false (GitHub issue #52). The git baseline is
+collectable git-object evidence and is labeled as such; it is never conflated with
+the recorder's own observation window.
 
 ## Artifact verification (issue #25)
 

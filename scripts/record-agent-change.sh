@@ -114,12 +114,71 @@ cleanup() {
 }
 trap cleanup EXIT
 
-python3 - <<'PY' "$SIDECAR" "$MODEL" "$PROMPT_SHA256"
+python3 - <<'PY' "$SIDECAR" "$MODEL" "$PROMPT_SHA256" "$WORKSPACE" "$CHANGE_PATH"
+import hashlib
 import json
+import subprocess
 import sys
 from pathlib import Path
 
-sidecar_path, model, prompt_sha256 = sys.argv[1:4]
+sidecar_path, model, prompt_sha256, workspace, change_path = sys.argv[1:6]
+
+
+def _git(*args, text=False):
+    return subprocess.run(
+        ["git", "-C", workspace, *args],
+        capture_output=True,
+        text=text,
+        check=False,
+    )
+
+
+def git_baseline():
+    """Capture the PRE-EDIT bytes of change_path from the git object store.
+
+    The documented adapter workflow edits the file FIRST, then records — so the
+    recorder's own before/after window sees no change (before == after). Git,
+    however, still holds the committed pre-edit bytes: `git show HEAD:<path>`.
+    That is verifiable EVIDENCE (a skeptic reruns it and matches the hash), not
+    an operator assertion. Returns a baseline entry or None when git cannot
+    attest (not a repo, unborn HEAD, or an untracked path).
+    """
+
+    try:
+        probe = _git("rev-parse", "--is-inside-work-tree", text=True)
+        if probe.returncode != 0 or probe.stdout.strip() != "true":
+            return None
+        head = _git("rev-parse", "HEAD", text=True)
+        if head.returncode != 0:
+            return None  # unborn HEAD / no commits — nothing to baseline against
+        commit = head.stdout.strip()
+        toplevel = _git("rev-parse", "--show-toplevel", text=True)
+        if toplevel.returncode != 0:
+            return None
+        repo_root = Path(toplevel.stdout.strip())
+        abs_path = (Path(workspace) / change_path).resolve()
+        try:
+            repo_rel = abs_path.relative_to(repo_root).as_posix()
+        except ValueError:
+            return None  # change path escapes the repo tree
+        ref = f"git:HEAD:{repo_rel}"
+        source = {"kind": "git_head", "commit": commit, "ref": ref}
+        show = _git("show", f"HEAD:{repo_rel}")  # bytes at HEAD
+        if show.returncode == 0:
+            return {
+                "baseline_sha256": hashlib.sha256(show.stdout).hexdigest(),
+                "source": source,
+            }
+        # Absent at HEAD: attestable only if git tracks it (staged-new). Untracked
+        # files get no baseline — git cannot attest their pre-edit state.
+        tracked = _git("ls-files", "--error-unmatch", "--", repo_rel)
+        if tracked.returncode == 0:
+            return {"baseline_sha256": None, "source": source}  # -> appeared
+        return None
+    except Exception:  # noqa: BLE001 — git absent/unusable is a non-fatal no-baseline
+        return None
+
+
 payload = {
     "schema_version": "nlfr.agent_provenance.sidecar.v1",
     "adapter": "record-agent-change.sh",
@@ -132,6 +191,9 @@ payload = {
         "input_signal": "redacted: prompt withheld, hash retained",
     },
 }
+baseline = git_baseline()
+if baseline is not None:
+    payload["git_baseline"] = {change_path: baseline}
 Path(sidecar_path).write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
 PY
 

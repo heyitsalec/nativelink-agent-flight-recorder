@@ -134,24 +134,20 @@ def test_generic_run_idempotent_rerun(tmp_path: Path) -> None:
     assert count == 2
 
 
-def _write_sidecar(path: Path) -> Path:
-    path.write_text(
-        json.dumps(
-            {
-                "schema_version": "nlfr.agent_provenance.sidecar.v1",
-                "adapter": "test-record-agent-change",
-                "agent": {
-                    "kind": "cursor_adapter_v1",
-                    "name": "test-cursor-agent",
-                    "model": "composer-2.5",
-                    "prompt_sha256": "abc123" * 10 + "abcd",
-                },
-            },
-            indent=2,
-        )
-        + "\n",
-        encoding="utf-8",
-    )
+def _write_sidecar(path: Path, git_baseline: dict | None = None) -> Path:
+    payload = {
+        "schema_version": "nlfr.agent_provenance.sidecar.v1",
+        "adapter": "test-record-agent-change",
+        "agent": {
+            "kind": "cursor_adapter_v1",
+            "name": "test-cursor-agent",
+            "model": "composer-2.5",
+            "prompt_sha256": "abc123" * 10 + "abcd",
+        },
+    }
+    if git_baseline is not None:
+        payload["git_baseline"] = git_baseline
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     return path
 
 
@@ -161,19 +157,23 @@ def _run_generic_with_change(
     change_path: str,
     command: str,
     seed: dict[str, str] | None = None,
+    git_baseline: dict | None = None,
 ) -> tuple[subprocess.CompletedProcess[str], dict, Path]:
     """Run generic mode with an agent sidecar and return (result, provenance, out).
 
     ``seed`` maps workspace-relative paths to initial contents written before the
     run, so before/after hashes can be exercised across identical / edited /
-    appeared / deleted / never-observed states.
+    appeared / deleted / never-observed states. ``git_baseline`` injects the
+    optional sidecar block the adapter captures from ``git show HEAD:<path>``, so
+    the observation-mode derivation (changed against the baseline, not the
+    recorder's own window) can be exercised without a real repo here.
     """
 
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     for rel, contents in (seed or {}).items():
         (workspace / rel).write_text(contents, encoding="utf-8")
-    sidecar = _write_sidecar(tmp_path / "sidecar.json")
+    sidecar = _write_sidecar(tmp_path / "sidecar.json", git_baseline=git_baseline)
     output_dir = tmp_path / "out"
 
     result = run_nlfr(
@@ -204,6 +204,10 @@ def _run_generic_with_change(
 
 
 def test_patch_applied_false_on_identical_hash(tmp_path: Path) -> None:
+    # before == after with NO git baseline is the flagship edit-first case: the
+    # file was already at its final state when recording began, so the recorder
+    # cannot attest a change. It must be a LOUD changed=false — note + stderr
+    # warning — never a silent one (issue #52).
     result, provenance, _ = _run_generic_with_change(
         tmp_path,
         change_path="stable.txt",
@@ -214,11 +218,132 @@ def test_patch_applied_false_on_identical_hash(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr
     change = provenance["change"]
     assert change["patch_applied"] is False
-    assert change["paths"]["stable.txt"]["changed"] is False
-    assert (
-        change["paths"]["stable.txt"]["before_sha256"]
-        == change["paths"]["stable.txt"]["after_sha256"]
+    entry = change["paths"]["stable.txt"]
+    assert entry["changed"] is False
+    assert entry["before_sha256"] == entry["after_sha256"]
+    assert entry["changed_basis"] == "recorder_window"
+    assert entry["note"] == (
+        "file already at its final state when recording began; change not "
+        "observable in the recording window (no git baseline available)"
     )
+    assert "stable.txt" in result.stderr
+    assert "cannot attest" in result.stderr
+
+
+def test_git_baseline_backs_changed_for_edit_first(tmp_path: Path) -> None:
+    """THE observation-mode fix at the recorder level.
+
+    Edit-first: the file is already at its final state when recording begins, so
+    the recorder's own before == after (command is validation-only). A git
+    baseline in the sidecar carries the PRE-EDIT HEAD bytes, so ``changed`` is
+    derived against the baseline and comes out true — evidence-backed, not the
+    silent always-false the naive before/after derivation produced.
+    """
+
+    commit = "1" * 40
+    baseline_sha = "0" * 64  # pre-edit HEAD bytes, distinct from the final state
+    result, provenance, _ = _run_generic_with_change(
+        tmp_path,
+        change_path="edit.txt",
+        command="true",  # validation only — does NOT touch the file
+        seed={"edit.txt": "final state\n"},
+        git_baseline={
+            "edit.txt": {
+                "baseline_sha256": baseline_sha,
+                "source": {
+                    "kind": "git_head",
+                    "commit": commit,
+                    "ref": "git:HEAD:edit.txt",
+                },
+            }
+        },
+    )
+
+    assert result.returncode == 0, result.stderr
+    change = provenance["change"]
+    entry = change["paths"]["edit.txt"]
+    # Recorder's own window saw no change (edit-first) ...
+    assert entry["before_sha256"] == entry["after_sha256"]
+    # ... but the git baseline differs from after, so changed is TRUE, derived
+    # against the baseline and labeled as such.
+    assert entry["baseline_sha256"] == baseline_sha
+    assert entry["baseline_source"]["kind"] == "git_head"
+    assert entry["baseline_source"]["commit"] == commit
+    assert entry["changed"] is True
+    assert entry["changed_basis"] == "git_baseline"
+    assert change["patch_applied"] is True
+    # A skeptic gets a commit-pinned, verifiable evidence ref.
+    assert f"git:{commit}:edit.txt" in provenance["evidence_refs"]
+    # No unobservable warning when the baseline made the change observable.
+    assert "cannot attest" not in result.stderr
+
+
+def test_git_baseline_null_records_appeared(tmp_path: Path) -> None:
+    """A null git baseline means absent at HEAD: a present ``after`` is appeared."""
+
+    command = (
+        f"{sys.executable} -c "
+        "\"from pathlib import Path; Path('created.txt').write_text('new\\\\n')\""
+    )
+    result, provenance, _ = _run_generic_with_change(
+        tmp_path,
+        change_path="created.txt",
+        command=command,
+        git_baseline={
+            "created.txt": {
+                "baseline_sha256": None,
+                "source": {
+                    "kind": "git_head",
+                    "commit": "2" * 40,
+                    "ref": "git:HEAD:created.txt",
+                },
+            }
+        },
+    )
+
+    assert result.returncode == 0, result.stderr
+    entry = provenance["change"]["paths"]["created.txt"]
+    assert entry["baseline_sha256"] is None
+    assert entry["after_sha256"] is not None
+    assert entry["changed"] is True
+    assert entry["changed_basis"] == "git_baseline"
+    assert provenance["change"]["patch_applied"] is True
+
+
+def test_git_baseline_matching_after_is_no_change(tmp_path: Path) -> None:
+    """Baseline == after: the file matches HEAD, an evidence-backed changed=false.
+
+    This must be a quiet, honest false (the file genuinely equals HEAD), NOT the
+    loud unobservable warning — that warning is only for the no-baseline case.
+    """
+
+    import hashlib
+
+    content = "identical to head\n"
+    baseline_sha = hashlib.sha256(content.encode()).hexdigest()
+    result, provenance, _ = _run_generic_with_change(
+        tmp_path,
+        change_path="same.txt",
+        command="true",
+        seed={"same.txt": content},
+        git_baseline={
+            "same.txt": {
+                "baseline_sha256": baseline_sha,
+                "source": {
+                    "kind": "git_head",
+                    "commit": "3" * 40,
+                    "ref": "git:HEAD:same.txt",
+                },
+            }
+        },
+    )
+
+    assert result.returncode == 0, result.stderr
+    entry = provenance["change"]["paths"]["same.txt"]
+    assert entry["changed"] is False
+    assert entry["changed_basis"] == "git_baseline"
+    assert provenance["change"]["patch_applied"] is False
+    assert "cannot attest" not in result.stderr
 
 
 def test_patch_applied_true_on_edited_file(tmp_path: Path) -> None:
