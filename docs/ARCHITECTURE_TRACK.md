@@ -60,9 +60,15 @@ remote-execution proof, real-toolchain proof, and the product vision pass.
 
 **Goal:** “Fast” is measurable in proof JSON, not rhetoric.
 
-**Proven (Nix, `collectable_v1`):** cold `hit_rate` 0.0 / 8.17s vs warm
-`hit_rate` 1.0 / 5.48s (`warm_hit_rate_higher` and `warm_duration_lower` both
-true). Evidence: `data/cold-warm-proof/summary.json`.
+**Proven (Nix, `collectable_v1`):** cold `hit_rate` 0.0 / 9.04s vs warm
+`hit_rate` 1.0 / 6.12s (`warm_hit_rate_higher` and `warm_duration_lower` both
+true) — the latest CI numbers, recorded by run
+[`28862144465`](https://github.com/heyitsalec/nativelink-agent-flight-recorder/actions/runs/28862144465)
+on `main` under Bazel 7.4.1 (bazelisk-resolved from the demo workspace pin, in
+Nix). The committed
+[`cold-warm-summary.json`](proof-samples/cold-warm-summary.json) shows the
+`summary.json` shape from an earlier reference recording — wall-clock seconds
+drift run to run; the hit-rate pattern (cold 0.0 → warm 1.0) does not.
 
 - Re-run cold/warm in Nix; persist timing + cache `hit_rate` in proof packet
 - Projector exposes collectable cache economics (hits, misses, rate — not dollar claims)

@@ -21,11 +21,11 @@
         "proof_blocks": 0,
         "targets": 5
       },
-      "database": "<repo>/data/two-act-spark-stub/nlfr.sqlite",
+      "database": "<repo>[REDACTED:abs_path]/nlfr.sqlite",
       "run_id": "runs_c718f4087463289ceaff644c",
       "run_key": "two-act-underspec-act1:cache-only:2026-06-10T15:54:15.283750Z",
       "run_metadata": {
-        "artifact_root": "<repo>/data/two-act-spark-stub/runs/run_0077b7d2d2bfe579bf3665ce/artifacts",
+        "artifact_root": "<repo>[REDACTED:abs_path]/artifacts",
         "mode": "cache-only",
         "run_group": "two-act-spark-stub-act1",
         "run_id": "run_0077b7d2d2bfe579bf3665ce",
@@ -79,11 +79,11 @@
         "proof_blocks": 0,
         "targets": 5
       },
-      "database": "<repo>/data/two-act-spark-stub/nlfr.sqlite",
+      "database": "<repo>[REDACTED:abs_path]/nlfr.sqlite",
       "run_id": "runs_2213789efb618e86d0e74777",
       "run_key": "two-act-underspec-act2:cache-only:2026-06-10T15:54:21.097828Z",
       "run_metadata": {
-        "artifact_root": "<repo>/data/two-act-spark-stub/runs/run_0979df63efc3bc7e6fc12944/artifacts",
+        "artifact_root": "<repo>[REDACTED:abs_path]/artifacts",
         "mode": "cache-only",
         "run_group": "two-act-spark-stub-act2",
         "run_id": "run_0979df63efc3bc7e6fc12944",
@@ -141,9 +141,9 @@
     "nativelink.stdout.txt",
     "nativelink.stderr.txt"
   ],
-  "redaction_state": "safe",
+  "redaction_state": "redacted",
   "scenario_id": "two-act-underspec",
-  "scenario_path": "<repo>/demo/scenarios/two-act-underspec.json",
+  "scenario_path": "<repo>[REDACTED:abs_path]/two-act-underspec.json",
   "source_kind": "collectable_v1",
   "spark_outcome": "two_act_complete",
   "validation_leg_source_kind": "collectable_v1"

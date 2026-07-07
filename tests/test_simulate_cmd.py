@@ -51,6 +51,22 @@ def test_simulate_command_mutates_workspace_and_records_provenance(tmp_path) -> 
     assert before != after, "the patch must change the file hash — that is the evidence"
     assert change["patch_applied"] is True
     assert change["patch_applied"] == _derive_patch_applied(affected, change["before_hashes"], change["after_hashes"])
+
+    # #62: simulate now emits the SAME per-path change-evidence shape as
+    # `nlfr run --mode generic` (one schema for change evidence everywhere).
+    # Its basis is always its own fully-observed fixture window (copy pristine
+    # template -> hash -> apply the deterministic scenario diff -> re-hash), so
+    # changed_basis is "simulate_fixture" and a changed path carries no
+    # unobservable caveat. patch_applied is derived from these same paths.
+    entry = change["paths"]["tasks/priority_test.py"]
+    assert entry["before_sha256"] == before
+    assert entry["after_sha256"] == after
+    assert entry["changed"] is True
+    assert entry["changed_basis"] == "simulate_fixture"
+    assert "baseline_sha256" not in entry  # simulate never supplies git baselines
+    assert "note" not in entry  # observed change -> no honesty caveat needed
+    assert change["patch_applied"] is any(e["changed"] for e in change["paths"].values())
+
     assert provenance["build"]["run_id"] == scenario["build"]["run_id"]
     assert "run:" in " ".join(provenance["evidence_refs"])
 

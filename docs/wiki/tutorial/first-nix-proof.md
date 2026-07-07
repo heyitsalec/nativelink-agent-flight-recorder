@@ -12,11 +12,18 @@ This is the **real proof** path from [One pager § Evaluator paths](../../ONE_PA
 
 Cold/warm cache reuse with measurable deltas in proof JSON:
 
-- Cold run: `hit_rate` 0.0 (~8.17s in reference proof)
-- Warm run: `hit_rate` 1.0 (~5.48s in reference proof)
+- Cold run: `hit_rate` 0.0 (~9.04s in the latest CI recording)
+- Warm run: `hit_rate` 1.0 (~6.12s in the latest CI recording)
 - Labels: `collectable_v1`, `high`
 
-Evidence path: `data/cold-warm-proof/summary.json` (gitignored on your machine).
+Latest CI numbers recorded by run
+[`28862144465`](https://github.com/heyitsalec/nativelink-agent-flight-recorder/actions/runs/28862144465)
+on `main` under Bazel 7.4.1 (bazelisk-resolved from the demo workspace pin, in
+Nix). Wall-clock seconds drift run to run; the hit-rate pattern (cold 0.0 → warm
+1.0) does not. The committed
+[`cold-warm-summary.json`](../../proof-samples/cold-warm-summary.json) shows the
+`summary.json` shape from an earlier reference recording; your own run writes the
+full `data/cold-warm-proof/summary.json` (gitignored on your machine).
 
 ## Prerequisites
 

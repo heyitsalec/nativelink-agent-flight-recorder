@@ -19,6 +19,16 @@ from nlfr.agent_receipt import (
     receipt_sha256,
 )
 from nlfr.artifacts import ArtifactManifestEntry, write_artifact
+from nlfr.change_evidence import (
+    NOTE_BASELINE_MISMATCH_PREFIX as _NOTE_BASELINE_MISMATCH_PREFIX,
+    NOTE_BASELINE_UNVERIFIABLE as _NOTE_BASELINE_UNVERIFIABLE,
+    NOTE_MATCHES_BASELINE_PREFIX as _NOTE_MATCHES_HEAD_PREFIX,
+    NOTE_NEVER_OBSERVED as _NOTE_NEVER_OBSERVED,
+    NOTE_UNOBSERVABLE as _NOTE_UNOBSERVABLE,
+    derive_change_details,
+    note_baseline_mismatch as _note_baseline_mismatch,
+    patch_applied_from,
+)
 from nlfr.db import connect, initialize
 from nlfr.db.ingest import (
     upsert_artifact,
@@ -88,8 +98,12 @@ def run_generic(args: argparse.Namespace) -> int:
         )
 
     after_hashes = _file_hashes(workspace, change_paths)
-    change_details = _derive_change_details(
-        change_paths, before_hashes, after_hashes, git_baselines, baseline_rejections
+    change_details = derive_change_details(
+        change_paths,
+        before_hashes,
+        after_hashes,
+        git_baselines=git_baselines,
+        baseline_rejections=baseline_rejections,
     )
     _warn_unobservable_paths(change_details)
     _record_changes(
@@ -260,44 +274,6 @@ def _file_hashes(workspace: Path, paths: list[str]) -> dict[str, str | None]:
 
 def _sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
-
-
-# Per-path change notes. Kept as constants (or single-source builders) so the
-# stderr warnings and the JSON evidence can never drift apart.
-_NOTE_NEVER_OBSERVED = "path never observed on disk"
-_NOTE_UNOBSERVABLE = (
-    "file already at its final state when recording began; change not observable "
-    "in the recording window (no git baseline available)"
-)
-# A supplied sidecar git_baseline that this workspace's git object store could
-# not confirm. Both are recorded honestly and fall back to the recorder window.
-_NOTE_BASELINE_UNVERIFIABLE = "baseline unverifiable in this workspace"
-_NOTE_MATCHES_HEAD_PREFIX = "file matches HEAD"
-_NOTE_BASELINE_MISMATCH_PREFIX = "sidecar git_baseline did not match"
-
-
-def _note_matches_head(commit: str | None) -> str:
-    """Baseline == after under the strongest label is AMBIGUOUS, not proof.
-
-    The recorder cannot tell a genuine no-op (file truly unchanged) from an edit
-    that was committed *before* recording began (HEAD already moved past it). It
-    must SAY so rather than emit a silent ``changed=false`` under
-    ``git_baseline`` — and point at the escape hatch (``--baseline-ref``).
-    """
-
-    label = commit or "unknown commit"
-    return (
-        f"file matches HEAD ({label}) — either no change occurred, or the change "
-        "was already committed before recording began; pass --baseline-ref "
-        "<pre-edit-ref> to attest a committed change"
-    )
-
-
-def _note_baseline_mismatch(commit: str) -> str:
-    return (
-        f"sidecar git_baseline did not match the git object at {commit} — "
-        "baseline ignored"
-    )
 
 
 def _extract_git_baselines(
@@ -484,80 +460,6 @@ def _verify_git_baselines(
         else:  # unresolvable
             rejections[path] = _NOTE_BASELINE_UNVERIFIABLE
     return verified, rejections
-
-
-def _derive_change_details(
-    change_paths: list[str],
-    before_hashes: dict[str, str | None],
-    after_hashes: dict[str, str | None],
-    git_baselines: dict[str, dict[str, Any]] | None = None,
-    baseline_rejections: dict[str, str] | None = None,
-) -> dict[str, dict[str, Any]]:
-    """Derive per-path change evidence honestly, by OBSERVATION MODE.
-
-    ``changed`` is always derived, never asserted. What it is derived *against*
-    depends on what the recorder could actually OBSERVE:
-
-    - **git baseline present** (``changed_basis="git_baseline"``): the pre-edit
-      bytes came from ``git show <ref>:<path>`` and were RE-VERIFIED here against
-      the workspace git object store (see ``_verify_git_baselines``) — verifiable
-      evidence that survives the documented edit-first workflow. ``changed`` is
-      ``baseline_sha256 != after_sha256``. A ``null`` baseline means the path was
-      absent at the ref, so a present ``after`` is an honest *appeared*. When the
-      baseline EQUALS ``after`` the recorder cannot tell a genuine no-op from an
-      edit committed *before* recording began, so it emits an explicit note (and
-      a stderr warning) pointing at ``--baseline-ref`` — never a silent false.
-    - **no git baseline** (``changed_basis="recorder_window"``): fall back to the
-      recorder's own before/after sample. ``changed`` is ``before != after``.
-
-      - ``sha != sha'`` (edited in window) / ``null -> sha`` (appeared) /
-        ``sha -> null`` (deleted) -> ``changed=true``.
-      - ``null == null`` (never on disk) -> ``changed=false`` + a note, so an
-        operator typo in ``--change-path`` stays visible.
-      - ``sha == sha`` with no baseline -> the file was already at its final
-        state when recording began; the recorder CANNOT attest whether the agent
-        changed it. ``changed=false`` + an explicit unobservable note (the
-        flagship edit-first case — recorded honestly, never silent; issue #52).
-      - a REFUSED sidecar baseline (forged or unverifiable, see
-        ``baseline_rejections``) falls here too, carrying the refusal note.
-    """
-
-    git_baselines = git_baselines or {}
-    baseline_rejections = baseline_rejections or {}
-    details: dict[str, dict[str, Any]] = {}
-    for path in change_paths:
-        before = before_hashes.get(path)
-        after = after_hashes.get(path)
-        entry: dict[str, Any] = {
-            "before_sha256": before,
-            "after_sha256": after,
-        }
-        baseline = git_baselines.get(path)
-        if baseline is not None:
-            baseline_sha = baseline.get("baseline_sha256")
-            source = baseline.get("source")
-            entry["baseline_sha256"] = baseline_sha
-            entry["baseline_source"] = source
-            entry["changed"] = baseline_sha != after
-            entry["changed_basis"] = "git_baseline"
-            if baseline_sha is not None and baseline_sha == after:
-                commit = source.get("commit") if isinstance(source, dict) else None
-                entry["note"] = _note_matches_head(commit)
-        else:
-            entry["changed"] = before != after
-            entry["changed_basis"] = "recorder_window"
-            rejection = baseline_rejections.get(path)
-            if rejection is not None:
-                # A supplied baseline was refused (forged / unverifiable). The
-                # refusal is the salient story; it takes note precedence over the
-                # generic recorder-window notes below.
-                entry["note"] = rejection
-            elif before is None and after is None:
-                entry["note"] = _NOTE_NEVER_OBSERVED
-            elif before is not None and before == after:
-                entry["note"] = _NOTE_UNOBSERVABLE
-        details[path] = entry
-    return details
 
 
 def _warn_unobservable_paths(change_details: dict[str, dict[str, Any]]) -> None:
@@ -963,14 +865,14 @@ def _agent_provenance_payload(
     # the recorder's own before/after window. Identical hashes with no baseline are
     # an honest, LOUD changed=false (unobservable), not a silent one; a baseline
     # equal to after is flagged as an ambiguous commit-before-record case.
-    change_details = _derive_change_details(
+    change_details = derive_change_details(
         change_paths,
         before_hashes,
         after_hashes,
-        git_baselines,
-        baseline_rejections,
+        git_baselines=git_baselines,
+        baseline_rejections=baseline_rejections,
     )
-    patch_applied = any(entry["changed"] for entry in change_details.values())
+    patch_applied = patch_applied_from(change_details)
 
     return {
         "schema_version": "nlfr.agent_provenance.v1",

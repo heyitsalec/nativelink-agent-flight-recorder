@@ -51,12 +51,12 @@
     }
   },
   "cold": {
-    "artifact_root": "<repo>/data/cold-warm-proof/nlfr/runs/run_e62f8cc65ffd5866a3635b7c/artifacts",
+    "artifact_root": "<repo>[REDACTED:abs_path]/artifacts",
     "results": [
       {
         "command": [
-          "<bazel>/bin/bazel",
-          "--output_base=<repo>/data/cold-warm-proof/bazel-output-cold",
+          "<bazel>[REDACTED:abs_path]/bazel",
+          "--output_base=<repo>[REDACTED:abs_path]/bazel-output-cold",
           "test"
         ],
         "exit_code": 0,
@@ -74,15 +74,15 @@
     "nativelink.stdout.txt",
     "nativelink.stderr.txt"
   ],
-  "redaction_state": "safe",
+  "redaction_state": "redacted",
   "source_kind": "collectable_v1",
   "warm": {
-    "artifact_root": "<repo>/data/cold-warm-proof/nlfr/runs/run_266bc86ea3f643d4703e566b/artifacts",
+    "artifact_root": "<repo>[REDACTED:abs_path]/artifacts",
     "results": [
       {
         "command": [
-          "<bazel>/bin/bazel",
-          "--output_base=<repo>/data/cold-warm-proof/bazel-output-warm",
+          "<bazel>[REDACTED:abs_path]/bazel",
+          "--output_base=<repo>[REDACTED:abs_path]/bazel-output-warm",
           "test"
         ],
         "exit_code": 0,

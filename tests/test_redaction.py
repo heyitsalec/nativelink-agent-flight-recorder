@@ -414,48 +414,23 @@ def test_gate_roots_are_populated() -> None:
     ids=lambda p: str(p.relative_to(ROOT)),
 )
 def test_committed_projection_has_no_secret_or_pii_findings(json_path: Path) -> None:
-    """Every committed projection must scan clean of SECRET/PII shapes.
+    """Every committed projection must scan clean of ALL findings.
 
-    Scanned under the full publish config (``abs_path`` on). ``abs_path`` (path
-    tier) findings are *tolerated* here: the committed canvas/proof-sample corpus
-    is *demo* content that predates the projection-boundary path scrubber and
-    carries illustrative synthetic absolute paths (``/data/…``, ``/nix/store/…``,
-    ``/private/tmp``-style workspaces). Regenerating those demo samples through
-    the fixed pipeline is tracked in GitHub #64 — see the tripwire test below.
-    A real credential or PII leak (any non-``path``-tier finding) still fails the
-    build, which is exactly what this gate has guarded since issue #29.
+    Scanned under the full publish config (``abs_path`` on). This is the STRICT
+    zero-findings gate: no secret, no PII, and no non-home absolute local path
+    (``path`` tier) may survive into the shared corpus. It was temporarily
+    relaxed to tolerate ``abs_path`` findings while the demo samples predated the
+    projection-boundary path scrubber (GitHub #29 built the secret/PII gate; #64
+    tracked the abs_path regeneration). #64 regenerated the affected canvas/proof
+    samples through the scrubber (``nlfr redact`` write-mode), so the tolerance —
+    and its tripwire — are gone: a single new absolute path in a committed sample
+    now fails the build, exactly as a leaked credential does.
     """
     result = redact_payload(
         json.loads(json_path.read_text(encoding="utf-8")),
         RedactionConfig(redact=False),
     )
-    non_path = [f for f in result.findings if f.tier != "path"]
-    assert non_path == [], [f.format_line() for f in non_path]
-
-
-def test_committed_samples_carry_abs_path_findings_pending_regeneration() -> None:
-    """Tripwire tying the abs_path tolerance above to GitHub #64.
-
-    The demo corpus currently carries non-home absolute paths, so ``abs_path``
-    (on by default) reports findings over it. This asserts that tolerance is
-    *load-bearing*, not vacuous. When #64 regenerates the samples through the
-    path scrubber this count drops to zero and THIS test fails — a deliberate
-    signal to restore the strict zero-findings gate (delete the ``non_path``
-    filter above) rather than let a weaker gate persist silently.
-    """
-    total = 0
-    for json_path in _committed_json_files():
-        result = redact_payload(
-            json.loads(json_path.read_text(encoding="utf-8")),
-            RedactionConfig(redact=False),
-        )
-        total += sum(1 for f in result.findings if f.tier == "path")
-    assert total > 0, (
-        "No abs_path findings remain in the committed corpus — GitHub #64 is "
-        "resolved. Restore the strict zero-findings gate: change "
-        "test_committed_projection_has_no_secret_or_pii_findings to assert "
-        "result.findings == [] and delete this tripwire."
-    )
+    assert result.findings == [], [f.format_line() for f in result.findings]
 
 
 # --- scrub_local_paths: projection-boundary local-path scrubbing (#60) ------
