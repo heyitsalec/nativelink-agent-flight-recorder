@@ -104,9 +104,36 @@ def export_proof_packet(conn: Connection, *, run_group: str) -> dict[str, Any]:
             "failures": len(failures),
             "artifact_references": len(artifact_references),
             "artifact_verification": _artifact_verification_summary(artifact_references),
+            "build_tool": _build_tool_identity(stored_blocks),
         },
         "retention": proof_retention_block(),
         "blocks": blocks,
+    }
+
+
+def _build_tool_identity(stored_blocks: list[dict[str, Any]]) -> dict[str, Any]:
+    """Which build tool produced this run group's evidence, read from the BEP.
+
+    Rolls up every ``build_tool_identity_v1`` proof block (one per ingested BEP
+    that declared a ``started.buildToolVersion``) into the packet summary so an
+    exported packet states which Bazel produced the evidence. ``versions`` is empty
+    and ``recorded`` is ``False`` when no ingested BEP declared a build tool version
+    — the version is reported as unknown, never fabricated. Multiple entries mean
+    the run group mixes evidence from more than one Bazel version.
+    """
+
+    versions: list[str] = []
+    for item in stored_blocks:
+        if item.get("block_kind") != "build_tool_identity_v1":
+            continue
+        payload = item.get("payload")
+        version = payload.get("build_tool_version") if isinstance(payload, dict) else None
+        if isinstance(version, str) and version.strip() and version.strip() not in versions:
+            versions.append(version.strip())
+    return {
+        "tool": "bazel",
+        "versions": versions,
+        "recorded": bool(versions),
     }
 
 

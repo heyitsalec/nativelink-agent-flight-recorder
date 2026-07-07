@@ -11,10 +11,11 @@
     "run_group": { "type": "string" },
     "summary": {
       "type": "object",
-      "description": "Additive rollup fields are allowed. As of the artifact-integrity change (issue #25) the summary also carries an 'artifact_references' count and an 'artifact_verification' object; see $defs.",
+      "description": "Additive rollup fields are allowed. As of the artifact-integrity change (issue #25) the summary also carries an 'artifact_references' count and an 'artifact_verification' object; as of the BEP version-matrix change (issue #32) it also carries a 'build_tool' object stating which Bazel produced the evidence. See $defs.",
       "properties": {
         "artifact_references": { "type": "integer" },
-        "artifact_verification": { "$ref": "#/$defs/artifact_verification_metrics" }
+        "artifact_verification": { "$ref": "#/$defs/artifact_verification_metrics" },
+        "build_tool": { "$ref": "#/$defs/build_tool_identity" }
       }
     },
     "blocks": {
@@ -46,6 +47,15 @@
           "items": { "type": "string" }
         },
         "redaction_state": { "enum": ["safe", "redacted", "blocked", "unknown"] }
+      }
+    },
+    "build_tool_identity": {
+      "type": "object",
+      "description": "Which build tool produced the run group's evidence, read verbatim from the BEP started event's buildToolVersion field (proto build_tool_version). Emitted in summary.build_tool; each version is also recorded as a 'build_tool_identity_v1' proof block. 'versions' is empty and 'recorded' is false when no ingested BEP declared a build tool version (unknown, never fabricated); more than one entry means the run group mixes evidence from multiple Bazel versions.",
+      "properties": {
+        "tool": { "type": "string", "description": "Build tool name; 'bazel' for BEP evidence." },
+        "versions": { "type": "array", "items": { "type": "string" }, "description": "Distinct build tool release strings observed in this run group's BEP started events, e.g. ['7.4.1'] or ['9.0.0']." },
+        "recorded": { "type": "boolean", "description": "True when at least one ingested BEP declared a build tool version." }
       }
     },
     "artifact_verification_metrics": {
