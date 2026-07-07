@@ -552,6 +552,59 @@ def test_url_credentials_placeholder_does_not_re_match():
     assert recheck.findings == [], [f.detector for f in recheck.findings]
 
 
+def test_untrusted_placeholder_shaped_text_does_not_hide_secrets():
+    """FAIL-SAFE: a real secret wrapped in bracket-shaped text is still detected.
+
+    The idempotency guard recognizes ONLY the engine's own emitted placeholders (a
+    fixed set of detector NAMES derived from the registry). A permissive
+    ``[REDACTED:<anything>]`` guard would let untrusted input hide a live secret
+    inside bracket shape and pass ``--check`` clean on the FIRST pass — the #71
+    leak class, failing unsafe. These seed first-pass input that already contains
+    placeholder-shaped text and assert every real secret is still caught.
+    """
+
+    # (a) real AWS key inside a literal, UNrecognized [REDACTED:...] wrapper.
+    a = redact_text("the leaked key was [REDACTED:AKIAABCDEFGHIJKLMNOP] in the log")
+    assert "aws_access_key_id" in _detectors(a), a.findings
+    assert "AKIAABCDEFGHIJKLMNOP" not in a.payload
+
+    # (b) real secret ADJACENT to a genuine self-emitted placeholder.
+    b = redact_text(f"ref [REDACTED:url_credentials] and key {FAKE_AWS_ACCESS_KEY_ID} here")
+    assert "aws_access_key_id" in _detectors(b), b.findings
+    assert FAKE_AWS_ACCESS_KEY_ID not in b.payload
+
+    # (c) user-written literal [REDACTED:abs_path] next to a REAL abs path.
+    c = redact_text("[REDACTED:abs_path] /private/tmp/real/secret.json")
+    assert "abs_path" in _detectors(c), c.findings
+    assert "/private/tmp/real/secret.json" not in c.payload
+
+    # (a-json) redact_payload path: a real secret in placeholder-shaped text is
+    # detected AND the node's redaction_state is honestly upgraded to redacted.
+    doc = {"note": "key [REDACTED:AKIAABCDEFGHIJKLMNOP] here", "redaction_state": "safe"}
+    result = redact_payload(doc, RedactionConfig())
+    assert "aws_access_key_id" in _detectors(result), result.findings
+    assert result.payload["redaction_state"] == "redacted"
+    assert "AKIAABCDEFGHIJKLMNOP" not in json.dumps(result.payload)
+
+
+def test_placeholder_vocabulary_is_derived_from_the_registry():
+    """The recognized-placeholder set is EXACTLY the engine's emitted tokens.
+
+    home_path (which emits ``${HOME}``, not a bracket token) is excluded; every
+    ``[REDACTED:<name>]`` detector — including abs_path — is included. Deriving the
+    vocabulary from the live registry (never a hardcoded list) is what keeps an
+    UNrecognized ``[REDACTED:<secret>]`` from being mistaken for a placeholder and
+    is what makes the fail-safe guarantee above hold as detectors are added.
+    """
+
+    from nlfr.redaction import DETECTORS, _PLACEHOLDER_NAMES
+
+    emitted = {detector.name for detector in DETECTORS if detector.name != "home_path"}
+    assert set(_PLACEHOLDER_NAMES) == emitted
+    assert "home_path" not in _PLACEHOLDER_NAMES
+    assert "abs_path" in _PLACEHOLDER_NAMES
+
+
 def test_scrub_local_paths_roots_catches_single_segment_root_without_corruption():
     out, count = scrub_local_paths("/data", roots=["/data"])
     assert out == "[REDACTED:abs_path]/data"

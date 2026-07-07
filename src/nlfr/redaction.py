@@ -100,18 +100,6 @@ _HOME_REPLACEMENT = "${HOME}"
 #: (``/a/b/c/bazel-bep.json`` -> ``[REDACTED:abs_path]/bazel-bep.json``).
 _ABS_PATH_PLACEHOLDER = "[REDACTED:abs_path]"
 
-#: Matches an already-written ``[REDACTED:<detector>]`` placeholder. Redaction
-#: MUST be idempotent: a second pass over already-redacted text has to be a
-#: no-op, or the documented "self-redact at export, then re-gate with an
-#: independent ``nlfr redact --check``" flow fails on its own output. The failure
-#: is real: ``[REDACTED:url_credentials]`` carries a ``:`` and, sitting between
-#: ``://`` and ``@`` after a ``scheme://user:pass@host`` scrub, RE-matches the
-#: ``url_credentials`` detector — so a second ``--check`` reports a fresh finding
-#: even though the secret is already gone. Rather than special-case one detector,
-#: :func:`_resolve_spans` drops ANY candidate span that overlaps a placeholder,
-#: which makes every detector idempotent against the placeholders it writes.
-_PLACEHOLDER_RE = re.compile(r"\[REDACTED:[^\[\]]*\]")
-
 Span = tuple  # (start: int, end: int)
 Finder = Callable[[str, Optional[str]], Iterable[Span]]
 
@@ -443,6 +431,43 @@ PII_DETECTORS: list[Detector] = [
 #: (abs_path), then PII. home_path (secret) precedes abs_path so ``/Users``/
 #: ``/home`` keep their ``${HOME}`` collapse; abs_path skips those anyway.
 DETECTORS: list[Detector] = SECRET_DETECTORS + PATH_DETECTORS + PII_DETECTORS
+
+
+# ---------------------------------------------------------------------------
+# Idempotency: recognize ONLY the engine's own emitted placeholders
+# ---------------------------------------------------------------------------
+#
+# Redaction must be idempotent: a second pass over already-redacted text has to
+# be a no-op, or the documented "self-redact at export, then re-gate with an
+# independent ``nlfr redact --check``" flow fails on its own output. The failure
+# is real: ``[REDACTED:url_credentials]`` carries a ``:`` and, sitting between
+# ``://`` and ``@`` after a ``scheme://user:pass@host`` scrub, RE-matches the
+# ``url_credentials`` detector, so a second ``--check`` reports a fresh finding
+# even though the secret is already gone.
+#
+# The guard (:func:`_resolve_spans`) drops candidate spans overlapping a
+# placeholder — but it MUST recognize ONLY the exact tokens this engine emits,
+# never an arbitrary ``[REDACTED:<anything>]`` shape. A permissive
+# ``\[REDACTED:[^]]*\]`` would let an attacker hide a real secret inside
+# bracket-shaped text (``[REDACTED:AKIA…realkey…]``) and pass ``--check`` clean on
+# the FIRST pass — a fail-UNSAFE leak. So the vocabulary is DERIVED from the
+# registry: a detector emits ``[REDACTED:<name>]`` exactly when its replacement is
+# the default (home_path is the sole exception — it emits ``${HOME}``). The
+# interior of a recognized token is therefore always a fixed detector *name*,
+# never variable secret content, so a recognized token can never conceal a
+# secret; anything wrapped in an UNrecognized ``[REDACTED:x]`` is still scanned.
+_PLACEHOLDER_NAMES: tuple[str, ...] = tuple(
+    sorted(
+        detector.name
+        for detector in DETECTORS
+        if detector.replacement_text() == _REDACTED.format(name=detector.name)
+    )
+)
+
+#: Matches ONLY an engine-emitted ``[REDACTED:<known-detector-name>]`` token.
+_PLACEHOLDER_RE = re.compile(
+    r"\[REDACTED:(?:" + "|".join(re.escape(name) for name in _PLACEHOLDER_NAMES) + r")\]"
+)
 
 
 # ---------------------------------------------------------------------------
