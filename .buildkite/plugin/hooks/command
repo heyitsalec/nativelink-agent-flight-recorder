@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# Buildkite command hook for the nlfr-redact-gate plugin (issue #82).
+#
+# Delegates the record -> redact-gate -> upload-decision core to the SHARED
+# lib/nlfr-ci-gate.sh (the same script the GitHub Action runs), then does the
+# Buildkite-specific artifact upload on ONLY the gate-blessed `upload-path` —
+# never the raw evidence tree unless `nlfr redact --check` passed.
+set -uo pipefail
+
+HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Map Buildkite plugin config (BUILDKITE_PLUGIN_NLFR_REDACT_GATE_*) to the
+# shared gate's neutral env contract.
+export NLFR_COMMAND="${BUILDKITE_PLUGIN_NLFR_REDACT_GATE_COMMAND:?nlfr-redact-gate: 'command' is required}"
+export NLFR_RUN_GROUP="${BUILDKITE_PLUGIN_NLFR_REDACT_GATE_RUN_GROUP:-${BUILDKITE_BUILD_NUMBER:-nlfr-ci}}"
+export NLFR_OUTPUT_DIR="${BUILDKITE_PLUGIN_NLFR_REDACT_GATE_OUTPUT_DIR:-data/nlfr-record}"
+export NLFR_STRICT="${BUILDKITE_PLUGIN_NLFR_REDACT_GATE_STRICT_REDACT:-true}"
+export NLFR_VERSION="${BUILDKITE_PLUGIN_NLFR_REDACT_GATE_NLFR_VERSION:-}"
+upload="${BUILDKITE_PLUGIN_NLFR_REDACT_GATE_UPLOAD_ARTIFACT:-true}"
+
+# The gate appends `key=value` result lines here; we read them back.
+out="$(mktemp)"
+export NLFR_CI_OUTPUT="$out"
+
+bash "$HOOK_DIR/../lib/nlfr-ci-gate.sh"
+gate_exit=$?
+
+redact_status="$(grep '^redact-status=' "$out" | tail -1 | cut -d= -f2-)"
+upload_path="$(grep '^upload-path=' "$out" | tail -1 | cut -d= -f2-)"
+record_exit="$(grep '^record-exit=' "$out" | tail -1 | cut -d= -f2-)"
+rm -f "$out"
+
+# Redact gate blocked (findings OR symlinks) => nothing safe to upload; fail.
+# `blocked*` matches both `blocked` (redact findings) and `blocked-symlinks`.
+case "$redact_status" in
+  blocked*)
+    echo "+++ :no_entry: NLFR redact gate BLOCKED ($redact_status)" >&2
+    echo "raw tree NOT uploaded; see the gate log above for offending items and remedies." >&2
+    [ "$gate_exit" -ne 0 ] || gate_exit=1
+    exit "$gate_exit"
+    ;;
+esac
+if [ "$gate_exit" -ne 0 ]; then
+  echo "nlfr-ci-gate failed (exit $gate_exit)" >&2
+  exit "$gate_exit"
+fi
+
+# Upload ONLY the gate-blessed path — a gate-private, symlink-free materialized
+# copy (see lib/nlfr-ci-gate.sh). `cd` into it so artifact keys stay relative
+# instead of embedding the temp path; buildkite-agent expands the glob.
+if [ "$upload" = "true" ] && [ -n "$upload_path" ] && [ -d "$upload_path" ]; then
+  ( cd "$upload_path" && buildkite-agent artifact upload "**/*" )
+fi
+
+# Faithfully surface the recorded build result: a red build stays red.
+exit "${record_exit:-1}"

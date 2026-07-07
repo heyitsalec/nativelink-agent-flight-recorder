@@ -329,6 +329,10 @@ python3 -m nlfr proof export --run-group latest
 
 CI reproduction recipe: [docs/CI_RECIPE.md](docs/CI_RECIPE.md).
 
+Drop NLFR into your own CI with the redact-gate baked in (GitHub Action,
+Buildkite plugin, Jenkins snippet — never uploads evidence that hasn't passed
+the redact gate): [docs/wiki/how-to/ci-integration.md](docs/wiki/how-to/ci-integration.md).
+
 ## Documentation
 
 Start at the [documentation hub](docs/INDEX.md) for the two-hop review map

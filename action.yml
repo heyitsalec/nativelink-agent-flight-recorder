@@ -1,0 +1,126 @@
+# NLFR record + redact-gate — a drop-in GitHub composite Action (issue #82).
+#
+# Wraps a Bazel command with `nlfr record`, then GATES the recorded evidence
+# through `nlfr redact` BEFORE any upload — so a copy-paste that drops the
+# redact step can never publish a raw evidence tree (the exact leak class NLFR
+# exists to prevent). Use it as a single pinned reference instead of hand-copied
+# YAML:
+#
+#     - uses: heyitsalec/nativelink-agent-flight-recorder@v0
+#       with:
+#         command: bazel test //...
+#
+# Runtime stays stdlib-only: this action shells out to `uvx` and adds NO Python
+# dependency to your repo.
+name: "NLFR record + redact-gate"
+description: >-
+  Record a Bazel build's evidence with NLFR and gate it through `nlfr redact`
+  before any artifact upload, so the raw evidence tree can never be published
+  without passing the redaction boundary.
+branding:
+  icon: shield
+  color: blue
+
+inputs:
+  command:
+    description: "The bazel command to wrap, e.g. 'bazel test //...'."
+    required: true
+  run-group:
+    description: "Run-group label for the recorded evidence."
+    required: false
+    default: ${{ github.run_id }}
+  output-dir:
+    description: "Directory for the recorded SQLite / artifacts / projections."
+    required: false
+    default: data/nlfr-record
+  upload-artifact:
+    description: "Upload the gated evidence as a build artifact (true/false)."
+    required: false
+    default: "true"
+  artifact-name:
+    description: "Name of the uploaded artifact."
+    required: false
+    default: nlfr-proof
+  nlfr-version:
+    description: "Pin the PyPI version of nlfr (default: '' = latest from PyPI)."
+    required: false
+    default: ""
+  strict-redact:
+    description: >-
+      true (default): FAIL the step on any redact finding OR any symlink present
+      at gate time, BEFORE upload; the upload is a symlink-stripped materialized
+      copy, so a raced-in symlink is stripped rather than followed.
+      false: scrub to a redacted mirror (which excludes symlinks) and upload
+      ONLY a materialized copy of it.
+    required: false
+    default: "true"
+
+outputs:
+  evidence-dir:
+    description: "Directory of recorded evidence."
+    value: ${{ steps.gate.outputs.evidence-dir }}
+  proof-path:
+    description: "Path to the proof-packet projection, if produced."
+    value: ${{ steps.gate.outputs.proof-path }}
+  redact-status:
+    description: "clean | scrubbed | blocked | blocked-symlinks | empty."
+    value: ${{ steps.gate.outputs.redact-status }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v5
+
+    - name: Record + redact-gate
+      id: gate
+      shell: bash
+      env:
+        NLFR_COMMAND: ${{ inputs.command }}
+        NLFR_RUN_GROUP: ${{ inputs.run-group }}
+        NLFR_OUTPUT_DIR: ${{ inputs.output-dir }}
+        NLFR_STRICT: ${{ inputs.strict-redact }}
+        NLFR_VERSION: ${{ inputs.nlfr-version }}
+      run: |
+        # Single source of truth for the record -> redact-gate -> upload-decision
+        # core, shared with the Buildkite plugin (.buildkite/plugin) and the
+        # Jenkins snippet so the redact guarantee cannot drift between CI systems.
+        # Its `key=value` results (redact-status, upload-path, record-exit, ...)
+        # land straight in this step's outputs via $GITHUB_OUTPUT.
+        NLFR_CI_OUTPUT="$GITHUB_OUTPUT" \
+          bash "${{ github.action_path }}/.buildkite/plugin/lib/nlfr-ci-gate.sh"
+
+    - name: Upload gated evidence
+      # Uploads ONLY the gate's blessed `upload-path`, which is a gate-private,
+      # symlink-free materialized copy (the gate never hands the uploader the live
+      # evidence dir, so there is no symlink for the uploader to dereference and
+      # no dependence on any upload-artifact follow flag). Never runs when the
+      # gate blocked. `always()` so a failed BUILD still uploads its evidence
+      # (then the next step re-fails the action on the build result).
+      # `!startsWith(..., 'blocked')` fails safe for every block reason
+      # (`blocked` findings AND `blocked-symlinks`); `upload-path != ''` is the
+      # authoritative guard (empty on any block).
+      if: ${{ always() && inputs.upload-artifact == 'true' && !startsWith(steps.gate.outputs.redact-status, 'blocked') && steps.gate.outputs.upload-path != '' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ steps.gate.outputs.upload-path }}
+
+    - name: Surface the recorded build result
+      # The redact gate never masks the build's real outcome: a red build stays
+      # red, an environment blocker surfaces its honest non-Bazel exit (127).
+      if: always()
+      shell: bash
+      env:
+        REDACT_STATUS: ${{ steps.gate.outputs.redact-status }}
+        RECORD_EXIT: ${{ steps.gate.outputs.record-exit }}
+      run: |
+        case "$REDACT_STATUS" in
+          blocked)
+            echo "::error::NLFR redact gate BLOCKED — secrets/abs-paths found; raw evidence was NOT uploaded." >&2
+            exit 1 ;;
+          blocked-symlinks)
+            echo "::error::NLFR redact gate BLOCKED — symlink(s) in the evidence tree would be dereferenced by the uploader; raw evidence was NOT uploaded. Remove them, or set strict-redact: false." >&2
+            exit 1 ;;
+        esac
+        exit "${RECORD_EXIT:-1}"
