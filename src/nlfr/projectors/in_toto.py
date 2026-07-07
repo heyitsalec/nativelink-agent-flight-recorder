@@ -18,6 +18,7 @@ database are byte-identical under ``json.dumps(sort_keys=True)``.
 
 from __future__ import annotations
 
+import sys
 from sqlite3 import Connection
 from typing import Any
 
@@ -64,14 +65,29 @@ def export_in_toto_statement(conn: Connection, *, run_group: str) -> dict[str, A
     run_ids = [run["id"] for run in runs]
     artifacts = rows(conn, "artifacts", run_ids)
 
+    subjects = _subjects(artifacts)
+    if not subjects:
+        # An in-toto Statement with an empty subject is schema-valid but vacuous
+        # as external evidence. Warn on stderr (still exporting, consistent with
+        # the other exporters) so an empty/nonexistent run group is never
+        # silently attested as if it had recorded artifacts.
+        print(
+            f"nlfr: run group '{run_group}' has no recorded artifacts; "
+            "statement has empty subject",
+            file=sys.stderr,
+        )
+
     statement = {
         "_type": IN_TOTO_STATEMENT_TYPE,
-        "subject": _subjects(artifacts),
+        "subject": subjects,
         "predicateType": PREDICATE_TYPE,
         "predicate": _predicate(proof, runs),
     }
-    # Structural privacy gate: a raw prompt must never appear anywhere in the
-    # exported Statement. Enforced against the WHOLE tree, not just receipts.
+    # Structural privacy gate: reject the forbidden prompt KEY NAMES
+    # (FORBIDDEN_PROMPT_KEYS) at every depth of the tree. This is a key-name
+    # gate, not a content scan; raw prompt CONTENT never reaches here because the
+    # receipt builder (nlfr.agent_receipt) only ever records the prompt's
+    # SHA-256, never the prompt text itself.
     _reject_forbidden_keys(statement, path="statement")
     return statement
 
@@ -182,9 +198,20 @@ def _artifact_verification(proof: dict[str, Any]) -> dict[str, Any]:
 def _agent_provenance(proof: dict[str, Any]) -> list[dict[str, Any]]:
     """Agent-receipt provenance class per agent_provenance block — hashes only.
 
-    Never emits a raw prompt: only ``prompt_sha256`` and the receipt provenance
-    summary (which is itself hash/id/usage only). The whole Statement is re-checked
-    against FORBIDDEN_PROMPT_KEYS before it is returned.
+    Emits only ``prompt_sha256`` and the receipt provenance summary (itself
+    hash/id/usage only). Two independent, mechanically true properties keep raw
+    prompt text out of the Statement:
+
+    1. Forbidden prompt KEY NAMES (``FORBIDDEN_PROMPT_KEYS`` = ``prompt``,
+       ``raw_prompt``, ``prompt_text``, ``system_prompt``) are structurally
+       rejected at every depth of the tree by ``_reject_forbidden_keys`` before
+       the Statement is returned. This is a forbidden-key-name gate, not a scan
+       of value content.
+    2. Raw prompt CONTENT never enters storage in the first place: the receipt
+       builder (``nlfr.agent_receipt.build_receipt``) records only the prompt's
+       SHA-256 (``prompt_sha256``); the raw prompt is never stored or exported
+       (AGENTS.md privacy rule), so there is no prompt-text value anywhere below
+       for a content scan to find.
     """
 
     provenance: list[dict[str, Any]] = []

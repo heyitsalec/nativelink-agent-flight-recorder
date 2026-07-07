@@ -69,27 +69,63 @@ NLFR deliberately stops at the bare Statement so you can wrap and sign it with t
 tooling you already trust. The commands below use **external tooling**
 ([Sigstore cosign](https://docs.sigstore.dev/)); NLFR neither ships nor wraps them.
 
-```bash
-# External tooling — install cosign yourself.
-# Keyless (Sigstore OIDC) signing of the NLFR Statement as a DSSE attestation over a subject file:
-cosign attest-blob \
-  --predicate out/proof.intoto.json \
-  --type https://github.com/heyitsalec/nativelink-agent-flight-recorder/attestation/proof-packet/v1 \
-  --bundle out/proof.intoto.bundle.json \
-  path/to/one/subject-artifact
+The whole point is to sign **NLFR's own Statement, with NLFR's own recorded
+subjects intact**. To do that you must give cosign the **complete** Statement,
+not just its predicate. Modern cosign has a dedicated flag for exactly this:
+`cosign attest-blob --statement <file>`, which wraps a pre-built in-toto Statement
+in a DSSE envelope **without touching its subjects**.
 
-# Verify the resulting bundle (again, external tooling):
+> ⚠️ **Do not use `--predicate` for this.** `cosign attest-blob --predicate <file>`
+> treats the file as a *bare predicate* and computes the subject from a **positional
+> blob argument** you pass — a local file that has nothing to do with NLFR's
+> recorded artifacts. The result is a DSSE whose single subject is that random
+> local file and whose predicate is NLFR's **entire Statement double-nested inside
+> it**. None of NLFR's recorded subjects survive, and it fails this export's own
+> predicate contract. Use `--statement`, shown below.
+
+This flag requires a cosign new enough to support it (verified here with **cosign
+v3.1.1**). Confirm yours does: `cosign attest-blob --help | grep -- --statement`.
+
+```bash
+# External tooling — install cosign yourself. Offline key pair for this example:
+#   cosign generate-key-pair        # writes cosign.key / cosign.pub
+# (Sign with a KMS/keyless signer instead per your policy — the load-bearing flag
+# is --statement, which is signer-independent.)
+
+PREDICATE_TYPE=https://github.com/heyitsalec/nativelink-agent-flight-recorder/attestation/proof-packet/v1
+
+# Wrap NLFR's COMPLETE Statement (subjects intact) in a signed DSSE bundle:
+cosign attest-blob \
+  --statement out/proof.intoto.json \
+  --key cosign.key \
+  --bundle out/proof.intoto.bundle.json
+
+# Verify the signature over the bundle (offline public key). --check-claims=false
+# verifies the envelope/signature without needing the subject bytes on disk:
 cosign verify-blob-attestation \
+  --key cosign.pub \
+  --type "$PREDICATE_TYPE" \
   --bundle out/proof.intoto.bundle.json \
-  --type https://github.com/heyitsalec/nativelink-agent-flight-recorder/attestation/proof-packet/v1 \
-  --certificate-identity-regexp '.*' \
-  --certificate-oidc-issuer-regexp '.*' \
-  path/to/one/subject-artifact
+  --check-claims=false
+
+# Full claims check: also prove a recorded subject's bytes match its digest by
+# passing that artifact file positionally (its sha256 must equal a subject digest):
+cosign verify-blob-attestation \
+  --key cosign.pub \
+  --type "$PREDICATE_TYPE" \
+  --bundle out/proof.intoto.bundle.json \
+  path/to/recorded/artifact
 ```
 
-> The exact `cosign` flags depend on your cosign version and signing policy. Treat
-> the above as a shape, not a copy-paste contract — the load-bearing part is that the
-> NLFR Statement is a standard DSSE-ready predicate your signer already understands.
+Both commands above print `Verified OK` on success. Decoding the resulting DSSE
+payload (`.dsseEnvelope.payload`, base64) yields **NLFR's Statement byte-for-byte**
+— identical `_type`, `predicateType`, and `subject[]` — which is exactly what a
+downstream verifier expects.
+
+> The exact signer configuration (local key vs. KMS vs. keyless OIDC) depends on
+> your policy; swap `--key cosign.key` for your signer. The load-bearing,
+> non-negotiable part is `--statement` (not `--predicate`): it is what keeps NLFR's
+> recorded subjects in the signed envelope.
 
 ## Honest limits
 

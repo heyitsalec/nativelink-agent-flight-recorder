@@ -373,6 +373,43 @@ def test_failing_evidence_still_exports_honestly_with_counts(tmp_path: Path) -> 
     assert statement["_type"] == "https://in-toto.io/Statement/v1"
 
 
+def test_empty_run_group_warns_but_still_exports_valid_empty_statement(
+    tmp_path: Path, capsys
+) -> None:
+    """An empty/nonexistent run group is schema-valid but vacuous as evidence.
+
+    NLFR still exports (consistent with the other exporters) but emits a clear
+    stderr warning so an empty run group is never silently attested as if it
+    carried recorded artifacts.
+    """
+
+    conn = initialize(connect(tmp_path / "empty.sqlite"))
+    statement = export_in_toto_statement(conn, run_group="ghost-group")
+
+    err = capsys.readouterr().err
+    assert "nlfr: run group 'ghost-group' has no recorded artifacts" in err
+    assert "empty subject" in err
+
+    # Still a structurally valid in-toto v1 Statement envelope, just empty.
+    assert set(statement) == {"_type", "subject", "predicateType", "predicate"}
+    assert statement["_type"] == IN_TOTO_STATEMENT_TYPE
+    assert statement["predicateType"] == PREDICATE_TYPE
+    assert statement["subject"] == []
+    assert statement["predicate"]["run_identity"] == []
+
+
+def test_non_empty_run_group_does_not_warn(tmp_path: Path, capsys) -> None:
+    """The empty-subject warning must not fire when artifacts were recorded."""
+
+    conn, _ = seed_db(tmp_path)
+    statement = export_in_toto_statement(conn, run_group=RUN_GROUP)
+
+    err = capsys.readouterr().err
+    assert "no recorded artifacts" not in err
+    assert "empty subject" not in err
+    assert statement["subject"]  # non-empty, as recorded
+
+
 def test_predicate_contract_parses_and_matches_style(tmp_path: Path) -> None:
     payload = json.loads(
         (ROOT / "contracts" / "in_toto_proof_predicate.v1.json").read_text()
