@@ -12,6 +12,7 @@ from nlfr.commands import export_cmds
 from nlfr.commands import ingest_cmd
 from nlfr.commands import init_cmd
 from nlfr.commands import record_cmd
+from nlfr.commands import redact_cmd
 from nlfr.commands import run_cmd
 from nlfr.commands import serve_cmd
 from nlfr.commands import simulate_cmd
@@ -25,6 +26,7 @@ def register_commands(subparsers: argparse._SubParsersAction[argparse.ArgumentPa
     agent_invoke_cmd.register(subparsers)
     run_cmd.register(subparsers)
     record_cmd.register(subparsers)
+    redact_cmd.register(subparsers)
     ingest_cmd.register(subparsers)
     export_cmds.register(subparsers)
     compare_cmd.register(subparsers)

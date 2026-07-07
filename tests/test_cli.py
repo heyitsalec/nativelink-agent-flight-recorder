@@ -39,6 +39,7 @@ def test_module_help_lists_registered_commands() -> None:
         "compare",
         "serve",
         "simulate",
+        "redact",
     ):
         assert command in result.stdout
 
@@ -166,3 +167,48 @@ def test_local_exec_run_records_environment_blocker_with_executor_metadata(tmp_p
     )
     assert "--remote_executor=grpc://127.0.0.1:50051" in bazel_result["command"]
     assert bazel_result["command"][-2:] == payload["bazel_args"]
+
+
+def test_redact_command_scrubs_local_paths_to_output(tmp_path) -> None:
+    """`nlfr redact INPUT OUTPUT` ships the module's redaction in the wheel."""
+    source = tmp_path / "raw.json"
+    dest = tmp_path / "out.json"
+    source.write_text(
+        json.dumps({"artifact_root": "/Users/example/proj/data/run/artifacts"}),
+        encoding="utf-8",
+    )
+    result = run_nlfr("redact", str(source), str(dest))
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(dest.read_text(encoding="utf-8"))
+    assert "/Users/example" not in json.dumps(payload)
+
+
+def test_redact_check_flags_findings_with_nonzero_exit(tmp_path) -> None:
+    source = tmp_path / "raw.json"
+    source.write_text(json.dumps({"home": "/Users/example/x/y"}), encoding="utf-8")
+    result = run_nlfr("redact", "--check", str(source))
+
+    assert result.returncode == 1
+    assert "finding" in result.stderr
+    # --check writes nothing.
+    assert list(tmp_path.glob("*.out")) == []
+
+
+def test_redact_check_clean_input_exits_zero(tmp_path) -> None:
+    source = tmp_path / "clean.json"
+    source.write_text(json.dumps({"label": "//tasks:x", "kind": "run"}), encoding="utf-8")
+    result = run_nlfr("redact", "--check", str(source))
+
+    assert result.returncode == 0, result.stderr
+    assert "OK" in result.stdout
+
+
+def test_redact_help_available_from_packaged_module_entrypoint() -> None:
+    # Packaging smoke: `nlfr redact` is reachable through the same `python -m
+    # nlfr` entry point the wheel installs. No wheel-build test exists in this
+    # repo, so this asserts the command is registered and its help renders.
+    result = run_nlfr("redact", "--help")
+    assert result.returncode == 0
+    assert "redact" in result.stdout
+    assert "--check" in result.stdout

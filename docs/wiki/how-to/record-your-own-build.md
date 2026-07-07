@@ -64,6 +64,37 @@ nlfr record --json -- bazel test //your:target
 If you already pass your own `--build_event_json_file`, `nlfr record` honors it
 and ingests from that path instead of injecting a second one.
 
+## Before you share a projection
+
+The recorder records **raw** evidence locally — an invocation's real `cwd` and
+the injected `--build_event_json_file=<absolute path>` land in the SQLite spine
+verbatim, which is correct: local evidence should be faithful. The **projection**
+is the sharing boundary. `nlfr graph export` and `nlfr runway export` scrub local
+absolute paths (home dirs *and* `/private/tmp`-style paths) to a
+basename-preserving placeholder — `/Users/you/repo/workspace` becomes
+`[REDACTED:abs_path]/workspace` — and any node that had to be scrubbed is
+relabelled `redaction_state: redacted` rather than claiming `safe`. The recorded
+SQLite row keeps its raw, record-time value; scrubbing happens only when the
+shared projection is built.
+
+Belt-and-suspenders: before you attach **any** projection to a PR or dashboard,
+gate it with `nlfr redact` (defense-in-depth pattern matching for credentials +
+PII on top of the path scrub — **not** a guarantee; review sensitive evidence at
+the source too):
+
+```bash
+# Fail the share if a secret/PII shape is present (writes nothing; exit 1 on find)
+nlfr redact --check projections/graph-<run-group>.json
+
+# Or write a scrubbed copy to attach instead of the raw projection
+nlfr redact projections/graph-<run-group>.json graph-shareable.json
+```
+
+`--check` exits non-zero and prints each finding (detector, JSON path, masked
+excerpt — never the raw secret) so it drops straight into a pre-publish CI step.
+See the [redact CLI reference](../reference/cli.md#redact) and the module
+docstring in `src/nlfr/redaction.py` for the honest scope and limits.
+
 ## Failing builds are the product
 
 A non-zero Bazel exit is a **valid** recording — the failure evidence is exactly

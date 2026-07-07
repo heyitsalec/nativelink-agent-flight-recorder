@@ -253,6 +253,11 @@ def run(args: argparse.Namespace) -> int:
         source_kind="collectable_v1",
         confidence="high",
         evidence_refs=[f"run:{run_id}", f"workspace-marker:{marker}"],
+        # Recorded evidence is local SQLite; the row keeps its record-time label.
+        # The SHARING boundary is the projection: graph/runway recompute
+        # redaction_state at projection time (nlfr.projectors.common.
+        # redact_projection_node) so any local abs path scrubbed there is
+        # labelled ``redacted``, never ``safe`` (issue #60).
         redaction_state="safe",
     )
 
@@ -280,6 +285,8 @@ def run(args: argparse.Namespace) -> int:
             data=bep_bytes,
             producer_command=final_command,
             config_hash=None,
+            # Record-time label on local evidence; projection-time recomputation
+            # is the honest sharing boundary (see the run upsert above, #60).
             redaction_state="safe",
             source_kind="collectable_v1",
             confidence="high",
@@ -331,6 +338,9 @@ def run(args: argparse.Namespace) -> int:
         "artifacts": [entry.to_manifest() for entry in manifest_entries],
         "source_kind": "collectable_v1",
         "confidence": "high",
+        # run.json is local recorded evidence and legitimately carries the raw
+        # command/workspace/bep_path. Label stays record-time; the shared
+        # graph/runway projections scrub + relabel at projection time (#60).
         "redaction_state": "safe",
     }
     summary_entry = write_artifact(
@@ -339,6 +349,8 @@ def run(args: argparse.Namespace) -> int:
         data=json.dumps(run_payload, indent=2, sort_keys=True) + "\n",
         producer_command=["nlfr", "record"],
         config_hash=None,
+        # Record-time label on the local run.json artifact; projection layer is
+        # the sharing boundary that recomputes redaction_state (#60).
         redaction_state="safe",
         source_kind="collectable_v1",
         confidence="high",
@@ -633,6 +645,8 @@ def _persist_run_rows(
             source_kind="collectable_v1",
             confidence="high",
             evidence_refs=[f"run:{run_id}", f"invocation:{invocation_id}"],
+            # Record-time label; graph/runway scrub + relabel at the sharing
+            # boundary (nlfr.projectors.common.redact_projection_node, #60).
             redaction_state="safe",
         )
 

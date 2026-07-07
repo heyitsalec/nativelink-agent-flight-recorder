@@ -151,6 +151,45 @@ python3 -m nlfr runway export --run-group baseline \
 
 Exports validation runway projection. The `--db` must already exist (read-only).
 
+Both `graph export` and `runway export` scrub local absolute paths (an
+invocation's `cwd`, the injected `--build_event_json_file=<abs path>`) to a
+basename-preserving `[REDACTED:abs_path]/<basename>` placeholder at projection
+time, and relabel any scrubbed node `redaction_state: redacted` — never `safe`
+for content that had to be scrubbed. The recorded SQLite row is never mutated.
+
+## redact
+
+Scrub secrets/PII from a projection JSON before you attach it to a PR or
+dashboard. Ships in the wheel — the packaged, adopter-facing equivalent of the
+repo-side `scripts/redact-projection.py`.
+
+```bash
+# Scan only — exit 1 if any secret/PII shape is found; writes nothing
+python3 -m nlfr redact --check projections/graph-baseline.json
+
+# Redact + write a shareable copy (2-space indent, sorted keys)
+python3 -m nlfr redact projections/graph-baseline.json graph-shareable.json
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `input` | — | projection JSON to scan/redact |
+| `output` | — | destination JSON (required unless `--check`) |
+| `--check` | off | scan only; write nothing; exit 1 on any finding |
+| `--no-pii` | off | disable the default PII detectors (email + ipv4) |
+| `--no-email` | off | disable the email detector |
+| `--no-ip` | off | disable the IPv4 detector |
+| `--hostname` | off | opt in to hostname redaction (off by default: FQDN shapes collide with tool/file names) |
+
+Secret-tier detectors (home paths, PEM keys, AWS/GitHub/GitLab/Slack tokens,
+JWTs, URL/`Authorization` credentials) are always on. This is defense-in-depth
+pattern matching, **not** a guarantee — a free-standing high-entropy secret with
+no prefix/marker is not regex-detectable without false-positiving over this
+corpus's SHA digests; review sensitive evidence at the source too. When a value
+is redacted inside an object carrying `redaction_state`, that state is honestly
+upgraded `safe`/`unknown` → `redacted`. Guide:
+[record your own build → before you share](../how-to/record-your-own-build.md#before-you-share-a-projection).
+
 ## db upgrade
 
 ```bash

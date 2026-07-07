@@ -24,6 +24,7 @@ from nlfr.redaction import (
     RedactionConfig,
     redact_json_text,
     redact_payload,
+    scrub_local_paths,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -410,3 +411,65 @@ def test_committed_projection_has_no_findings(json_path: Path) -> None:
         RedactionConfig(redact=False),
     )
     assert result.findings == [], [f.format_line() for f in result.findings]
+
+
+# --- scrub_local_paths: projection-boundary local-path scrubbing (#60) ------
+
+
+def test_scrub_local_paths_replaces_abs_path_preserving_basename():
+    out, count = scrub_local_paths("/private/tmp/run/artifacts/bazel-bep.json")
+    assert out == "[REDACTED:abs_path]/bazel-bep.json"
+    assert count == 1
+
+
+def test_scrub_local_paths_covers_home_and_var_folders_the_home_scrub_misses():
+    assert scrub_local_paths("/Users/alec/proj/workspace")[0] == "[REDACTED:abs_path]/workspace"
+    assert scrub_local_paths("/home/ci/work/repo")[0] == "[REDACTED:abs_path]/repo"
+    assert scrub_local_paths("/var/folders/aa/bb/T/ws")[0] == "[REDACTED:abs_path]/ws"
+
+
+def test_scrub_local_paths_scrubs_abs_path_inside_a_flag_value():
+    out, count = scrub_local_paths("--build_event_json_file=/tmp/a/b/bep.json")
+    assert out == "--build_event_json_file=[REDACTED:abs_path]/bep.json"
+    assert count == 1
+
+
+def test_scrub_local_paths_preserves_labels_endpoints_and_relative_paths():
+    for token in (
+        "//tasks:priority_test",
+        "--remote_cache=grpc://127.0.0.1:50051",
+        "--remote_executor=grpc://host.internal:50051",
+        "https://example.com/path/to/thing",
+        "./relative/path/file.txt",
+        "../up/one/file",
+        "nlfr.ingest.worker",
+        "receipt.v1",
+        "bazel",
+        "test",
+    ):
+        assert scrub_local_paths(token) == (token, 0), token
+
+
+def test_scrub_local_paths_is_idempotent():
+    once, _ = scrub_local_paths("/private/tmp/x/y/bep.json")
+    twice, count = scrub_local_paths(once)
+    assert twice == once
+    assert count == 0
+
+
+def test_scrub_local_paths_roots_catches_single_segment_root_without_corruption():
+    out, count = scrub_local_paths("/data", roots=["/data"])
+    assert out == "[REDACTED:abs_path]/data"
+    assert count == 1
+    # A short root must never corrupt a longer word that merely starts with it.
+    assert scrub_local_paths("/application/main.py", roots=["/app"])[0] == "[REDACTED:abs_path]/main.py"
+    # roots stays idempotent too.
+    once, _ = scrub_local_paths("/data", roots=["/data"])
+    twice, n2 = scrub_local_paths(once, roots=["/data"])
+    assert twice == once
+    assert n2 == 0
+
+
+def test_scrub_local_paths_passes_non_strings_through():
+    assert scrub_local_paths(123) == (123, 0)
+    assert scrub_local_paths(None) == (None, 0)

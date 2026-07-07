@@ -66,6 +66,7 @@ __all__ = [
     "redact_payload",
     "redact_json_text",
     "redact_string",
+    "scrub_local_paths",
     "SECRET_DETECTORS",
     "PII_DETECTORS",
     "DETECTORS",
@@ -80,6 +81,11 @@ _REDACTED = "[REDACTED:{name}]"
 
 #: Replacement used by the legacy home-path scrubber (kept for compatibility).
 _HOME_REPLACEMENT = "${HOME}"
+
+#: Placeholder for an absolute local path scrubbed at the projection sharing
+#: boundary. Keeps the basename so the scrubbed path stays interpretable
+#: (``/a/b/c/bazel-bep.json`` -> ``[REDACTED:abs_path]/bazel-bep.json``).
+_ABS_PATH_PLACEHOLDER = "[REDACTED:abs_path]"
 
 Span = tuple  # (start: int, end: int)
 Finder = Callable[[str, Optional[str]], Iterable[Span]]
@@ -319,6 +325,85 @@ PII_DETECTORS: list[Detector] = [
 #: Registry order defines tie-break priority in overlap resolution: secrets
 #: first (home-path and PEM before the generic shapes), then PII.
 DETECTORS: list[Detector] = SECRET_DETECTORS + PII_DETECTORS
+
+
+# ---------------------------------------------------------------------------
+# Projection-boundary local-path scrubbing (issue #60)
+# ---------------------------------------------------------------------------
+#
+# The detector registry above scrubs *secret shapes*. The recorder additionally
+# captures the adopter's real absolute local paths — an invocation ``cwd`` and
+# the injected ``--build_event_json_file=<abs path>`` inside ``command``. Those
+# are not secrets, but on a projection the adopter is told to *share* (a PR /
+# dashboard), a plaintext ``/Users/<name>/...`` or ``/private/tmp/...`` leaks the
+# local filesystem layout on a node that would otherwise self-label
+# ``redaction_state: safe``. :func:`scrub_local_paths` is the projection-time
+# scrubber the graph/runway projectors run over every shareable field. It is
+# intentionally NOT wired into the default detector registry: doing so would
+# rewrite the committed sample projections and turn the ``--check`` gate against
+# honest publishes. The recorder never mutates SQLite evidence with it — scrubbing
+# happens only when a projection is built at the sharing boundary.
+
+#: An absolute POSIX path with at least two segments (a directory and a
+#: basename). The leading-slash lookbehind excludes Bazel labels (``//foo:bar``)
+#: and URL authorities (``grpc://host``, ``https://host``): a ``/`` preceded by
+#: ``/``, an alnum, ``.``, ``:`` or ``-`` never opens a match, so only a genuine
+#: path boundary (start-of-string, whitespace, ``=`` in a flag value, a quote)
+#: does. Segment chars stop at ``:`` so a trailing ``:port`` never joins a path.
+_ABS_PATH = re.compile(r"(?<![\w./:-])/[^/\s:\"'\\]+(?:/[^/\s:\"'\\]+)+")
+
+
+def scrub_local_paths(value: str, roots: Iterable[str] | None = None) -> tuple[str, int]:
+    """Replace absolute local filesystem paths with a basename-preserving marker.
+
+    Catches home directories (``/Users/<n>``, ``/home/<n>``) *and* the arbitrary
+    absolute paths the home-only :data:`_HOME_PATH` detector misses
+    (``/private/tmp/...``, ``/var/folders/...``). Each match keeps its basename so
+    the projection stays interpretable::
+
+        /Users/a/proj/workspace                  -> [REDACTED:abs_path]/workspace
+        --build_event_json_file=/tmp/x/bep.json  -> --build_event_json_file=[REDACTED:abs_path]/bep.json
+
+    Deterministic and idempotent (the placeholder carries no ``/seg/seg`` shape,
+    so re-running is a no-op). Returns ``(scrubbed, replacement_count)``; a
+    non-string ``value`` returns ``(value, 0)`` unchanged.
+
+    ``roots`` is an optional list of known-sensitive absolute roots. The generic
+    pass already collapses every multi-segment absolute path, so ``roots`` is a
+    boundary-anchored belt-and-suspenders catch for a *single-segment* root
+    (e.g. ``/data``) that the 2+-segment generic rule would otherwise leave.
+    """
+
+    if not isinstance(value, str):
+        return value, 0
+    count = 0
+
+    def _replace(match: re.Match) -> str:
+        nonlocal count
+        count += 1
+        basename = match.group(0).rsplit("/", 1)[-1]
+        return f"{_ABS_PATH_PLACEHOLDER}/{basename}" if basename else _ABS_PATH_PLACEHOLDER
+
+    normalized_roots = sorted(
+        {r.rstrip("/") for r in (roots or []) if isinstance(r, str) and r.startswith("/")},
+        key=len,
+        reverse=True,
+    )
+    if normalized_roots:
+        # Boundary-anchored so a root can only match as a whole path token
+        # (never inside another word): same leading lookbehind as the generic
+        # pass, and the tail may extend through further path segments.
+        alternation = "|".join(re.escape(root) for root in normalized_roots)
+        # ``\]`` in the lookbehind keeps a single-segment root (e.g. ``/data``)
+        # from re-matching the ``]/data`` tail of a placeholder we just wrote,
+        # so the scrub stays idempotent even with ``roots``.
+        root_re = re.compile(
+            r"(?<![\w./:\]-])(?:" + alternation + r")(?:/[^/\s:\"'\\]+)*(?![\w])"
+        )
+        value = root_re.sub(_replace, value)
+
+    result = _ABS_PATH.sub(_replace, value)
+    return result, count
 
 
 # ---------------------------------------------------------------------------

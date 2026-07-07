@@ -5,7 +5,14 @@ from __future__ import annotations
 from sqlite3 import Connection
 from typing import Any
 
-from nlfr.projectors.common import generated_at, rows, run_rows, status_counts, truth
+from nlfr.projectors.common import (
+    generated_at,
+    redact_projection_node,
+    rows,
+    run_rows,
+    status_counts,
+    truth,
+)
 from nlfr.projectors.remote_execution import (
     remote_execution_invocations,
     sanitize_remote_endpoint_args,
@@ -135,15 +142,20 @@ def export_action_graph(conn: Connection, *, run_group: str) -> dict[str, Any]:
             )
         )
     for item in explicit_edges:
+        # Explicit edges can carry a free-form payload; scrub any local abs path
+        # there too and relabel honestly (edges have no label field).
         edges.append(
-            {
-                "id": item["id"],
-                "from": item.get("from_node_id") or item.get("from_node_key"),
-                "to": item.get("to_node_id") or item.get("to_node_key"),
-                "kind": item["edge_kind"],
-                "payload": item.get("payload"),
-                **truth(item),
-            }
+            redact_projection_node(
+                {
+                    "id": item["id"],
+                    "from": item.get("from_node_id") or item.get("from_node_key"),
+                    "to": item.get("to_node_id") or item.get("to_node_key"),
+                    "kind": item["edge_kind"],
+                    "payload": item.get("payload"),
+                    **truth(item),
+                },
+                fields=("payload",),
+            )
         )
 
     return {
@@ -238,14 +250,19 @@ def _node(
     *,
     status: object | None = None,
 ) -> dict[str, Any]:
-    return {
-        "id": node_id,
-        "kind": node_kind,
-        "label": str(label),
-        "status": status if status is not None else row.get("status"),
-        "payload": _payload(row),
-        **truth(row),
-    }
+    # Scrub local abs paths from label + payload at the sharing boundary and
+    # recompute redaction_state honestly (issue #60). The recorded row is never
+    # mutated; ``id`` is kept verbatim so edges keep resolving.
+    return redact_projection_node(
+        {
+            "id": node_id,
+            "kind": node_kind,
+            "label": str(label),
+            "status": status if status is not None else row.get("status"),
+            "payload": _payload(row),
+            **truth(row),
+        }
+    )
 
 
 def _edge(from_id: str, to_id: str, kind: str, row: dict[str, Any]) -> dict[str, Any]:

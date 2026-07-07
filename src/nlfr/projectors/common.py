@@ -7,6 +7,8 @@ from datetime import UTC, datetime
 from sqlite3 import Connection, OperationalError, Row
 from typing import Any
 
+from nlfr.redaction import scrub_local_paths
+
 TRUTH_DEFAULTS = {
     "source_kind": "unknown",
     "confidence": "unknown",
@@ -103,6 +105,74 @@ def truth(row: dict[str, Any]) -> dict[str, Any]:
         "evidence_refs": row.get("evidence_refs") or [],
         "redaction_state": row.get("redaction_state") or TRUTH_DEFAULTS["redaction_state"],
     }
+
+
+#: redaction_state values honestly upgradeable to ``redacted`` when the
+#: projector had to scrub content. A stronger ``blocked`` (and an already
+#: ``redacted``) is never downgraded — mirrors ``redaction.py`` semantics.
+_UPGRADEABLE_REDACTION_STATES = {"safe", "unknown"}
+
+
+def scrub_local_paths_deep(value: Any, roots: list[str] | None = None) -> tuple[Any, bool]:
+    """Recursively scrub absolute local paths from a JSON-ish projection value.
+
+    Walks strings, lists, and dicts, applying
+    :func:`nlfr.redaction.scrub_local_paths` to every string. Returns
+    ``(new_value, changed)`` where ``changed`` is ``True`` if any replacement
+    occurred anywhere in the subtree. Non-string scalars pass through untouched.
+    """
+
+    if isinstance(value, str):
+        new_value, count = scrub_local_paths(value, roots=roots)
+        return new_value, count > 0
+    if isinstance(value, list):
+        changed = False
+        new_list = []
+        for item in value:
+            new_item, child_changed = scrub_local_paths_deep(item, roots)
+            new_list.append(new_item)
+            changed = changed or child_changed
+        return new_list, changed
+    if isinstance(value, dict):
+        changed = False
+        new_dict: dict[str, Any] = {}
+        for key, item in value.items():
+            new_item, child_changed = scrub_local_paths_deep(item, roots)
+            new_dict[key] = new_item
+            changed = changed or child_changed
+        return new_dict, changed
+    return value, False
+
+
+def redact_projection_node(
+    node: dict[str, Any],
+    *,
+    fields: tuple[str, ...] = ("label", "payload"),
+    roots: list[str] | None = None,
+) -> dict[str, Any]:
+    """Scrub local abs paths from a projected node/event and relabel honestly.
+
+    This is the sharing boundary: ``graph``/``runway`` projections are what an
+    adopter attaches to a PR or dashboard, so any absolute local path that
+    survives into ``label``/``payload`` is scrubbed to a basename-preserving
+    placeholder here. When ANY field needed scrubbing, the node's projected
+    ``redaction_state`` is upgraded ``safe``/``unknown`` -> ``redacted`` — never
+    claim ``safe`` for content that had to be scrubbed. A recorded ``blocked``
+    (or already ``redacted``) state is preserved. The recorded SQLite row is
+    never mutated; this is projection-time only. ``id`` is left untouched so
+    edge references stay stable.
+    """
+
+    scrubbed = False
+    for field in fields:
+        if field in node and node[field] is not None:
+            node[field], changed = scrub_local_paths_deep(node[field], roots)
+            scrubbed = scrubbed or changed
+    if scrubbed:
+        current = node.get("redaction_state")
+        if isinstance(current, str) and current in _UPGRADEABLE_REDACTION_STATES:
+            node["redaction_state"] = "redacted"
+    return node
 
 
 def status_counts(items: list[dict[str, Any]]) -> dict[str, int]:
