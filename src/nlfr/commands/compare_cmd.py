@@ -37,7 +37,9 @@ from nlfr.retention_policy import retention_policy_summary
 _RECORD_DB_FILENAME = "nlfr.sqlite"
 
 
-def _discover_record_dbs(db_root: str) -> list[tuple[str, str]]:
+def _discover_record_dbs(
+    db_root: str,
+) -> list[tuple[str, str, dict[str, Any] | None]]:
     """Discover per-run-group databases under a ``nlfr record`` layout root.
 
     ``nlfr record`` writes each run group to
@@ -48,21 +50,67 @@ def _discover_record_dbs(db_root: str) -> list[tuple[str, str]]:
     subdirectory of ``db_root`` that contains an ``nlfr.sqlite`` file — and never
     recurses into arbitrary trees. Immediate subdirectories WITHOUT an
     ``nlfr.sqlite`` (and any non-directory entries) are ignored, so an
-    unrelated tree under ``db_root`` cannot inflate the listing. Returns
-    ``(discovered_group, db_path)`` pairs sorted by directory name for a
-    deterministic listing; ``discovered_group`` is the directory name, which the
-    record layout uses AS the run group — a boundary-safe locator that survives
-    path scrubbing (see :func:`_scrub_entries`).
+    unrelated tree under ``db_root`` cannot inflate the listing.
+
+    Symlinks are never FOLLOWED: a same-tree alias would double-count the same
+    physical evidence, and a link can point outside the evidence root entirely.
+    A symlink that LOOKS like a group (i.e. would otherwise have been
+    discovered) is REPORTED as an excluded entry — never silently skipped, per
+    this command's own listing doctrine — with guidance to pass the real
+    database via ``--db`` if intended. As defense in depth, a candidate whose
+    RESOLVED path escapes the resolved root is likewise reported, not read.
+
+    Returns ``(discovered_group, db_path, exclusion)`` triples sorted by
+    directory name; ``exclusion`` is ``None`` for readable candidates or an
+    honest ``{reason, detail}`` dict. ``discovered_group`` is the directory
+    name, which the record layout uses AS the run group — a boundary-safe
+    locator that survives path scrubbing (see :func:`_scrub_entries`).
     """
 
     root = Path(db_root)
-    discovered: list[tuple[str, str]] = []
+    resolved_root = root.resolve()
+    discovered: list[tuple[str, str, dict[str, Any] | None]] = []
     for child in sorted(root.iterdir(), key=lambda p: p.name):
-        if not child.is_dir():
-            continue
         candidate = child / _RECORD_DB_FILENAME
-        if candidate.is_file():
-            discovered.append((child.name, str(candidate)))
+        if child.is_symlink() or (child.is_dir() and candidate.is_symlink()):
+            if candidate.is_file():
+                # Group-shaped through a link: would have been discovered.
+                discovered.append(
+                    (
+                        child.name,
+                        str(candidate),
+                        {
+                            "reason": "symlinked_entry",
+                            "detail": (
+                                f"'{child.name}' is (or contains) a symlink — "
+                                "discovery never follows links: a same-tree "
+                                "alias would double-count evidence and a link "
+                                "can point outside the evidence root. Pass the "
+                                "real database explicitly with --db if intended."
+                            ),
+                        },
+                    )
+                )
+            continue
+        if not child.is_dir() or not candidate.is_file():
+            continue
+        if not candidate.resolve().is_relative_to(resolved_root):
+            discovered.append(
+                (
+                    child.name,
+                    str(candidate),
+                    {
+                        "reason": "outside_root",
+                        "detail": (
+                            f"'{child.name}/{_RECORD_DB_FILENAME}' resolves "
+                            f"outside '{db_root}' — refusing to read evidence "
+                            "from outside the discovery root."
+                        ),
+                    },
+                )
+            )
+            continue
+        discovered.append((child.name, str(candidate), None))
     return discovered
 
 
@@ -194,7 +242,20 @@ def _collect_db_root_entries(
     entries: list[dict[str, Any]] = []
     readable_dbs = 0
     unreadable_dbs = 0
-    for discovered_group, db_path in discovered:
+    for discovered_group, db_path, exclusion in discovered:
+        if exclusion is not None:
+            # Symlinked / root-escaping candidates are reported, never read.
+            unreadable_dbs += 1
+            entries.append(
+                {
+                    "database": db_path,
+                    "discovered_group": discovered_group,
+                    "run_group": None,
+                    "readable": False,
+                    **exclusion,
+                }
+            )
+            continue
         conn, reason = _open_or_reason(db_path)
         if conn is None:
             unreadable_dbs += 1

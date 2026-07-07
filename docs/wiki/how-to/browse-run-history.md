@@ -62,6 +62,10 @@ PYTHONPATH=src uv run python -m nlfr compare history \
 **exactly one directory level down** — the `nlfr record` layout and nothing else.
 It never recurses into arbitrary trees, and any subdirectory without an
 `nlfr.sqlite` is ignored. The directory name becomes `discovered_group`.
+Symlinks are **never followed** — a same-tree alias would double-count the same
+physical evidence and a link can point outside the root. A group-shaped symlink
+is reported in the listing (`reason: symlinked_entry`), never silently skipped;
+pass the real database with `--db` if you meant it.
 
 **It is a LISTING, not a merge.** Entries are keyed by `(database, run_group)`
 and never combined, because stable run ids are only unique *within* one database

@@ -400,3 +400,79 @@ def test_db_root_relative_path_is_not_scrubbed(tmp_path: Path) -> None:
     assert payload["redaction_state"] == "safe"
     healthy = next(e for e in payload["run_groups"] if e["discovered_group"] == "healthy")
     assert healthy["database"] == "nlfr-record/healthy/nlfr.sqlite"
+
+
+# --------------------------------------------------------------------------- #
+# Symlinks: never followed, never silent (PR #72 review repros)
+# --------------------------------------------------------------------------- #
+
+
+def test_symlinked_group_alias_is_reported_not_double_counted(tmp_path: Path) -> None:
+    """A same-tree symlink alias must not duplicate evidence in the listing.
+
+    Review repro: db_root/healthy_alias -> db_root/healthy previously listed as
+    an independent third database, double-counting the same physical rows.
+    """
+
+    db_root = tmp_path / "nlfr-record"
+    _seed_healthy_group(db_root / "healthy" / "nlfr.sqlite", "healthy", started_at="2026-07-01T00:00:00Z")
+    (db_root / "healthy_alias").symlink_to(db_root / "healthy")
+
+    result = run_nlfr("compare", "index", "--db-root", str(db_root), "--json")
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    entries = payload["run_groups"]
+
+    aliases = [e for e in entries if e.get("discovered_group") == "healthy_alias"]
+    assert len(aliases) == 1
+    assert aliases[0]["readable"] is False
+    assert aliases[0]["reason"] == "symlinked_entry"
+    assert "--db" in aliases[0]["detail"]
+    # The real group is counted exactly once; the alias contributes no rows.
+    readable = [e for e in entries if e.get("readable")]
+    assert len(readable) == 1
+    assert payload["readable_databases"] == 1
+    assert payload["unreadable_databases"] == 1
+
+
+def test_symlink_escaping_db_root_is_reported_not_read(tmp_path: Path) -> None:
+    """A link pointing outside db_root must never pull outside evidence in.
+
+    Review repro: db_root/escaped -> /outside tree with its own nlfr.sqlite
+    previously flowed the outside database's rows into the listing.
+    """
+
+    outside = tmp_path / "outside-evidence"
+    _seed_healthy_group(outside / "nlfr.sqlite", "outside-group", started_at="2026-07-02T00:00:00Z")
+    db_root = tmp_path / "nlfr-record"
+    _seed_healthy_group(db_root / "healthy" / "nlfr.sqlite", "healthy", started_at="2026-07-01T00:00:00Z")
+    (db_root / "escaped").symlink_to(outside)
+
+    result = run_nlfr("compare", "index", "--db-root", str(db_root), "--json")
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    entries = payload["run_groups"]
+
+    assert not any(e.get("run_group") == "outside-group" for e in entries)
+    escaped = [e for e in entries if e.get("discovered_group") == "escaped"]
+    assert len(escaped) == 1
+    assert escaped[0]["readable"] is False
+    assert escaped[0]["reason"] == "symlinked_entry"
+
+
+def test_stray_symlink_without_db_is_ignored_like_any_non_group(tmp_path: Path) -> None:
+    """A 'latest'-style symlink to a dir WITHOUT nlfr.sqlite adds no noise."""
+
+    db_root = tmp_path / "nlfr-record"
+    _seed_healthy_group(db_root / "healthy" / "nlfr.sqlite", "healthy", started_at="2026-07-01T00:00:00Z")
+    plain = tmp_path / "not-a-group"
+    plain.mkdir()
+    (db_root / "latest").symlink_to(plain)
+
+    result = run_nlfr("compare", "index", "--db-root", str(db_root), "--json")
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert not any(
+        e.get("discovered_group") == "latest" for e in payload["run_groups"]
+    )
+    assert payload["unreadable_databases"] == 0
