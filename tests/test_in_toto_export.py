@@ -546,3 +546,34 @@ def test_predicate_contract_parses_and_matches_style(tmp_path: Path) -> None:
     statement_def = payload["$defs"]["in_toto_statement"]
     assert statement_def["properties"]["_type"]["const"] == IN_TOTO_STATEMENT_TYPE
     assert statement_def["properties"]["predicateType"]["const"] == PREDICATE_TYPE
+
+
+def test_run_group_with_runs_but_zero_artifacts_is_also_a_hard_error(tmp_path: Path) -> None:
+    """A run group whose runs recorded NO artifacts must hard-error too.
+
+    Subjects come from the artifacts table, not runs — a runs-row-only group
+    exporting subject: [] with exit 0 would be the #43 bug surviving through a
+    second door. The emptiness check keys on subjects regardless of why they
+    are empty, and the guidance listing must include the artifact-less group.
+    """
+
+    conn, _ = seed_db(tmp_path)
+    upsert_run(
+        conn,
+        stable_key="run:artifactless",
+        run_group="artifactless-group",
+        status="completed",
+        source_kind="collectable_v1",
+        confidence="high",
+        evidence_refs=["run:artifactless"],
+        redaction_state="safe",
+    )
+
+    with pytest.raises(EmptySubjectError) as excinfo:
+        export_in_toto_statement(conn, run_group="artifactless-group")
+
+    message = str(excinfo.value)
+    assert "run group 'artifactless-group' has no recorded artifacts" in message
+    # Both the artifact-less group and the real one appear in the guidance list.
+    assert "artifactless-group" in message
+    assert RUN_GROUP in message
