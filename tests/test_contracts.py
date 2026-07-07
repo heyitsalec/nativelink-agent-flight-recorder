@@ -21,6 +21,18 @@ docs/wiki/reference/contracts/README.md, verified against the code):
 The validation runway export (projection_kind ``validation_runway``) has no
 contract file and is not in the contracts index; see
 ``test_runway_export_is_uncontracted`` for the honest status.
+
+Contract policy — additive by design (do NOT mistake permissiveness for oversight):
+Most contracts here deliberately omit ``additionalProperties: false``. This repo's
+contract policy is intentionally ADDITIVE: fields have been (and will be) added to
+projections without a breaking version bump, so consumers MUST tolerate unknown
+keys and validation checks the presence/type/enum of KNOWN fields, not closure.
+The one place strictness is deliberately tight is redaction/privacy: agent_receipt
+and the in-toto predicate forbid raw-prompt key names and pin prompt_sha256 to a
+64-char lowercase hex digest. compare_projection tightens the numeric SUBSTANCE of
+each dimension (counts are integers >= 0, hit rates are numbers in [0,1], deltas are
+signed) while still permitting additive extra keys. See
+docs/wiki/reference/contracts/README.md for the full policy statement.
 """
 
 from __future__ import annotations
@@ -138,6 +150,26 @@ def _seed_compare_db(tmp_path: Path):
                 redaction_state="safe",
             )
     return conn
+
+
+def _dimension(payload: dict[str, object], dim_id: str) -> dict[str, object]:
+    """Return the compare dimension with the given id (fails loudly if absent)."""
+
+    for dim in payload["dimensions"]:  # type: ignore[index]
+        if dim.get("id") == dim_id:
+            return dim
+    raise AssertionError(f"compare payload has no dimension id={dim_id!r}")
+
+
+# Committed compare-projection samples audited against the TIGHTENED schema.
+# Relative to ROOT; any that exist must still validate (regression guard so the
+# tightened numeric constraints never silently diverge from shipped evidence).
+_COMMITTED_COMPARE_SAMPLES = (
+    "tests/fixtures/compare/compare-projection.json",
+    "docs/proof-samples/compare-projection-sample.json",
+    "apps/canvas/public/projections/compare-projection.json",
+    "tests/fixtures/compare-agent-runs/projections/compare-canvas-dev-vs-agent-bugfix-1.json",
+)
 
 
 # --------------------------------------------------------------------------- #
@@ -321,6 +353,97 @@ def test_negative_control_missing_required_root_field_is_rejected(tmp_path: Path
     assert not validator.is_valid(mutated)
 
 
+# --- F1: the numeric substance of each dimension is now actually enforced --- #
+# The old $defs.dimension left/right/delta were bare {"type":"object"}, so every
+# metric could be replaced with a string, a count could go negative, a hit_rate
+# could exceed 1, and left could be emptied — all while validating. These controls
+# prove the tightened per-dimension schema rejects each of those.
+
+
+def test_negative_control_string_in_metric_is_rejected(tmp_path: Path) -> None:
+    """A numeric cache metric replaced with a string must fail validation."""
+
+    validator = _validator("compare_projection.v1.json")
+    payload = export_compare_projection(_seed_compare_db(tmp_path), "left", "right")
+    validator.validate(payload)  # baseline: real payload valid under tightened schema
+
+    mutated = copy.deepcopy(payload)
+    _dimension(mutated, "cache_metrics")["left"]["metrics"]["hits"] = "NOT_A_NUMBER"
+    assert not validator.is_valid(mutated)
+    with pytest.raises(ValidationError):
+        validator.validate(mutated)
+
+
+def test_negative_control_empty_left_is_rejected(tmp_path: Path) -> None:
+    """An emptied dimension side must fail: the exporter always emits its keys."""
+
+    validator = _validator("compare_projection.v1.json")
+    payload = export_compare_projection(_seed_compare_db(tmp_path), "left", "right")
+    validator.validate(payload)
+
+    mutated = copy.deepcopy(payload)
+    _dimension(mutated, "run_counts")["left"] = {}
+    assert not validator.is_valid(mutated)
+    with pytest.raises(ValidationError):
+        validator.validate(mutated)
+
+
+def test_negative_control_negative_count_is_rejected(tmp_path: Path) -> None:
+    """A negative run COUNT is rejected — while a negative run-count DELTA stays valid.
+
+    Models reality: counts cannot be negative (minimum 0), but a right-minus-left
+    delta legitimately can, so the schema must not over-constrain deltas.
+    """
+
+    validator = _validator("compare_projection.v1.json")
+    payload = export_compare_projection(_seed_compare_db(tmp_path), "left", "right")
+    validator.validate(payload)
+
+    bad_count = copy.deepcopy(payload)
+    _dimension(bad_count, "run_counts")["left"]["runs"] = -999999
+    assert not validator.is_valid(bad_count)
+
+    # A negative delta is honest reality and MUST remain valid.
+    negative_delta = copy.deepcopy(payload)
+    _dimension(negative_delta, "run_counts")["delta"]["runs"] = -999999
+    validator.validate(negative_delta)
+
+
+def test_negative_control_hit_rate_above_one_is_rejected(tmp_path: Path) -> None:
+    """A hit_rate outside [0,1] must fail validation."""
+
+    validator = _validator("compare_projection.v1.json")
+    payload = export_compare_projection(_seed_compare_db(tmp_path), "left", "right")
+    validator.validate(payload)
+
+    mutated = copy.deepcopy(payload)
+    _dimension(mutated, "cache_metrics")["left"]["metrics"]["hit_rate"] = 1.5
+    assert not validator.is_valid(mutated)
+    with pytest.raises(ValidationError):
+        validator.validate(mutated)
+
+
+def test_committed_compare_samples_validate_against_tightened_contract() -> None:
+    """Every committed compare-projection sample still validates under the tightened schema.
+
+    Audit guard: the F1 tightening was derived from the real exporter, so the shipped
+    sample files must remain valid. If one ever fails here, fix the producer or the
+    sample — never loosen the contract back toward vacuity.
+    """
+
+    validator = _validator("compare_projection.v1.json")
+    seen = 0
+    for rel in _COMMITTED_COMPARE_SAMPLES:
+        path = ROOT / rel
+        if not path.exists():
+            continue
+        sample = json.loads(path.read_text(encoding="utf-8"))
+        assert sample.get("projection_kind") == "compare", rel
+        validator.validate(sample)  # raises ValidationError naming the file's field
+        seen += 1
+    assert seen, "no committed compare-projection samples were found to audit"
+
+
 def test_negative_control_forbidden_prompt_key_rejected_by_receipt_contract() -> None:
     """agent_receipt.v1.json's ``not`` clause rejects a leaked raw-prompt key."""
 
@@ -340,6 +463,43 @@ def test_negative_control_forbidden_prompt_key_rejected_by_receipt_contract() ->
     mutated = copy.deepcopy(receipt)
     mutated["prompt"] = "the raw prompt text leaked in"
     assert not validator.is_valid(mutated)
+
+
+# --- F3: the in-toto predicate now mirrors the receipt's redaction strictness --- #
+# agent_provenance_entry.prompt_sha256 was type-only (any string); the entry had no
+# forbidden-raw-prompt-key clause. It now pins the 64-hex pattern and forbids raw
+# prompt key names, matching agent_receipt.v1.json.
+
+
+def test_negative_control_non_hex_prompt_sha256_rejected_by_predicate(tmp_path: Path) -> None:
+    """in_toto_proof_predicate.v1.json now rejects a non-hex prompt_sha256."""
+
+    validator = _validator("in_toto_proof_predicate.v1.json")
+    conn, _ = seed_in_toto_db(tmp_path)
+    predicate = export_in_toto_statement(conn, run_group=IN_TOTO_RUN_GROUP)["predicate"]
+    assert predicate["agent_provenance"]
+    validator.validate(predicate)  # baseline: real predicate valid under tightened schema
+
+    mutated = copy.deepcopy(predicate)
+    mutated["agent_provenance"][0]["prompt_sha256"] = "not-a-64-char-lowercase-hex-digest"
+    assert not validator.is_valid(mutated)
+    with pytest.raises(ValidationError):
+        validator.validate(mutated)
+
+
+def test_negative_control_raw_prompt_key_in_provenance_entry_rejected(tmp_path: Path) -> None:
+    """A provenance entry carrying a raw ``prompt`` key must fail validation."""
+
+    validator = _validator("in_toto_proof_predicate.v1.json")
+    conn, _ = seed_in_toto_db(tmp_path)
+    predicate = export_in_toto_statement(conn, run_group=IN_TOTO_RUN_GROUP)["predicate"]
+    validator.validate(predicate)  # baseline
+
+    mutated = copy.deepcopy(predicate)
+    mutated["agent_provenance"][0]["prompt"] = "the raw prompt text leaked into the entry"
+    assert not validator.is_valid(mutated)
+    with pytest.raises(ValidationError):
+        validator.validate(mutated)
 
 
 # --------------------------------------------------------------------------- #

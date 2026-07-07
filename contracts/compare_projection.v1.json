@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://nativelink-agent-flight-recorder.local/contracts/compare_projection.v1.json",
   "title": "NLFR Compare Projection v1",
-  "description": "Delta projection across two run groups (M9). Every value is derived_v1: computed from proof packet summaries and recorded SQLite run rows, never from live scheduler or fleet APIs. The root and every dimension carry the four truth-label fields. Produced by src/nlfr/projectors/compare.py (build_compare_projection / export_compare_projection).",
+  "description": "Delta projection across two run groups (M9). Every value is derived_v1: computed from proof packet summaries and recorded SQLite run rows, never from live scheduler or fleet APIs. The root and every dimension carry the four truth-label fields. Produced by src/nlfr/projectors/compare.py (build_compare_projection / export_compare_projection). CONTRACT POLICY (see docs/wiki/reference/contracts/README.md): this repo's contracts are DELIBERATELY ADDITIVE — extra keys are permitted by design so fields can be added without a breaking version bump, and consumers MUST ignore unknown fields. Validation therefore checks the presence, type, and enum of KNOWN fields; it does NOT set additionalProperties:false. The per-dimension left/right/delta shapes below are NOT bare objects: they are constrained per dimension id (derived directly from compare.py) so the numeric substance the compare feature exists to deliver — hit/miss/unknown counts, hit rates, run counts, per-status counts, block counts, and their deltas — is actually enforced. Counts are integers >= 0; rates are numbers in [0,1] (or null when no known events); deltas are signed integers / signed rates because a right-minus-left difference can legitimately be negative.",
   "type": "object",
   "allOf": [{ "$ref": "#/$defs/truth" }],
   "required": [
@@ -24,11 +24,11 @@
       "type": "object",
       "description": "Dimension and count rollup. Additive rollup fields are allowed.",
       "properties": {
-        "dimensions": { "type": "integer", "description": "Number of compare dimensions (always 5)." },
-        "left_runs": { "type": "integer" },
-        "right_runs": { "type": "integer" },
-        "left_artifacts": { "type": "integer" },
-        "right_artifacts": { "type": "integer" }
+        "dimensions": { "type": "integer", "minimum": 0, "description": "Number of compare dimensions (always 5)." },
+        "left_runs": { "type": "integer", "minimum": 0 },
+        "right_runs": { "type": "integer", "minimum": 0 },
+        "left_artifacts": { "type": "integer", "minimum": 0 },
+        "right_artifacts": { "type": "integer", "minimum": 0 }
       }
     },
     "dimensions": {
@@ -52,38 +52,228 @@
         "redaction_state": { "enum": ["safe", "redacted", "blocked", "unknown"] }
       }
     },
+    "count": {
+      "description": "A count: non-negative integer. Counts (hits, misses, runs, block counts, per-status counts) can never be negative.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "signed_integer": {
+      "description": "A right-minus-left delta of two counts: any integer, negative allowed.",
+      "type": "integer"
+    },
+    "rate": {
+      "description": "A hit rate in [0,1], or null when there are no known cache events to compute it from.",
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 1
+    },
+    "rate_delta": {
+      "description": "A right-minus-left difference of two hit rates, or null when either side's rate is null. Signed; not clamped to [0,1] because it is a difference.",
+      "type": ["number", "null"]
+    },
     "dimension": {
+      "description": "A single compare dimension. The common shape is in dimension_base; left/right/delta are then tightened per dimension id (run_counts, cache_metrics, worker_identity, agent_provenance, status_deltas) by the conditional $defs below, honestly derived from compare.py.",
       "allOf": [
         { "$ref": "#/$defs/truth" },
-        {
+        { "$ref": "#/$defs/dimension_base" },
+        { "$ref": "#/$defs/dimension_run_counts" },
+        { "$ref": "#/$defs/dimension_cache_metrics" },
+        { "$ref": "#/$defs/dimension_worker_identity" },
+        { "$ref": "#/$defs/dimension_agent_provenance" },
+        { "$ref": "#/$defs/dimension_status_deltas" }
+      ]
+    },
+    "dimension_base": {
+      "type": "object",
+      "required": ["id", "title", "summary", "left", "right", "delta", "claims"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "One of: run_counts, cache_metrics, worker_identity, agent_provenance, status_deltas."
+        },
+        "title": { "type": "string" },
+        "summary": { "type": "string" },
+        "left": {
           "type": "object",
-          "required": ["id", "title", "summary", "left", "right", "delta", "claims"],
-          "properties": {
-            "id": {
-              "type": "string",
-              "description": "One of: run_counts, cache_metrics, worker_identity, agent_provenance, status_deltas."
-            },
-            "title": { "type": "string" },
-            "summary": { "type": "string" },
-            "left": {
-              "type": "object",
-              "description": "Left-side values for this dimension (shape varies by dimension id)."
-            },
-            "right": {
-              "type": "object",
-              "description": "Right-side values for this dimension (shape varies by dimension id)."
-            },
-            "delta": {
-              "type": "object",
-              "description": "Computed right-minus-left deltas (shape varies by dimension id)."
-            },
-            "claims": {
-              "type": "array",
-              "items": { "type": "string" }
+          "description": "Left-side values for this dimension. Concrete shape is enforced per dimension id below."
+        },
+        "right": {
+          "type": "object",
+          "description": "Right-side values for this dimension. Concrete shape is enforced per dimension id below."
+        },
+        "delta": {
+          "type": "object",
+          "description": "Computed right-minus-left deltas. Concrete shape is enforced per dimension id below."
+        },
+        "claims": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "dimension_run_counts": {
+      "if": {
+        "required": ["id"],
+        "properties": { "id": { "const": "run_counts" } }
+      },
+      "then": {
+        "properties": {
+          "left": { "$ref": "#/$defs/run_counts_side" },
+          "right": { "$ref": "#/$defs/run_counts_side" },
+          "delta": {
+            "type": "object",
+            "required": ["runs"],
+            "properties": { "runs": { "$ref": "#/$defs/signed_integer" } }
+          }
+        }
+      }
+    },
+    "run_counts_side": {
+      "type": "object",
+      "required": ["runs", "run_group"],
+      "properties": {
+        "runs": { "$ref": "#/$defs/count" },
+        "run_group": { "type": ["string", "null"] }
+      }
+    },
+    "dimension_cache_metrics": {
+      "if": {
+        "required": ["id"],
+        "properties": { "id": { "const": "cache_metrics" } }
+      },
+      "then": {
+        "properties": {
+          "left": { "$ref": "#/$defs/cache_metrics_side" },
+          "right": { "$ref": "#/$defs/cache_metrics_side" },
+          "delta": {
+            "type": "object",
+            "required": ["hits", "misses", "hit_rate"],
+            "properties": {
+              "hits": { "$ref": "#/$defs/signed_integer" },
+              "misses": { "$ref": "#/$defs/signed_integer" },
+              "hit_rate": { "$ref": "#/$defs/rate_delta" }
             }
           }
         }
-      ]
+      }
+    },
+    "cache_metrics_side": {
+      "type": "object",
+      "required": ["metrics"],
+      "properties": {
+        "metrics": {
+          "type": "object",
+          "required": ["hits", "misses", "unknown", "hit_rate"],
+          "properties": {
+            "hits": { "$ref": "#/$defs/count" },
+            "misses": { "$ref": "#/$defs/count" },
+            "unknown": { "$ref": "#/$defs/count" },
+            "hit_rate": { "$ref": "#/$defs/rate" }
+          }
+        }
+      }
+    },
+    "dimension_worker_identity": {
+      "if": {
+        "required": ["id"],
+        "properties": { "id": { "const": "worker_identity" } }
+      },
+      "then": {
+        "properties": {
+          "left": { "$ref": "#/$defs/worker_identity_side" },
+          "right": { "$ref": "#/$defs/worker_identity_side" },
+          "delta": {
+            "type": "object",
+            "required": ["worker_identity_observed_changed"],
+            "properties": {
+              "worker_identity_observed_changed": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    },
+    "worker_identity_side": {
+      "type": "object",
+      "required": ["worker_identity_observed"],
+      "properties": {
+        "worker_identity_observed": { "type": "boolean" }
+      }
+    },
+    "dimension_agent_provenance": {
+      "if": {
+        "required": ["id"],
+        "properties": { "id": { "const": "agent_provenance" } }
+      },
+      "then": {
+        "properties": {
+          "left": { "$ref": "#/$defs/agent_provenance_side" },
+          "right": { "$ref": "#/$defs/agent_provenance_side" },
+          "delta": {
+            "type": "object",
+            "required": ["present_changed", "block_count_delta"],
+            "properties": {
+              "present_changed": { "type": "boolean" },
+              "block_count_delta": { "$ref": "#/$defs/signed_integer" }
+            }
+          }
+        }
+      }
+    },
+    "agent_provenance_side": {
+      "type": "object",
+      "required": ["present", "block_count", "blocks"],
+      "properties": {
+        "present": { "type": "boolean" },
+        "block_count": { "$ref": "#/$defs/count" },
+        "blocks": {
+          "type": "array",
+          "description": "Bounded per-block agent provenance summaries (model + prompt-hash prefix + truth labels). Item shape is intentionally left open (additive), but each is an object.",
+          "items": { "type": "object" }
+        }
+      }
+    },
+    "dimension_status_deltas": {
+      "if": {
+        "required": ["id"],
+        "properties": { "id": { "const": "status_deltas" } }
+      },
+      "then": {
+        "properties": {
+          "left": { "$ref": "#/$defs/status_counts_side" },
+          "right": { "$ref": "#/$defs/status_counts_side" },
+          "delta": {
+            "type": "object",
+            "required": ["by_status", "changed"],
+            "properties": {
+              "by_status": {
+                "type": "object",
+                "description": "Per-status left/right/delta triples. Keys are run status strings.",
+                "additionalProperties": {
+                  "type": "object",
+                  "required": ["left", "right", "delta"],
+                  "properties": {
+                    "left": { "$ref": "#/$defs/count" },
+                    "right": { "$ref": "#/$defs/count" },
+                    "delta": { "$ref": "#/$defs/signed_integer" }
+                  }
+                }
+              },
+              "changed": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    },
+    "status_counts_side": {
+      "type": "object",
+      "required": ["status_counts"],
+      "properties": {
+        "status_counts": {
+          "type": "object",
+          "description": "Per-status run counts. Keys are run status strings; values are non-negative counts.",
+          "additionalProperties": { "$ref": "#/$defs/count" }
+        }
+      }
     }
   }
 }
