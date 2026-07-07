@@ -105,6 +105,11 @@ excerpt — never the raw secret) so it drops straight into a pre-publish CI ste
 See the [redact CLI reference](../reference/cli.md#redact) and the module
 docstring in `src/nlfr/redaction.py` for the honest scope and limits.
 
+The same gate also scans **plain-text logs** (a raw `bazel.stdout.txt` is
+scanned as text with the same detectors — not refused as "not JSON") and a whole
+**evidence directory** (`nlfr redact --check data/nlfr-record/<group>`), which is
+how you gate the raw tree before a CI upload — see [CI snippets](#ci-snippets).
+
 ## Failing builds are the product
 
 A non-zero Bazel exit is a **valid** recording — the failure evidence is exactly
@@ -168,6 +173,25 @@ exit "$code"
 
 ## CI snippets
 
+The raw `data/nlfr-record/` tree contains **unredacted** local evidence — the raw
+`bazel.stdout.txt`/`bazel.stderr.txt` logs (where a leaked credential in build
+output actually lands), the `nlfr.sqlite` spine, and `artifact_manifest.json`
+with real absolute `producer_command` paths. **Never upload that tree
+unguarded.** Two safe patterns:
+
+1. **Preferred — upload redacted projections.** Export the graph/proof/runway
+   projections and gate them with `nlfr redact --check` (see [Before you share a
+   projection](#before-you-share-a-projection)); these are already path-scrubbed
+   at export time, and the gate is your belt-and-suspenders.
+2. **If you must ship the raw tree — gate it first with `nlfr redact --check
+   <evidence-dir>`.** Tree mode recursively scans every regular file (JSON *and*
+   plain-text logs, same detector registry), exits non-zero on any finding, and
+   **honestly reports what it did not scan**: binaries (`skipped:binary` — a
+   secret in a binary is out of scope) and the SQLite database
+   (`skipped:database` — local evidence, not meant for upload). Because the
+   database is skip-reported, the honest move is to **exclude it from the upload**
+   rather than assume the gate cleared it.
+
 ### GitHub Actions
 
 ```yaml
@@ -175,21 +199,37 @@ exit "$code"
   run: nlfr record --run-group ci-${{ github.run_id }} -- bazel test //...
   # Non-zero bazel exit propagates and fails the job honestly.
 
-- name: Upload evidence
+- name: Redact-gate the evidence before it leaves the runner
+  if: always()
+  # Fails the step (exit 1) if any secret/PII shape is present in a scannable
+  # file. Binaries and the SQLite DB are skip-reported, never silently passed.
+  run: nlfr redact --check data/nlfr-record/ci-${{ github.run_id }}
+
+- name: Upload redacted evidence
   if: always()
   uses: actions/upload-artifact@v4
   with:
     name: nlfr-evidence
-    path: data/nlfr-record/
+    # Exclude the local-only SQLite spine (skip-reported by the gate above).
+    path: |
+      data/nlfr-record/ci-${{ github.run_id }}
+      !data/nlfr-record/**/nlfr.sqlite
 ```
+
+To ship a scrubbed *copy* instead of gating in place, `nlfr redact
+data/nlfr-record/<group> redacted-evidence/` writes a redacted mirror (text/JSON
+files scrubbed; binaries and the database left out) and upload that.
 
 ### Buildkite
 
 ```yaml
 steps:
-  - label: ":bazel: record tests"
-    command: nlfr record --run-group "ci-$BUILDKITE_BUILD_NUMBER" -- bazel test //...
-    artifact_paths: "data/nlfr-record/**/*"
+  - label: ":bazel: record + redact-gate tests"
+    command: |
+      nlfr record --run-group "ci-$BUILDKITE_BUILD_NUMBER" -- bazel test //...
+      nlfr redact --check "data/nlfr-record/ci-$BUILDKITE_BUILD_NUMBER"
+    artifact_paths: "data/nlfr-record/ci-*/**/*.json"
+    # Upload the scanned JSON projections, not the raw sqlite/log tree wholesale.
 ```
 
 ## Honest limits

@@ -169,27 +169,54 @@ for content that had to be scrubbed. The recorded SQLite row is never mutated.
 
 ## redact
 
-Scrub secrets/PII from a projection JSON before you attach it to a PR or
-dashboard. Ships in the wheel — the packaged, adopter-facing equivalent of the
-repo-side `scripts/redact-projection.py`.
+Scrub secrets/PII before you share evidence — a **JSON projection**, a
+**plain-text log** (stdout/stderr), or a whole **evidence directory**. Ships in
+the wheel — the packaged, adopter-facing equivalent of the repo-side
+`scripts/redact-projection.py`.
 
 ```bash
 # Scan only — exit 1 if any secret/PII shape is found; writes nothing
 python3 -m nlfr redact --check projections/graph-baseline.json
 
-# Redact + write a shareable copy (2-space indent, sorted keys)
+# A raw non-JSON log is scanned as PLAIN TEXT (not refused as "not JSON")
+python3 -m nlfr redact --check data/nlfr-record/ci/runs/<id>/artifacts/bazel.stdout.txt
+
+# A DIRECTORY enables tree mode: recursively scan every regular file (the CI gate)
+python3 -m nlfr redact --check data/nlfr-record/ci
+
+# Redact + write: a shareable copy of one file, or a redacted mirror of a tree
 python3 -m nlfr redact projections/graph-baseline.json graph-shareable.json
+python3 -m nlfr redact data/nlfr-record/ci redacted-evidence/
 ```
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `input` | — | projection JSON to scan/redact |
-| `output` | — | destination JSON (required unless `--check`) |
+| `input` | — | projection JSON, plain-text file, or evidence **directory** to scan/redact |
+| `output` | — | destination file (or directory, for a tree) — required unless `--check` |
 | `--check` | off | scan only; write nothing; exit 1 on any finding |
+| `--format {json,text}` | auto | force the input interpretation (default: JSON if it parses, else text) |
 | `--no-pii` | off | disable the default PII detectors (email + ipv4) |
 | `--no-email` | off | disable the email detector |
 | `--no-ip` | off | disable the IPv4 detector |
 | `--hostname` | off | opt in to hostname redaction (off by default: FQDN shapes collide with tool/file names) |
+
+**Text mode.** A non-JSON file is scanned/redacted as plain text with the *same*
+detector registry (string-level spans; no JSON walk; no `redaction_state`
+semantics — a text file carries no truth labels). Findings report a 1-based line
+number and a masked excerpt. This is what lets `--check` gate a raw
+`bazel.stdout.txt` — the file type where build-output secrets actually land —
+instead of refusing every non-JSON file. Auto-detected by a JSON-parse attempt;
+`--format` overrides.
+
+**Tree mode.** A directory argument recursively scans (check) or
+copies-and-redacts (write → an output dir mirroring the tree) every regular file,
+honoring both formats. It **skips honestly, never silently**: binaries
+(null-byte sniff → `skipped:binary`, a secret in a binary is out of scope) and
+SQLite databases (`skipped:database` — local evidence, not meant for upload) are
+reported in the check output and left out of a redacted mirror. `--check` exits 1
+if *any* file has a finding; skips alone never fail the gate. This is the gate
+the [record how-to CI snippets](../how-to/record-your-own-build.md#ci-snippets)
+run before uploading a raw evidence tree.
 
 Secret-tier detectors (home paths, PEM keys, AWS/GitHub/GitLab/Slack tokens,
 JWTs, URL/`Authorization` credentials) are always on. The `abs_path` detector is
@@ -282,7 +309,20 @@ append-only `gc-report.json` next to the database — deleting evidence always
 leaves a record of the deletion. The report (also available on stdout, or as JSON
 with `--json`) is `derived_v1` and records each deleted group's name, run ids,
 time range, per-table row counts, and file/byte totals — identifying metadata
-only, never resurrectable content.
+only, never resurrectable content. The `vacuum.reclaimed_bytes` figure is the
+**true on-disk delta** (a WAL checkpoint runs after `VACUUM` before the size is
+measured), so it matches what you would `stat` the instant the command returns —
+never a fabricated `0`.
+
+**`--json` on failure.** Like `nlfr record --json`, every guard-rail/usage-error
+path — bad `--db`, combined selection modes, the last-group refusal, the
+out-of-tree guard, an unknown `--run-group`, and the schema gate — emits a
+structured object on **stdout** under `--json` (`status`, `gc_error`,
+`exit_code`, plus the `derived_v1` truth-label envelope), so a CI-scripted
+retention job reading stdout JSON never gets empty output on a refusal. Without
+`--json` these print human-readable text to stderr. Exit codes are unchanged
+(guard-rail refusals stay exit 2); only the output *shape* gains the `--json`
+branch.
 
 ## compare (M9)
 

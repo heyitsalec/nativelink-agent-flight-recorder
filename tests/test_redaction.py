@@ -22,8 +22,11 @@ import pytest
 
 from nlfr.redaction import (
     RedactionConfig,
+    is_binary_bytes,
+    is_sqlite_bytes,
     redact_json_text,
     redact_payload,
+    redact_text,
     scrub_local_paths,
 )
 
@@ -640,3 +643,75 @@ def test_scrub_local_paths_does_not_corrupt_home_placeholder_tail() -> None:
         "${HOME}/Documents/project/data",
         0,
     )
+
+
+# ---------------------------------------------------------------------------
+# Plain-text scanning (issue #71): non-JSON evidence uses the same registry
+# ---------------------------------------------------------------------------
+
+
+def test_redact_text_flags_secret_in_log_with_line_number() -> None:
+    text = (
+        "INFO: Analyzed target //app:leaky_test.\n"
+        f"leaked-looking line: {FAKE_AWS_ACCESS_KEY_ID}\n"
+        "INFO: Build completed\n"
+    )
+    result = redact_text(text, RedactionConfig(redact=False))
+    assert len(result.findings) == 1
+    finding = result.findings[0]
+    assert finding.detector == "aws_access_key_id"
+    assert finding.location == "text"
+    assert finding.json_path == "line 2"  # honest 1-based line, not a JSON path
+    assert "[REDACTED:aws_access_key_id]" in finding.excerpt
+    assert FAKE_AWS_ACCESS_KEY_ID not in finding.excerpt  # excerpt never leaks
+
+
+def test_redact_text_write_mode_rewrites_span_in_place() -> None:
+    text = f"prefix {FAKE_GH_TOKEN} suffix"
+    result = redact_text(text, RedactionConfig(redact=True))
+    assert result.payload == "prefix [REDACTED:github_token] suffix"
+    assert result.counts["github_token"] == 1
+
+
+def test_redact_text_check_mode_leaves_text_unchanged() -> None:
+    text = f"prefix {FAKE_GH_TOKEN} suffix"
+    result = redact_text(text, RedactionConfig(redact=False))
+    assert result.payload == text  # check mode never mutates
+    assert result.findings  # but still reports the finding
+
+
+def test_redact_text_has_no_redaction_state_semantics() -> None:
+    # A literal `redaction_state` word in a log is just text — no label upgrade,
+    # no JSON walk, exactly one finding for the one secret.
+    text = f'redaction_state: safe -- token {FAKE_GITLAB_PAT}'
+    result = redact_text(text, RedactionConfig(redact=True))
+    assert result.payload.count("[REDACTED:") == 1
+    assert "redaction_state: safe" in result.payload  # untouched, not relabelled
+
+
+def test_redact_text_clean_log_has_no_findings() -> None:
+    text = "INFO: build ok\ndigest " + "a" * 64 + "\nlabel //foo:bar\n"
+    result = redact_text(text, RedactionConfig(redact=False))
+    assert result.findings == []
+    assert result.payload == text
+
+
+def test_redact_text_multiline_secret_reports_start_line() -> None:
+    text = "line one\nline two\n" + FAKE_PEM + "\ntrailer\n"
+    result = redact_text(text, RedactionConfig(redact=False))
+    assert any(f.detector == "private_key_pem" for f in result.findings)
+    pem = next(f for f in result.findings if f.detector == "private_key_pem")
+    assert pem.json_path == "line 3"  # start line of the multi-line PEM block
+
+
+def test_is_sqlite_bytes_recognizes_magic() -> None:
+    assert is_sqlite_bytes(b"SQLite format 3\x00" + b"rest of header")
+    assert not is_sqlite_bytes(b"{\"json\": true}")
+    assert not is_sqlite_bytes(b"")
+
+
+def test_is_binary_bytes_null_sniff() -> None:
+    assert is_binary_bytes(b"GIF89a\x00\x01payload")
+    assert not is_binary_bytes(b"plain text log with no NUL\n")
+    # A NUL beyond the sampled head is not sniffed (bounded scan).
+    assert not is_binary_bytes(b"x" * 9000 + b"\x00", head=8192)

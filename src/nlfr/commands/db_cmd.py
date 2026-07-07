@@ -426,12 +426,13 @@ def _build_deleted_entry(
     }
 
 
-def _validate_selection(args: argparse.Namespace) -> Optional[str]:
-    """Return a usage-error string if the selection flags are invalid, else ``None``.
+def _validate_selection(args: argparse.Namespace) -> Optional[tuple[str, str]]:
+    """Return ``(status, message)`` if the selection flags are invalid, else ``None``.
 
     Exactly one selection mode is required. ``--keep-last`` needs N >= 1 (keeping
     zero groups is spelled ``--run-group`` / ``--keep-days``, not ``--keep-last``);
-    ``--keep-days`` needs D >= 0.
+    ``--keep-days`` needs D >= 0. ``status`` is the machine-readable reason routed
+    through :func:`_gc_reject` so a ``--json`` caller can branch on it (issue #74).
     """
 
     modes = []
@@ -444,20 +445,60 @@ def _validate_selection(args: argparse.Namespace) -> Optional[str]:
 
     if len(modes) == 0:
         return (
+            "no_selection_mode",
             "nlfr db gc: choose exactly one selection mode: --keep-last N, "
-            "--keep-days D, or --run-group G (repeatable)."
+            "--keep-days D, or --run-group G (repeatable).",
         )
     if len(modes) > 1:
         return (
+            "mutually_exclusive_modes",
             "nlfr db gc: selection modes are mutually exclusive; got "
             f"{', '.join(modes)}. Use exactly one of --keep-last / --keep-days / "
-            "--run-group per invocation."
+            "--run-group per invocation.",
         )
     if args.keep_last is not None and args.keep_last < 1:
-        return "nlfr db gc: --keep-last must be >= 1 (it keeps the N newest groups)."
+        return (
+            "invalid_keep_last",
+            "nlfr db gc: --keep-last must be >= 1 (it keeps the N newest groups).",
+        )
     if args.keep_days is not None and args.keep_days < 0:
-        return "nlfr db gc: --keep-days must be >= 0."
+        return ("invalid_keep_days", "nlfr db gc: --keep-days must be >= 0.")
     return None
+
+
+def _gc_reject(
+    args: argparse.Namespace, *, status: str, message: str, exit_code: int = 2
+) -> int:
+    """Emit a ``db gc`` guard-rail/usage refusal and return its exit code.
+
+    Under ``--json`` the refusal is a structured object on **stdout** (so a
+    CI-scripted retention job reading stdout JSON never gets empty output on a
+    refusal); otherwise the human-readable message goes to stderr. Field names
+    mirror ``nlfr record``'s ``_reject`` failure contract (``status`` /
+    ``<cmd>_error`` / ``exit_code``, plus the shared truth-label envelope) so the
+    two commands disambiguate failures the same way (issue #74). Exit codes are
+    unchanged from the pre-#74 text-only behaviour.
+    """
+
+    if args.json:
+        print(
+            json.dumps(
+                {
+                    "status": status,
+                    "gc_error": message,
+                    "exit_code": exit_code,
+                    "report_kind": "gc",
+                    "source_kind": "derived_v1",
+                    "confidence": "high",
+                    "redaction_state": "safe",
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+    else:
+        print(message, file=sys.stderr)
+    return exit_code
 
 
 def _select_groups(
@@ -647,33 +688,44 @@ def db_gc(args: argparse.Namespace) -> int:
 
     usage = _validate_selection(args)
     if usage is not None:
-        print(usage, file=sys.stderr)
-        return 2
+        status, message = usage
+        return _gc_reject(args, status=status, message=message)
 
     # Never CREATE a database: collecting a nonexistent store is an error.
     defect = database_defect(args.db)
     if defect is not None:
-        print(_gc_refuse_path_message(str(args.db), defect), file=sys.stderr)
-        return 2
+        return _gc_reject(
+            args,
+            status=f"db_{defect}",
+            message=_gc_refuse_path_message(str(args.db), defect),
+        )
 
     try:
         conn = connect(args.db)
     except sqlite3.OperationalError as exc:
-        print(
-            f"nlfr: cannot garbage-collect the database at '{args.db}': {exc}.\n"
-            "The database (or its directory) is not writable — restore write "
-            "permission before running `nlfr db gc`.",
-            file=sys.stderr,
+        return _gc_reject(
+            args,
+            status="db_not_writable",
+            message=(
+                f"nlfr: cannot garbage-collect the database at '{args.db}': {exc}.\n"
+                "The database (or its directory) is not writable — restore write "
+                "permission before running `nlfr db gc`."
+            ),
         )
-        return 2
 
     evidence_root = Path(str(args.db)).resolve().parent
     db_path = Path(str(args.db)).resolve()
     try:
         found_version = conn.execute("PRAGMA user_version").fetchone()[0]
         if found_version != SCHEMA_VERSION:
-            print(_schema_gate_message(str(args.db), found_version), file=sys.stderr)
-            return 2
+            status = (
+                "schema_too_old" if found_version < SCHEMA_VERSION else "schema_too_new"
+            )
+            return _gc_reject(
+                args,
+                status=status,
+                message=_schema_gate_message(str(args.db), found_version),
+            )
 
         groups = _load_group_index(conn)
         discovered = _discover_run_dirs(evidence_root)
@@ -682,8 +734,9 @@ def db_gc(args: argparse.Namespace) -> int:
         )
 
         if selection_error is not None:
-            print(selection_error, file=sys.stderr)
-            return 2
+            return _gc_reject(
+                args, status="unknown_run_group", message=selection_error
+            )
 
         # Refuse any group that would require touching evidence outside the root.
         for group in delete:
@@ -691,28 +744,33 @@ def db_gc(args: argparse.Namespace) -> int:
                 conn, group, evidence_root, discovered.get(group["run_group"], [])
             )
             if reason is not None:
-                print(
-                    f"nlfr db gc: refusing to collect run group "
-                    f"'{_group_label(group['run_group'])}' — {reason}.\n"
-                    "Refusing the whole group (partial deletion is worse). Nothing "
-                    "was deleted. Move or detach the out-of-tree evidence, then "
-                    "re-run.",
-                    file=sys.stderr,
+                return _gc_reject(
+                    args,
+                    status="out_of_tree_evidence",
+                    message=(
+                        f"nlfr db gc: refusing to collect run group "
+                        f"'{_group_label(group['run_group'])}' — {reason}.\n"
+                        "Refusing the whole group (partial deletion is worse). "
+                        "Nothing was deleted. Move or detach the out-of-tree "
+                        "evidence, then re-run."
+                    ),
                 )
-                return 2
 
         # Refuse to empty the store (delete the last remaining group) unless the
         # operator explicitly opts in — an empty evidence DB is a foot-gun.
         # Age-unknown groups are never deleted, so they still populate the store:
         # only refuse when NOTHING (neither kept nor unknown) would remain.
         if delete and not keep and not unknown and not args.allow_empty:
-            print(
-                "nlfr db gc: this would delete the LAST remaining run group and "
-                "leave an empty evidence database — refusing.\n"
-                "If you really mean to empty the store, re-run with --allow-empty.",
-                file=sys.stderr,
+            return _gc_reject(
+                args,
+                status="would_empty_store",
+                message=(
+                    "nlfr db gc: this would delete the LAST remaining run group "
+                    "and leave an empty evidence database — refusing.\n"
+                    "If you really mean to empty the store, re-run with "
+                    "--allow-empty."
+                ),
             )
-            return 2
 
         db_bytes_before = db_path.stat().st_size
         deleted_entries = [
@@ -735,10 +793,16 @@ def db_gc(args: argparse.Namespace) -> int:
                 for run_dir, _metadata in discovered.get(group["run_group"], []):
                     if _within(evidence_root, run_dir):
                         shutil.rmtree(run_dir, ignore_errors=True)
-            # Reclaim space: checkpoint the WAL, then VACUUM (both need autocommit).
+            # Reclaim space, then MEASURE honestly (issue #73). In WAL mode
+            # VACUUM's rewrite lands in the write-ahead log, not the main
+            # ``.sqlite`` file, so a ``stat()`` taken right after VACUUM reads the
+            # *pre*-VACUUM size and ``reclaimed_bytes`` is 0 by construction even
+            # when real space was freed. Checkpoint (TRUNCATE) AFTER VACUUM folds
+            # the freed pages back into the main file and truncates the WAL, so
+            # the size we stat is the true post-reclaim size. Both need autocommit.
             conn.isolation_level = None
-            conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
             conn.execute("VACUUM")
+            conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
             db_bytes_after = db_path.stat().st_size
             vacuum_info = {
                 "ran": True,

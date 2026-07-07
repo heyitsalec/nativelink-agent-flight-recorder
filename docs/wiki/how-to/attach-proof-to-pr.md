@@ -73,12 +73,41 @@ Committed redacted sample:
 
 ## Redaction rules
 
-The markdown exporter:
+The markdown exporter builds from **already-scrubbed proof JSON**, so it never
+inlines raw stdout/stderr bytes. It:
 
 - Replaces repo-root paths with `<repo>` when `--repo-root` is set
-- Redacts `/Users/...` and `/home/...` prefixes to `${HOME}`
+- Collapses `/Users/...` and `/home/...` prefixes to `${HOME}`, and scrubs
+  **non-home absolute paths** (`/private/tmp/…`, `/data/…`) to
+  `[REDACTED:abs_path]/<basename>` — the `abs_path` scrub the projectors apply at
+  the sharing boundary
 - Surfaces agent provenance as **model + `prompt_sha256` prefix only** — never raw prompt text
 - Labels every block with `source_kind`, `confidence`, and `redaction_state`
+
+### Gate it with `nlfr redact` before you paste
+
+The exporter's scrub is the *first* line of defense; `nlfr redact` is the
+belt-and-suspenders gate. It carries a registry of secret/PII detectors (AWS /
+GitHub / GitLab / Slack tokens, PEM keys, JWTs, `Authorization` credentials,
+emails, IPv4) **plus** the `abs_path` detector, and runs in two modes over either
+the proof JSON *or* the exported markdown (which is scanned as plain text — not
+refused as "not JSON"):
+
+```bash
+# CHECK (gate): exit 1 if any secret/PII/abs-path shape is present; writes nothing.
+nlfr redact --check data/pr-proof-comment/proof-comment.md
+nlfr redact --check projections/proof-<run-group>.json
+
+# WRITE: emit a scrubbed copy to paste instead of the original.
+nlfr redact projections/proof-<run-group>.json proof-shareable.json
+```
+
+`--check` prints each finding (detector, location, **masked** excerpt — never the
+raw secret) and exits non-zero, so it drops straight into a pre-paste CI step.
+This is defense-in-depth pattern matching, **not** a guarantee — review sensitive
+evidence at the source too. Full detector list, scope, and limits:
+[redact CLI reference](../reference/cli.md#redact) and the
+[before-you-share section](record-your-own-build.md#before-you-share-a-projection).
 
 ## CI recipe (optional)
 
