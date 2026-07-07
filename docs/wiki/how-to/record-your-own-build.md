@@ -79,17 +79,23 @@ shared projection is built.
 
 Belt-and-suspenders: before you attach **any** projection to a PR or dashboard,
 gate it with `nlfr redact` (defense-in-depth pattern matching for credentials +
-PII on top of the path scrub — **not** a guarantee; review sensitive evidence at
-the source too):
+PII **and** absolute local paths — **not** a guarantee; review sensitive evidence
+at the source too):
 
 ```bash
-# Fail the share if a secret/PII shape is present (writes nothing; exit 1 on find)
+# Fail the share if a secret/PII/abs-path shape is present (writes nothing; exit 1 on find)
 nlfr redact --check projections/graph-<run-group>.json
 
 # Or write a scrubbed copy to attach instead of the raw projection
 nlfr redact projections/graph-<run-group>.json graph-shareable.json
 ```
 
+`--check` catches the same non-home absolute-path class the projectors scrub
+(`abs_path`, on by default) — so a *stale* projection built before this scrub, or
+one produced by a tool that bypassed the projector, still fails the gate instead
+of leaking a raw `cwd`/`command` path past a `redaction_state: safe` node. Local
+`file:///abs/path` URIs are caught too; remote authorities (`grpc://`,
+`bytestream://`, `https://`) and `${HOME}`-collapsed home paths are not flagged.
 `--check` exits non-zero and prints each finding (detector, JSON path, masked
 excerpt — never the raw secret) so it drops straight into a pre-publish CI step.
 See the [redact CLI reference](../reference/cli.md#redact) and the module

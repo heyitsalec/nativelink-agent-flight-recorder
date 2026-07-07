@@ -12,6 +12,14 @@ Two things happen here, honestly labelled:
    (``github_pat_``) tokens, GitLab/Slack tokens, PEM private keys, bearer
    credentials, JWTs, URL userinfo) and a separate **PII tier** (emails, public
    IPv4, hostnames). Matched spans are replaced with ``[REDACTED:<detector>]``.
+3. **Absolute local-path detection** (``abs_path``, on by default): non-home
+   absolute filesystem paths (``/private/tmp/…``, ``/data/…``) and local
+   ``file:///`` URIs that the home-only scrub misses. It shares recognition and
+   replacement with :func:`scrub_local_paths` (the projection-time scrubber), so
+   ``--check`` reports exactly what write-mode scrubs — collapsing the directory
+   to ``[REDACTED:abs_path]/<basename>`` while keeping the basename (and a
+   ``file://`` scheme). ``/Users``/``/home`` stay with ``home_path`` (``${HOME}``);
+   Bazel labels, ``../`` relatives, and remote URI authorities are never flagged.
 
 **Scope and limits — read this before trusting a published projection.**
 This layer is *defense-in-depth pattern matching, not a guarantee.* It reliably
@@ -68,6 +76,7 @@ __all__ = [
     "redact_string",
     "scrub_local_paths",
     "SECRET_DETECTORS",
+    "PATH_DETECTORS",
     "PII_DETECTORS",
     "DETECTORS",
 ]
@@ -93,18 +102,22 @@ Finder = Callable[[str, Optional[str]], Iterable[Span]]
 
 @dataclass(frozen=True)
 class Detector:
-    """A single named secret/PII detector.
+    """A single named secret/PII/path detector.
 
     ``find`` returns non-overlapping-agnostic ``(start, end)`` spans within
     ``value``; overlap resolution happens centrally in :func:`_resolve_spans`.
-    ``replacement`` defaults to ``[REDACTED:<name>]`` but the home-path
-    detector overrides it with ``${HOME}``.
+    ``replacement`` defaults to ``[REDACTED:<name>]`` but the home-path detector
+    overrides it with ``${HOME}``. ``replace`` (when set) is a per-match callable
+    that computes the substitution from the matched text — used by the
+    ``abs_path`` detector to keep the basename (``[REDACTED:abs_path]/<basename>``)
+    and preserve a ``file://`` scheme; it wins over ``replacement`` when present.
     """
 
     name: str
-    tier: str  # "secret" | "pii"
+    tier: str  # "secret" | "path" | "pii"
     find: Finder
     replacement: str | None = None
+    replace: Callable[[str], str] | None = None
 
     def replacement_text(self) -> str:
         return self.replacement or _REDACTED.format(name=self.name)
@@ -208,6 +221,75 @@ _SECRET_KEY_CONTEXT = re.compile(
 _HOME_PATH = re.compile(r"/(?:Users|home)/[^/\s\"'\\]+")
 
 
+# --- absolute local-path recognition (shared by the abs_path detector and the
+#     projection-time scrubber :func:`scrub_local_paths`) ---------------------
+#
+# An absolute POSIX path with at least two segments (a directory and a
+# basename). The leading lookbehind excludes Bazel labels (``//foo:bar``),
+# external repos (``@repo//pkg:tgt``), relative paths (``../x``, ``./x``) and
+# remote URI authorities (``grpc://host``, ``bytestream://h``, ``https://h``,
+# ``ssh://h``): a ``/`` preceded by a word char, ``.``, ``/``, ``:``, ``-``,
+# ``}`` (a ``${HOME}`` tail) or ``]`` (a ``[REDACTED:…]`` tail — idempotency)
+# never opens a match, so only a genuine path boundary (start-of-string,
+# whitespace, ``=`` in a flag value, a quote) does. Segment chars stop at ``:``
+# so a trailing ``:port`` never joins a path.
+_ABS_PATH = re.compile(r"(?<![\w./:}\]-])/[^/\s:\"'\\]+(?:/[^/\s:\"'\\]+)+")
+
+#: ``file://`` is a *local* path scheme (unlike ``bytestream://``/``grpc://``/
+#: ``https://``/``ssh://`` remote authorities), so the empty-authority
+#: ``file:///abs/path`` form leaks a local path and must be scrubbed. Only the
+#: triple-slash (empty authority) form matches — ``file://host/share`` is a
+#: remote authority and is deliberately left intact. The scheme is preserved in
+#: the replacement (``file://[REDACTED:abs_path]/out.txt``).
+_FILE_URI = re.compile(r"\bfile://(?P<path>/[^/\s:\"'\\]+(?:/[^/\s:\"'\\]+)*)")
+
+_FILE_URI_SCHEME = "file://"
+
+
+def _abs_path_replacement(matched: str) -> str:
+    """:func:`scrub_local_paths` semantics for a single matched absolute path.
+
+    Collapses the directory portion to :data:`_ABS_PATH_PLACEHOLDER` while
+    preserving the basename so the value stays interpretable
+    (``/a/b/bep.json`` -> ``[REDACTED:abs_path]/bep.json``). A ``file://`` scheme
+    is preserved honestly (``file:///Users/a/out.txt`` ->
+    ``file://[REDACTED:abs_path]/out.txt``).
+    """
+
+    scheme = ""
+    body = matched
+    if body.startswith(_FILE_URI_SCHEME):
+        scheme = _FILE_URI_SCHEME
+        body = body[len(_FILE_URI_SCHEME):]
+    basename = body.rsplit("/", 1)[-1]
+    if basename:
+        return f"{scheme}{_ABS_PATH_PLACEHOLDER}/{basename}"
+    return f"{scheme}{_ABS_PATH_PLACEHOLDER}"
+
+
+def _abs_path_finder(value: str, key: str | None) -> Iterable[Span]:
+    """Absolute local filesystem paths, minus the home paths ``home_path`` owns.
+
+    Recognition is shared with :func:`scrub_local_paths`: the generic
+    multi-segment absolute-path shape (:data:`_ABS_PATH`) plus local
+    ``file:///`` URIs (:data:`_FILE_URI`). Home paths (``/Users``/``/home``) are
+    skipped so the ``home_path`` detector keeps ownership of them and its
+    ``${HOME}`` replacement — the ``abs_path`` detector adds only the *non-home*
+    class (``/private/tmp/…``, ``/var/folders/…``, ``/data/…``) that the
+    home-only scrub misses. A ``file:///Users/…`` URI is still caught here (the
+    scheme, not the home segment, is what makes it an abs_path finding).
+    """
+
+    spans: set[Span] = set()
+    for match in _FILE_URI.finditer(value):
+        spans.add(match.span(0))
+    for match in _ABS_PATH.finditer(value):
+        if _HOME_PATH.match(match.group(0)):
+            continue
+        spans.add(match.span(0))
+    yield from sorted(spans)
+
+
 def _is_aws_secret_shape(text: str) -> bool:
     """A 40-char base64-ish window is a *candidate* secret unless it is a digest.
 
@@ -257,6 +339,24 @@ SECRET_DETECTORS: list[Detector] = [
     Detector("url_credentials", "secret", _regex_finder(_URL_USERINFO, group="cred")),
     Detector("authorization_credential", "secret", _regex_finder(_AUTH_CREDENTIAL, group="cred")),
     Detector("aws_secret_access_key", "secret", _aws_secret_finder),
+]
+
+
+# --- path tier detector ----------------------------------------------------
+#
+# ``abs_path`` closes the gap the reviewer of #63 found: the projection-time
+# scrubber :func:`scrub_local_paths` collapses non-home absolute paths at the
+# *sharing boundary*, but until now it was NOT in the detector registry, so
+# ``nlfr redact --check`` — the documented belt-and-suspenders before sharing —
+# could not *see* the leak class it closes. A stale/pre-fix projection or a
+# future producer bypassing ``redact_projection_node`` (e.g. ``"cwd":
+# "/private/tmp/ci-runner/ws"`` under a ``redaction_state: safe`` node) would
+# pass ``--check`` silently. This detector reuses the same recognition
+# (``_abs_path_finder``) and replacement (``_abs_path_replacement``) as the
+# scrubber, so ``--check`` reports what write-mode scrubs. It is on by default
+# (see :class:`RedactionConfig.enable_abs_path`).
+PATH_DETECTORS: list[Detector] = [
+    Detector("abs_path", "path", _abs_path_finder, replace=_abs_path_replacement),
 ]
 
 
@@ -323,8 +423,10 @@ PII_DETECTORS: list[Detector] = [
 ]
 
 #: Registry order defines tie-break priority in overlap resolution: secrets
-#: first (home-path and PEM before the generic shapes), then PII.
-DETECTORS: list[Detector] = SECRET_DETECTORS + PII_DETECTORS
+#: first (home-path and PEM before the generic shapes), then the path tier
+#: (abs_path), then PII. home_path (secret) precedes abs_path so ``/Users``/
+#: ``/home`` keep their ``${HOME}`` collapse; abs_path skips those anyway.
+DETECTORS: list[Detector] = SECRET_DETECTORS + PATH_DETECTORS + PII_DETECTORS
 
 
 # ---------------------------------------------------------------------------
@@ -338,19 +440,12 @@ DETECTORS: list[Detector] = SECRET_DETECTORS + PII_DETECTORS
 # dashboard), a plaintext ``/Users/<name>/...`` or ``/private/tmp/...`` leaks the
 # local filesystem layout on a node that would otherwise self-label
 # ``redaction_state: safe``. :func:`scrub_local_paths` is the projection-time
-# scrubber the graph/runway projectors run over every shareable field. It is
-# intentionally NOT wired into the default detector registry: doing so would
-# rewrite the committed sample projections and turn the ``--check`` gate against
-# honest publishes. The recorder never mutates SQLite evidence with it — scrubbing
-# happens only when a projection is built at the sharing boundary.
-
-#: An absolute POSIX path with at least two segments (a directory and a
-#: basename). The leading-slash lookbehind excludes Bazel labels (``//foo:bar``)
-#: and URL authorities (``grpc://host``, ``https://host``): a ``/`` preceded by
-#: ``/``, an alnum, ``.``, ``:`` or ``-`` never opens a match, so only a genuine
-#: path boundary (start-of-string, whitespace, ``=`` in a flag value, a quote)
-#: does. Segment chars stop at ``:`` so a trailing ``:port`` never joins a path.
-_ABS_PATH = re.compile(r"(?<![\w./:-])/[^/\s:\"'\\]+(?:/[^/\s:\"'\\]+)+")
+# scrubber the graph/runway projectors run over every shareable field. It shares
+# its recognition (:data:`_ABS_PATH`/:data:`_FILE_URI`) and per-match
+# replacement (:func:`_abs_path_replacement`) with the ``abs_path`` detector, so
+# ``nlfr redact --check`` reports exactly the class write-mode scrubs. The
+# recorder never mutates SQLite evidence with it — scrubbing happens only when a
+# projection is built at the sharing boundary.
 
 
 def scrub_local_paths(value: str, roots: Iterable[str] | None = None) -> tuple[str, int]:
@@ -358,11 +453,16 @@ def scrub_local_paths(value: str, roots: Iterable[str] | None = None) -> tuple[s
 
     Catches home directories (``/Users/<n>``, ``/home/<n>``) *and* the arbitrary
     absolute paths the home-only :data:`_HOME_PATH` detector misses
-    (``/private/tmp/...``, ``/var/folders/...``). Each match keeps its basename so
-    the projection stays interpretable::
+    (``/private/tmp/...``, ``/var/folders/...``), plus local ``file:///`` URIs.
+    Each match keeps its basename so the projection stays interpretable::
 
         /Users/a/proj/workspace                  -> [REDACTED:abs_path]/workspace
         --build_event_json_file=/tmp/x/bep.json  -> --build_event_json_file=[REDACTED:abs_path]/bep.json
+        file:///Users/a/out.txt                  -> file://[REDACTED:abs_path]/out.txt
+
+    Remote URI authorities are left intact (``grpc://``, ``bytestream://``,
+    ``https://``, ``ssh://``, and ``file://host/share`` with a non-empty
+    authority); only the empty-authority ``file:///abs`` form is a local path.
 
     Deterministic and idempotent (the placeholder carries no ``/seg/seg`` shape,
     so re-running is a no-op). Returns ``(scrubbed, replacement_count)``; a
@@ -381,8 +481,7 @@ def scrub_local_paths(value: str, roots: Iterable[str] | None = None) -> tuple[s
     def _replace(match: re.Match) -> str:
         nonlocal count
         count += 1
-        basename = match.group(0).rsplit("/", 1)[-1]
-        return f"{_ABS_PATH_PLACEHOLDER}/{basename}" if basename else _ABS_PATH_PLACEHOLDER
+        return _abs_path_replacement(match.group(0))
 
     normalized_roots = sorted(
         {r.rstrip("/") for r in (roots or []) if isinstance(r, str) and r.startswith("/")},
@@ -402,6 +501,9 @@ def scrub_local_paths(value: str, roots: Iterable[str] | None = None) -> tuple[s
         )
         value = root_re.sub(_replace, value)
 
+    # Local ``file:///`` URIs first (the generic pass's lookbehind excludes the
+    # scheme-anchored path), then the generic absolute-path pass.
+    value = _FILE_URI.sub(_replace, value)
     result = _ABS_PATH.sub(_replace, value)
     return result, count
 
@@ -415,17 +517,20 @@ def scrub_local_paths(value: str, roots: Iterable[str] | None = None) -> tuple[s
 class RedactionConfig:
     """Which detectors run and whether we rewrite (default) or scan (``--check``).
 
-    Secret-tier detectors are always on. Of the PII tier, ``email`` and ``ipv4``
-    are on by default in the publish path (both genuinely sensitive and, on
-    NLFR's corpus, false-positive-free). ``hostname`` is **opt-in**
-    (``--hostname``): host shapes are indistinguishable from tool/file names in
-    this domain (``record-agent-change.sh``, ``receipt.v1``,
-    ``nlfr.ingest.worker``), so redacting them by default would block honest
-    publishes rather than protect anything. Each PII detector is individually
-    toggleable.
+    Secret-tier detectors are always on. The path tier (``abs_path``) is on by
+    default (``enable_abs_path``): a non-home absolute local path on a projection
+    told to ``safe`` is exactly the leak ``nlfr redact --check`` must catch. Of
+    the PII tier, ``email`` and ``ipv4`` are on by default in the publish path
+    (both genuinely sensitive and, on NLFR's corpus, false-positive-free).
+    ``hostname`` is **opt-in** (``--hostname``): host shapes are
+    indistinguishable from tool/file names in this domain
+    (``record-agent-change.sh``, ``receipt.v1``, ``nlfr.ingest.worker``), so
+    redacting them by default would block honest publishes rather than protect
+    anything. Each toggleable detector is individually controllable.
     """
 
     redact: bool = True
+    enable_abs_path: bool = True
     enable_email: bool = True
     enable_ip: bool = True
     enable_hostname: bool = False
@@ -433,6 +538,8 @@ class RedactionConfig:
     def is_enabled(self, detector: Detector) -> bool:
         if detector.tier == "secret":
             return True
+        if detector.tier == "path":
+            return self.enable_abs_path
         return {
             "email": self.enable_email,
             "ipv4": self.enable_ip,
@@ -518,7 +625,10 @@ def redact_string(value: str, key: str | None, config: RedactionConfig):
     applied: list[Detector] = []
     for start, end, detector in chosen:
         out.append(value[cursor:start])
-        out.append(detector.replacement_text())
+        if detector.replace is not None:
+            out.append(detector.replace(value[start:end]))
+        else:
+            out.append(detector.replacement_text())
         applied.append(detector)
         cursor = end
     out.append(value[cursor:])

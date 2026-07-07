@@ -182,9 +182,19 @@ python3 -m nlfr redact projections/graph-baseline.json graph-shareable.json
 | `--hostname` | off | opt in to hostname redaction (off by default: FQDN shapes collide with tool/file names) |
 
 Secret-tier detectors (home paths, PEM keys, AWS/GitHub/GitLab/Slack tokens,
-JWTs, URL/`Authorization` credentials) are always on. This is defense-in-depth
-pattern matching, **not** a guarantee — a free-standing high-entropy secret with
-no prefix/marker is not regex-detectable without false-positiving over this
+JWTs, URL/`Authorization` credentials) are always on. The `abs_path` detector is
+also on by default: it flags (and, in write mode, scrubs to
+`[REDACTED:abs_path]/<basename>`) **non-home absolute local paths** — the
+`/private/tmp/…`, `/data/…`, `/var/folders/…` class the graph/runway projectors
+scrub at export time — plus local `file:///abs/path` URIs (scheme preserved,
+`file://[REDACTED:abs_path]/<basename>`). This closes the gap where a stale or
+externally-produced projection carrying a raw `cwd`/`command` path under a
+`redaction_state: safe` node would pass `--check` silently. `/Users`/`/home`
+keep their `${HOME}` collapse; Bazel labels (`//foo:bar`), relative paths, and
+remote URI authorities (`grpc://`, `bytestream://`, `https://`, `ssh://`,
+`file://host/share`) are never flagged. This is defense-in-depth pattern
+matching, **not** a guarantee — a free-standing high-entropy secret with no
+prefix/marker is not regex-detectable without false-positiving over this
 corpus's SHA digests; review sensitive evidence at the source too. When a value
 is redacted inside an object carrying `redaction_state`, that state is honestly
 upgraded `safe`/`unknown` → `redacted`. Guide:

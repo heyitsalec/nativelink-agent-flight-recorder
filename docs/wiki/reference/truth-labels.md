@@ -83,6 +83,11 @@ walks the JSON structure — string values **and** keys — and applies:
   `gh[pousr]_`), `github_pat` (fine-grained `github_pat_`), `gitlab_pat`,
   `slack_token`, `jwt`, `url_credentials`, `authorization_credential`. Matched
   spans become `[REDACTED:<detector>]`.
+- **Path detector** `abs_path` (on by default): non-home absolute local paths
+  and local `file:///` URIs (the class the graph/runway projectors scrub) become
+  `[REDACTED:abs_path]/<basename>`; `/Users`/`/home` stay with `home_path`
+  (`${HOME}`), and Bazel labels, relative paths, and remote URI authorities are
+  never flagged.
 - **PII tier**: `email` and `ipv4` are redacted by default (loopback and
   link-local addresses are **not** sensitive and are excluded — `grpc://127.0.0.1`
   is left intact). `hostname` is **opt-in** (`--hostname`): in NLFR evidence,

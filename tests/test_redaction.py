@@ -117,6 +117,15 @@ NEGATIVE_CASES = [
     ("hex64_upper_under_secret_key", {"secret": "ABCDEF0123456789" * 4}),  # 64-hex, uppercase
     ("bazel_label", {"target": "//tasks:escalation_policy_test"}),
     ("bazel_external_repo", {"target": "@local-remote-execution//examples:lre-cc"}),
+    # abs_path negative controls: labels, relatives, and remote URI authorities
+    # must never be flagged as an absolute local path.
+    ("relative_dotdot_path", {"p": "../up/one/file"}),
+    ("relative_dot_path", {"p": "./rel/path/file.txt"}),
+    ("remote_grpc_with_path", {"ref": "grpc://host.internal:50051/build.bazel/x"}),
+    ("bytestream_with_path", {"ref": "bytestream://cache.internal:443/blobs/abc123/4096"}),
+    ("https_with_path", {"u": "https://example.com/path/to/thing"}),
+    ("file_uri_remote_authority", {"u": "file://fileserver/share/report.txt"}),
+    ("home_placeholder_tail", {"p": "${HOME}/Documents/project/data"}),
     ("loopback_grpc", {"flag": "--remote_cache=grpc://127.0.0.1:50051"}),
     ("loopback_ip", {"ip": "127.0.0.1"}),
     ("link_local_ip", {"ip": "169.254.10.20"}),
@@ -404,13 +413,49 @@ def test_gate_roots_are_populated() -> None:
     _committed_json_files(),
     ids=lambda p: str(p.relative_to(ROOT)),
 )
-def test_committed_projection_has_no_findings(json_path: Path) -> None:
-    """Every committed projection must scan clean under the publish config."""
+def test_committed_projection_has_no_secret_or_pii_findings(json_path: Path) -> None:
+    """Every committed projection must scan clean of SECRET/PII shapes.
+
+    Scanned under the full publish config (``abs_path`` on). ``abs_path`` (path
+    tier) findings are *tolerated* here: the committed canvas/proof-sample corpus
+    is *demo* content that predates the projection-boundary path scrubber and
+    carries illustrative synthetic absolute paths (``/data/…``, ``/nix/store/…``,
+    ``/private/tmp``-style workspaces). Regenerating those demo samples through
+    the fixed pipeline is tracked in GitHub #64 — see the tripwire test below.
+    A real credential or PII leak (any non-``path``-tier finding) still fails the
+    build, which is exactly what this gate has guarded since issue #29.
+    """
     result = redact_payload(
         json.loads(json_path.read_text(encoding="utf-8")),
         RedactionConfig(redact=False),
     )
-    assert result.findings == [], [f.format_line() for f in result.findings]
+    non_path = [f for f in result.findings if f.tier != "path"]
+    assert non_path == [], [f.format_line() for f in non_path]
+
+
+def test_committed_samples_carry_abs_path_findings_pending_regeneration() -> None:
+    """Tripwire tying the abs_path tolerance above to GitHub #64.
+
+    The demo corpus currently carries non-home absolute paths, so ``abs_path``
+    (on by default) reports findings over it. This asserts that tolerance is
+    *load-bearing*, not vacuous. When #64 regenerates the samples through the
+    path scrubber this count drops to zero and THIS test fails — a deliberate
+    signal to restore the strict zero-findings gate (delete the ``non_path``
+    filter above) rather than let a weaker gate persist silently.
+    """
+    total = 0
+    for json_path in _committed_json_files():
+        result = redact_payload(
+            json.loads(json_path.read_text(encoding="utf-8")),
+            RedactionConfig(redact=False),
+        )
+        total += sum(1 for f in result.findings if f.tier == "path")
+    assert total > 0, (
+        "No abs_path findings remain in the committed corpus — GitHub #64 is "
+        "resolved. Restore the strict zero-findings gate: change "
+        "test_committed_projection_has_no_secret_or_pii_findings to assert "
+        "result.findings == [] and delete this tripwire."
+    )
 
 
 # --- scrub_local_paths: projection-boundary local-path scrubbing (#60) ------
@@ -473,3 +518,125 @@ def test_scrub_local_paths_roots_catches_single_segment_root_without_corruption(
 def test_scrub_local_paths_passes_non_strings_through():
     assert scrub_local_paths(123) == (123, 0)
     assert scrub_local_paths(None) == (None, 0)
+
+
+# ---------------------------------------------------------------------------
+# F1: abs_path detector — --check catches the non-home leak scrub_local_paths
+#     scrubs (PR #63 review). The registry now sees what write-mode removes.
+# ---------------------------------------------------------------------------
+
+# The reviewer's exact repro: a non-home absolute cwd under a ``safe`` node.
+REVIEWER_LEAK = {"redaction_state": "safe", "cwd": "/private/tmp/ci-runner-7f3a/checkout/ws"}
+
+
+def test_abs_path_check_flags_reviewer_leak_without_mutating_state() -> None:
+    scan = redact_payload(REVIEWER_LEAK, RedactionConfig(redact=False))
+    assert "abs_path" in _detectors(scan)
+    # --check never mutates the state it reports on.
+    assert scan.payload["redaction_state"] == "safe"
+    (finding,) = [f for f in scan.findings if f.detector == "abs_path"]
+    assert finding.tier == "path"
+    assert finding.json_path == "$.cwd"
+    # The report is masked: the placeholder shows, the raw directory does not.
+    assert "[REDACTED:abs_path]" in finding.excerpt
+    assert "/private/tmp/ci-runner-7f3a" not in finding.excerpt
+
+
+def test_abs_path_write_mode_scrubs_and_upgrades_label() -> None:
+    out = redact_payload(REVIEWER_LEAK).payload
+    assert out["cwd"] == "[REDACTED:abs_path]/ws"  # basename preserved
+    assert out["redaction_state"] == "redacted"  # safe -> redacted, honestly
+
+
+def test_abs_path_scrubs_flag_value_and_command_arg() -> None:
+    doc = {"command": ["bazel", "--build_event_json_file=/private/tmp/a/b/bep.json"]}
+    out = redact_payload(doc).payload
+    assert out["command"][1] == "--build_event_json_file=[REDACTED:abs_path]/bep.json"
+
+
+def test_abs_path_does_not_double_flag_home_paths() -> None:
+    # home_path (not abs_path) owns /Users, keeping the ${HOME} collapse.
+    doc = {"artifact_root": "/Users/example/proj/data/artifacts"}
+    result = redact_payload(doc)
+    assert "home_path" in _detectors(result)
+    assert "abs_path" not in _detectors(result)
+    assert result.payload["artifact_root"] == "${HOME}/proj/data/artifacts"
+
+
+def test_abs_path_is_on_by_default_and_can_be_disabled() -> None:
+    doc = {"cwd": "/private/tmp/x/y/ws"}
+    assert "abs_path" in _detectors(redact_payload(doc, RedactionConfig(redact=False)))
+    off = redact_payload(doc, RedactionConfig(redact=False, enable_abs_path=False))
+    assert off.findings == []
+
+
+def test_cli_check_flags_abs_path_leak(tmp_path: Path) -> None:
+    src = tmp_path / "seed.json"
+    src.write_text(json.dumps(REVIEWER_LEAK), encoding="utf-8")
+    result = _run_cli("--check", str(src))
+    assert result.returncode == 1
+    assert "abs_path" in result.stderr
+    assert "$.cwd" in result.stderr
+    assert "[REDACTED:abs_path]" in result.stderr
+    assert "/private/tmp/ci-runner-7f3a" not in result.stderr  # never the raw path
+
+
+def test_cli_redacts_abs_path_and_flips_state(tmp_path: Path) -> None:
+    src = tmp_path / "raw.json"
+    dst = tmp_path / "out.json"
+    src.write_text(json.dumps({"redaction_state": "safe", "cwd": "/private/tmp/x/y/ws"}), encoding="utf-8")
+    result = _run_cli(str(src), str(dst))
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(dst.read_text(encoding="utf-8"))
+    assert payload["cwd"] == "[REDACTED:abs_path]/ws"
+    assert payload["redaction_state"] == "redacted"
+    assert "abs_path=1" in result.stdout
+
+
+# ---------------------------------------------------------------------------
+# F2: file:// is a LOCAL scheme — scrub it (both scrubber and detector); remote
+#     authorities (bytestream/grpc/https/ssh, file://host) stay intact.
+# ---------------------------------------------------------------------------
+
+
+def test_scrub_local_paths_scrubs_local_file_uri_preserving_scheme() -> None:
+    out, count = scrub_local_paths("file:///Users/alice/artifacts/out.txt")
+    assert out == "file://[REDACTED:abs_path]/out.txt"
+    assert count == 1
+
+
+def test_abs_path_detector_scrubs_local_file_uri_preserving_scheme() -> None:
+    result = redact_payload({"out": "file:///Users/alice/artifacts/out.txt"})
+    assert "abs_path" in _detectors(result)
+    assert result.payload["out"] == "file://[REDACTED:abs_path]/out.txt"
+
+
+def test_file_uri_scrub_is_idempotent() -> None:
+    once, _ = scrub_local_paths("file:///Users/a/out.txt")
+    twice, count = scrub_local_paths(once)
+    assert twice == once == "file://[REDACTED:abs_path]/out.txt"
+    assert count == 0
+
+
+REMOTE_AUTHORITIES = [
+    "bytestream://cache.internal:443/blobs/abc123/4096",
+    "grpc://host.internal:50051/build.bazel/x",
+    "https://example.com/path/to/thing",
+    "ssh://host.example.com/repo.git",
+    "file://fileserver/share/report.txt",  # non-empty authority == remote share
+]
+
+
+@pytest.mark.parametrize("token", REMOTE_AUTHORITIES)
+def test_remote_uri_authorities_left_intact_by_scrubber_and_detector(token: str) -> None:
+    assert scrub_local_paths(token) == (token, 0)
+    assert redact_payload({"ref": token}, RedactionConfig(redact=False)).findings == []
+
+
+def test_scrub_local_paths_does_not_corrupt_home_placeholder_tail() -> None:
+    # A ${HOME}-prefixed value (from an earlier home-path scrub) is already
+    # redacted; its multi-segment tail must not be re-matched as an abs path.
+    assert scrub_local_paths("${HOME}/Documents/project/data") == (
+        "${HOME}/Documents/project/data",
+        0,
+    )
