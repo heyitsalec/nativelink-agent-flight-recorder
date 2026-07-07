@@ -37,3 +37,6 @@ demo/bazel-monorepo/MODULE.bazel.lock
 # Generated LRE Bazel config (Nix flake module)
 lre.bazelrc
 demo/bazel-monorepo/lre.bazelrc
+
+# Claude Code session state (agent worktrees, agent memory)
+.claude/
