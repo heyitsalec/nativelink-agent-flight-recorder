@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import gzip
 import json
+import re
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -23,6 +24,92 @@ from nlfr.ingest.verification import (
     detect_digest_function,
     iter_bep_file_references,
 )
+
+# The Bazel versions whose BEP + execution-log + profile shapes NLFR pins with
+# proto-derived, populator-verified matrix fixtures (7.x LTS line and current 9.x
+# line). This is the SINGLE source of truth for the tested anchors: the matrix
+# fixture directories (tests/fixtures/bazel/matrix/<version>/) mirror it, asserted
+# by tests/test_ingest_bazel_matrix.py::test_matrix_anchor_constant_matches_fixtures.
+# It is a bounded honesty claim ("tested against these"), NOT "supports only these":
+# versions between/around the anchors are EXPECTED to parse, and the out-of-range
+# warning is a non-blocking "untested version" signal, never a hard failure.
+TESTED_BAZEL_VERSIONS: tuple[str, ...] = ("7.4.1", "9.0.0")
+TESTED_BAZEL_MAJORS: tuple[int, ...] = (7, 9)
+
+_BAZEL_RELEASE_RE = re.compile(r"(\d+)\.(\d+)\.(\d+)")
+# `bazel version` prints a line like "Build label: 7.4.1"; a pre-release build may
+# print "Build label: 8.0.0-pre.20240101.1" or an empty label for a dev build. The
+# whitespace after the colon is [ \t] (NOT \s) so an empty label does not greedily
+# consume the newline and match the next line's first token.
+_BUILD_LABEL_RE = re.compile(r"^[ \t]*Build label:[ \t]*(\S+)", re.MULTILINE)
+
+
+def bazel_major(version: str | None) -> int | None:
+    """Return the major version int from a Bazel release string, or ``None``.
+
+    Accepts ``"7.4.1"``, ``"9.0.0"``, a ``"8.0.0-pre.20240101.1"`` pre-release, or
+    a leading-``v`` form; returns ``None`` for an empty/unparseable string (a dev
+    build with no release label, or a non-version string). ``None`` in means
+    ``None`` out — the version is *unknown*, which is never treated as out-of-range.
+    """
+
+    if not version:
+        return None
+    match = _BAZEL_RELEASE_RE.search(version)
+    if match is None:
+        return None
+    return int(match.group(1))
+
+
+def is_tested_bazel_major(version: str | None) -> bool:
+    """True when ``version``'s major is one NLFR pins matrix fixtures for.
+
+    An unknown/unparseable version is ``False`` here (it is not a tested major),
+    but callers distinguish "unknown" from "out-of-range" via
+    :func:`out_of_range_bazel_warning`, which stays silent on unknown.
+    """
+
+    major = bazel_major(version)
+    return major is not None and major in TESTED_BAZEL_MAJORS
+
+
+def out_of_range_bazel_warning(version: str | None) -> str | None:
+    """A non-blocking "untested Bazel version" warning, or ``None`` to stay silent.
+
+    Returns ``None`` — no warning — when the version is unknown/unparseable (never
+    fabricate an out-of-range claim from a version NLFR could not read) OR when the
+    major is one of the tested anchors. Returns an honest one-line warning naming
+    the observed version and the tested anchors when the major is outside them.
+    This is advisory only; no caller changes an exit code or fabricates evidence
+    because of it.
+    """
+
+    major = bazel_major(version)
+    if major is None or major in TESTED_BAZEL_MAJORS:
+        return None
+    anchors = ", ".join(TESTED_BAZEL_VERSIONS)
+    return (
+        f"Bazel {version} (major {major}) is outside NLFR's tested version anchors "
+        f"({anchors}); evidence still ingests, but parser behavior at this version "
+        "is not pinned by the matrix. See docs/wiki/reference/bazel-version-matrix.md."
+    )
+
+
+def bazel_release_from_version_output(text: str | None) -> str | None:
+    """Extract the release string from ``bazel version`` stdout, or ``None``.
+
+    Parses the ``Build label: <release>`` line real Bazel prints. Returns ``None``
+    when there is no non-empty label (a source/dev build prints an empty label) so
+    the caller records the version as *unknown* rather than guessing one.
+    """
+
+    if not text:
+        return None
+    match = _BUILD_LABEL_RE.search(text)
+    if match is None:
+        return None
+    label = match.group(1).strip()
+    return label or None
 
 
 def parse_bazel_bep(

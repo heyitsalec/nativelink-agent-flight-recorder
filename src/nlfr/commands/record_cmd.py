@@ -33,7 +33,11 @@ from nlfr.db.ingest import (
     upsert_run,
 )
 from nlfr.ids import stable_id
-from nlfr.ingest.bazel import parse_bazel_bep
+from nlfr.ingest.bazel import (
+    extract_bep_tool_version,
+    out_of_range_bazel_warning,
+    parse_bazel_bep,
+)
 from nlfr.ingest.sqlite import ingest_evidence_bundle
 from nlfr.projectors import export_action_graph, export_proof_packet
 from nlfr.projectors.common import write_or_print
@@ -306,6 +310,18 @@ def run(args: argparse.Namespace) -> int:
             bundle=bundle,
         )
 
+    # Out-of-range Bazel version signal (GitHub issue #85), grounded in the BEP's
+    # OWN self-reported buildToolVersion — the honest, evidence-backed version, not
+    # a separate `bazel version` guess. Non-blocking: it never changes record's exit
+    # code (which mirrors Bazel's) and never alters the recorded evidence; it only
+    # tells the operator this Bazel major is outside NLFR's tested matrix anchors.
+    recorded_bazel_version = (
+        extract_bep_tool_version(bep_source) if bep_captured else None
+    )
+    bazel_version_warning = out_of_range_bazel_warning(recorded_bazel_version)
+    if bazel_version_warning is not None:
+        print(f"nlfr record: {bazel_version_warning}", file=sys.stderr)
+
     terminal_status = _terminal_status(result)
     # nlfr mirrors Bazel's exit code whenever Bazel actually ran. If Bazel never
     # produced an exit code (executable vanished after the preflight PATH check,
@@ -333,6 +349,10 @@ def run(args: argparse.Namespace) -> int:
         "bep_captured": bep_captured,
         "bep_path": str(bep_source),
         "status": terminal_status,
+        "bazel_version": recorded_bazel_version,
+        # Advisory only; null unless the recorded Bazel major is outside the tested
+        # matrix anchors (docs/wiki/reference/bazel-version-matrix.md).
+        "bazel_version_warning": bazel_version_warning,
         "ingest_counts": bundle_counts,
         "results": [result.to_metadata()],
         "artifacts": [entry.to_manifest() for entry in manifest_entries],

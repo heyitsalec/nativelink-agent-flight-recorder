@@ -18,6 +18,7 @@ entry; this index is the Diátaxis hub. Deep pages live under
 | Run the tier1 live Bazel demo | [How-to: tier1 live Bazel](wiki/how-to/run-tier1-live-bazel-demo.md) |
 | Wire NLFR into CI (GitHub Actions / Buildkite / Jenkins) with the redact-gate baked in | [How-to: CI integration](wiki/how-to/ci-integration.md) |
 | Look up CLI flags or truth-label fields | [Reference: CLI](wiki/reference/cli.md) · [Truth labels](wiki/reference/truth-labels.md) |
+| Check which Bazel versions the parsers are tested against | [Reference: Bazel version matrix](wiki/reference/bazel-version-matrix.md) |
 | Review the security posture for procurement | [Security policy](../SECURITY.md) · [Threat model](SECURITY_MODEL.md) |
 | Install and run offline on an air-gapped host | [How-to: air-gapped install](wiki/how-to/air-gapped-install.md) |
 | Migrate an old DB schema or GC evidence-store growth | [CLI: `db upgrade`](wiki/reference/cli.md#db-upgrade) · [`db gc`](wiki/reference/cli.md#db-gc) |
@@ -61,6 +62,7 @@ Lookup tables and contracts. No narrative detours.
 
 - [CLI reference](wiki/reference/cli.md)
 - [Truth labels](wiki/reference/truth-labels.md)
+- [Bazel version matrix](wiki/reference/bazel-version-matrix.md) — BEP/exec-log/profile parser coverage across Bazel 7.x / 9.x + the out-of-range warning
 - [Proof scripts matrix](wiki/reference/proof-scripts-matrix.md)
 - [JSON contracts](wiki/reference/contracts/README.md) — artifact manifest, proof packet, canvas, compare (M9)
 - [One pager](ONE_PAGER.md) — proven vs unproven claims
