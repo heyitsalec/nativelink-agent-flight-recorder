@@ -6,7 +6,7 @@ import argparse
 import json
 import sys
 
-from nlfr.db.connection import DatabaseNotFoundError, connect_readonly
+from nlfr.db.connection import UnreadableDatabaseError, connect_readonly
 from nlfr.projectors.common import run_rows, write_or_print
 from nlfr.projectors.compare import (
     MissingRunGroupError,
@@ -38,13 +38,13 @@ def export_compare(args: argparse.Namespace) -> int:
             return 2
         try:
             left_conn = connect_readonly(args.left_db)
-        except DatabaseNotFoundError as exc:
+        except UnreadableDatabaseError as exc:
             print("nlfr: the left compare database could not be read.", file=sys.stderr)
             print(str(exc), file=sys.stderr)
             return 2
         try:
             right_conn = connect_readonly(args.right_db)
-        except DatabaseNotFoundError as exc:
+        except UnreadableDatabaseError as exc:
             print("nlfr: the right compare database could not be read.", file=sys.stderr)
             print(str(exc), file=sys.stderr)
             return 2
@@ -69,7 +69,7 @@ def export_compare(args: argparse.Namespace) -> int:
     else:
         try:
             conn = connect_readonly(args.db)
-        except DatabaseNotFoundError as exc:
+        except UnreadableDatabaseError as exc:
             print(str(exc), file=sys.stderr)
             return 2
         try:
@@ -92,7 +92,7 @@ def export_history(args: argparse.Namespace) -> int:
 
     try:
         conn = connect_readonly(args.db)
-    except DatabaseNotFoundError as exc:
+    except UnreadableDatabaseError as exc:
         print(str(exc), file=sys.stderr)
         return 2
     payload = export_history_projection(conn, limit=args.limit)
@@ -109,7 +109,7 @@ def index_run_groups(args: argparse.Namespace) -> int:
 
     try:
         conn = connect_readonly(args.db)
-    except DatabaseNotFoundError as exc:
+    except UnreadableDatabaseError as exc:
         print(str(exc), file=sys.stderr)
         return 2
     groups = list_run_group_index(conn)

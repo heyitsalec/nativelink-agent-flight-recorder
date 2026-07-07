@@ -6,7 +6,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from nlfr.db.connection import DatabaseNotFoundError, connect_readonly
+from nlfr.db.connection import UnreadableDatabaseError, connect_readonly
 from nlfr.projectors import (
     export_action_graph,
     export_in_toto_statement,
@@ -23,7 +23,7 @@ def export_graph(args: argparse.Namespace) -> int:
 
     try:
         conn = connect_readonly(args.db)
-    except DatabaseNotFoundError as exc:
+    except UnreadableDatabaseError as exc:
         print(str(exc), file=sys.stderr)
         return 2
     write_or_print(export_action_graph(conn, run_group=args.run_group), args.output)
@@ -35,7 +35,7 @@ def export_runway(args: argparse.Namespace) -> int:
 
     try:
         conn = connect_readonly(args.db)
-    except DatabaseNotFoundError as exc:
+    except UnreadableDatabaseError as exc:
         print(str(exc), file=sys.stderr)
         return 2
     write_or_print(export_validation_runway(conn, run_group=args.run_group), args.output)
@@ -47,7 +47,7 @@ def export_proof(args: argparse.Namespace) -> int:
 
     try:
         conn = connect_readonly(args.db)
-    except DatabaseNotFoundError as exc:
+    except UnreadableDatabaseError as exc:
         print(str(exc), file=sys.stderr)
         return 2
     if args.format == "in-toto":

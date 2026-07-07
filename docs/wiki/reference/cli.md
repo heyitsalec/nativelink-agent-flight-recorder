@@ -17,12 +17,18 @@ Default DB path for exporters: `data/nlfr/nlfr.sqlite`. Default run group: `late
 (a literal match, not a resolver). `nlfr record` writes recorded databases at
 `data/nlfr-record/<run-group>/nlfr.sqlite`.
 
-**Read commands never create a database.** `graph`/`runway`/`proof` export and
-`compare index`/`history`/`export` open the `--db` (and `--left-db`/`--right-db`)
-read-only. A nonexistent, zero-byte, or non-SQLite path is a hard error (exit 2)
-that names the path and leaves no file behind — a typo cannot fabricate an empty,
-zero-value projection. An *existing* database with zero run groups is still an
-honest empty report for `compare index`/`history`.
+**Read commands never create or migrate a database.** `graph`/`runway`/`proof`
+export and `compare index`/`history`/`export` open the `--db` (and
+`--left-db`/`--right-db`) read-only. A nonexistent, zero-byte, or non-SQLite path
+is a hard error (exit 2) that names the path and leaves no file behind — a typo
+cannot fabricate an empty, zero-value projection. An *existing* database with zero
+run groups is still an honest empty report for `compare index`/`history`.
+
+Readers also never migrate an old database on open (that would silently rewrite
+recorded evidence). A `--db` whose schema version is **older** than this build is
+a hard error (exit 2) that tells you to run [`nlfr db upgrade`](#db-upgrade)
+first; a `--db` **newer** than this build is refused too (upgrade nlfr). Migrating
+evidence is always an explicit, operator-consented act.
 
 ## doctor
 
@@ -144,6 +150,21 @@ python3 -m nlfr runway export --run-group baseline \
 ```
 
 Exports validation runway projection. The `--db` must already exist (read-only).
+
+## db upgrade
+
+```bash
+python3 -m nlfr db upgrade --db data/nlfr-record/baseline/nlfr.sqlite
+```
+
+Migrates an **existing** database to the current schema version, in place. This
+is the explicit, operator-consented way to bring an old database up to date —
+read commands never migrate on open, so a reader that reports `is schema vN …
+refusing to read` is telling you to run this first. The upgrade is idempotent
+(an already-current DB reports "nothing to upgrade", exit 0) and preserves every
+recorded row. It refuses to *create* a database (a nonexistent/empty/non-SQLite
+`--db` is a hard error, exit 2) and refuses to *downgrade* one written by a newer
+nlfr (exit 2 — upgrade nlfr instead).
 
 ## compare (M9)
 
