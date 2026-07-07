@@ -6,9 +6,12 @@ NLFR's Build Event Protocol parsers (`nlfr ingest --bep`, and the
 `parse_bazel_bep` / `parse_bazel_execution_log` / `parse_bazel_profile` parsers)
 are **fixture-tested against BEP shapes from Bazel 7.4.x and 9.x**. The matrix
 fixtures are **proto-derived**: their JSON shapes come from Bazel's own
-`build_event_stream.proto` at the `7.4.1` and `9.0.0` release tags, not from a
-live build. See `tests/fixtures/bazel/matrix/README.md` for the per-fixture
-provenance table and the exact proto source URLs.
+`build_event_stream.proto` **and its Java populators** (`BuildStartingEvent`,
+`BuildCompletingEvent`, `TestAttempt`, `TestSummary`) at the `7.4.1` and `9.0.0`
+release tags, not from a live build. The populators matter because a deprecated
+proto field can still be emitted on every build — only the Java that sets it says
+whether it is. See `tests/fixtures/bazel/matrix/README.md` for the per-fixture
+provenance table, the exact proto/Java source URLs, and the field-by-field diff.
 
 This is **not** a claim that NLFR "supports all Bazel versions." It is the honest,
 verifiable statement:
@@ -32,6 +35,16 @@ workspace pins `.bazelversion` 7.4.1; the Nix environment historically used the
 untested. The matrix closes that: equivalent semantics are asserted **identical**
 across 7.4.1 and 9.0.0, and the genuine differences are documented.
 
+Verified against the primary sources, the diff across 7.4.1 → 9.0.0 is small: the
+**one** genuine change in the covered events is that `BuildStarted` gains `host`
+(field 10) and `user` (field 11) in 9.x. The `BuildFinished`, `TestSummary` and
+`TestResult` blocks are byte-identical across the range — the deprecated
+`overall_success`, `finish_time_millis`, `start_time_millis` and `*_millis` test
+timing fields are **still emitted in 9.x** alongside their Timestamp/Duration
+successors, so NLFR does not have to guess a shape per version. Those
+non-differences are pinned as stability tripwires: if a future Bazel really drops
+one, the test fails and a real drift row is added rather than assumed in advance.
+
 ## Which Bazel produced the evidence
 
 `nlfr ingest` reads the `started` event's `buildToolVersion` (proto
@@ -45,7 +58,9 @@ An exported proof packet surfaces it in `summary.build_tool`:
 When a BEP declares **no** build tool version (older evidence, a non-Bazel BEP),
 `recorded` is `false` and `versions` is empty — the version is reported as
 **unknown, never fabricated**. A run group that mixes evidence from more than one
-Bazel version lists every version observed.
+Bazel version lists every version observed — e.g. ingesting the 7.4.1 and 9.0.0
+fixtures into one run group yields `versions: ["7.4.1", "9.0.0"]`, pinned by
+`tests/test_ingest_bazel_matrix.py::test_run_group_mixing_two_bazel_versions_lists_both`.
 
 ## Known parser boundary
 
