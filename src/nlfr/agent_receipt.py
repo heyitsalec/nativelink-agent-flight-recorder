@@ -42,7 +42,10 @@ def _normalize_claude(result: dict[str, Any]) -> dict[str, Any]:
     """Map a parsed ``claude -p --output-format json`` object to the internal shape.
 
     This reproduces exactly the fields ``build_receipt`` historically read from
-    the raw Claude result, so Claude receipts stay byte-identical.
+    the raw Claude result, so a *complete* successful Claude output yields a
+    byte-identical receipt. The one deliberate behavior change (see
+    ``build_receipt``) is that a claude "success" whose JSON lacks a verification
+    field now degrades to an honest ``invalid_output`` receipt instead of raising.
     """
 
     response_text = result.get("result") if isinstance(result.get("result"), str) else None
@@ -80,21 +83,37 @@ def _normalize_gemini(result: dict[str, Any]) -> dict[str, Any]:
     ``stats.models`` is structurally analogous to Claude's ``modelUsage`` — a
     dict whose sole key on a clean run is the resolved model. Multiple keys (or
     none) leave ``model.resolved`` absent, degrading below the verified tier.
-    Token counts are mapped only where semantics MATCH; fields Gemini does not
-    report (e.g. cache-creation tokens) are left absent rather than invented.
+    Token counts are mapped only where semantics MATCH Claude's: ``input_tokens``
+    is the NET prompt (``max(0, prompt - cached)``) because Gemini's
+    ``tokens.prompt`` is GROSS — inclusive of ``tokens.cached`` — while Claude's
+    ``input_tokens`` exclude cache reads (see ``_sum_gemini_input_tokens``).
+    Fields Gemini does not report (e.g. cache-creation tokens) are left absent
+    rather than invented.
     """
 
     response_text = result.get("response") if isinstance(result.get("response"), str) else None
     stats = result.get("stats") if isinstance(result.get("stats"), dict) else {}
     models = stats.get("models") if isinstance(stats.get("models"), dict) else {}
     error = result.get("error") if isinstance(result.get("error"), dict) else {}
-    error_code = error.get("code") if isinstance(error.get("code"), int) else None
+    error_code = error.get("code")
+    # Gemini's error.code is string|number upstream (packages/core/src/output/
+    # types.ts). The receipt's api_error_status is contract-bound to
+    # integer|null (an HTTP-style status; contracts/agent_receipt.v1.json is
+    # frozen), so only a numeric code lands there. A symbolic string code (e.g.
+    # "PERMISSION_DENIED") is preserved as-is via result_subtype and still labels
+    # the attempt api_error through _error_signal — never dropped, never coerced.
+    api_error_status = (
+        error_code if isinstance(error_code, int) and not isinstance(error_code, bool) else None
+    )
+    error_subtype = error.get("type") or (error_code if isinstance(error_code, str) else None)
     return {
         "response_text": response_text,
         "resolved_models": sorted(models),
         "session_id": result.get("session_id"),
         "usage": {
-            "input_tokens": _sum_gemini_tokens(models, "prompt"),
+            # NET of cache reads (Gemini's prompt is gross-of-cache); see
+            # _sum_gemini_input_tokens. Prevents double-counting cached tokens.
+            "input_tokens": _sum_gemini_input_tokens(models),
             "output_tokens": _sum_gemini_tokens(models, "candidates"),
             # Gemini reports cached (read) tokens but NOT cache-creation tokens.
             "cache_creation_input_tokens": None,
@@ -105,8 +124,8 @@ def _normalize_gemini(result: dict[str, Any]) -> dict[str, Any]:
         "duration_ms": None,
         "duration_api_ms": None,
         "total_cost_usd": None,
-        "result_subtype": error.get("type") if error else None,
-        "api_error_status": error_code,
+        "result_subtype": error_subtype if error else None,
+        "api_error_status": api_error_status,
     }
 
 
@@ -128,6 +147,48 @@ def _sum_gemini_tokens(models: dict[str, Any], field: str) -> int | None:
         value = tokens.get(field)
         if isinstance(value, int) and not isinstance(value, bool):
             total += value
+            found = True
+    return total if found else None
+
+
+def _sum_gemini_input_tokens(models: dict[str, Any]) -> int | None:
+    """Sum NET input (prompt-minus-cache) tokens across ``stats.models``.
+
+    Gemini's ``tokens.prompt`` is GROSS: it INCLUDES ``tokens.cached`` (the
+    cache-read tokens). This receipt maps every CLI onto Claude's usage shape,
+    where ``input_tokens`` EXCLUDE cache reads (those are reported separately as
+    ``cache_read_input_tokens``). Recording the gross ``prompt`` as
+    ``input_tokens`` would therefore double-count the cached tokens — once as
+    input and again as cache-read. We record the NET figure instead, matching
+    upstream's own ``tokens.input = max(0, prompt - cached)``
+    (packages/core/src/telemetry/uiTelemetry.ts). The documented
+    ``--output-format json`` payload carries ``prompt``/``candidates``/``total``/
+    ``cached`` and no literal ``input``, so we honor a literal ``input`` if a
+    future build emits one and otherwise derive ``max(0, prompt - cached)`` per
+    model (clamped at zero so a cached > prompt anomaly never goes negative).
+
+    Returns ``None`` (absent, not zero) when no model reports usable counts, so a
+    missing figure is never fabricated as a real zero.
+    """
+
+    total = 0
+    found = False
+    for entry in models.values():
+        if not isinstance(entry, dict):
+            continue
+        tokens = entry.get("tokens")
+        if not isinstance(tokens, dict):
+            continue
+        literal = tokens.get("input")
+        if isinstance(literal, int) and not isinstance(literal, bool):
+            total += max(0, literal)
+            found = True
+            continue
+        prompt = tokens.get("prompt")
+        if isinstance(prompt, int) and not isinstance(prompt, bool):
+            cached = tokens.get("cached")
+            cached_val = cached if isinstance(cached, int) and not isinstance(cached, bool) else 0
+            total += max(0, prompt - cached_val)
             found = True
     return total if found else None
 

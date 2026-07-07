@@ -7,8 +7,11 @@ session id, token usage, response SHA-256, prompt SHA-256, timestamp, and CLI
 version. The raw prompt is read from ``--prompt-file``, hashed, and never
 written to any output, log, or artifact.
 
-``--agent-cli`` selects the CLI family (``claude`` — the default, fully
-backward compatible — or ``gemini``). Each family parses its own
+``--agent-cli`` selects the CLI family (``claude`` — the default — or
+``gemini``). Claude keeps its existing flags and receipt shape; the one
+deliberate change is that a claude success whose JSON lacks a verification
+field now degrades to an honest ``invalid_output`` receipt instead of raising
+(see ``nlfr.agent_receipt.build_receipt``). Each family parses its own
 ``--output-format json`` shape through the per-CLI normalizer registry in
 ``nlfr.agent_receipt``; the receipt shape, privacy posture, and verified-tier
 bar are identical across CLIs.
@@ -34,6 +37,12 @@ PROMPT_PLACEHOLDER = "<prompt:sha256>"
 def run(args: argparse.Namespace) -> int:
     """Invoke the headless CLI and write receipt + response outputs."""
 
+    agent_cli = args.agent_cli
+    conflict = _legacy_claude_flag_conflict(agent_cli, args)
+    if conflict:
+        print(f"error: {conflict}", file=sys.stderr)
+        return 2
+
     prompt_path = Path(args.prompt_file)
     if not prompt_path.is_file():
         print(f"error: prompt file not found: {prompt_path}", file=sys.stderr)
@@ -41,7 +50,6 @@ def run(args: argparse.Namespace) -> int:
     prompt_text = prompt_path.read_text(encoding="utf-8")
     prompt_sha = sha256_text(prompt_text)
 
-    agent_cli = args.agent_cli
     agent_bin = _resolve_bin(agent_cli, args.agent_bin, args.claude_bin)
     cli_name = Path(agent_bin).name
     cli_version = _cli_version(agent_bin)
@@ -186,8 +194,11 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
     )
     parser.add_argument(
         "--claude-bin",
-        default="claude",
-        help="Claude Code CLI executable (default: claude); used when --agent-cli claude",
+        default=None,
+        help=(
+            "Claude Code CLI executable (default: claude); legacy claude-only flag — "
+            "an error when combined with --agent-cli other than claude (use --agent-bin)"
+        ),
     )
     parser.add_argument(
         "--model",
@@ -203,7 +214,10 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         "--claude-arg",
         action="append",
         default=[],
-        help="extra argument passed through to the CLI; repeatable",
+        help=(
+            "legacy claude-only extra argument (use --agent-arg for any CLI); "
+            "an error when combined with --agent-cli other than claude; repeatable"
+        ),
     )
     parser.add_argument(
         "--agent-arg",
@@ -221,33 +235,70 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
     parser.set_defaults(handler=run)
 
 
-def _resolve_bin(agent_cli: str, agent_bin: str | None, claude_bin: str) -> str:
+def _legacy_claude_flag_conflict(agent_cli: str, args: argparse.Namespace) -> str | None:
+    """Return a usage-error message if legacy ``--claude-*`` flags fit no family.
+
+    ``--claude-bin`` / ``--claude-arg`` are Claude-only legacy aliases. Under any
+    other family they used to misbehave silently — ``--claude-arg`` values were
+    appended to the (non-claude) argv and ``--claude-bin`` was ignored outright.
+    Now either one combined with a non-claude ``--agent-cli`` is a hard usage
+    error naming the conflict, rather than quietly doing the wrong thing.
+    """
+
+    if agent_cli == "claude":
+        return None
+    offenders = []
+    if args.claude_bin is not None:
+        offenders.append("--claude-bin")
+    if args.claude_arg:
+        offenders.append("--claude-arg")
+    if not offenders:
+        return None
+    joined = " and ".join(offenders)
+    verb = "apply" if len(offenders) > 1 else "applies"
+    return (
+        f"{joined} {verb} only to --agent-cli claude; use --agent-bin/--agent-arg "
+        f"with --agent-cli {agent_cli}"
+    )
+
+
+def _resolve_bin(agent_cli: str, agent_bin: str | None, claude_bin: str | None) -> str:
     """Resolve the executable to invoke for the selected CLI family.
 
     ``--agent-bin`` wins for any family. Otherwise Claude keeps its dedicated
     ``--claude-bin`` (default ``claude``) for full backward compatibility, and
-    every other family defaults to its own name on PATH.
+    every other family defaults to its own name on PATH. A non-claude family can
+    never reach here with ``--claude-bin`` set — that is rejected earlier by
+    ``_legacy_claude_flag_conflict``.
     """
 
     if agent_bin:
         return agent_bin
     if agent_cli == "claude":
-        return claude_bin
+        return claude_bin or "claude"
     return agent_cli
 
 
-def _error_signal(agent_cli: str, cli_result: dict) -> tuple[bool, int | None]:
+def _error_signal(agent_cli: str, cli_result: dict) -> tuple[bool, int | str | None]:
     """Return ``(is_error, api_status)`` from a parsed CLI result, per family.
 
     Claude flags failures with ``is_error`` plus an optional ``api_error_status``.
-    Gemini emits an ``error`` object (with optional numeric ``code``) instead.
+    Gemini emits an ``error`` object with an optional ``code`` that is
+    string|number upstream (packages/core/src/output/types.ts). Either code kind
+    marks a genuine API error; a bare-int gate here previously mislabeled
+    string-coded errors (e.g. ``"PERMISSION_DENIED"``) as ``cli_error`` because
+    the returned ``api_status`` fell to ``None``. We now return the code as-is
+    (int or non-empty str; bools excluded) so the caller's ``api_error`` vs
+    ``cli_error`` label is correct.
     """
 
     if agent_cli == "gemini":
         error = cli_result.get("error")
         if isinstance(error, dict):
             code = error.get("code")
-            return True, code if isinstance(code, int) and not isinstance(code, bool) else None
+            if isinstance(code, bool) or not isinstance(code, (int, str)):
+                code = None
+            return True, code
         return False, None
     return bool(cli_result.get("is_error")), cli_result.get("api_error_status")
 
