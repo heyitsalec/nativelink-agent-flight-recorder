@@ -107,18 +107,35 @@ def test_action_yml_upload_is_gated_and_only_blesses_upload_path() -> None:
     steps = _load_yaml(ACTION_YML)["runs"]["steps"]
     upload = next(s for s in steps if s.get("uses", "").startswith("actions/upload-artifact@"))
     guard = upload["if"]
-    assert "redact-status != 'blocked'" in guard, "upload must be blocked when the gate blocks"
-    assert "steps.gate.outputs.upload-path" in guard
+    # Fail-safe for EVERY block reason (findings AND symlinks): a startsWith
+    # deny on 'blocked' plus the authoritative empty-upload-path guard.
+    assert "startsWith(steps.gate.outputs.redact-status, 'blocked')" in guard
+    assert "!startsWith(steps.gate.outputs.redact-status, 'blocked')" in guard
+    assert "steps.gate.outputs.upload-path != ''" in guard
     # The uploaded path is ONLY the gate-blessed upload-path — never inputs.output-dir.
     assert upload["with"]["path"] == "${{ steps.gate.outputs.upload-path }}"
     assert "output-dir" not in upload["with"]["path"]
+    # Defense in depth: the uploader must not dereference a symlink either.
+    assert upload["with"]["follow-symbolic-links"] is False
+
+
+def test_action_yml_upload_guard_blocks_symlink_status() -> None:
+    """`blocked-symlinks` must be denied by the guard just like `blocked`."""
+    steps = _load_yaml(ACTION_YML)["runs"]["steps"]
+    upload = next(s for s in steps if s.get("uses", "").startswith("actions/upload-artifact@"))
+    guard = upload["if"]
+    # startsWith(..., 'blocked') matches 'blocked' and 'blocked-symlinks'.
+    for status in ("blocked", "blocked-symlinks"):
+        assert status.startswith("blocked")
+    assert "!startsWith(steps.gate.outputs.redact-status, 'blocked')" in guard
 
 
 def test_action_yml_surfaces_the_recorded_build_result() -> None:
-    """A red build must stay red: the last step re-applies record-exit."""
+    """A red build must stay red: the last step re-applies record-exit, and both
+    block reasons produce an error exit."""
     text = ACTION_YML.read_text(encoding="utf-8")
     assert 'exit "${RECORD_EXIT:-1}"' in text
-    assert 'REDACT_STATUS' in text and 'blocked' in text
+    assert "blocked)" in text and "blocked-symlinks)" in text
 
 
 # --------------------------------------------------------------------------- plugin.yml
@@ -144,9 +161,13 @@ def test_buildkite_hook_uploads_only_the_blessed_path_and_only_when_not_blocked(
     assert len(upload_lines) == 1, "exactly one upload site, easy to audit"
     assert '"$upload_path' in upload_lines[0]
     assert "NLFR_OUTPUT_DIR" not in upload_lines[0]
-    # The upload is guarded by the gate's blocked-check earlier in the hook.
-    assert 'redact_status" = "blocked"' in text
-    assert 'exit 1' in text  # blocked => hard fail, no upload
+    # The upload is guarded by the gate's block-check earlier in the hook — a
+    # `blocked*` case that matches BOTH `blocked` (findings) and
+    # `blocked-symlinks`, and exits before the upload line.
+    assert "blocked*)" in text
+    upload_idx = next(i for i, ln in enumerate(text.splitlines()) if "buildkite-agent artifact upload" in ln)
+    block_idx = next(i for i, ln in enumerate(text.splitlines()) if "blocked*)" in ln)
+    assert block_idx < upload_idx, "the block-check must precede (and can exit before) the upload"
 
 
 def test_gate_script_blesses_raw_tree_only_after_a_passing_check() -> None:
@@ -166,3 +187,21 @@ def test_gate_script_blesses_raw_tree_only_after_a_passing_check() -> None:
     # The blocked branch never sets a non-empty upload_path.
     assert 'redact_status="blocked"' in text
     assert 'upload_path=""' in text
+
+
+def test_gate_script_strict_mode_independently_detects_symlinks() -> None:
+    """Strict mode must block the raw tree on ANY symlink — detected with its own
+    `find -type l`, not merely trusting redact's skipped:symlink report."""
+    text = GATE.read_text(encoding="utf-8")
+    # Independent detection (not a parse of redact's output).
+    assert 'find "$evidence_dir" -type l' in text
+    # A distinct status + exit for the symlink block, with an empty upload-path.
+    assert 'redact_status="blocked-symlinks"' in text
+    assert "exit 4" in text
+    # The symlink block sets an empty upload-path (nothing blessed).
+    lines = text.splitlines()
+    sym_idx = next(i for i, ln in enumerate(lines) if 'redact_status="blocked-symlinks"' in ln)
+    assert 'upload_path=""' in lines[sym_idx + 1], "the symlink block must clear upload-path"
+    # And the raw-tree bless is only reached AFTER the symlink check (in the elif).
+    bless_idx = next(i for i, ln in enumerate(lines) if 'upload_path="$evidence_dir"' in ln)
+    assert sym_idx < bless_idx, "symlink detection precedes any raw-tree bless"

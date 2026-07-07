@@ -164,3 +164,102 @@ def test_red_build_stays_red_the_gate_never_masks_the_result(tmp_path) -> None:
     assert code == 0, "the gate itself passes (redact clean); the caller re-applies the build code"
     assert out["record-exit"] == "1", "the wrapped build's exit code is surfaced faithfully"
     assert out["redact-status"] == "clean"
+
+
+# --------------------------------------------------------------------------- symlink safety
+#
+# `nlfr redact --check` REPORTS a symlink (skipped:symlink) but exits 0 — it
+# never follows it. Native artifact uploaders DO follow symlinks by default
+# (actions/upload-artifact@v4 follow-symbolic-links, buildkite-agent, Jenkins
+# archiveArtifacts), so a link planted in the well-known evidence dir pointing at
+# an outside secret would ship unscanned target bytes inside a "gate-blessed"
+# artifact. Strict mode must therefore BLOCK when it can't scan everything.
+
+
+def test_strict_blocks_on_planted_symlink_to_outside_secret(tmp_path) -> None:
+    """The reviewer's exact scenario: record → plant a symlink to an outside
+    secret file → strict gate must BLOCK, upload nothing."""
+    outside = tmp_path / "outside-secret.txt"
+    outside.write_text(
+        "aws_secret_access_key = wJalrXUtnFEMI/EXAMPLEKEY\n", encoding="utf-8"
+    )
+    evidence = tmp_path / "evidence"
+    _plant(evidence, leaky=False)  # scannable content is clean...
+    # ...but a symlink to an outside secret is planted in the artifacts dir.
+    (evidence / "runs" / "abc" / "artifacts" / "leak.link").symlink_to(outside)
+
+    code, out = _run_gate(tmp_path, evidence=evidence, strict=True)
+
+    assert code == 4, "a symlink strict mode cannot scan must fail the gate (exit 4)"
+    assert out["redact-status"] == "blocked-symlinks"
+    assert out["upload-path"] == "", "nothing may be blessed when a symlink is present"
+
+
+def test_strict_blocks_on_directory_symlink(tmp_path) -> None:
+    """A DIRECTORY symlink is caught too (find -type l reports the link entry)."""
+    outside_dir = tmp_path / "outside-dir"
+    outside_dir.mkdir()
+    (outside_dir / "secret.txt").write_text("token=abc", encoding="utf-8")
+    evidence = tmp_path / "evidence"
+    _plant(evidence, leaky=False)
+    (evidence / "runs" / "abc" / "dirlink").symlink_to(outside_dir)
+
+    code, out = _run_gate(tmp_path, evidence=evidence, strict=True)
+
+    assert code == 4
+    assert out["redact-status"] == "blocked-symlinks"
+    assert out["upload-path"] == ""
+
+
+def test_strict_blocks_on_deeply_nested_symlink(tmp_path) -> None:
+    """A symlink nested several levels down is still detected."""
+    outside = tmp_path / "outside.txt"
+    outside.write_text("secret", encoding="utf-8")
+    evidence = tmp_path / "evidence"
+    _plant(evidence, leaky=False)
+    nested = evidence / "runs" / "abc" / "artifacts" / "deep" / "deeper"
+    nested.mkdir(parents=True)
+    (nested / "buried.link").symlink_to(outside)
+
+    code, out = _run_gate(tmp_path, evidence=evidence, strict=True)
+
+    assert code == 4
+    assert out["redact-status"] == "blocked-symlinks"
+    assert out["upload-path"] == ""
+
+
+def test_non_strict_mirror_excludes_symlink_and_its_target(tmp_path) -> None:
+    """Non-strict is the disclosed escape hatch: the scrubbed mirror never copies
+    a symlink, so the outside target's bytes never reach the uploaded artifact."""
+    outside = tmp_path / "outside-secret.txt"
+    outside.write_text("aws_secret_access_key = wJalrXUtnFEMI/EXAMPLEKEY\n", encoding="utf-8")
+    evidence = tmp_path / "evidence"
+    _plant(evidence, leaky=False)
+    (evidence / "runs" / "abc" / "artifacts" / "leak.link").symlink_to(outside)
+
+    code, out = _run_gate(tmp_path, evidence=evidence, strict=False)
+
+    assert code == 0
+    assert out["redact-status"] == "scrubbed"
+    mirror = Path(out["upload-path"])
+    assert mirror == evidence.parent / f"{evidence.name}-redacted"
+    # The symlink is absent from the mirror...
+    assert not (mirror / "runs" / "abc" / "artifacts" / "leak.link").exists()
+    # ...and the outside secret's bytes appear nowhere in the blessed mirror.
+    for path in mirror.rglob("*"):
+        if path.is_file():
+            assert "wJalrXUtnFEMI" not in path.read_text(encoding="utf-8", errors="ignore")
+
+
+def test_clean_tree_with_no_symlinks_still_passes_strict(tmp_path) -> None:
+    """The symlink guard must not false-positive: a symlink-free clean tree passes."""
+    evidence = tmp_path / "evidence"
+    _plant(evidence, leaky=False)
+    # Sanity: there really are no symlinks in the planted tree.
+    assert not any(p.is_symlink() for p in evidence.rglob("*"))
+
+    code, out = _run_gate(tmp_path, evidence=evidence, strict=True)
+
+    assert code == 0
+    assert out["redact-status"] == "clean"
+    assert Path(out["upload-path"]) == evidence

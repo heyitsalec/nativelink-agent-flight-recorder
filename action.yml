@@ -47,8 +47,11 @@ inputs:
     default: ""
   strict-redact:
     description: >-
-      true (default): FAIL the step on any redact finding, BEFORE upload.
-      false: scrub to a redacted mirror and upload ONLY the mirror.
+      true (default): FAIL the step on any redact finding OR any symlink in the
+      evidence tree, BEFORE upload — the raw tree is uploaded only when the gate
+      could scan everything.
+      false: scrub to a redacted mirror (which excludes symlinks) and upload
+      ONLY the mirror.
     required: false
     default: "true"
 
@@ -60,7 +63,7 @@ outputs:
     description: "Path to the proof-packet projection, if produced."
     value: ${{ steps.gate.outputs.proof-path }}
   redact-status:
-    description: "clean | scrubbed | blocked | empty."
+    description: "clean | scrubbed | blocked | blocked-symlinks | empty."
     value: ${{ steps.gate.outputs.redact-status }}
 
 runs:
@@ -92,11 +95,17 @@ runs:
       # `redact --check` passed, otherwise the scrubbed mirror. Never runs when
       # the gate blocked. `always()` so a failed BUILD still uploads its evidence
       # (then the next step re-fails the action on the build result).
-      if: ${{ always() && inputs.upload-artifact == 'true' && steps.gate.outputs.redact-status != 'blocked' && steps.gate.outputs.upload-path != '' }}
+      # `!startsWith(..., 'blocked')` fails safe for every block reason
+      # (`blocked` findings AND `blocked-symlinks`); `upload-path != ''` is the
+      # authoritative guard (empty on any block).
+      if: ${{ always() && inputs.upload-artifact == 'true' && !startsWith(steps.gate.outputs.redact-status, 'blocked') && steps.gate.outputs.upload-path != '' }}
       uses: actions/upload-artifact@v4
       with:
         name: ${{ inputs.artifact-name }}
         path: ${{ steps.gate.outputs.upload-path }}
+        # Defense in depth: the gate already blocks strict-clean on any symlink,
+        # so a blessed tree has none — but never let the uploader dereference one.
+        follow-symbolic-links: false
 
     - name: Surface the recorded build result
       # The redact gate never masks the build's real outcome: a red build stays
@@ -107,8 +116,12 @@ runs:
         REDACT_STATUS: ${{ steps.gate.outputs.redact-status }}
         RECORD_EXIT: ${{ steps.gate.outputs.record-exit }}
       run: |
-        if [ "$REDACT_STATUS" = "blocked" ]; then
-          echo "::error::NLFR redact gate BLOCKED — secrets/abs-paths found; raw evidence was NOT uploaded." >&2
-          exit 1
-        fi
+        case "$REDACT_STATUS" in
+          blocked)
+            echo "::error::NLFR redact gate BLOCKED — secrets/abs-paths found; raw evidence was NOT uploaded." >&2
+            exit 1 ;;
+          blocked-symlinks)
+            echo "::error::NLFR redact gate BLOCKED — symlink(s) in the evidence tree would be dereferenced by the uploader; raw evidence was NOT uploaded. Remove them, or set strict-redact: false." >&2
+            exit 1 ;;
+        esac
         exit "${RECORD_EXIT:-1}"

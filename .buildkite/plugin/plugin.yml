@@ -47,8 +47,11 @@ configuration:
     strict-redact:
       type: boolean
       description: >-
-        true (default): fail the step on any redact finding, before upload.
-        false: scrub to a redacted mirror and upload only the mirror.
+        true (default): fail the step on any redact finding OR any symlink in
+        the evidence tree, before upload (the raw tree ships only when the gate
+        could scan everything).
+        false: scrub to a redacted mirror (which excludes symlinks) and upload
+        only the mirror.
   required:
     - command
   additionalProperties: false

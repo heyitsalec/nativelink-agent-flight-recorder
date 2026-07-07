@@ -35,7 +35,7 @@
 # Outputs (appended to NLFR_CI_OUTPUT as `key=value`, GITHUB_OUTPUT format):
 #   evidence-dir   the recorded evidence directory.
 #   proof-path     the proof-packet projection, if produced (else empty).
-#   redact-status  clean | scrubbed | blocked | empty.
+#   redact-status  clean | scrubbed | blocked | blocked-symlinks | empty.
 #   upload-path    the ONLY path safe to upload; empty when nothing is safe.
 #   record-exit    the wrapped build's honest exit code (faithfully surfaced;
 #                   a red build must stay red — the caller re-applies this).
@@ -43,8 +43,23 @@
 # Exit codes:
 #   0  redact gate PASSED (clean or scrubbed). The caller uploads `upload-path`
 #      (if enabled), then applies `record-exit` as its own result.
-#   3  redact gate BLOCKED (strict mode, findings). Nothing safe to upload.
+#   3  redact gate BLOCKED (strict mode, redact findings). Nothing safe to upload.
+#   4  redact gate BLOCKED (strict mode, symlink(s) in the evidence tree). See
+#      the symlink note below. Nothing safe to upload.
 #   2  usage / internal error.
+#
+# Symlink safety (strict mode). `nlfr redact --check` REPORTS symlinks
+# (skipped:symlink) but exits 0 — it never follows them. Native artifact
+# uploaders, however, DO follow them: actions/upload-artifact@v4 defaults to
+# followSymbolicLinks:true, and buildkite-agent / Jenkins archiveArtifacts
+# behave the same. So a symlink planted inside the well-known evidence dir
+# (e.g. by a compromised build target: data/nlfr-record/.../x -> ~/.aws/creds)
+# would be DEREFERENCED and its target bytes shipped inside the "gate-blessed"
+# artifact — content the gate never scanned. Strict mode therefore blesses the
+# RAW tree only when it could scan EVERYTHING: this script independently detects
+# symlinks (`find -type l`, not just redact's report) and BLOCKS if any exist.
+# Non-strict is unaffected: `nlfr redact` write-mode never copies a symlink into
+# the redacted mirror, so the mirror it blesses cannot dereference one.
 set -uo pipefail
 
 : "${NLFR_COMMAND:?nlfr-ci-gate: NLFR_COMMAND (the bazel command to wrap) is required}"
@@ -90,8 +105,18 @@ if [[ ! -e "$evidence_dir" ]]; then
   log "no evidence produced at $evidence_dir — nothing to gate or upload"
   redact_status="empty"
 elif [[ "$STRICT" == "true" ]]; then
+  # Strict mode blesses the RAW tree only when the gate could scan EVERYTHING.
+  # Symlinks are scan-blind to `redact --check` (skipped:symlink, exit 0) yet
+  # FOLLOWED by native uploaders, so detect them independently and BLOCK first.
+  symlink_list="$(find "$evidence_dir" -type l 2>/dev/null || true)"
   log "strict redact gate: ${NLFR[*]} redact --check $evidence_dir"
-  if "${NLFR[@]}" redact --check "$evidence_dir"; then
+  if [[ -n "$symlink_list" ]]; then
+    redact_status="blocked-symlinks"
+    upload_path=""
+    while IFS= read -r link; do
+      [[ -n "$link" ]] && log "  symlink: $link -> $(readlink "$link" 2>/dev/null || echo '?')"
+    done <<<"$symlink_list"
+  elif "${NLFR[@]}" redact --check "$evidence_dir"; then
     redact_status="clean"
     upload_path="$evidence_dir"
   else
@@ -124,8 +149,14 @@ emit "record-exit" "$record_exit"
 
 log "gate result: redact-status=$redact_status upload-path=${upload_path:-<none>} record-exit=$record_exit"
 
-if [[ "$redact_status" == "blocked" ]]; then
-  log "REDACT GATE BLOCKED: secrets/abs-paths found in $evidence_dir — refusing to upload the raw tree."
-  exit 3
-fi
+case "$redact_status" in
+  blocked)
+    log "REDACT GATE BLOCKED: secrets/abs-paths found in $evidence_dir — refusing to upload the raw tree."
+    exit 3
+    ;;
+  blocked-symlinks)
+    log "REDACT GATE BLOCKED: symlink(s) under $evidence_dir would be dereferenced by the artifact uploader and ship unscanned target bytes. Refusing to upload the raw tree. Remedies: remove the symlink(s) listed above, or set strict-redact:false — the non-strict scrubbed mirror excludes symlinks entirely."
+    exit 4
+    ;;
+esac
 exit 0

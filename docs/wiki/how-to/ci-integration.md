@@ -25,11 +25,14 @@ script](#one-shared-core-no-drift) all three reuse:
    blocker surfaces its honest non-Bazel exit).
 2. **Redact gate on the evidence directory, before any upload:**
    - **strict** (default): `nlfr redact --check <dir>` — any finding **fails the
-     step and nothing is uploaded**.
+     step and nothing is uploaded**. The raw tree is blessed for upload only
+     when the gate could scan **everything**, so strict mode also **blocks on
+     any symlink** in the evidence tree (see [Honest boundary](#honest-boundary)).
    - **non-strict**: `nlfr redact <dir> <mirror>` — scrub to a redacted mirror
-     and upload **only the mirror**, never the raw tree.
-3. Upload the gate-blessed path only (the raw tree solely when `--check` passed;
-   otherwise the scrubbed mirror).
+     and upload **only the mirror**, never the raw tree. The mirror excludes
+     symlinks entirely.
+3. Upload the gate-blessed path only (the raw tree solely when `--check` passed
+   and no symlink was present; otherwise the scrubbed mirror).
 4. Re-apply the recorded build's exit code, so the gate never turns a red build
    green.
 
@@ -87,7 +90,7 @@ Non-strict (scrub and upload a redacted mirror instead of failing):
 |--------|---------|
 | `evidence-dir` | Directory of recorded evidence. |
 | `proof-path` | Proof-packet projection, if produced. |
-| `redact-status` | `clean` \| `scrubbed` \| `blocked` \| `empty`. |
+| `redact-status` | `clean` \| `scrubbed` \| `blocked` \| `blocked-symlinks` \| `empty`. |
 
 ## Buildkite
 
@@ -130,7 +133,17 @@ pipeline {
           uvx --from nativelink-agent-flight-recorder nlfr redact \
             --check data/nlfr-record
 
-          # (non-strict alternative: scrub to a mirror and archive only it)
+          # 2b. Block on symlinks: archiveArtifacts FOLLOWS them, but redact
+          #     --check only reports them — a link to an outside secret would be
+          #     dereferenced into the archive. Fail if any exist.
+          if find data/nlfr-record -type l | grep -q .; then
+            echo "BLOCKED: symlink(s) in evidence tree; refusing to archive." >&2
+            find data/nlfr-record -type l -printf "  %p -> %l\n" >&2
+            exit 4
+          fi
+
+          # (non-strict alternative: scrub to a mirror and archive only it — the
+          #  mirror excludes symlinks, so no symlink check is needed there)
           #   uvx --from nativelink-agent-flight-recorder nlfr redact \
           #     data/nlfr-record data/nlfr-record-redacted
           #   -> then archiveArtifacts 'data/nlfr-record-redacted/**'
@@ -145,9 +158,11 @@ pipeline {
 }
 ```
 
-In strict mode the `nlfr redact --check` line exits non-zero on a finding, which
-fails the `sh` step, so `archiveArtifacts` never runs on unredacted evidence. For
-non-strict, scrub to a mirror and archive only `data/nlfr-record-redacted/**`.
+In strict mode the `nlfr redact --check` line exits non-zero on a finding, and
+the `find … -type l` guard fails on any symlink, so `archiveArtifacts` never runs
+on unredacted or symlink-bearing evidence. For non-strict, scrub to a mirror and
+archive only `data/nlfr-record-redacted/**` (the mirror already excludes
+symlinks).
 
 ## One shared core, no drift
 
@@ -155,7 +170,8 @@ All three primitives delegate the safety-critical sequence to a single script,
 [`.buildkite/plugin/lib/nlfr-ci-gate.sh`](../../../.buildkite/plugin/lib/nlfr-ci-gate.sh),
 so the redact-before-upload guarantee cannot drift between CI systems. Its
 behavior is covered by [`tests/test_ci_gate_script.py`](../../../tests/test_ci_gate_script.py)
-(strict blocks on a planted finding; non-strict scrubs and blesses only the
+(strict blocks on a planted finding **and on a planted symlink** — file,
+directory, or nested; non-strict scrubs and blesses only the symlink-free
 mirror; a clean tree passes; a red build stays red) and the raw-tree-upload
 invariant by [`tests/test_ci_primitive_yaml.py`](../../../tests/test_ci_primitive_yaml.py).
 
@@ -164,15 +180,28 @@ invariant by [`tests/test_ci_primitive_yaml.py`](../../../tests/test_ci_primitiv
 The redact gate is **defense-in-depth pattern matching, not a guarantee.** It
 detects the [redaction registry's pattern classes](../reference/cli.md#redact) —
 secret/credential shapes, absolute paths, and (by default) email + IPv4 PII — not
-every conceivable secret. Two honest limits worth stating in a procurement
-review:
+every conceivable secret. Honest limits worth stating in a procurement review:
 
+- **Symlinks: strict blocks, non-strict excludes.** `nlfr redact --check`
+  *reports* a symlink (`skipped:symlink`) but never follows it — while native
+  uploaders (GitHub `upload-artifact`, `buildkite-agent`, Jenkins
+  `archiveArtifacts`) **do** follow symlinks by default. So a link planted in the
+  well-known evidence dir (e.g. a compromised build target writing
+  `data/nlfr-record/.../x -> ~/.aws/credentials`) could otherwise ship unscanned
+  target bytes inside a "gate-blessed" artifact. The gate closes this: **strict
+  mode independently detects symlinks (`find -type l`) and BLOCKS**
+  (`redact-status: blocked-symlinks`, nothing uploaded), and **non-strict's
+  scrubbed mirror never copies a symlink** in the first place. This is a
+  different class from the binary/SQLite boundary below: a symlink can point
+  *outside* the tree at unbounded content, so it is blocked, not shipped.
 - **`--check` skips binaries and SQLite databases**, reporting them honestly
-  (`skipped:binary`, `skipped:database`) rather than scanning them. A secret
-  embedded in a binary blob is out of scope. In **strict-clean** mode the raw
-  tree — including the SQLite spine and any binary artifacts — is uploaded once
-  the *scannable* text/JSON passes; if you do not want those uploaded, use
-  **non-strict**, whose redacted mirror contains only the scrubbed text/JSON.
+  (`skipped:binary`, `skipped:database`) rather than scanning them. This is a
+  bounded, disclosed boundary — the content lives *inside* the recorded tree. A
+  secret embedded in a binary blob is out of scope. In **strict-clean** mode the
+  raw tree — including the SQLite spine and any binary artifacts — is uploaded
+  once the *scannable* text/JSON passes and no symlink is present; if you do not
+  want those uploaded, use **non-strict**, whose redacted mirror contains only
+  the scrubbed text/JSON.
 - **Review sensitive evidence at the source too.** The gate is the last line of
   defense before upload, not a substitute for not recording secrets in the first
   place.

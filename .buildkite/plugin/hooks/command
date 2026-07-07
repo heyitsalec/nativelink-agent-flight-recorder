@@ -30,12 +30,16 @@ upload_path="$(grep '^upload-path=' "$out" | tail -1 | cut -d= -f2-)"
 record_exit="$(grep '^record-exit=' "$out" | tail -1 | cut -d= -f2-)"
 rm -f "$out"
 
-# Redact gate blocked (strict mode, findings) => nothing safe to upload; fail.
-if [ "$gate_exit" -eq 3 ] || [ "$redact_status" = "blocked" ]; then
-  echo "+++ :no_entry: NLFR redact gate BLOCKED" >&2
-  echo "secrets/abs-paths found in the recorded evidence; raw tree NOT uploaded." >&2
-  exit 1
-fi
+# Redact gate blocked (findings OR symlinks) => nothing safe to upload; fail.
+# `blocked*` matches both `blocked` (redact findings) and `blocked-symlinks`.
+case "$redact_status" in
+  blocked*)
+    echo "+++ :no_entry: NLFR redact gate BLOCKED ($redact_status)" >&2
+    echo "raw tree NOT uploaded; see the gate log above for offending items and remedies." >&2
+    [ "$gate_exit" -ne 0 ] || gate_exit=1
+    exit "$gate_exit"
+    ;;
+esac
 if [ "$gate_exit" -ne 0 ]; then
   echo "nlfr-ci-gate failed (exit $gate_exit)" >&2
   exit "$gate_exit"
