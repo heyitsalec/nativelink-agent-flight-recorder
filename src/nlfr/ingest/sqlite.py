@@ -6,6 +6,7 @@ import sqlite3
 
 from nlfr.db.ingest import (
     upsert_action,
+    upsert_artifact_reference,
     upsert_cache_event,
     upsert_failure,
     upsert_target,
@@ -86,6 +87,29 @@ def ingest_evidence_bundle(
             confidence=failure.confidence,
             evidence_refs=failure.evidence_refs,
             redaction_state=failure.redaction_state,
+        )
+
+    for reference in bundle.artifact_references:
+        target_id = _target_id(conn, target_ids, run_id, reference.target_label)
+        upsert_artifact_reference(
+            conn,
+            stable_key=f"{run_stable_key}:artifact_reference:{reference.reference_key}",
+            run_id=run_id,
+            target_id=target_id,
+            reference_key=reference.reference_key,
+            name=reference.name,
+            uri=reference.uri,
+            local_path=reference.local_path,
+            declared_digest=reference.declared_digest,
+            declared_size_bytes=reference.declared_size_bytes,
+            computed_digest=reference.computed_digest,
+            digest_verified=reference.digest_verified,
+            presence=reference.presence,
+            verification_note=reference.verification_note,
+            source_kind=reference.source_kind,
+            confidence=reference.confidence,
+            evidence_refs=reference.evidence_refs,
+            redaction_state=reference.redaction_state,
         )
 
     return bundle.counts()

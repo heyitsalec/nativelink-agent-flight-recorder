@@ -9,7 +9,14 @@
     "projection_kind": { "const": "proof_packet" },
     "generated_at": { "type": "string" },
     "run_group": { "type": "string" },
-    "summary": { "type": "object" },
+    "summary": {
+      "type": "object",
+      "description": "Additive rollup fields are allowed. As of the artifact-integrity change (issue #25) the summary also carries an 'artifact_references' count and an 'artifact_verification' object; see $defs.",
+      "properties": {
+        "artifact_references": { "type": "integer" },
+        "artifact_verification": { "$ref": "#/$defs/artifact_verification_metrics" }
+      }
+    },
     "blocks": {
       "type": "array",
       "items": { "$ref": "#/$defs/block" }
@@ -39,6 +46,33 @@
           "items": { "type": "string" }
         },
         "redaction_state": { "enum": ["safe", "redacted", "blocked", "unknown"] }
+      }
+    },
+    "artifact_verification_metrics": {
+      "type": "object",
+      "description": "Rollup of independent artifact-integrity verification. Emitted in summary.artifact_verification and as the 'artifact_verification' block's metrics.",
+      "properties": {
+        "total": { "type": "integer" },
+        "verified_count": { "type": "integer", "description": "Local files whose recomputed SHA-256 matched the BEP-declared digest." },
+        "mismatched": { "type": "integer", "description": "Local files whose recomputed digest contradicted the BEP-declared digest (truth-label downgraded)." },
+        "missing": { "type": "integer", "description": "BEP-declared local files absent on disk (presence not claimed)." },
+        "unverified_remote": { "type": "integer", "description": "Remote-only references (bytestream:// and other CAS URIs) that cannot be locally verified; see bazelbuild/bazel#23250." }
+      }
+    },
+    "artifact_reference": {
+      "type": "object",
+      "description": "One BEP-referenced artifact with its independent verification state. Appears in the 'artifact_verification' block payload.references[].",
+      "properties": {
+        "reference_key": { "type": "string" },
+        "name": { "type": ["string", "null"] },
+        "uri": { "type": ["string", "null"] },
+        "declared_digest": { "type": ["string", "null"], "description": "SHA-256 as declared by the BEP." },
+        "computed_digest": { "type": ["string", "null"], "description": "SHA-256 recomputed by NLFR from local bytes; null when not locally readable." },
+        "digest_verified": { "type": ["boolean", "null"], "description": "true when recomputed matched declared, false on mismatch, null when no local comparison was possible." },
+        "presence": { "enum": ["local_verified", "local_mismatch", "missing", "unverified_remote_reference"] },
+        "verification_note": { "type": ["string", "null"] },
+        "source_kind": { "enum": ["collectable_v1", "derived_v1", "simulated_v1", "future", "unknown"] },
+        "confidence": { "enum": ["high", "medium", "low", "unknown"] }
       }
     }
   }

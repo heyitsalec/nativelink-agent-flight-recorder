@@ -9,11 +9,13 @@ from typing import Any
 
 from nlfr.ingest.models import (
     ActionEvidence,
+    ArtifactReferenceEvidence,
     CacheEventEvidence,
     EvidenceBundle,
     FailureEvidence,
     TargetEvidence,
 )
+from nlfr.ingest.verification import build_reference, iter_bep_file_references
 
 
 def parse_bazel_bep(
@@ -22,18 +24,42 @@ def parse_bazel_bep(
     source_kind: str = "collectable_v1",
     confidence: str = "high",
     evidence_ref: str | None = None,
+    verify_artifacts: bool = True,
+    artifact_base: str | Path | None = None,
 ) -> EvidenceBundle:
-    """Parse Bazel Build Event Protocol JSON lines or JSON objects."""
+    """Parse Bazel Build Event Protocol JSON lines or JSON objects.
+
+    When ``verify_artifacts`` is set (the default), every file the BEP references
+    is independently checked: local bytes have their SHA-256 recomputed and
+    compared against the BEP-declared digest, while remote-only URIs are labeled
+    ``unverified_remote_reference``. ``artifact_base`` resolves relative and
+    ``file://`` paths; it defaults to the directory containing the BEP file.
+    """
 
     evidence_path = Path(path)
     evidence_refs = [_evidence_ref(evidence_path, evidence_ref)]
+    resolved_base = (
+        Path(artifact_base) if artifact_base is not None else evidence_path.parent
+    )
     targets: dict[str, TargetEvidence] = {}
     actions: dict[str, ActionEvidence] = {}
     failures: dict[str, FailureEvidence] = {}
+    artifact_references: dict[str, ArtifactReferenceEvidence] = {}
 
     for index, event in enumerate(_load_json_events(evidence_path), start=1):
         event_id = event.get("id", {})
         label = _bep_label(event_id, event)
+
+        if verify_artifacts:
+            _collect_artifact_references(
+                artifact_references,
+                event=event,
+                label=label,
+                index=index,
+                source_kind=source_kind,
+                evidence_refs=evidence_refs,
+                artifact_base=resolved_base,
+            )
 
         if label and "configured" in event:
             configured = event["configured"]
@@ -132,7 +158,34 @@ def parse_bazel_bep(
         targets=list(targets.values()),
         actions=list(actions.values()),
         failures=list(failures.values()),
+        artifact_references=list(artifact_references.values()),
     )
+
+
+def _collect_artifact_references(
+    references: dict[str, ArtifactReferenceEvidence],
+    *,
+    event: dict[str, Any],
+    label: str | None,
+    index: int,
+    source_kind: str,
+    evidence_refs: list[str],
+    artifact_base: Path,
+) -> None:
+    for offset, file_payload in enumerate(iter_bep_file_references(event)):
+        reference = build_reference(
+            file_payload,
+            label=label,
+            index=index * 1000 + offset,
+            source_kind=source_kind,
+            evidence_refs=evidence_refs,
+            artifact_base=artifact_base,
+        )
+        if reference is None:
+            continue
+        # First observation of a stable reference wins; later duplicates (e.g. the
+        # same file echoed in importantOutput) are ignored to keep counts honest.
+        references.setdefault(reference.reference_key, reference)
 
 
 def parse_bazel_execution_log(

@@ -55,6 +55,40 @@ Compare projections (M9) must reference **both** left and right run groups.
 Never export raw prompts, credentials, or full private logs. M8 stores
 `prompt_sha256` + `model` only: [Cursor adapter](../../../adapters/cursor/README.md).
 
+## Artifact verification (issue #25)
+
+NLFR does not trust the build tool's self-reports. Every file the ingested BEP
+references is independently checked: local bytes have their SHA-256 recomputed
+and compared against the BEP-declared digest, and remote-only URIs are labeled
+rather than promoted. Each `artifact_references` row (and each entry in the proof
+packet's `artifact_verification` block payload) carries two extra fields on top
+of the four truth labels:
+
+| Field | Values | Meaning |
+|-------|--------|---------|
+| `digest_verified` | `true`, `false`, `null` | `true` when the recomputed SHA-256 matched the BEP-declared digest; `false` on mismatch; `null` when no local comparison was possible (missing file, remote URI, or no declared digest) |
+| `presence` | `local_verified`, `local_mismatch`, `missing`, `unverified_remote_reference` | What NLFR could actually confirm about the bytes |
+
+Truth-label consequences (this feature only **adds** verification state — it never
+weakens an existing honest claim):
+
+| `presence` | `source_kind` | `confidence` |
+|------------|---------------|--------------|
+| `local_verified` | unchanged (e.g. `collectable_v1`) | `high` (or `medium` when BEP declared no digest to cross-check) |
+| `local_mismatch` | downgraded (`collectable_v1` → `derived_v1`) | `low` |
+| `missing` | downgraded (`collectable_v1` → `derived_v1`) | `low` |
+| `unverified_remote_reference` | downgraded (`collectable_v1` → `derived_v1`) | `low` |
+
+`unverified_remote_reference` exists because a BEP can reference an artifact at a
+`bytestream://` URI even when the cache upload FAILED
+([bazelbuild/bazel#23250](https://github.com/bazelbuild/bazel/issues/23250)).
+A remote reference is **never** promoted to a `collectable_v1` / `high` presence
+claim; verifying remote CAS via REAPI is a documented follow-up, not v1.
+
+The proof packet surfaces a rollup at `summary.artifact_verification` and in the
+`artifact_verification` block metrics: `verified_count`, `mismatched`, `missing`,
+`unverified_remote`, `total`.
+
 ## Conditional claims (M7)
 
 `worker_identity` is `collectable_v1` **only when**:

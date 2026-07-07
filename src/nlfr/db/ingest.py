@@ -79,6 +79,14 @@ def upsert_artifact(conn: sqlite3.Connection, *, stable_key: str, **values: Any)
     return upsert_record(conn, "artifacts", stable_key=stable_key, values=values)
 
 
+def upsert_artifact_reference(
+    conn: sqlite3.Connection, *, stable_key: str, **values: Any
+) -> str:
+    """Insert or return an existing artifact-reference verification row id."""
+
+    return upsert_record(conn, "artifact_references", stable_key=stable_key, values=values)
+
+
 def upsert_target(conn: sqlite3.Connection, *, stable_key: str, **values: Any) -> str:
     """Insert or return an existing target row id."""
 

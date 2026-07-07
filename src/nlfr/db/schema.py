@@ -5,13 +5,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from sqlite3 import Connection
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 CORE_TABLES = (
     "runs",
     "changes",
     "invocations",
     "artifacts",
+    "artifact_references",
     "targets",
     "actions",
     "cache_events",
@@ -189,6 +190,34 @@ CREATE INDEX IF NOT EXISTS idx_graph_edges_run_id ON graph_edges(run_id);
 CREATE INDEX IF NOT EXISTS idx_proof_blocks_run_id ON proof_blocks(run_id);
 """
 
+_PRESENCE_CHECK = (
+    "presence IS NULL OR presence IN "
+    "('local_verified','local_mismatch','missing','unverified_remote_reference')"
+)
+
+_CREATE_ARTIFACT_REFERENCES = f"""
+CREATE TABLE IF NOT EXISTS artifact_references (
+    id TEXT PRIMARY KEY,
+    stable_key TEXT NOT NULL UNIQUE,
+    run_id TEXT REFERENCES runs(id) ON DELETE CASCADE,
+    target_id TEXT REFERENCES targets(id) ON DELETE SET NULL,
+    reference_key TEXT NOT NULL,
+    name TEXT,
+    uri TEXT,
+    local_path TEXT,
+    declared_digest TEXT,
+    declared_size_bytes INTEGER,
+    computed_digest TEXT,
+    digest_verified INTEGER CHECK (digest_verified IS NULL OR digest_verified IN (0, 1)),
+    presence TEXT CHECK ({_PRESENCE_CHECK}),
+    verification_note TEXT,
+{_COMMON_COLUMNS},
+    UNIQUE(run_id, reference_key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_artifact_references_run_id ON artifact_references(run_id);
+"""
+
 
 @dataclass(frozen=True)
 class Migration:
@@ -196,7 +225,10 @@ class Migration:
     sql: str
 
 
-MIGRATIONS = (Migration(version=1, sql=_CREATE_CORE_SCHEMA),)
+MIGRATIONS = (
+    Migration(version=1, sql=_CREATE_CORE_SCHEMA),
+    Migration(version=2, sql=_CREATE_ARTIFACT_REFERENCES),
+)
 
 
 def migrate(conn: Connection) -> None:

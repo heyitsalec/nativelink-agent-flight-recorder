@@ -57,6 +57,34 @@ class FailureEvidence(TruthLabels):
 
 
 @dataclass
+class ArtifactReferenceEvidence(TruthLabels):
+    """A file referenced by ingested BEP, with independent verification state.
+
+    NLFR does not trust the build tool's self-reports: for every artifact BEP
+    references it recomputes the local SHA-256 (when the bytes are on disk) and
+    compares it against the BEP-declared digest. Remote-only references
+    (``bytestream://`` and other CAS URIs) can never be locally verified and are
+    labeled ``unverified_remote_reference`` per bazelbuild/bazel#23250.
+    """
+
+    reference_key: str = ""
+    name: str | None = None
+    uri: str | None = None
+    local_path: str | None = None
+    declared_digest: str | None = None
+    declared_size_bytes: int | None = None
+    computed_digest: str | None = None
+    # True when recomputed SHA-256 matched the BEP-declared digest, False on
+    # mismatch, None when no local comparison was possible (missing/remote or no
+    # declared digest to compare against).
+    digest_verified: bool | None = None
+    # One of local_verified | local_mismatch | missing | unverified_remote_reference.
+    presence: str = "missing"
+    verification_note: str | None = None
+    target_label: str | None = None
+
+
+@dataclass
 class EvidenceBundle:
     """Parsed Bazel evidence grouped by SQLite ingest table."""
 
@@ -64,6 +92,7 @@ class EvidenceBundle:
     actions: list[ActionEvidence] = field(default_factory=list)
     cache_events: list[CacheEventEvidence] = field(default_factory=list)
     failures: list[FailureEvidence] = field(default_factory=list)
+    artifact_references: list[ArtifactReferenceEvidence] = field(default_factory=list)
 
     def extend(self, other: "EvidenceBundle") -> None:
         """Append all records from another bundle."""
@@ -72,6 +101,7 @@ class EvidenceBundle:
         self.actions.extend(other.actions)
         self.cache_events.extend(other.cache_events)
         self.failures.extend(other.failures)
+        self.artifact_references.extend(other.artifact_references)
 
     def counts(self) -> dict[str, int]:
         """Return per-table record counts for ingest summaries."""
@@ -81,4 +111,5 @@ class EvidenceBundle:
             "actions": len(self.actions),
             "cache_events": len(self.cache_events),
             "failures": len(self.failures),
+            "artifact_references": len(self.artifact_references),
         }
