@@ -49,6 +49,21 @@ PYTHONPATH=src uv run python -m nlfr compare index \
   --json
 ```
 
+Because `nlfr record` writes one database per run group, `--db` only sees a
+single group. To list **every** recorded group in one call, use `--db-root`
+(mutually exclusive with `--db`; exactly one is required):
+
+```bash
+PYTHONPATH=src uv run python -m nlfr compare index --db-root data/nlfr-record --json
+```
+
+`--db-root DIR` discovers `<DIR>/<run-group>/nlfr.sqlite` one level down (the
+record layout, nothing recursive) and emits a LISTING keyed by
+`(database, run_group)` — never a merge, since stable run ids can collide across
+independent databases. Zero-byte / old-schema databases are reported with an
+honest `reason` (never skipped); zero readable databases exits 2. Full guide:
+[browse run history](browse-run-history.md).
+
 ### V1 retention policy
 
 | Mode | Constant | Meaning |
@@ -92,6 +107,12 @@ PYTHONPATH=src uv run python -m nlfr compare export \
   --right candidate \
   --output apps/canvas/public/projections/compare-projection.json
 ```
+
+This cross-DB form is the **only** path to an actual delta across the record
+layout: `compare index`/`history --db-root` *list* per-database facts but never
+diff across databases. Discover the two groups with `compare index --db-root
+data/nlfr-record`, then chain their `<group>/nlfr.sqlite` paths into
+`--left-db`/`--right-db` here.
 
 ## Export compare projection (same DB)
 
