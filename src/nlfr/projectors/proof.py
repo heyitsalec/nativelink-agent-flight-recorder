@@ -24,6 +24,7 @@ def export_proof_packet(conn: Connection, *, run_group: str) -> dict[str, Any]:
     run_ids = [run["id"] for run in runs]
     invocations = rows(conn, "invocations", run_ids)
     artifacts = rows(conn, "artifacts", run_ids)
+    artifact_references = rows(conn, "artifact_references", run_ids)
     targets = rows(conn, "targets", run_ids)
     actions = rows(conn, "actions", run_ids)
     cache_events = rows(conn, "cache_events", run_ids)
@@ -75,6 +76,7 @@ def export_proof_packet(conn: Connection, *, run_group: str) -> dict[str, Any]:
             artifacts,
             metrics={"artifacts": len(artifacts)},
         ),
+        _artifact_verification_block(artifact_references),
     ]
     for item in stored_blocks:
         blocks.append(
@@ -100,10 +102,115 @@ def export_proof_packet(conn: Connection, *, run_group: str) -> dict[str, Any]:
             "actions": len(actions),
             "cache_events": len(cache_events),
             "failures": len(failures),
+            "artifact_references": len(artifact_references),
+            "artifact_verification": _artifact_verification_summary(artifact_references),
         },
         "retention": proof_retention_block(),
         "blocks": blocks,
     }
+
+
+def _artifact_verification_summary(references: list[dict[str, Any]]) -> dict[str, int]:
+    """Counts of independently verified vs. unverifiable artifact references."""
+
+    counts = {
+        "total": len(references),
+        "verified_count": 0,
+        "present_unverified": 0,
+        "mismatched": 0,
+        "missing": 0,
+        "unverified_remote": 0,
+    }
+    for reference in references:
+        presence = reference.get("presence")
+        if presence == "local_verified":
+            counts["verified_count"] += 1
+        elif presence == "local_present":
+            counts["present_unverified"] += 1
+        elif presence == "local_mismatch":
+            counts["mismatched"] += 1
+        elif presence == "missing":
+            counts["missing"] += 1
+        elif presence == "unverified_remote_reference":
+            counts["unverified_remote"] += 1
+    return counts
+
+
+def _artifact_verification_block(references: list[dict[str, Any]]) -> dict[str, Any]:
+    """Proof block: NLFR does not trust BEP's own file references.
+
+    Every artifact BEP names is independently re-hashed when the bytes are on
+    disk; remote-only URIs are labeled as unverified rather than promoted.
+    """
+
+    summary_counts = _artifact_verification_summary(references)
+    verified = summary_counts["verified_count"]
+    present_unverified = summary_counts["present_unverified"]
+    mismatched = summary_counts["mismatched"]
+    missing = summary_counts["missing"]
+    unverified_remote = summary_counts["unverified_remote"]
+
+    summary = (
+        "Independent artifact-integrity verification. NLFR recomputes SHA-256 for "
+        "every locally present file the BEP references and compares it against the "
+        "BEP-declared digest; it never trusts the build tool's self-reports."
+    )
+    claims = [
+        f"Recomputed and matched local SHA-256 for {verified} artifact reference(s).",
+        (
+            f"Recorded {present_unverified} locally present file(s) whose digest was "
+            "NOT cross-checked because it is not a recomputable SHA-256 (non-default "
+            "--digest_function or non-64-hex digest); presence noted, digest neither "
+            "confirmed nor contradicted."
+        ),
+        (
+            f"Downgraded {mismatched} reference(s) whose recomputed digest contradicted "
+            "the BEP-declared digest."
+        ),
+        (
+            f"Marked {missing} BEP-referenced file(s) missing on disk; presence not "
+            "claimed."
+        ),
+        (
+            f"Marked {unverified_remote} remote-only reference(s) "
+            "unverified_remote_reference — the cache upload may have failed "
+            "(bazelbuild/bazel#23250); NLFR does not probe remote CAS in v1."
+        ),
+    ]
+    return {
+        **_block(
+            "artifact_verification",
+            "Artifact Integrity Verification",
+            summary,
+            references,
+            claims=claims,
+            metrics=summary_counts,
+        ),
+        "payload": {
+            "references": [_reference_payload(reference) for reference in references],
+        },
+    }
+
+
+def _reference_payload(reference: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "reference_key": reference.get("reference_key"),
+        "name": reference.get("name"),
+        "uri": reference.get("uri"),
+        "presence": reference.get("presence"),
+        "digest_verified": _nullable_bool(reference.get("digest_verified")),
+        "declared_digest": reference.get("declared_digest"),
+        "computed_digest": reference.get("computed_digest"),
+        "verification_note": reference.get("verification_note"),
+        "source_kind": reference.get("source_kind"),
+        "confidence": reference.get("confidence"),
+    }
+
+
+def _nullable_bool(value: Any) -> bool | None:
+    if value is None:
+        return None
+    return bool(value)
 
 
 def _block(

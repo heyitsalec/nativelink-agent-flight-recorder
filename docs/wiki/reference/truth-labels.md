@@ -55,6 +55,84 @@ Compare projections (M9) must reference **both** left and right run groups.
 Never export raw prompts, credentials, or full private logs. M8 stores
 `prompt_sha256` + `model` only: [Cursor adapter](../../../adapters/cursor/README.md).
 
+## Artifact verification (issue #25)
+
+NLFR does not trust the build tool's self-reports. Every file the ingested BEP
+references is independently checked: local bytes have their SHA-256 recomputed
+and compared against the BEP-declared digest, and remote-only URIs are labeled
+rather than promoted. Each `artifact_references` row (and each entry in the proof
+packet's `artifact_verification` block payload) carries two extra fields on top
+of the four truth labels:
+
+| Field | Values | Meaning |
+|-------|--------|---------|
+| `digest_verified` | `true`, `false`, `null` | `true` when the recomputed SHA-256 matched the BEP-declared digest; `false` on mismatch; `null` when no local comparison was possible (missing file, remote URI, no declared digest, or a declared digest NLFR cannot prove is SHA-256) |
+| `presence` | `local_verified`, `local_present`, `local_mismatch`, `missing`, `unverified_remote_reference` | What NLFR could actually confirm about the bytes |
+
+Truth-label consequences (this feature only **adds** verification state — it never
+weakens an existing honest claim):
+
+| `presence` | `source_kind` | `confidence` |
+|------------|---------------|--------------|
+| `local_verified` | unchanged (e.g. `collectable_v1`) | `high` (or `medium` when BEP declared no digest to cross-check) |
+| `local_present` | unchanged (e.g. `collectable_v1`) | `medium` — the artifact is present but its digest was **not** cross-checked: a file with a non-recomputable-SHA-256 declared digest, a symlink output whose target exists (symlinks declare no digest), or inline bytes with a non-SHA-256 declared digest |
+| `local_mismatch` | downgraded (`collectable_v1` → `derived_v1`) | `low` |
+| `missing` | downgraded (`collectable_v1` → `derived_v1`) | `low` |
+| `unverified_remote_reference` | downgraded (`collectable_v1` → `derived_v1`) | `low` |
+
+A `derived_v1` label on a downgraded reference means **NLFR derived a contradicting
+or unverifiable state from its own recomputation** — it is not the build tool's
+self-report echoed back. The `artifact_verification` block's per-reference
+`verification_note` carries the specifics (mismatch, missing file, or remote URI).
+
+### Digest function is not assumed to be SHA-256
+
+Bazel's `File.digest` is the hex of the **configured** `--digest_function` (a
+startup flag). Remote-execution shops — NLFR's exact audience — may run a
+non-default function (BLAKE3, SHA-512, …). NLFR only recomputes **SHA-256** in v1,
+so it must never treat a non-SHA-256 digest as a failed SHA-256 comparison:
+
+- If the BEP's `optionsDescription` / command line names a `--digest_function`
+  that is not SHA-256, or the declared digest is not 64 hex chars (SHA-1 is 40,
+  SHA-512 is 128, base64 shapes differ), NLFR **skips** the comparison:
+  `presence = local_present`, `digest_verified = null`, label unchanged. No
+  mismatch is fabricated and no honest `collectable_v1` / `high` claim is
+  downgraded on algorithm uncertainty alone.
+- A 64-hex digest is compared as SHA-256. If the BEP exposed the command line
+  (SHA-256 named, or no override → Bazel's default), a mismatch is a real
+  integrity signal and downgrades to `local_mismatch`. If the BEP exposed **no**
+  command line, the mismatch still downgrades (a mismatch on the default function
+  is overwhelmingly a real failure) but the `verification_note` records that the
+  digest function could not be confirmed. (A 64-hex digest is also the length of
+  SHA3-256; that theoretical collision is an accepted v1 risk.)
+
+`unverified_remote_reference` exists because a BEP can reference an artifact at a
+`bytestream://` URI even when the cache upload FAILED
+([bazelbuild/bazel#23250](https://github.com/bazelbuild/bazel/issues/23250)).
+A remote reference is **never** promoted to a `collectable_v1` / `high` presence
+claim; verifying remote CAS via REAPI is a documented follow-up, not v1.
+
+### Symlink and inline-content File entries
+
+A Bazel BEP `File` populates exactly one of `uri`, `symlinkTargetPath`, or inline
+`contents` (its `file` oneof). NLFR records all three rather than dropping the
+non-`uri` shapes:
+
+- A **symlink** output carries no digest to recompute. Presence comes from an
+  existence probe of the resolved target — `local_present` when the target is on
+  disk, `missing` when a resolvable target is absent — with `digest_verified = null`
+  and a note. NLFR never fabricates a verified digest for a symlink.
+- **Inline** `contents` (base64 in proto3 JSON) are hashed directly from the BEP
+  with no filesystem access: a matching declared SHA-256 verifies (`local_verified`,
+  `high`), a wrong one downgrades (`local_mismatch`), and a non-SHA-256 declared
+  digest records `local_present` without cross-checking.
+
+The proof packet surfaces a rollup at `summary.artifact_verification` and in the
+`artifact_verification` block metrics: `verified_count`, `present_unverified`,
+`mismatched`, `missing`, `unverified_remote`, `total`. `present_unverified` counts
+`local_present` references (present but digest not cross-checked — see the
+`local_present` row above).
+
 ## Conditional claims (M7)
 
 `worker_identity` is `collectable_v1` **only when**:

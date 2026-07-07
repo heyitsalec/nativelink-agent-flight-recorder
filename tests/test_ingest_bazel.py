@@ -139,7 +139,21 @@ def test_ingest_evidence_bundle_preserves_truth_labels_and_evidence_refs(tmp_pat
         "actions": 3,
         "cache_events": 2,
         "failures": 2,
+        # Both testActionOutput logs point at file:///tmp/... paths that do not
+        # exist on the test host, so honest verification marks them missing.
+        "artifact_references": 2,
     }
+
+    references = conn.execute(
+        "SELECT reference_key, presence, digest_verified, source_kind, confidence "
+        "FROM artifact_references ORDER BY reference_key"
+    ).fetchall()
+    assert {row["presence"] for row in references} == {"missing"}
+    assert all(row["digest_verified"] is None for row in references)
+    # Missing local files must not carry a high-confidence presence claim; the
+    # simulated fixture keeps its simulated_v1 kind but is downgraded to low.
+    assert {row["source_kind"] for row in references} == {"simulated_v1"}
+    assert {row["confidence"] for row in references} == {"low"}
 
     target = conn.execute(
         "SELECT source_kind, confidence, evidence_refs, redaction_state "
