@@ -24,3 +24,5 @@ GHA restore runbook remains at [`docs/GHA_RESTORE_RUNBOOK.md`](../GHA_RESTORE_RU
 
 For current product truth and milestone status, use the
 [one-pager](../ONE_PAGER.md) and [architecture track](../ARCHITECTURE_TRACK.md).
+
+- [Campaign handoff](CAMPAIGN_HANDOFF.md) — durable cross-machine record: goal, what shipped, the assessment verdict, the wave-4 backlog, and how to resume the loop.
