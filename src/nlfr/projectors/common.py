@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
-from sqlite3 import Connection, Row
+from sqlite3 import Connection, OperationalError, Row
 from typing import Any
 
 TRUTH_DEFAULTS = {
@@ -45,6 +45,34 @@ def run_rows(conn: Connection, run_group: str) -> list[dict[str, Any]]:
         (run_group,),
     ).fetchall()
     return [row_to_dict(row) for row in result]
+
+
+def available_run_groups(conn: Connection) -> list[dict[str, Any]]:
+    """Run groups present in the DB (``run_group`` + ``run_count``) for guiding errors.
+
+    Queries the ``runs`` table directly so a hard-error message (empty in-toto
+    subject, missing compare side) can list the run groups that ARE present and
+    turn the failure into recovery guidance. A file with no ``runs`` table (an
+    unrelated SQLite file) is reported as "no run groups" rather than a traceback.
+    Shared by the in-toto exporter and the compare exporter so their guidance
+    lists stay identical (GitHub #47, #26).
+    """
+
+    try:
+        result = conn.execute(
+            """
+            SELECT run_group, COUNT(*) AS run_count
+            FROM runs
+            GROUP BY run_group
+            ORDER BY MAX(started_at) DESC, run_group ASC
+            """
+        ).fetchall()
+    except OperationalError:
+        return []
+    return [
+        {"run_group": row["run_group"], "run_count": row["run_count"]}
+        for row in result
+    ]
 
 
 def row_to_dict(row: Row) -> dict[str, Any]:

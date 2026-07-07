@@ -6,7 +6,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from nlfr.db import connect, initialize
+from nlfr.db.connection import DatabaseNotFoundError, connect_readonly
 from nlfr.projectors import (
     export_action_graph,
     export_in_toto_statement,
@@ -21,7 +21,11 @@ from nlfr.projectors.proof_markdown import export_proof_markdown, proof_markdown
 def export_graph(args: argparse.Namespace) -> int:
     """Export an action graph projection for a run group."""
 
-    conn = initialize(connect(args.db))
+    try:
+        conn = connect_readonly(args.db)
+    except DatabaseNotFoundError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
     write_or_print(export_action_graph(conn, run_group=args.run_group), args.output)
     return 0
 
@@ -29,7 +33,11 @@ def export_graph(args: argparse.Namespace) -> int:
 def export_runway(args: argparse.Namespace) -> int:
     """Export a validation runway projection for a run group."""
 
-    conn = initialize(connect(args.db))
+    try:
+        conn = connect_readonly(args.db)
+    except DatabaseNotFoundError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
     write_or_print(export_validation_runway(conn, run_group=args.run_group), args.output)
     return 0
 
@@ -37,7 +45,11 @@ def export_runway(args: argparse.Namespace) -> int:
 def export_proof(args: argparse.Namespace) -> int:
     """Export a proof packet projection for a run group."""
 
-    conn = initialize(connect(args.db))
+    try:
+        conn = connect_readonly(args.db)
+    except DatabaseNotFoundError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
     if args.format == "in-toto":
         # Unsigned, DSSE-ready in-toto Statement over the run group's recorded
         # artifacts; existing json/markdown behavior is untouched. A zero-subject

@@ -19,11 +19,11 @@ database are byte-identical under ``json.dumps(sort_keys=True)``.
 from __future__ import annotations
 
 import sys
-from sqlite3 import Connection, OperationalError
+from sqlite3 import Connection
 from typing import Any
 
 from nlfr.agent_receipt import FORBIDDEN_PROMPT_KEYS
-from nlfr.projectors.common import rows, run_rows, truth
+from nlfr.projectors.common import available_run_groups, rows, run_rows, truth
 from nlfr.projectors.proof import export_proof_packet
 
 #: in-toto attestation Statement type (spec v1).
@@ -105,30 +105,6 @@ class EmptySubjectError(ValueError):
         return "\n".join(lines)
 
 
-def _available_run_groups(conn: Connection) -> list[dict[str, Any]]:
-    """Run groups actually present in the DB, so an empty-subject failure can guide.
-
-    Queries the ``runs`` table directly. A missing/unrelated SQLite file has no
-    ``runs`` table; that is reported as "no run groups" rather than a traceback.
-    """
-
-    try:
-        result = conn.execute(
-            """
-            SELECT run_group, COUNT(*) AS run_count
-            FROM runs
-            GROUP BY run_group
-            ORDER BY MAX(started_at) DESC, run_group ASC
-            """
-        ).fetchall()
-    except OperationalError:
-        return []
-    return [
-        {"run_group": row["run_group"], "run_count": row["run_count"]}
-        for row in result
-    ]
-
-
 def export_in_toto_statement(
     conn: Connection, *, run_group: str, allow_empty_subject: bool = False
 ) -> dict[str, Any]:
@@ -151,7 +127,7 @@ def export_in_toto_statement(
             # An in-toto Statement with an empty subject is schema-valid but
             # vacuous — and cosign will sign and verify it anyway. Fail hard and
             # tell the operator which run groups actually exist.
-            raise EmptySubjectError(run_group, _available_run_groups(conn))
+            raise EmptySubjectError(run_group, available_run_groups(conn))
         # Opt-in escape hatch: warn on stderr but still export (the old behavior),
         # so automation that deliberately wants the empty envelope can proceed.
         print(

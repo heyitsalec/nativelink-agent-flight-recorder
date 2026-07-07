@@ -13,7 +13,16 @@ dev trees. All exporters read SQLite — they do not invent backend state.
 PYTHONPATH=src uv run python -m nlfr <command> [options]
 ```
 
-Default DB path for exporters: `data/nlfr/nlfr.sqlite`. Default run group: `latest`.
+Default DB path for exporters: `data/nlfr/nlfr.sqlite`. Default run group: `latest`
+(a literal match, not a resolver). `nlfr record` writes recorded databases at
+`data/nlfr-record/<run-group>/nlfr.sqlite`.
+
+**Read commands never create a database.** `graph`/`runway`/`proof` export and
+`compare index`/`history`/`export` open the `--db` (and `--left-db`/`--right-db`)
+read-only. A nonexistent, zero-byte, or non-SQLite path is a hard error (exit 2)
+that names the path and leaves no file behind — a typo cannot fabricate an empty,
+zero-value projection. An *existing* database with zero run groups is still an
+honest empty report for `compare index`/`history`.
 
 ## doctor
 
@@ -109,43 +118,50 @@ Proof scripts call ingest internally; operators rarely need this directly.
 ## graph export
 
 ```bash
-python3 -m nlfr graph export --run-group latest --db data/nlfr/nlfr.sqlite --output graph.json
+python3 -m nlfr graph export --run-group baseline \
+  --db data/nlfr-record/baseline/nlfr.sqlite --output graph.json
 ```
 
-Exports action graph projection JSON.
+Exports action graph projection JSON. The `--db` must already exist (read-only).
 
 ## proof export
 
 ```bash
-python3 -m nlfr proof export --run-group latest --output proof-packet.json
+python3 -m nlfr proof export --run-group baseline \
+  --db data/nlfr-record/baseline/nlfr.sqlite --output proof-packet.json
 ```
 
-Exports proof packet JSON (cache economics, remote boundary, agent provenance blocks).
+Exports proof packet JSON (cache economics, remote boundary, agent provenance
+blocks). `json`/`markdown` over an *existing* DB whose run group has no runs
+still emit an empty-payload projection; only a missing/empty `--db` is a hard
+error. `--format in-toto` additionally hard-errors on an empty subject (see #26).
 
 ## runway export
 
 ```bash
-python3 -m nlfr runway export --run-group latest --output runway.json
+python3 -m nlfr runway export --run-group baseline \
+  --db data/nlfr-record/baseline/nlfr.sqlite --output runway.json
 ```
 
-Exports validation runway projection.
+Exports validation runway projection. The `--db` must already exist (read-only).
 
 ## compare (M9)
 
 ### compare index
 
 ```bash
-python3 -m nlfr compare index --db data/record-proof/nlfr.sqlite
-python3 -m nlfr compare index --db data/record-proof/nlfr.sqlite --json
+python3 -m nlfr compare index --db data/nlfr-record/baseline/nlfr.sqlite
+python3 -m nlfr compare index --db data/nlfr-record/baseline/nlfr.sqlite --json
 ```
 
-Lists run groups with run counts (retention index only).
+Lists run groups with run counts (retention index only). An existing DB with zero
+groups prints `no run groups recorded` (exit 0); a missing/empty `--db` exits 2.
 
 ### compare history
 
 ```bash
-python3 -m nlfr compare history --db data/record-proof/nlfr.sqlite
-python3 -m nlfr compare history --db data/record-proof/nlfr.sqlite --limit 10 \
+python3 -m nlfr compare history --db data/nlfr-record/baseline/nlfr.sqlite
+python3 -m nlfr compare history --db data/nlfr-record/baseline/nlfr.sqlite --limit 10 \
   --output run-history.json
 ```
 
@@ -154,23 +170,29 @@ summaries. Guide: [browse run history](../how-to/browse-run-history.md).
 
 ### compare export
 
-```bash
-python3 -m nlfr compare export --left record-proof --right canvas-dev \
-  --db data/record-proof/nlfr.sqlite \
-  --output compare-projection.json
-```
-
-Cross-DB:
+Cross-DB is the realistic form for two recorded groups (one database per group):
 
 ```bash
 python3 -m nlfr compare export \
-  --left-db data/record-proof/nlfr.sqlite \
-  --right-db data/canvas-dev/nlfr.sqlite \
-  --left record-proof --right canvas-dev \
+  --left-db data/nlfr-record/baseline/nlfr.sqlite \
+  --right-db data/nlfr-record/candidate/nlfr.sqlite \
+  --left baseline --right candidate \
   --output compare-projection.json
 ```
 
-Compare output is `derived_v1`. Guide: [export and compare run groups](../how-to/export-and-compare-run-groups.md).
+Single-DB form when one database holds both groups (shared `--output-dir` or
+combined ingest):
+
+```bash
+python3 -m nlfr compare export --left baseline --right candidate \
+  --db data/nlfr-record/shared/nlfr.sqlite \
+  --output compare-projection.json
+```
+
+Each side is opened read-only and validated independently: a missing/empty `--db`,
+`--left-db`, or `--right-db`, or a run group with zero runs, is a hard error (exit
+2) that names the side and lists the groups present. Compare output is
+`derived_v1`. Guide: [export and compare run groups](../how-to/export-and-compare-run-groups.md).
 
 ## init / serve
 
