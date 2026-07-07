@@ -14,6 +14,7 @@ from nlfr.projectors import (
     export_validation_runway,
 )
 from nlfr.projectors.common import write_or_print
+from nlfr.projectors.in_toto import EmptySubjectError
 from nlfr.projectors.proof_markdown import export_proof_markdown, proof_markdown_exit_code
 
 
@@ -39,8 +40,18 @@ def export_proof(args: argparse.Namespace) -> int:
     conn = initialize(connect(args.db))
     if args.format == "in-toto":
         # Unsigned, DSSE-ready in-toto Statement over the run group's recorded
-        # artifacts; existing json/markdown behavior is untouched.
-        statement = export_in_toto_statement(conn, run_group=args.run_group)
+        # artifacts; existing json/markdown behavior is untouched. A zero-subject
+        # export is a HARD ERROR (a signable-but-vacuous attestation is dangerous)
+        # unless --allow-empty-subject is passed.
+        try:
+            statement = export_in_toto_statement(
+                conn,
+                run_group=args.run_group,
+                allow_empty_subject=args.allow_empty_subject,
+            )
+        except EmptySubjectError as exc:
+            print(str(exc), file=sys.stderr)
+            return 2
         write_or_print(statement, args.output)
         return 0
     proof = export_proof_packet(conn, run_group=args.run_group)
@@ -192,5 +203,15 @@ def _add_proof_export_command(
         "--fail-on-validation",
         action="store_true",
         help="exit 1 when validation failures are present (markdown only)",
+    )
+    parser.add_argument(
+        "--allow-empty-subject",
+        action="store_true",
+        help=(
+            "in-toto only: export an empty-subject Statement (exit 0, stderr "
+            "warning) instead of failing hard when the run group has no recorded "
+            "artifacts. For automation edge cases; a signed empty attestation "
+            "proves nothing."
+        ),
     )
     parser.set_defaults(handler=export_proof)

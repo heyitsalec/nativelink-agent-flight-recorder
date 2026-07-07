@@ -18,9 +18,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
+import sys
 from pathlib import Path
 
+import pytest
+
 from nlfr.agent_receipt import FORBIDDEN_PROMPT_KEYS
+from nlfr.cli import main
 from nlfr.db import connect, initialize
 from nlfr.db.ingest import (
     upsert_artifact,
@@ -34,6 +39,7 @@ from nlfr.projectors.common import write_or_print
 from nlfr.projectors.in_toto import (
     IN_TOTO_STATEMENT_TYPE,
     PREDICATE_TYPE,
+    EmptySubjectError,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -373,22 +379,48 @@ def test_failing_evidence_still_exports_honestly_with_counts(tmp_path: Path) -> 
     assert statement["_type"] == "https://in-toto.io/Statement/v1"
 
 
-def test_empty_run_group_warns_but_still_exports_valid_empty_statement(
-    tmp_path: Path, capsys
-) -> None:
-    """An empty/nonexistent run group is schema-valid but vacuous as evidence.
+def test_empty_run_group_is_a_hard_error_by_default(tmp_path: Path) -> None:
+    """A zero-subject in-toto export is a HARD ERROR, not a silent warning.
 
-    NLFR still exports (consistent with the other exporters) but emits a clear
-    stderr warning so an empty run group is never silently attested as if it
-    carried recorded artifacts.
+    An empty-subject Statement is schema-valid and cosign will sign AND verify it,
+    yet it proves nothing. Rather than emit that trap, the export raises
+    EmptySubjectError whose message names the empty run group and lists the run
+    groups that ARE present — turning the failure into guidance.
+    """
+
+    conn, _ = seed_db(tmp_path)  # has RUN_GROUP recorded, but not 'ghost-group'
+
+    with pytest.raises(EmptySubjectError) as excinfo:
+        export_in_toto_statement(conn, run_group="ghost-group")
+
+    error = excinfo.value
+    assert error.run_group == "ghost-group"
+    message = str(error)
+    assert "run group 'ghost-group' has no recorded artifacts" in message
+    assert "empty subject" in message
+    # The message lists the run group that IS present, so the operator can recover.
+    assert RUN_GROUP in message
+    # And it explicitly debunks the '--run-group latest' foot-gun.
+    assert "no 'latest'" in message
+    assert "--allow-empty-subject" in message
+
+
+def test_allow_empty_subject_restores_warn_but_export(tmp_path: Path, capsys) -> None:
+    """--allow-empty-subject is the opt-in escape hatch for automation edge cases.
+
+    It restores the old behavior: warn on stderr, but still emit a structurally
+    valid (empty) in-toto v1 Statement instead of failing hard.
     """
 
     conn = initialize(connect(tmp_path / "empty.sqlite"))
-    statement = export_in_toto_statement(conn, run_group="ghost-group")
+    statement = export_in_toto_statement(
+        conn, run_group="ghost-group", allow_empty_subject=True
+    )
 
     err = capsys.readouterr().err
     assert "nlfr: run group 'ghost-group' has no recorded artifacts" in err
     assert "empty subject" in err
+    assert "--allow-empty-subject" in err
 
     # Still a structurally valid in-toto v1 Statement envelope, just empty.
     assert set(statement) == {"_type", "subject", "predicateType", "predicate"}
@@ -398,8 +430,10 @@ def test_empty_run_group_warns_but_still_exports_valid_empty_statement(
     assert statement["predicate"]["run_identity"] == []
 
 
-def test_non_empty_run_group_does_not_warn(tmp_path: Path, capsys) -> None:
-    """The empty-subject warning must not fire when artifacts were recorded."""
+def test_non_empty_run_group_exports_without_warning_or_error(
+    tmp_path: Path, capsys
+) -> None:
+    """The non-empty path is unaffected: no warning, no error, subjects intact."""
 
     conn, _ = seed_db(tmp_path)
     statement = export_in_toto_statement(conn, run_group=RUN_GROUP)
@@ -408,6 +442,97 @@ def test_non_empty_run_group_does_not_warn(tmp_path: Path, capsys) -> None:
     assert "no recorded artifacts" not in err
     assert "empty subject" not in err
     assert statement["subject"]  # non-empty, as recorded
+
+
+def test_cli_empty_subject_exits_nonzero_and_lists_run_groups(
+    tmp_path: Path, capsys
+) -> None:
+    """`nlfr proof export --format in-toto` over an empty run group exits nonzero.
+
+    The wrong-args scenario from issue #43 (a run-group that matches nothing) now
+    fails with a nonzero exit and a stderr message that lists the run groups
+    actually present in the DB.
+    """
+
+    seed_db(tmp_path)  # records RUN_GROUP into tmp_path/nlfr.sqlite (committed)
+    db_path = tmp_path / "nlfr.sqlite"
+
+    code = main(
+        [
+            "proof",
+            "export",
+            "--db",
+            str(db_path),
+            "--run-group",
+            "latest",  # the classic foot-gun: a literal match, not a resolver
+            "--format",
+            "in-toto",
+        ]
+    )
+
+    assert code != 0
+    err = capsys.readouterr().err
+    assert "run group 'latest' has no recorded artifacts" in err
+    assert RUN_GROUP in err  # lists the run group that IS present
+    assert "compare index" in err  # points at the command that lists them
+
+
+def test_cli_allow_empty_subject_exits_zero(tmp_path: Path, capsys) -> None:
+    """--allow-empty-subject makes the CLI export succeed (exit 0) over empties."""
+
+    seed_db(tmp_path)
+    db_path = tmp_path / "nlfr.sqlite"
+
+    code = main(
+        [
+            "proof",
+            "export",
+            "--db",
+            str(db_path),
+            "--run-group",
+            "latest",
+            "--format",
+            "in-toto",
+            "--allow-empty-subject",
+        ]
+    )
+
+    assert code == 0
+    err = capsys.readouterr().err
+    assert "empty subject (--allow-empty-subject)" in err
+
+
+def test_cli_nonexistent_db_fails_without_traceback(tmp_path: Path) -> None:
+    """A wrong/nonexistent --db path fails cleanly — a guiding error, not a crash."""
+
+    missing_db = tmp_path / "does" / "not" / "exist" / "nlfr.sqlite"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "nlfr",
+            "proof",
+            "export",
+            "--db",
+            str(missing_db),
+            "--run-group",
+            "latest",
+            "--format",
+            "in-toto",
+        ],
+        cwd=ROOT,
+        env={**__import__("os").environ, "PYTHONPATH": "src"},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 2
+    assert "Traceback (most recent call last)" not in result.stderr
+    assert "has no recorded artifacts" in result.stderr
+    # Empty DB: no run groups to list, so the message guides toward recording one.
+    assert "No run groups are recorded in this database" in result.stderr
 
 
 def test_predicate_contract_parses_and_matches_style(tmp_path: Path) -> None:

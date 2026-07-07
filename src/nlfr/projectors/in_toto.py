@@ -19,7 +19,7 @@ database are byte-identical under ``json.dumps(sort_keys=True)``.
 from __future__ import annotations
 
 import sys
-from sqlite3 import Connection
+from sqlite3 import Connection, OperationalError
 from typing import Any
 
 from nlfr.agent_receipt import FORBIDDEN_PROMPT_KEYS
@@ -57,8 +57,88 @@ LIMITS = [
 ]
 
 
-def export_in_toto_statement(conn: Connection, *, run_group: str) -> dict[str, Any]:
-    """Build an unsigned in-toto Statement for a run group's proof packet."""
+class EmptySubjectError(ValueError):
+    """An in-toto export would have an empty subject, and empties were not allowed.
+
+    A Statement with ``subject: []`` is schema-valid: cosign will happily sign AND
+    verify it, yet it proves nothing. A first-timer who exports one by mistake (a
+    wrong ``--db`` path, or a ``--run-group`` that matches no recorded group) can
+    ship a cryptographically signed attestation over an empty subject. That silent
+    failure mode is exactly what this hard error exists to stop — the message names
+    the empty run group and lists the run groups that ARE present, turning the
+    failure into guidance instead of a one-line, easy-to-miss stderr warning.
+    """
+
+    def __init__(self, run_group: str, available: list[dict[str, Any]]) -> None:
+        self.run_group = run_group
+        self.available = available
+        super().__init__(self._render())
+
+    def _render(self) -> str:
+        lines = [
+            f"nlfr: run group '{self.run_group}' has no recorded artifacts to "
+            "attest; refusing to emit an in-toto Statement with an empty subject.",
+            "An empty-subject attestation is schema-valid and can be signed and "
+            "verified, yet proves nothing — so this is a hard error, not a warning.",
+        ]
+        if self.available:
+            lines.append("Run groups present in this database:")
+            lines.extend(
+                f"  - {item['run_group']} ({item['run_count']} run(s))"
+                for item in self.available
+            )
+            lines.append(
+                "Re-run with one of the above via --run-group. Note: --run-group "
+                "is a literal match — there is no 'latest' resolver."
+            )
+        else:
+            lines.append(
+                "No run groups are recorded in this database. Record a build first "
+                "(e.g. `nlfr record -- bazel test //...`), or point --db at the "
+                "right data/nlfr-record/<run-group>/nlfr.sqlite."
+            )
+        lines.append("List run groups any time with: `nlfr compare index --db <db>`.")
+        lines.append(
+            "To export the empty Statement anyway (automation edge cases), pass "
+            "--allow-empty-subject."
+        )
+        return "\n".join(lines)
+
+
+def _available_run_groups(conn: Connection) -> list[dict[str, Any]]:
+    """Run groups actually present in the DB, so an empty-subject failure can guide.
+
+    Queries the ``runs`` table directly. A missing/unrelated SQLite file has no
+    ``runs`` table; that is reported as "no run groups" rather than a traceback.
+    """
+
+    try:
+        result = conn.execute(
+            """
+            SELECT run_group, COUNT(*) AS run_count
+            FROM runs
+            GROUP BY run_group
+            ORDER BY MAX(started_at) DESC, run_group ASC
+            """
+        ).fetchall()
+    except OperationalError:
+        return []
+    return [
+        {"run_group": row["run_group"], "run_count": row["run_count"]}
+        for row in result
+    ]
+
+
+def export_in_toto_statement(
+    conn: Connection, *, run_group: str, allow_empty_subject: bool = False
+) -> dict[str, Any]:
+    """Build an unsigned in-toto Statement for a run group's proof packet.
+
+    With ZERO subjects this raises :class:`EmptySubjectError` — a hard error, so a
+    vacuous but signable Statement is never emitted by accident. Pass
+    ``allow_empty_subject=True`` to restore the old warn-but-export behavior for
+    automation that deliberately wants the empty envelope.
+    """
 
     proof = export_proof_packet(conn, run_group=run_group)
     runs = run_rows(conn, run_group)
@@ -67,13 +147,16 @@ def export_in_toto_statement(conn: Connection, *, run_group: str) -> dict[str, A
 
     subjects = _subjects(artifacts)
     if not subjects:
-        # An in-toto Statement with an empty subject is schema-valid but vacuous
-        # as external evidence. Warn on stderr (still exporting, consistent with
-        # the other exporters) so an empty/nonexistent run group is never
-        # silently attested as if it had recorded artifacts.
+        if not allow_empty_subject:
+            # An in-toto Statement with an empty subject is schema-valid but
+            # vacuous — and cosign will sign and verify it anyway. Fail hard and
+            # tell the operator which run groups actually exist.
+            raise EmptySubjectError(run_group, _available_run_groups(conn))
+        # Opt-in escape hatch: warn on stderr but still export (the old behavior),
+        # so automation that deliberately wants the empty envelope can proceed.
         print(
             f"nlfr: run group '{run_group}' has no recorded artifacts; "
-            "statement has empty subject",
+            "statement has empty subject (--allow-empty-subject)",
             file=sys.stderr,
         )
 
