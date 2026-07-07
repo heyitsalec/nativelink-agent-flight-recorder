@@ -33,6 +33,23 @@ DEFAULT_REMOTE_CACHE = "grpc://127.0.0.1:50051"
 def run(args: argparse.Namespace) -> int:
     """Execute a recorder run and persist artifacts plus SQLite rows."""
 
+    # ``--target`` is an accepted alias for the positional TARGET: docs and
+    # shipped scripts have long used the flag form, so both must work. A
+    # conflicting pair is a usage error, never a silent pick.
+    if (
+        args.target_option is not None
+        and args.target is not None
+        and args.target_option != args.target
+    ):
+        print(
+            "nlfr run: conflicting targets given positionally "
+            f"({args.target!r}) and via --target ({args.target_option!r}); "
+            "pass just one.",
+            file=sys.stderr,
+        )
+        return 2
+    args.target = args.target_option or args.target or "//..."
+
     # Resolve the workspace for every mode before dispatching. ``run_generic``
     # reads ``args.workspace`` directly, so the resolved value is written back.
     try:
@@ -352,7 +369,19 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         help="emit machine-readable run metadata",
     )
     register_generic_args(parser)
-    parser.add_argument("target", nargs="?", default="//...", help="Bazel target pattern")
+    parser.add_argument(
+        "target",
+        nargs="?",
+        default=None,
+        help="Bazel target pattern (default: //...)",
+    )
+    parser.add_argument(
+        "--target",
+        dest="target_option",
+        default=None,
+        metavar="TARGET",
+        help="alias for the positional TARGET",
+    )
     parser.set_defaults(handler=run)
 
 

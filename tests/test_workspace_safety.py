@@ -367,3 +367,76 @@ def test_doctor_demo_default_inside_checkout_reports_path() -> None:
     checked = payload["nativelink_config_checked"]
     assert checked is not None
     assert checked.endswith("demo/nativelink/local-execution.json5")
+
+
+# --------------------------------------------------------------------------- #
+# --target alias for the positional TARGET (docs and shipped scripts use both)
+# --------------------------------------------------------------------------- #
+
+
+def test_target_flag_is_accepted_as_alias(tmp_path: Path) -> None:
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    result = run_nlfr(
+        "run",
+        "--mode",
+        "cache-only",
+        "--skip-nativelink",
+        "--no-remote-cache",
+        "--workspace",
+        str(workspace),
+        "--bazel-executable",
+        "definitely-missing-bazel-for-nlfr",
+        "--output-dir",
+        str(tmp_path / "out"),
+        "--json",
+        "--target",
+        "//tasks:priority_test",
+    )
+    command = _bazel_command_from_run(result)
+    assert "//tasks:priority_test" in command
+
+
+def test_positional_target_default_is_preserved(tmp_path: Path) -> None:
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    result = run_nlfr(
+        "run",
+        "--mode",
+        "cache-only",
+        "--skip-nativelink",
+        "--no-remote-cache",
+        "--workspace",
+        str(workspace),
+        "--bazel-executable",
+        "definitely-missing-bazel-for-nlfr",
+        "--output-dir",
+        str(tmp_path / "out"),
+        "--json",
+    )
+    command = _bazel_command_from_run(result)
+    assert "//..." in command
+
+
+def test_conflicting_positional_and_flag_targets_error(tmp_path: Path) -> None:
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    result = run_nlfr(
+        "run",
+        "--mode",
+        "cache-only",
+        "--skip-nativelink",
+        "--no-remote-cache",
+        "--workspace",
+        str(workspace),
+        "--bazel-executable",
+        "definitely-missing-bazel-for-nlfr",
+        "--output-dir",
+        str(tmp_path / "out"),
+        "--target",
+        "//a:b",
+        "//c:d",
+    )
+    assert result.returncode == 2
+    assert "conflicting targets" in result.stderr
+    assert "Traceback" not in result.stderr
