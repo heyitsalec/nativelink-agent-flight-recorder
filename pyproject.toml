@@ -68,6 +68,15 @@ dev = [
 [tool.hatch.build.targets.wheel]
 packages = ["src/nlfr"]
 
+# Ship the demo simulate fixtures INSIDE the wheel so `nlfr simulate` resolves
+# them via importlib.resources with no source checkout present (GitHub #94).
+# demo/ stays the single source of truth (no duplicated copies to drift); these
+# are force-included into nlfr/data/ at build time. Payload is tiny (~100 KiB of
+# JSON + a minimal Bazel workspace).
+[tool.hatch.build.targets.wheel.force-include]
+"demo/scenarios" = "nlfr/data/scenarios"
+"demo/bazel-monorepo" = "nlfr/data/demo-workspace"
+
 [tool.hatch.build.targets.sdist]
 # Leading-slash anchors keep the sdist minimal: gitignore-style patterns match
 # at any depth, so a bare "README.md" would pull in every nested README.
@@ -77,6 +86,10 @@ include = [
   "/LICENSE",
   "/NOTICE",
   "/pyproject.toml",
+  # Simulate demo fixtures: carried in the sdist so the wheel's force-include
+  # (built from the sdist) can pull them into nlfr/data/ (GitHub #94).
+  "/demo/scenarios",
+  "/demo/bazel-monorepo",
 ]
 
 [tool.pytest.ini_options]

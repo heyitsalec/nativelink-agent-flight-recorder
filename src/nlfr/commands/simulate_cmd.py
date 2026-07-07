@@ -15,6 +15,13 @@ from typing import Any
 
 from nlfr.artifacts import write_artifact
 from nlfr.change_evidence import derive_change_details, patch_applied_from
+from nlfr.commands.simulate_resources import (
+    SCENARIOS_RESOURCE,
+    packaged_data_dir,
+    resolve_scenario_dir,
+    scenario_source_label,
+    wheel_workspace_fallback,
+)
 from nlfr.config import WorkspaceResolutionError, resolve_workspace
 from nlfr.db import connect, initialize
 from nlfr.db.ingest import (
@@ -27,6 +34,23 @@ from nlfr.db.ingest import (
 
 def run(args: argparse.Namespace) -> int:
     """Apply demo agent patches and record simulated provenance."""
+
+    if getattr(args, "list_scenarios", False):
+        return _list_scenarios(args)
+
+    if args.workspace_template is None:
+        # A wheel install has no source checkout, so resolve_workspace would fail
+        # with "no Bazel workspace found" from a bare dir (GitHub issue #94). Fall
+        # back to the demo workspace bundled in the wheel; dev checkouts and cwd
+        # Bazel markers keep their existing resolve_workspace behavior.
+        fallback = wheel_workspace_fallback(Path.cwd())
+        if fallback is not None:
+            args.workspace_template = str(fallback)
+            print(
+                "nlfr: using the demo workspace bundled in the wheel "
+                "(pass --workspace-template for your own repo)",
+                file=sys.stderr,
+            )
 
     try:
         template, template_notice = resolve_workspace(Path.cwd(), args.workspace_template)
@@ -87,8 +111,18 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
     )
     parser.add_argument(
         "--scenario-dir",
-        default=str(_repo_root() / "demo" / "scenarios"),
-        help="directory containing demo scenario JSON files",
+        default=None,
+        help=(
+            "directory containing demo scenario JSON files. Default resolution: "
+            "packaged fixtures bundled in the wheel (importlib.resources), else "
+            "the repo's demo/scenarios (source checkout)"
+        ),
+    )
+    parser.add_argument(
+        "--list",
+        dest="list_scenarios",
+        action="store_true",
+        help="list resolvable demo scenarios and the directory they resolve from, then exit",
     )
     parser.add_argument(
         "--workspace-template",
@@ -224,13 +258,65 @@ def _run_scenario(
     }
 
 
+def _resolve_scenario_dir(args: argparse.Namespace) -> Path:
+    """Resolve the scenario directory: --scenario-dir > packaged wheel > repo.
+
+    Delegates to :func:`nlfr.commands.simulate_resources.resolve_scenario_dir`,
+    which raises an honest triple-path :class:`ValueError` when none resolve.
+    """
+
+    return resolve_scenario_dir(
+        args.scenario_dir,
+        packaged=packaged_data_dir(SCENARIOS_RESOURCE),
+        repo=_repo_root() / "demo" / "scenarios",
+    )
+
+
+def _list_scenarios(args: argparse.Namespace) -> int:
+    """Handle ``nlfr simulate --list``: print resolvable scenarios and exit.
+
+    Runs from a bare directory (no workspace/build needed), so it is the cheapest
+    proof that packaged scenario resolution works from a wheel install.
+    """
+
+    try:
+        scenario_dir = _resolve_scenario_dir(args)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    scenario_ids = [path.stem for path in sorted(scenario_dir.glob("*.json"))]
+    source = scenario_source_label(
+        args.scenario_dir, scenario_dir, packaged_data_dir(SCENARIOS_RESOURCE)
+    )
+    if args.json:
+        print(
+            json.dumps(
+                {
+                    "schema_version": "nlfr.agent_simulation_list.v1",
+                    "scenario_dir": str(scenario_dir),
+                    "resolved_from": source,
+                    "scenarios": scenario_ids,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+    else:
+        print(f"scenarios resolved from {scenario_dir} ({source})")
+        for scenario_id in scenario_ids:
+            print(f"- {scenario_id}")
+        if not scenario_ids:
+            print("(no scenario JSON files found)")
+    return 0
+
+
 def _scenario_paths(args: argparse.Namespace) -> list[Path]:
-    scenario_dir = Path(args.scenario_dir).resolve()
+    scenario_dir = _resolve_scenario_dir(args)
     requested = args.scenario or []
     if not requested:
         paths = sorted(scenario_dir.glob("*.json"))
         if not paths:
-            raise ValueError(f"no scenarios found in {scenario_dir}")
+            raise ValueError(f"no scenario JSON files found in {scenario_dir}")
         return paths
 
     paths: list[Path] = []
