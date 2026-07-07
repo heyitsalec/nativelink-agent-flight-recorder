@@ -2,10 +2,10 @@
   "confidence": "high",
   "evidence_refs": [
     "script:two-act-spark-proof.sh",
-    "receipt:<repo>/data/two-act-spark/receipts/act1-receipt.json"
+    "receipt:<repo>[REDACTED:abs_path]/act1-receipt.json"
   ],
   "reason": "headless agent CLI invocation failed in act1: Failed to authenticate. API Error: 401 Invalid authentication credentials (receipt kept as evidence)",
-  "redaction_state": "safe",
+  "redaction_state": "redacted",
   "source_kind": "collectable_v1",
   "status": "environment_blocker"
 }

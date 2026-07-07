@@ -1,5 +1,5 @@
 {
-  "compare_projection": "<repo>/data/compare-proof/projections/compare-projection.json",
+  "compare_projection": "<repo>[REDACTED:abs_path]/compare-projection.json",
   "confidence": "medium",
   "dimension_ids": [
     "run_counts",
@@ -12,10 +12,10 @@
     "run_group:record-proof",
     "run_group:canvas-dev"
   ],
-  "left_db": "<repo>/data/record-proof/nlfr.sqlite",
+  "left_db": "<repo>[REDACTED:abs_path]/nlfr.sqlite",
   "left_run_group": "record-proof",
-  "redaction_state": "safe",
-  "right_db": "<repo>/data/canvas-dev/nlfr.sqlite",
+  "redaction_state": "redacted",
+  "right_db": "<repo>[REDACTED:abs_path]/nlfr.sqlite",
   "right_run_group": "canvas-dev",
   "source_kind": "derived_v1",
   "status": "ok",

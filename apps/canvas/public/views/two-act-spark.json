@@ -2,7 +2,7 @@
   "schema_version": "nlfr.view-spec.v1",
   "view_id": "two-act-spark",
   "title": "Two-Act Spark — Failure vs Fix",
-  "description": "Two-act spark lens: act 1 (agent authored from an underspecified spec, recorder caught the red leg) vs act 2 (agent fixed from recorded evidence, warm cache). Defaults to the committed stub-run projections (validation legs collectable_v1, agent legs stub_receipt_v1). Drop live projections from data/two-act-spark/projections/ into public/projections/two-act/ (same filenames) to upgrade this view to receipt_verified_v1 without spec changes.",
+  "description": "Two-act spark lens: act 1 (agent authored from an underspecified spec, recorder caught the red leg) vs act 2 (agent fixed from recorded evidence, warm cache). Defaults to the committed live-run projections (validation legs collectable_v1, agent legs receipt_verified_v1 from an authenticated Claude run — claude-opus-4-8). Drop the deterministic zero-token stub projections from data/two-act-spark-stub/projections/ into public/projections/two-act/ (same filenames) to swap this view to the stub_receipt_v1 CI mechanics gate.",
   "generated_at": "2026-06-10T00:00:00.000Z",
   "run_group": "two-act-spark-stub-act1",
   "layout": {

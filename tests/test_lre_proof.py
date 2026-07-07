@@ -557,13 +557,19 @@ def test_lre_cold_warm_summary_shape_with_fixture(tmp_path):
         "status",
         "source_kind",
         "confidence",
-        "redaction_state",
         "lre_config",
         "remote_cache",
         "remote_executor",
         "bazel_config",
     ):
         assert summary[key] == sample[key]
+
+    # #64: the record-time writer emits redaction_state 'safe' (paths not yet
+    # scrubbed); the committed sample is the PROMOTED artifact whose residual
+    # absolute-path tails (artifact_root, the bazel command) were scrubbed at the
+    # sharing boundary via `nlfr redact`, so it honestly carries 'redacted'.
+    assert summary["redaction_state"] == "safe"
+    assert sample["redaction_state"] == "redacted"
 
     assert summary["evidence_refs"] == sample["evidence_refs"]
     assert summary["claim_boundary"] == sample["claim_boundary"]

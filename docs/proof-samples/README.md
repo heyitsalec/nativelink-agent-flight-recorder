@@ -14,7 +14,10 @@ marketing prose or a live demo.
 Every sample in this directory follows the same rules:
 
 1. **Faithful shape** — JSON mirrors a real run summary; only absolute host paths
-   are replaced with `<repo>` and the Nix-store Bazel path with `<bazel>`.
+   are replaced: the home/repo prefix with `<repo>`, the Nix-store Bazel path
+   with `<bazel>`, and any residual absolute-path tail collapsed to
+   `[REDACTED:abs_path]/<basename>` by `nlfr redact` at the sharing boundary
+   (GitHub #64). Scrubbed samples honestly carry `redaction_state: redacted`.
 2. **Hashes preserved** — run IDs and SHA-256 digests carry no secrets and stay
    intact for cross-checking.
 3. **No secrets** — no raw prompts, logs, environment variables, credentials, or
@@ -76,7 +79,7 @@ Fleet claim policy (what v1 will and will not promote) lives in
 
 | Sample | Produced by | `source_kind` · `confidence` | What it proves |
 |--------|-------------|-------------------------------|----------------|
-| [`cold-warm-summary.json`](cold-warm-summary.json) | `scripts/cold-warm-cache-proof.sh` | `collectable_v1` · `high` | Cold: `hit_rate` 0.0 / 8.17s. Warm: `hit_rate` 1.0 / 5.48s. Warm is faster with higher hit rate. |
+| [`cold-warm-summary.json`](cold-warm-summary.json) | `scripts/cold-warm-cache-proof.sh` | `collectable_v1` · `high` | Cold `hit_rate` 0.0, warm `hit_rate` 1.0, warm faster — this committed sample is an earlier reference recording (8.17s → 5.48s). Wall-clock seconds drift run to run; the hit-rate pattern does not. Latest CI numbers (9.04s → 6.12s, Bazel 7.4.1) are in [run `28862144465`](https://github.com/heyitsalec/nativelink-agent-flight-recorder/actions/runs/28862144465). |
 | [`two-worker-summary.json`](two-worker-summary.json) | `NLFR_EXPECTED_WORKERS=2 scripts/local-exec-proof.sh` | `collectable_v1` · `high` | Two workers configured **and** endpoints opened live (`worker_endpoints_ready`, `expected_workers=2`). `nativelink.stdout.txt` / `.stderr.txt` attached pre-ingest. Does **not** prove work distribution. `worker_identity` stays in `unsupported_claims` here unless M7 regex matches attached stdout. |
 
 ### Agent loop, live adapter, and Tier 1 (`collectable_v1` / mixed)

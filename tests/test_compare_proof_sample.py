@@ -118,7 +118,11 @@ def test_compare_summary_sample_shape() -> None:
     assert sample["status"] == "ok"
     assert sample["source_kind"] == "derived_v1"
     assert sample["confidence"] == "medium"
-    assert sample["redaction_state"] == "safe"
+    # #64: the sample's residual absolute-path tails (left_db / right_db /
+    # compare_projection under <repo>) were scrubbed at the sharing boundary via
+    # `nlfr redact`, so the top-level state is honestly 'redacted' (scrubbed
+    # content is never labelled 'safe').
+    assert sample["redaction_state"] == "redacted"
     assert set(sample["dimension_ids"]) == EXPECTED_DIMENSION_IDS
     assert sample["left_run_group"] == "record-proof"
     assert sample["right_run_group"] == "canvas-dev"
