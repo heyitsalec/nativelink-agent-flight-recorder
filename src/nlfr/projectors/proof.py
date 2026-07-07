@@ -6,7 +6,14 @@ from datetime import UTC, datetime
 from sqlite3 import Connection
 from typing import Any
 
-from nlfr.projectors.common import generated_at, rows, run_rows, status_counts, truth
+from nlfr.projectors.common import (
+    generated_at,
+    redact_projection_node,
+    rows,
+    run_rows,
+    status_counts,
+    truth,
+)
 from nlfr.retention_policy import proof_retention_block
 from nlfr.projectors.remote_execution import (
     remote_execution_endpoint_summaries,
@@ -177,7 +184,7 @@ def _artifact_verification_block(references: list[dict[str, Any]]) -> dict[str, 
             "(bazelbuild/bazel#23250); NLFR does not probe remote CAS in v1."
         ),
     ]
-    return {
+    block = {
         **_block(
             "artifact_verification",
             "Artifact Integrity Verification",
@@ -190,6 +197,20 @@ def _artifact_verification_block(references: list[dict[str, Any]]) -> dict[str, 
             "references": [_reference_payload(reference) for reference in references],
         },
     }
+    # Sharing boundary (same #60 pattern as graph/runway, different projector).
+    # Each reference payload embeds the raw BEP ``file://`` URI (and, when a
+    # reference has no ``name``, that URI again inside ``reference_key``). On an
+    # ordinary local build those are absolute local paths, so a fresh
+    # ``nlfr proof export`` — and the in-toto export that consumes this predicate
+    # — would leak the recorder's filesystem layout on a block that self-labels
+    # ``redaction_state: safe`` and fail ``nlfr redact --check``. Route the whole
+    # payload through the same basename-preserving scrubber graph/runway use and
+    # honestly upgrade the block's ``redaction_state`` safe/unknown -> redacted
+    # when a scrub occurred. Digest, presence, and verification fields carry no
+    # absolute-path shape, so they pass through byte-for-byte — a skeptic still
+    # verifies references by digest + presence, not by the recorder's local path.
+    # The recorded SQLite rows are never mutated; this is projection-time only.
+    return redact_projection_node(block, fields=("payload",))
 
 
 def _reference_payload(reference: dict[str, Any]) -> dict[str, Any]:

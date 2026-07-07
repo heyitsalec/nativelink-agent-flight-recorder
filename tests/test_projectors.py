@@ -484,6 +484,91 @@ def test_proof_packet_bounds_remote_execution_claims(tmp_path):
     assert "worker identity" in claim_text
 
 
+def seed_local_path_db(tmp_path):
+    """Seed a run whose invocation carries real absolute local paths.
+
+    This reproduces the issue #60 dogfood blocker: ``nlfr record`` stores the
+    adopter's real ``cwd`` and the injected ``--build_event_json_file=<abs>``
+    flag, both self-labelled ``redaction_state: safe`` at record time. Returns
+    the connection plus the two absolute paths the projection must scrub.
+    """
+
+    conn = initialize(connect(tmp_path / "nlfr.sqlite"))
+    workspace = tmp_path / "workspace"
+    bep = tmp_path / "data" / "nlfr-record" / "grp" / "runs" / "r1" / "artifacts" / "bazel-bep.json"
+    run_id = upsert_run(
+        conn,
+        stable_key="run:paths",
+        run_group="grp",
+        scenario="record",
+        mode="record",
+        status="completed",
+        source_kind="collectable_v1",
+        confidence="high",
+        evidence_refs=["artifact:run.json"],
+        redaction_state="safe",
+    )
+    upsert_invocation(
+        conn,
+        stable_key="run:paths:invocation:bazel",
+        run_id=run_id,
+        invocation_kind="bazel",
+        command=["bazel", "test", f"--build_event_json_file={bep}", "//tasks:priority_test"],
+        cwd=str(workspace),
+        exit_code=0,
+        source_kind="collectable_v1",
+        confidence="high",
+        evidence_refs=["artifact:bazel.stdout.txt"],
+        redaction_state="safe",
+    )
+    return conn, workspace, bep
+
+
+def test_action_graph_scrubs_local_paths_at_sharing_boundary(tmp_path):
+    conn, workspace, bep = seed_local_path_db(tmp_path)
+    graph = export_action_graph(conn, run_group="grp")
+
+    serialized = json.dumps(graph)
+    # Grep-style: no absolute local path substring survives into the shared JSON.
+    assert str(workspace) not in serialized
+    assert str(bep) not in serialized
+    assert str(tmp_path) not in serialized
+
+    invocation = next(node for node in graph["nodes"] if node["kind"] == "invocation")
+    # Scrubbed content -> honestly relabelled 'redacted' (never 'safe').
+    assert invocation["redaction_state"] == "redacted"
+    # Basenames preserved so the projection stays interpretable.
+    assert invocation["payload"]["cwd"] == "[REDACTED:abs_path]/workspace"
+    assert any(
+        "[REDACTED:abs_path]/bazel-bep.json" in part
+        for part in invocation["payload"]["command"]
+    )
+    # A Bazel label is not a path and is preserved verbatim.
+    assert "//tasks:priority_test" in invocation["payload"]["command"]
+
+    # A node with no local paths keeps its recorded 'safe' label untouched.
+    run_node = next(node for node in graph["nodes"] if node["kind"] == "run")
+    assert run_node["redaction_state"] == "safe"
+
+
+def test_runway_scrubs_local_paths_at_sharing_boundary(tmp_path):
+    conn, workspace, bep = seed_local_path_db(tmp_path)
+    runway = export_validation_runway(conn, run_group="grp")
+
+    serialized = json.dumps(runway)
+    assert str(workspace) not in serialized
+    assert str(bep) not in serialized
+    assert str(tmp_path) not in serialized
+
+    invocation = next(event for event in runway["events"] if event["lane"] == "bazel")
+    assert invocation["redaction_state"] == "redacted"
+    assert invocation["payload"]["cwd"] == "[REDACTED:abs_path]/workspace"
+    assert any(
+        "[REDACTED:abs_path]/bazel-bep.json" in part
+        for part in invocation["payload"]["command"]
+    )
+
+
 def test_projection_contracts_are_valid_json_documents() -> None:
     import json
 

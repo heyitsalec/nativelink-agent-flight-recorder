@@ -6,6 +6,8 @@ import json
 import re
 from typing import Any
 
+from nlfr.redaction import scrub_local_paths
+
 _PROMPT_KEY_RE = re.compile(
     r'"(?:prompt(?:_text|_body|_content)?|raw_prompt|system_prompt|user_prompt)"\s*:\s*"[^"]*"',
     re.IGNORECASE,
@@ -20,7 +22,14 @@ def redact_text(text: str) -> str:
 
 
 def redact_repo_path(path: str | None, *, repo_root: str | None = None) -> str | None:
-    """Replace repo-root prefixes with ``<repo>`` for committed samples."""
+    """Replace repo-root prefixes with ``<repo>`` for committed samples.
+
+    When ``repo_root`` is not supplied (or does not prefix ``path``), fall back to
+    scrubbing: home paths collapse to ``${HOME}`` and any *non-home* absolute path
+    (e.g. a ``--db`` under ``/private/tmp`` or ``/data``) collapses to
+    ``[REDACTED:abs_path]/<basename>``. Without this fallback a raw absolute
+    ``--db`` path leaked into the markdown whenever ``--repo-root`` was omitted.
+    """
 
     if not path:
         return None
@@ -29,7 +38,7 @@ def redact_repo_path(path: str | None, *, repo_root: str | None = None) -> str |
         normalized_root = str(repo_root).rstrip("/")
         if text.startswith(normalized_root):
             return "<repo>" + text[len(normalized_root) :]
-    return redact_text(text)
+    return scrub_local_paths(redact_text(text))[0]
 
 
 def export_proof_markdown(

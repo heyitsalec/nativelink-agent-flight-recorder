@@ -225,6 +225,15 @@ def test_redact_repo_path_replaces_root() -> None:
     )
 
 
+def test_redact_repo_path_scrubs_non_home_abs_db_without_repo_root() -> None:
+    # F3: with --repo-root omitted, a non-home absolute --db path used to leak;
+    # it now collapses to an abs_path placeholder (basename preserved).
+    assert redact_repo_path("/private/tmp/ci-7f3a/run/nlfr.sqlite") == "[REDACTED:abs_path]/nlfr.sqlite"
+    assert redact_repo_path("/data/proof/nlfr.sqlite") == "[REDACTED:abs_path]/nlfr.sqlite"
+    # Home paths keep the ${HOME} collapse (the multi-segment tail is not corrupted).
+    assert redact_repo_path("/Users/example/nlfr/data/nlfr.sqlite") == "${HOME}/nlfr/data/nlfr.sqlite"
+
+
 def test_proof_export_markdown_cli(tmp_path: Path) -> None:
     db_path = tmp_path / "nlfr.sqlite"
     _seed_proof_db(db_path, run_group="pr-proof")

@@ -64,6 +64,47 @@ nlfr record --json -- bazel test //your:target
 If you already pass your own `--build_event_json_file`, `nlfr record` honors it
 and ingests from that path instead of injecting a second one.
 
+## Before you share a projection
+
+The recorder records **raw** evidence locally — an invocation's real `cwd` and
+the injected `--build_event_json_file=<absolute path>` land in the SQLite spine
+verbatim, which is correct: local evidence should be faithful. The **projection**
+is the sharing boundary. `nlfr graph export`, `nlfr runway export`, and
+`nlfr proof export` (JSON *and* `--format in-toto`) scrub local absolute paths
+(home dirs *and* `/private/tmp`-style paths) to a basename-preserving
+placeholder — `/Users/you/repo/workspace` becomes `[REDACTED:abs_path]/workspace`,
+and a BEP artifact reference's `file:///…/out.txt` becomes
+`file://[REDACTED:abs_path]/out.txt` — and any node or block that had to be
+scrubbed is relabelled `redaction_state: redacted` rather than claiming `safe`.
+Digest, presence, and verification fields are left untouched, so a skeptic still
+verifies each reference by digest + presence. The recorded SQLite row keeps its
+raw, record-time value; scrubbing happens only when the shared projection is
+built.
+
+Belt-and-suspenders: before you attach **any** projection to a PR or dashboard,
+gate it with `nlfr redact` (defense-in-depth pattern matching for credentials +
+PII **and** absolute local paths — **not** a guarantee; review sensitive evidence
+at the source too):
+
+```bash
+# Fail the share if a secret/PII/abs-path shape is present (writes nothing; exit 1 on find)
+nlfr redact --check projections/graph-<run-group>.json
+
+# Or write a scrubbed copy to attach instead of the raw projection
+nlfr redact projections/graph-<run-group>.json graph-shareable.json
+```
+
+`--check` catches the same non-home absolute-path class the projectors scrub
+(`abs_path`, on by default) — so a *stale* projection built before this scrub, or
+one produced by a tool that bypassed the projector, still fails the gate instead
+of leaking a raw `cwd`/`command` path past a `redaction_state: safe` node. Local
+`file:///abs/path` URIs are caught too; remote authorities (`grpc://`,
+`bytestream://`, `https://`) and `${HOME}`-collapsed home paths are not flagged.
+`--check` exits non-zero and prints each finding (detector, JSON path, masked
+excerpt — never the raw secret) so it drops straight into a pre-publish CI step.
+See the [redact CLI reference](../reference/cli.md#redact) and the module
+docstring in `src/nlfr/redaction.py` for the honest scope and limits.
+
 ## Failing builds are the product
 
 A non-zero Bazel exit is a **valid** recording — the failure evidence is exactly

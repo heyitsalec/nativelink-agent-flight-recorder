@@ -5,7 +5,14 @@ from __future__ import annotations
 from sqlite3 import Connection
 from typing import Any
 
-from nlfr.projectors.common import generated_at, rows, run_rows, status_counts, truth
+from nlfr.projectors.common import (
+    generated_at,
+    redact_projection_node,
+    rows,
+    run_rows,
+    status_counts,
+    truth,
+)
 from nlfr.projectors.remote_execution import sanitize_remote_endpoint_args
 
 
@@ -64,16 +71,21 @@ def export_validation_runway(conn: Connection, *, run_group: str) -> dict[str, A
 
 def _event(lane: str, label: object, row: dict[str, Any]) -> dict[str, Any]:
     normalized_lane = _lane(lane)
-    return {
-        "id": row["id"],
-        "lane": normalized_lane,
-        "label": str(label),
-        "status": row.get("status") or row.get("event_kind"),
-        "started_at": row.get("started_at") or row.get("created_at"),
-        "ended_at": row.get("ended_at"),
-        "payload": _payload(row),
-        **truth(row),
-    }
+    # Scrub local abs paths from label + payload at the sharing boundary and
+    # recompute redaction_state honestly (issue #60); the recorded row is
+    # untouched and ``id`` stays verbatim.
+    return redact_projection_node(
+        {
+            "id": row["id"],
+            "lane": normalized_lane,
+            "label": str(label),
+            "status": row.get("status") or row.get("event_kind"),
+            "started_at": row.get("started_at") or row.get("created_at"),
+            "ended_at": row.get("ended_at"),
+            "payload": _payload(row),
+            **truth(row),
+        }
+    )
 
 
 def _payload(row: dict[str, Any]) -> dict[str, Any]:
