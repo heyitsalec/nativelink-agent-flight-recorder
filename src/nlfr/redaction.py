@@ -73,8 +73,12 @@ __all__ = [
     "RedactionResult",
     "redact_payload",
     "redact_json_text",
+    "redact_text",
     "redact_string",
     "scrub_local_paths",
+    "is_sqlite_bytes",
+    "is_binary_bytes",
+    "SQLITE_MAGIC",
     "SECRET_DETECTORS",
     "PATH_DETECTORS",
     "PII_DETECTORS",
@@ -744,6 +748,123 @@ def redact_payload(payload: object, config: RedactionConfig | None = None) -> Re
 
 def _join(path: str, key: str) -> str:
     return f"{path}.{key}"
+
+
+# ---------------------------------------------------------------------------
+# Plain-text scanning (non-JSON evidence: stdout/stderr logs, markdown, …)
+# ---------------------------------------------------------------------------
+#
+# The recorder's real secrets land in *log/stdout* text, not JSON projections
+# (issue #71). A raw ``bazel.stdout.txt`` carrying a leaked ``AKIA…`` key is not
+# valid JSON, so :func:`redact_payload` cannot see it. :func:`redact_text` scans
+# such a file as ONE plain string with the same detector registry — no JSON
+# walk, no ``redaction_state`` semantics (a text file carries no truth labels),
+# just string-level spans resolved by :func:`_resolve_spans`. This is what lets
+# ``nlfr redact --check`` gate the raw evidence tree the CI docs tell operators
+# to upload, instead of refusing every non-JSON file.
+
+
+def _mask_window(redacted: str, marker_pos: int, window: int = 32) -> str:
+    """Masked, single-line excerpt of ``redacted`` around a known marker offset.
+
+    Operates on the *already-redacted* text (so no raw secret can leak) and
+    collapses newlines to a literal ``\\n`` so a multi-line hit stays one report
+    line. Unlike :func:`_mask_excerpt` this masks around a *given* position, so
+    each of several hits in one blob gets its own correctly-located excerpt.
+    """
+
+    start = max(0, marker_pos - window)
+    end = min(len(redacted), marker_pos + window)
+    prefix = "..." if start > 0 else ""
+    suffix = "..." if end < len(redacted) else ""
+    snippet = redacted[start:end].replace("\r", "").replace("\n", "\\n")
+    return f"{prefix}{snippet}{suffix}"
+
+
+def redact_text(text: str, config: RedactionConfig | None = None) -> RedactionResult:
+    """Scan/redact a PLAIN-TEXT blob (stdout/stderr/markdown) — no JSON assumed.
+
+    The whole string is treated as one value and scanned for the enabled
+    detectors (string-level spans, greedy non-overlap via :func:`_resolve_spans`).
+    Text carries no ``redaction_state`` labels, so — unlike :func:`redact_payload`
+    — nothing is relabelled. In redact mode (``config.redact``) the returned
+    ``payload`` is the redacted string with every span rewritten in place; in
+    check mode it is the original text unchanged. Each :class:`Finding` reports a
+    1-based line number and a masked excerpt (never the raw secret), so a
+    ``--check`` report over a log file reads like the JSON one.
+    """
+
+    config = config or RedactionConfig()
+    result = RedactionResult(payload=text)
+    chosen = _resolve_spans(text, None, config)
+    if not chosen:
+        return result
+
+    out: list[str] = []
+    markers: list[tuple[int, Detector, int]] = []
+    cursor = 0
+    out_len = 0
+    for start, end, detector in chosen:
+        prefix = text[cursor:start]
+        out.append(prefix)
+        out_len += len(prefix)
+        marker_pos = out_len
+        if detector.replace is not None:
+            replacement = detector.replace(text[start:end])
+        else:
+            replacement = detector.replacement_text()
+        out.append(replacement)
+        out_len += len(replacement)
+        line_no = text.count("\n", 0, start) + 1
+        markers.append((marker_pos, detector, line_no))
+        cursor = end
+    out.append(text[cursor:])
+    redacted = "".join(out)
+
+    for marker_pos, detector, line_no in markers:
+        result.counts[detector.name] += 1
+        result.findings.append(
+            Finding(
+                json_path=f"line {line_no}",
+                detector=detector.name,
+                tier=detector.tier,
+                location="text",
+                excerpt=_mask_window(redacted, marker_pos),
+            )
+        )
+    result.payload = redacted if config.redact else text
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Byte-level file classification (tree mode)
+# ---------------------------------------------------------------------------
+#
+# Tree mode walks a recorded evidence directory and must decide, per file,
+# whether it is scannable text/JSON, an out-of-scope binary, or a SQLite
+# database (local evidence, never meant for upload). These sniffs are honest and
+# cheap: a secret hidden in a binary is out of scope, and the report SAYS so
+# rather than silently ignoring the file.
+
+#: Leading bytes of every SQLite 3 database file (the file-format magic string).
+SQLITE_MAGIC = b"SQLite format 3\x00"
+
+
+def is_sqlite_bytes(data: bytes) -> bool:
+    """True when ``data`` begins with the SQLite 3 file-format magic string."""
+
+    return data[:16] == SQLITE_MAGIC
+
+
+def is_binary_bytes(data: bytes, *, head: int = 8192) -> bool:
+    """Honest binary sniff: a NUL byte in the head marks the file non-text.
+
+    A single ``\\x00`` in the first ``head`` bytes is the same heuristic ``git``
+    uses to call a blob binary. Text logs (stdout/stderr), JSON, and markdown
+    never carry an embedded NUL, so this never misclassifies scannable evidence.
+    """
+
+    return b"\x00" in data[:head]
 
 
 # ---------------------------------------------------------------------------

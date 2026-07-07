@@ -617,3 +617,177 @@ def test_keep_days_never_deletes_unknown_age_group(tmp_path, capsys) -> None:
     assert {e["run_group"] for e in report["unknown_age_groups"]} == {"ingest-null"}
     # The age-unknown group remains; the store was not emptied.
     assert _run_groups(tmp_path) == {"ingest-null"}
+
+
+# ---------------------------------------- VACUUM reclaim accuracy (issue #73)
+
+
+def test_apply_reports_reclaimed_bytes_matching_real_file_delta(tmp_path, capsys) -> None:
+    """`reclaimed_bytes` is the TRUE on-disk delta, not 0-by-construction (#73).
+
+    Pre-fix, ``db_bytes_after`` was ``stat()``'d immediately after ``VACUUM`` with
+    no subsequent checkpoint. In WAL mode VACUUM's rewrite lands in the WAL, not
+    the main ``.sqlite`` file, so the "after" size read the *pre*-VACUUM size and
+    ``reclaimed_bytes`` was always 0 even when real space was freed. This seeds a
+    genuinely-shrinking store (a large group deleted, a small one kept), then
+    asserts the report's number equals the file size the operator would ``stat``
+    the instant the command returns.
+    """
+
+    db_path = tmp_path / "nlfr.sqlite"
+    # A large group (deleted) and a small one (kept) so the DB genuinely shrinks
+    # by more than one page after VACUUM.
+    _seed_group(tmp_path, "bulk", started_at=datetime.now(UTC) - timedelta(days=100), n_runs=150)
+    _seed_group(tmp_path, "keep", started_at=datetime.now(UTC) - timedelta(days=1), n_runs=2)
+
+    size_before = db_path.stat().st_size
+    code = _gc("--db", str(db_path), "--run-group", "bulk", "--apply", "--json")
+    size_after = db_path.stat().st_size
+
+    assert code == 0
+    report = json.loads(capsys.readouterr().out)
+    vacuum = report["vacuum"]
+
+    # The DB really shrank on disk (not just claimed to).
+    assert size_after < size_before
+    real_delta = size_before - size_after
+    assert real_delta > 0
+
+    # The report's numbers ARE the real file sizes/delta — honest, not fabricated.
+    assert vacuum["ran"] is True
+    assert vacuum["db_bytes_before"] == size_before
+    assert vacuum["db_bytes_after"] == size_after
+    assert vacuum["reclaimed_bytes"] == real_delta
+    assert vacuum["reclaimed_bytes"] > 0  # the specific #73 symptom is gone
+
+    # The durable gc-report.json carries the same honest number.
+    event = json.loads((db_path.parent / "gc-report.json").read_text())["gc_events"][0]
+    assert event["vacuum"]["reclaimed_bytes"] == real_delta
+
+
+# ---------------------------------------- guard-rail --json contract (issue #74)
+#
+# Every guard-rail/usage-error path must emit a structured object on STDOUT under
+# --json (mirroring record --json's every-failure-path contract), so a CI-scripted
+# retention job reading stdout JSON never gets empty output on a refusal. Exit
+# codes are unchanged (still 2); only the OUTPUT SHAPE gains the --json branch.
+
+
+def _gc_json_reject(capsys, *args: str) -> tuple[int, dict]:
+    """Run gc with --json expecting a refusal; return (exit_code, parsed stdout)."""
+
+    code = _gc(*args, "--json")
+    out = capsys.readouterr().out
+    return code, json.loads(out)
+
+
+def test_json_reject_nonexistent_db(tmp_path, capsys) -> None:
+    missing = tmp_path / "nope" / "nlfr.sqlite"
+
+    code, obj = _gc_json_reject(capsys, "--db", str(missing), "--keep-last", "1")
+
+    assert code == 2
+    assert obj["status"] == "db_missing"
+    assert obj["exit_code"] == 2
+    assert "refusing to create one" in obj["gc_error"]
+    assert not missing.exists()  # still creates no file
+
+
+def test_json_reject_combined_selection_modes(tmp_path, capsys) -> None:
+    _seed_three_groups(tmp_path)
+
+    code, obj = _gc_json_reject(
+        capsys, "--db", str(tmp_path / "nlfr.sqlite"), "--keep-last", "1", "--keep-days", "5"
+    )
+
+    assert code == 2
+    assert obj["status"] == "mutually_exclusive_modes"
+    assert "mutually exclusive" in obj["gc_error"]
+
+
+def test_json_reject_no_selection_mode(tmp_path, capsys) -> None:
+    _seed_three_groups(tmp_path)
+
+    code, obj = _gc_json_reject(capsys, "--db", str(tmp_path / "nlfr.sqlite"))
+
+    assert code == 2
+    assert obj["status"] == "no_selection_mode"
+
+
+def test_json_reject_last_group_would_empty_store(tmp_path, capsys) -> None:
+    _seed_group(tmp_path, "solo", started_at=datetime.now(UTC) - timedelta(days=1))
+
+    code, obj = _gc_json_reject(
+        capsys, "--db", str(tmp_path / "nlfr.sqlite"), "--run-group", "solo", "--apply"
+    )
+
+    assert code == 2
+    assert obj["status"] == "would_empty_store"
+    assert "--allow-empty" in obj["gc_error"]
+    # Refusal really refused: the group survives.
+    assert _run_groups(tmp_path) == {"solo"}
+
+
+def test_json_reject_unknown_run_group(tmp_path, capsys) -> None:
+    _seed_three_groups(tmp_path)
+
+    code, obj = _gc_json_reject(
+        capsys, "--db", str(tmp_path / "nlfr.sqlite"), "--run-group", "ghost", "--apply"
+    )
+
+    assert code == 2
+    assert obj["status"] == "unknown_run_group"
+    assert "ghost" in obj["gc_error"]
+
+
+def test_json_reject_old_schema(tmp_path, capsys) -> None:
+    db_path = tmp_path / "nlfr.sqlite"
+    v1_migration = next(m for m in MIGRATIONS if m.version == 1)
+    conn = connect(db_path)
+    with conn:
+        conn.executescript(v1_migration.sql)
+        conn.execute("PRAGMA user_version = 1")
+    conn.close()
+
+    code, obj = _gc_json_reject(capsys, "--db", str(db_path), "--keep-last", "1")
+
+    assert code == 2
+    assert obj["status"] == "schema_too_old"
+    assert "nlfr db upgrade" in obj["gc_error"]
+
+
+def test_json_reject_out_of_tree_evidence(tmp_path, capsys) -> None:
+    store = tmp_path / "store"
+    store.mkdir()
+    outside = tmp_path / "outside" / "evil.txt"
+    outside.parent.mkdir(parents=True)
+    outside.write_text("not ours\n")
+    _seed_group(store, "new", started_at=datetime.now(UTC) - timedelta(days=1))
+    _seed_group(
+        store,
+        "old",
+        started_at=datetime.now(UTC) - timedelta(days=100),
+        artifact_path_override=str(outside),
+    )
+
+    code, obj = _gc_json_reject(
+        capsys, "--db", str(store / "nlfr.sqlite"), "--run-group", "old", "--apply"
+    )
+
+    assert code == 2
+    assert obj["status"] == "out_of_tree_evidence"
+    assert "OUTSIDE the evidence root" in obj["gc_error"]
+    assert outside.exists()  # nothing deleted
+
+
+def test_text_reject_still_goes_to_stderr_without_json(tmp_path, capsys) -> None:
+    # Without --json the guard rails still print human text to stderr (unchanged),
+    # and stdout stays empty — no accidental JSON regression on the text path.
+    missing = tmp_path / "nope.sqlite"
+
+    code = _gc("--db", str(missing), "--keep-last", "1")
+
+    assert code == 2
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "refusing to create one" in captured.err
