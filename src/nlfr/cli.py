@@ -22,7 +22,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--version",
         action="version",
-        version="nlfr 0.1.0",
+        version="nlfr 0.2.1",
     )
 
     subparsers = parser.add_subparsers(
