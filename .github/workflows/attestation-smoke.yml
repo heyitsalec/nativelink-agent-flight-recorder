@@ -1,0 +1,199 @@
+name: Attestation smoke (cosign round-trip)
+
+# Guards the DOCUMENTED Sigstore sharing flow in
+# docs/wiki/how-to/export-in-toto-attestation.md end-to-end: export an in-toto
+# Statement from the same deterministic fixture the in-toto tests build, sign it
+# with cosign `attest-blob --statement` (an OFFLINE, ephemeral key -- never
+# keyless/OIDC, never a real key), verify it (signature-only + full-claims), and
+# assert the decoded DSSE payload is NLFR's Statement byte-for-byte. Nothing else
+# in CI exercises this path, so a change to NLFR's Statement output -- or to the
+# pinned cosign line the doc documents -- could silently break the documented
+# flow for users. This job turns that documented property into a
+# continuously-checked one: the round-trip is re-proven against the doc's pinned
+# cosign (v3.1.1) on every relevant change, and a cosign bump is re-proven HERE
+# (in the PR that bumps the pin + doc) before it reaches users.
+#
+# NON-BLOCKING by design (continue-on-error on the sole job): a cosign-side hiccup
+# or interface change must not flip main red -- but it MUST stay visible. The job
+# still appears RED in the checks list on failure; that red is the drift signal
+# this job exists to raise, exactly mirroring the non-blocking LRE probes in
+# nlfr-proof.yml (honest, exercised, gates nothing).
+#
+# Triggers (justified):
+#   * pull_request / push -- PATH-FILTERED to the pieces that define or exercise
+#     this flow (the projector, the how-to doc, the predicate contract, this
+#     workflow, and its two helper scripts). A PR touching in_toto.py or the doc
+#     gets the round-trip checked before merge; unrelated PRs skip it (no noise).
+#   * workflow_dispatch -- on-demand re-check (e.g. after bumping the cosign pin).
+#   * schedule (weekly) -- re-proves the pinned round-trip even when no relevant
+#     file changed, catching drift in the installer action, the GitHub runner
+#     image, or the uv/Python toolchain that the per-change triggers would miss.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/nlfr/projectors/in_toto.py"
+      - "docs/wiki/how-to/export-in-toto-attestation.md"
+      - "contracts/in_toto_proof_predicate.v1.json"
+      - "tests/test_in_toto_export.py"
+      - ".github/workflows/attestation-smoke.yml"
+      - "scripts/attestation-smoke-seed.py"
+      - "scripts/dsse_compare.py"
+  pull_request:
+    paths:
+      - "src/nlfr/projectors/in_toto.py"
+      - "docs/wiki/how-to/export-in-toto-attestation.md"
+      - "contracts/in_toto_proof_predicate.v1.json"
+      - "tests/test_in_toto_export.py"
+      - ".github/workflows/attestation-smoke.yml"
+      - "scripts/attestation-smoke-seed.py"
+      - "scripts/dsse_compare.py"
+  workflow_dispatch:
+  schedule:
+    # Weekly re-proof of the pinned round-trip (installer/runner/toolchain drift)
+    # on weeks no relevant file changed. Offset from nlfr-proof.yml's cron.
+    - cron: "31 6 * * 1"
+
+concurrency:
+  group: attestation-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  cosign-roundtrip:
+    name: cosign sign/verify in-toto round-trip
+    # Non-blocking: a cosign-side change cannot flip the branch red, but the job
+    # still shows red in the checks list on failure (the visible drift signal).
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # The load-bearing, doc-documented predicate type. verify-blob-attestation
+      # filters on it; it must equal the Statement's predicateType.
+      PREDICATE_TYPE: https://github.com/heyitsalec/nativelink-agent-flight-recorder/attestation/proof-packet/v1
+      # OFFLINE, ephemeral key: empty passphrase, generated in the runner temp,
+      # never persisted. This is a smoke of the local-key example in the doc, not
+      # a real signing identity -- no keyless/OIDC, no network to Rekor.
+      COSIGN_PASSWORD: ""
+      COSIGN_YES: "true"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cosign
+        # Pin cosign to the doc's tested v3.1.1 line. This is load-bearing, NOT
+        # cosmetic: `attest-blob --statement` only exists on cosign v3.x, and the
+        # installer's OWN default is an older v2.x (which lacks the flag) -- the
+        # action tag and the installed cosign version are independent. Bump this
+        # pin in lockstep with the cosign version the how-to doc documents; a bump
+        # PR re-runs this smoke and proves the new line before users hit it. The
+        # exact version that ran is recorded in the next step.
+        # Installer must be v4.x: cosign v3.x releases publish .sigstore.json
+        # bundle signatures instead of the .sig/.pem assets the @v3 installer
+        # curl -f's (404 -> exit 22 -- proven by this smoke's own first run).
+        # Pointed tag, not @v4: the installer repo maintains no floating v4
+        # major alias (only v4.N.N tags) -- @v4 fails at job setup.
+        uses: sigstore/cosign-installer@v4.1.2
+        with:
+          cosign-release: "v3.1.1"
+
+      - name: "Record cosign version (proven-by-hand baseline: v3.1.1)"
+        run: |
+          cosign version | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Sync deps
+        run: uv sync
+
+      - name: Seed fixture + export in-toto Statement
+        # Reuses tests/test_in_toto_export.py::seed_db verbatim (single fixture
+        # source of truth) -- no invented live evidence.
+        run: |
+          set -euo pipefail
+          # $RUNNER_TEMP is a runner env var (the runner context is not available
+          # in job-level env:, so WORK is derived here and shared via $GITHUB_ENV).
+          WORK="$RUNNER_TEMP/attest"
+          echo "WORK=$WORK" >> "$GITHUB_ENV"
+          mkdir -p "$WORK"
+          seed_out="$(uv run python scripts/attestation-smoke-seed.py "$WORK")"
+          echo "$seed_out"
+          run_group="$(printf '%s\n' "$seed_out" | sed -n 's/^run_group=//p')"
+          db="$(printf '%s\n' "$seed_out" | sed -n 's/^db=//p')"
+          subject="$(printf '%s\n' "$seed_out" | sed -n 's/^subject=//p')"
+          uv run nlfr proof export \
+            --db "$db" \
+            --run-group "$run_group" \
+            --format in-toto \
+            --output "$WORK/proof.intoto.json"
+          test -s "$WORK/proof.intoto.json"
+          echo "ATTEST_SUBJECT=$subject" >> "$GITHUB_ENV"
+
+      - name: Generate ephemeral OFFLINE key pair
+        run: |
+          set -euo pipefail
+          cd "$WORK"
+          cosign generate-key-pair
+          test -f cosign.key && test -f cosign.pub
+
+      - name: Sign the Statement (attest-blob --statement)
+        # The load-bearing flag is --statement (NOT --predicate): it wraps NLFR's
+        # COMPLETE Statement, subjects intact, in a DSSE bundle. If the installed
+        # cosign lacks --statement, this step FAILS LOUDLY naming the flag -- that
+        # failure IS the interface-drift signal this job exists to catch.
+        run: |
+          set -euo pipefail
+          cd "$WORK"
+          if ! cosign attest-blob --help 2>&1 | grep -q -- "--statement"; then
+            echo "::error::installed cosign has no 'attest-blob --statement' flag -- the documented flow has drifted" >&2
+            cosign version >&2
+            exit 1
+          fi
+          cosign attest-blob \
+            --statement proof.intoto.json \
+            --key cosign.key \
+            --bundle proof.intoto.bundle.json
+          test -s proof.intoto.bundle.json
+
+      - name: Verify signature only (--check-claims=false)
+        run: |
+          set -euo pipefail
+          cd "$WORK"
+          cosign verify-blob-attestation \
+            --key cosign.pub \
+            --type "$PREDICATE_TYPE" \
+            --bundle proof.intoto.bundle.json \
+            --check-claims=false
+
+      - name: Verify full claims (recorded subject bytes)
+        run: |
+          set -euo pipefail
+          cd "$WORK"
+          cosign verify-blob-attestation \
+            --key cosign.pub \
+            --type "$PREDICATE_TYPE" \
+            --bundle proof.intoto.bundle.json \
+            "$ATTEST_SUBJECT"
+
+      - name: Assert DSSE payload == exported Statement (byte-identity + subject binding)
+        run: |
+          set -euo pipefail
+          python3 scripts/dsse_compare.py \
+            --bundle "$WORK/proof.intoto.bundle.json" \
+            --statement "$WORK/proof.intoto.json" \
+            --subject "$ATTEST_SUBJECT"
+
+      - name: Upload attestation artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: attestation-smoke
+          path: |
+            ${{ runner.temp }}/attest/proof.intoto.json
+            ${{ runner.temp }}/attest/proof.intoto.bundle.json
+            ${{ runner.temp }}/attest/subject-run.json
+            ${{ runner.temp }}/attest/cosign.pub
+          if-no-files-found: warn
