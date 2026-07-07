@@ -28,17 +28,29 @@ Every sample in this directory follows the same rules:
 The canvas renders projection JSON only. These files are the ground truth for what
 those projections may say — not invented backend state.
 
-**Provenance today:** samples are sourced from author Nix runs on a development
-host (tag `v0.2.0-mvp`). Promotion from the first green GitHub Actions run is
-documented in [`../GITHUB_RELEASE.md`](../GITHUB_RELEASE.md) — deferred until
-the first sustained green public CI run.
+**Provenance today (mixed — labeled per sample):** `main` has been green on
+hosted GitHub Actions (`ubuntu-latest`) across every completed push run since
+2026-07-07. [`lre-nix-toolchain-proof-summary-sample.json`](lre-nix-toolchain-proof-summary-sample.json)
+is now sourced from hosted CI (run
+[`28878270360`](https://github.com/heyitsalec/nativelink-agent-flight-recorder/actions/runs/28878270360),
+2026-07-07). The **LRE substrate** and **LRE cold/warm parity** samples remain
+**author-Nix / local x86_64-linux `nix develop`** vintage — their jobs
+(`lre-proof-probe`, `lre-cold-warm-ci`) are `schedule`/`workflow_dispatch`-only,
+`continue-on-error`, and have **not** passed on hosted runners, so hosted CI
+cannot honestly source them (see
+[`CI_PROMOTION_MATRIX.md`](CI_PROMOTION_MATRIX.md)). Full promotion procedure:
+[`../GITHUB_RELEASE.md`](../GITHUB_RELEASE.md).
 
-## GHA restore promotion
+## Hosted-CI promotion
 
-When [`nlfr-proof.yml`](../../.github/workflows/nlfr-proof.yml) returns sustained
-green, copy redacted CI `summary.json` (or honest blockers) into this directory
-per the artifact → sample map in
-[`CI_PROMOTION_MATRIX.md`](CI_PROMOTION_MATRIX.md).
+[`nlfr-proof.yml`](../../.github/workflows/nlfr-proof.yml) is green on hosted
+runners today. Copy redacted CI `summary.json` (or honest blockers) into this
+directory per the artifact → sample map in
+[`CI_PROMOTION_MATRIX.md`](CI_PROMOTION_MATRIX.md). The per-push jobs (`unit`,
+`linux-nix-toolchain`, `tier1-bazel`, `lre-nix-ci`, `verify-demo-fixture`) are
+promotable now; `lre-proof-probe` and `lre-cold-warm-ci` are
+`schedule`/`workflow_dispatch`-only and have not passed on hosted runners, so
+their samples stay local / author-Nix vintage.
 
 | CI job | Artifact bundle | Primary committed targets |
 |--------|-----------------|---------------------------|
@@ -106,12 +118,12 @@ Fleet claim policy (what v1 will and will not promote) lives in
 | Sample | Produced by | `source_kind` · `confidence` | What it proves |
 |--------|-------------|-------------------------------|----------------|
 | [`lre-proof-blocker-sample.json`](lre-proof-blocker-sample.json) | `scripts/lre-proof.sh` | `collectable_v1` · `high` | Honest blocker until `demo/nativelink/lre.json5` exists; documents claim ceiling vs fleet dashboards. |
-| [`lre-proof-summary-sample.json`](lre-proof-summary-sample.json) | `scripts/lre-proof.sh` (with `lre.json5`) | `collectable_v1` · `medium` | LRE substrate ready: delegates to `local-exec-proof.sh` on ports 50071/50081; `claim_boundary` excludes hermetic Nix `--config=lre` until toolchain wired. |
+| [`lre-proof-summary-sample.json`](lre-proof-summary-sample.json) | `scripts/lre-proof.sh` (with `lre.json5`) | `collectable_v1` · `medium` | LRE substrate ready: delegates to `local-exec-proof.sh` on ports 50071/50081; `claim_boundary` excludes hermetic Nix `--config=lre` until toolchain wired. **Vintage: author-Nix, 2026-06-06** — the `lre-proof-probe` job is `schedule`/`workflow_dispatch`-only and has not passed on hosted CI, so this is not hosted-CI-sourced. |
 | [`lre-nix-toolchain-proof-blocker-sample.json`](lre-nix-toolchain-proof-blocker-sample.json) | `scripts/lre-nix-toolchain-proof.sh` (outside `nix develop`) | `collectable_v1` · `high` | Honest blocker until flake LRE `installationScript` generates repo-root `lre.bazelrc`. |
-| [`lre-nix-toolchain-proof-summary-sample.json`](lre-nix-toolchain-proof-summary-sample.json) | `scripts/lre-nix-toolchain-proof.sh` (inside `nix develop`) | `collectable_v1` · `medium` | Phase-2 ceiling `lre_bazelrc_generated`: Nix-generated `build:lre` flags; optional `--config=lre` build on x86_64-linux; does **not** claim cache parity. |
+| [`lre-nix-toolchain-proof-summary-sample.json`](lre-nix-toolchain-proof-summary-sample.json) | `scripts/lre-nix-toolchain-proof.sh` (inside `nix develop`) | `collectable_v1` · `medium` | Phase-2 ceiling `lre_bazelrc_generated`: Nix-generated `build:lre` flags; does **not** claim cache parity. **Provenance: hosted CI, run [`28878270360`](https://github.com/heyitsalec/nativelink-agent-flight-recorder/actions/runs/28878270360), 2026-07-07** (job `lre-nix-ci`, per-push). On hosted runners the optional `--config=lre` build did **not** complete (`build_config_lre.succeeded=false`) — the proven claim is bazelrc generation, not the `lre-cc` build. |
 | [`lre-cold-warm-proof-blocker-sample.json`](lre-cold-warm-proof-blocker-sample.json) | `scripts/lre-cold-warm-proof.sh` (Darwin or outside `nix develop`) | `collectable_v1` · `high` | Honest blocker until x86_64-linux `nix develop` with generated `lre.bazelrc`; Darwin gets rust-only LRE env without full cold/warm parity path. |
 | [`lre-cold-warm-proof-linux-manual-sample.json`](lre-cold-warm-proof-linux-manual-sample.json) | `scripts/lre-cold-warm-proof.sh` (manual x86_64-linux path; Darwin blocker recorded 2026-06-06) | `collectable_v1` · `high` | Manual Linux proof slot: cites honest `environment_blocker` until operator promotes green `summary.json` from [`LRE_LINUX_PROOF.md`](../LRE_LINUX_PROOF.md); does **not** fabricate parity metrics. |
-| [`lre-cold-warm-proof-summary-sample.json`](lre-cold-warm-proof-summary-sample.json) | `scripts/lre-cold-warm-proof.sh` (x86_64-linux `nix develop`) | `collectable_v1` · `medium` | Phase-4 ceiling `lre_cache_parity_observed`: LRE cold/warm via `lre.json5` + `--config=lre` + `local-exec`; cold `hit_rate` 0 → warm `hit_rate` 1; does **not** claim hermetic container-image parity. |
+| [`lre-cold-warm-proof-summary-sample.json`](lre-cold-warm-proof-summary-sample.json) | `scripts/lre-cold-warm-proof.sh` (x86_64-linux `nix develop`) | `collectable_v1` · `medium` | Phase-4 ceiling `lre_cache_parity_observed`: LRE cold/warm via `lre.json5` + `--config=lre` + `local-exec`; cold `hit_rate` 0 → warm `hit_rate` 1; does **not** claim hermetic container-image parity. **Vintage: local x86_64-linux `nix develop`, regenerated 2026-07-07 (PR #75)** — the `lre-cold-warm-ci` job is `schedule`/`workflow_dispatch`-only and has not passed on hosted CI, so this is **not** hosted-CI-sourced. |
 
 ### Research and policy (`derived_v1`)
 

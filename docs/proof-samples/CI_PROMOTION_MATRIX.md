@@ -1,16 +1,30 @@
 # CI promotion matrix — GHA artifact → proof sample
 
-**Quadrant:** Reference · **Audience:** operators promoting Linux CI evidence into committed samples after GHA restore.
+**Quadrant:** Reference · **Audience:** operators promoting hosted GitHub Actions evidence into committed samples.
 
-**Status (2026-06-06):** GitHub Actions cannot be exercised from this repo — this matrix is **documentation only**. Use it when the first sustained green [`nlfr-proof.yml`](../../.github/workflows/nlfr-proof.yml) run completes.
+**Status (2026-07-07): live.** [`nlfr-proof.yml`](../../.github/workflows/nlfr-proof.yml) runs on hosted GitHub Actions (`ubuntu-latest`) and `main` has been green across every completed push run since 2026-07-07 — e.g. [`28878270360`](https://github.com/heyitsalec/nativelink-agent-flight-recorder/actions/runs/28878270360), [`28876722425`](https://github.com/heyitsalec/nativelink-agent-flight-recorder/actions/runs/28876722425), [`28862144465`](https://github.com/heyitsalec/nativelink-agent-flight-recorder/actions/runs/28862144465). (`cancelled` entries in the run list are `cancel-in-progress` concurrency supersessions from rapid pushes, not failures.) This matrix is now the **live** promotion procedure, not a deferred plan.
 
-Canonical procedure: [`../GITHUB_RELEASE.md`](../GITHUB_RELEASE.md#ci-restore--promotion-runbook) · restore checklist: [`../GHA_RESTORE_RUNBOOK.md`](../GHA_RESTORE_RUNBOOK.md) · sample catalog: [`README.md`](README.md).
+**Which jobs actually run, and where.** Five jobs run and pass on **every push/PR**: `unit`, `linux-nix-toolchain` (**Nix toolchain proofs**), `tier1-bazel` (**Tier1 Bazel validation (Nix)**), `lre-nix-ci` (**LRE Nix toolchain proof**), and `verify-demo-fixture`. The two heavier LRE jobs — `lre-proof-probe` (**LRE substrate proof**) and `lre-cold-warm-ci` (**LRE cold/warm cache parity proof**) — are `schedule`/`workflow_dispatch`-only and `continue-on-error: true`; on push/PR they are **skipped** (see run [`28878270360`](https://github.com/heyitsalec/nativelink-agent-flight-recorder/actions/runs/28878270360): both LRE-substrate and LRE-cold/warm jobs `skipped`). Per their workflow comments they have **not** passed on hosted runners — the LRE overlay is version-blocked (`demo/bazel-monorepo/MODULE.lre.bazel`) and Magic Nix Cache throttles cold public runners. They gate nothing and exist as honest, exercised blocker probes. **Canonical LRE cold/warm parity evidence remains local `nix develop` on x86_64-linux** ([`../LRE_LINUX_PROOF.md`](../LRE_LINUX_PROOF.md)).
+
+Canonical procedure: [`../GITHUB_RELEASE.md`](../GITHUB_RELEASE.md#ci-restore--promotion-runbook) · historical restore procedure (Actions are live now): [`../GHA_RESTORE_RUNBOOK.md`](../GHA_RESTORE_RUNBOOK.md) · sample catalog: [`README.md`](README.md).
+
+---
+
+## Scope boundary — single-node smoke; bring-your-own fleet (permanent)
+
+Every LRE proof here is **single-node smoke**: one runner (or one dev host), one local NativeLink worker, cache economics measured on that node. This is a deliberate, **permanent** scope boundary — not a gap awaiting a future closure:
+
+- **NLFR records what your fleet emits; it ships no fleet.** No scheduler, no worker pool, and no cross-worker placement is bundled. Point NLFR at your own NativeLink deployment and it ingests the BEP, worker admin stdout, and cache metrics that deployment produces.
+- **Multi-worker / fleet-scale remote execution is bring-your-own-fleet.** `worker_identity` stays **conditional** (M7 — promoted only when admin stdout is attached and matches the parser); scheduler assignment, queue time, action placement, and load distribution stay `out_of_scope`.
+- Full claim policy: [`fleet-claims-matrix-sample.json`](fleet-claims-matrix-sample.json) and [`../dags/future-fleet-claims.md`](../dags/future-fleet-claims.md).
+
+No committed sample in this directory claims fleet-scale remote execution, and none will without a bring-your-own-fleet recording that actually emits it.
 
 ---
 
 ## Preconditions
 
-1. All **seven** jobs on the **same** workflow run finished without workflow failure.
+1. On the **same** workflow run, all blocking jobs finished without failure. On push/PR that is **five** jobs (`unit`, `linux-nix-toolchain`, `tier1-bazel`, `lre-nix-ci`, `verify-demo-fixture`); the two `schedule`/`workflow_dispatch`-only LRE jobs (`lre-proof-probe`, `lre-cold-warm-ci`) are non-blocking and present only on scheduled/dispatched runs.
 2. Toolchain jobs meant to prove Linux/x86_64 claims produced `summary.json` (not only `environment-blocker.json`), unless the honest outcome is a blocker sample (typical LRE legs on wrong host).
 3. Artifacts downloaded to a scratch directory — never commit raw `data/` trees.
 
@@ -38,13 +52,13 @@ Workflow name: **`NLFR proof`**. Jobs run in parallel; artifact names match uplo
 | 2 | `linux-nix-toolchain` | `nix-toolchain-proof` | `data/agent-loop-proof/environment-blocker.json` | — | **No** — unless documenting honest env gap (not chain success) |
 | 3 | `tier1-bazel` | `tier1-bazel-ci` | `data/tier1-bazel-ci/summary.json` | [`agent-bugfix-summary.json`](agent-bugfix-summary.json), [`agent-feature-summary.json`](agent-feature-summary.json) | **Yes** — split or derive Act 1 / Act 2 excerpts from combined CI summary; refresh metrics in README |
 | 3 | `tier1-bazel` | `tier1-bazel-ci` | `data/tier1-bazel-ci/environment-blocker.json` | — | **No** for tier1 success claims — honest blocker only if shipping LRE-style ceiling doc |
-| 4 | `lre-proof-probe` | `lre-proof-probe` | `data/lre-proof/summary.json` | [`lre-proof-summary-sample.json`](lre-proof-summary-sample.json) | **Yes** when substrate ready |
-| 4 | `lre-proof-probe` | `lre-proof-probe` | `data/lre-proof/environment-blocker.json` | [`lre-proof-blocker-sample.json`](lre-proof-blocker-sample.json) | **Yes** when substrate missing — honest ceiling |
+| 4 | `lre-proof-probe` | `lre-proof-probe` | `data/lre-proof/summary.json` | [`lre-proof-summary-sample.json`](lre-proof-summary-sample.json) | **Schedule/dispatch-only job; has not passed on hosted CI.** Committed sample stays **author-Nix vintage (2026-06-06)** — do **not** promote from hosted CI |
+| 4 | `lre-proof-probe` | `lre-proof-probe` | `data/lre-proof/environment-blocker.json` | [`lre-proof-blocker-sample.json`](lre-proof-blocker-sample.json) | **Honest blocker** — author-Nix/local vintage; no hosted-CI run has exercised this probe (schedule/dispatch-only) |
 | 4 | `lre-proof-probe` | `lre-proof-probe` | `data/lre-proof/probe.json` | — | **No** — internal probe; cite via `summary.json` only |
-| 5 | `lre-nix-ci` | `lre-nix-toolchain-proof` | `data/lre-nix-toolchain-proof/summary.json` | [`lre-nix-toolchain-proof-summary-sample.json`](lre-nix-toolchain-proof-summary-sample.json) | **Yes** when `lre.bazelrc` generated |
-| 5 | `lre-nix-ci` | `lre-nix-toolchain-proof` | `data/lre-nix-toolchain-proof/environment-blocker.json` | [`lre-nix-toolchain-proof-blocker-sample.json`](lre-nix-toolchain-proof-blocker-sample.json) | **Yes** when outside `nix develop` or toolchain gap |
-| 6 | `lre-cold-warm-ci` | `lre-cold-warm-proof` | `data/lre-cold-warm-proof/summary.json` | [`lre-cold-warm-proof-summary-sample.json`](lre-cold-warm-proof-summary-sample.json) | **Yes** — parity metrics on x86_64-linux |
-| 6 | `lre-cold-warm-ci` | `lre-cold-warm-proof` | `data/lre-cold-warm-proof/environment-blocker.json` | [`lre-cold-warm-proof-blocker-sample.json`](lre-cold-warm-proof-blocker-sample.json) | **Yes** on Darwin / missing `lre.bazelrc` — not parity success |
+| 5 | `lre-nix-ci` | `lre-nix-toolchain-proof` | `data/lre-nix-toolchain-proof/summary.json` | [`lre-nix-toolchain-proof-summary-sample.json`](lre-nix-toolchain-proof-summary-sample.json) | **Refreshed 2026-07-07** from hosted run [`28878270360`](https://github.com/heyitsalec/nativelink-agent-flight-recorder/actions/runs/28878270360): `lre_bazelrc_generated`, `build_config_lre.succeeded=false` (bazelrc generated; optional `--config=lre` build did not complete on hosted runner). This job runs **per-push** |
+| 5 | `lre-nix-ci` | `lre-nix-toolchain-proof` | `data/lre-nix-toolchain-proof/environment-blocker.json` | [`lre-nix-toolchain-proof-blocker-sample.json`](lre-nix-toolchain-proof-blocker-sample.json) | **Honest blocker** for outside-`nix develop` / toolchain gap; hosted per-push runs record the `summary.json` path instead |
+| 6 | `lre-cold-warm-ci` | `lre-cold-warm-proof` | `data/lre-cold-warm-proof/summary.json` | [`lre-cold-warm-proof-summary-sample.json`](lre-cold-warm-proof-summary-sample.json) | **Schedule/dispatch-only job; has not passed on hosted CI.** Committed sample is **local x86_64-linux `nix develop`** vintage (regenerated 2026-07-07, PR #75) — promote parity only from local Linux or a green scheduled LRE run; never fabricate |
+| 6 | `lre-cold-warm-ci` | `lre-cold-warm-proof` | `data/lre-cold-warm-proof/environment-blocker.json` | [`lre-cold-warm-proof-blocker-sample.json`](lre-cold-warm-proof-blocker-sample.json) | **Honest blocker** on Darwin / missing `lre.bazelrc`; schedule/dispatch-only job — no hosted-CI parity run |
 | 6 | `lre-cold-warm-ci` | `lre-cold-warm-proof` | `data/lre-cold-warm-proof/projections/` | — | **No** — optional local inspect; no committed projection sample today |
 | 7 | `verify-demo-fixture` | `demo-proof` | `data/demo-proof/summary.json` | — | **No** — fixture demo path (`simulated_v1`); verify-demo gate only |
 | 7 | `verify-demo-fixture` | `demo-proof` | `data/demo-proof/projections/` | — | **No** — does not overwrite committed `canvas-dev` |
@@ -53,7 +67,7 @@ Workflow name: **`NLFR proof`**. Jobs run in parallel; artifact names match uplo
 
 ## Local-only sources (no dedicated CI job)
 
-These committed samples exist today but are **not** produced by a current `nlfr-proof.yml` job. After GHA restore, keep them until a CI leg is added or promote from author-Nix local runs.
+These committed samples are **not** produced by a per-push `nlfr-proof.yml` job — they are either local-only or ride the `schedule`/`workflow_dispatch`-only LRE jobs (`lre-proof-probe`, `lre-cold-warm-ci`) that have not passed on hosted runners. Keep them and promote from local x86_64-linux `nix develop` runs, or — for the LRE legs — a green scheduled/dispatched LRE job; never fabricate metrics.
 
 | Local source | Script | Committed sample | CI today |
 |--------------|--------|------------------|----------|
