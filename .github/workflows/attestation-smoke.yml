@@ -74,7 +74,6 @@ jobs:
       # a real signing identity -- no keyless/OIDC, no network to Rekor.
       COSIGN_PASSWORD: ""
       COSIGN_YES: "true"
-      WORK: ${{ runner.temp }}/attest
     steps:
       - uses: actions/checkout@v4
 
@@ -102,6 +101,10 @@ jobs:
         # source of truth) -- no invented live evidence.
         run: |
           set -euo pipefail
+          # $RUNNER_TEMP is a runner env var (the runner context is not available
+          # in job-level env:, so WORK is derived here and shared via $GITHUB_ENV).
+          WORK="$RUNNER_TEMP/attest"
+          echo "WORK=$WORK" >> "$GITHUB_ENV"
           mkdir -p "$WORK"
           seed_out="$(uv run python scripts/attestation-smoke-seed.py "$WORK")"
           echo "$seed_out"
