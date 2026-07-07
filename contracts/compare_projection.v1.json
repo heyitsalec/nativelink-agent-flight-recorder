@@ -89,7 +89,8 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "One of: run_counts, cache_metrics, worker_identity, agent_provenance, status_deltas."
+          "enum": ["run_counts", "cache_metrics", "worker_identity", "agent_provenance", "status_deltas"],
+          "description": "Known dimension ids. The enum is deliberate: an unknown id would silently bypass the per-dimension if/then constraints below, reopening the vacuity this schema exists to prevent. A new dimension MUST add its id here plus a matching per-dimension $def."
         },
         "title": { "type": "string" },
         "summary": { "type": "string" },

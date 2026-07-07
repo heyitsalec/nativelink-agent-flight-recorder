@@ -536,3 +536,23 @@ def test_runway_export_is_uncontracted(tmp_path: Path) -> None:
     # It genuinely does not satisfy the canvas contract (distinct projection_kind).
     canvas = _validator("canvas_projection.v1.json")
     assert not canvas.is_valid(runway)
+
+
+def test_negative_control_unknown_dimension_id_is_rejected(tmp_path: Path) -> None:
+    """An unknown dimension id must not silently bypass per-dimension tightening.
+
+    The per-dimension if/then constraints key on ``dimension.id``; without the
+    enum on ``dimension_base.id`` a sixth/typo'd id would validate against only
+    the loose base shape — reopening the vacuity this contract exists to close.
+    """
+
+    validator = _validator("compare_projection.v1.json")
+    payload = export_compare_projection(_seed_compare_db(tmp_path), "left", "right")
+    validator.validate(payload)
+
+    rogue = copy.deepcopy(payload)
+    dimension = copy.deepcopy(_dimension(rogue, "run_counts"))
+    dimension["id"] = "totally_unknown_dimension_id"
+    dimension["left"] = {"anything": "goes"}
+    rogue["dimensions"].append(dimension)
+    assert not validator.is_valid(rogue)
