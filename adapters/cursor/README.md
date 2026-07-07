@@ -137,7 +137,7 @@ row for `--change-path`.
 
 Reference run: see the M8 row in
 [`docs/wiki/reference/proof-scripts-matrix.md`](../../docs/wiki/reference/proof-scripts-matrix.md)
-(per-wave working notes live in git history; see [`docs/METHOD.md`](../../docs/METHOD.md)).
+(per-wave working notes live in git history; see [`docs/internal/METHOD.md`](../../docs/internal/METHOD.md)).
 
 ## `agent-live-proof.sh`
 

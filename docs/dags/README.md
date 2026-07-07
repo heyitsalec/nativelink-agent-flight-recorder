@@ -4,7 +4,7 @@ Short planning records for the milestones that shipped in NLFR v1, kept
 because other docs cite them. Each file states the objective, deliverables,
 and proof commands for one milestone. The full development history lives in
 git history; the development approach is summarized in
-[docs/METHOD.md](../METHOD.md).
+[docs/internal/METHOD.md](../internal/METHOD.md).
 
 | Doc | What it covers |
 |-----|----------------|

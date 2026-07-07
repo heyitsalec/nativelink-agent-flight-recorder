@@ -25,7 +25,7 @@ NLFR now has an experimental one-process remote-executor smoke path:
 - `scripts/local-exec-proof.sh`
 - `nlfr doctor --mode local-exec`
 
-See `docs/LOCAL_EXECUTION_DAG.md` for the local-execution worker-proof plan.
+See `docs/internal/LOCAL_EXECUTION_DAG.md` for the local-execution worker-proof plan.
 
 This path adds Bazel `--remote_executor` support and a one-process NativeLink
 config with:

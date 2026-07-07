@@ -37,7 +37,7 @@ in waves:
   produce `environment_blocker` evidence rather than a green checkmark).
 
 The planning records for the shipped milestones are kept under
-[`docs/dags/`](dags/README.md). The full wave-by-wave working notes were
+[`docs/dags/`](../dags/README.md). The full wave-by-wave working notes were
 internal scaffolding and were removed before open-sourcing; they remain in
 git history.
 
@@ -47,7 +47,7 @@ A recorder that polices claims has to survive the question: "was *it* built
 honestly?" Applying the product's own rules to its development — evidence
 before claims, labeled confidence, explicit unproven boundaries — was the
 cheapest way to keep the answer "yes". Where the repo falls short of a claim
-(see [ONE_PAGER.md](ONE_PAGER.md) for the explicit unproven list), the docs
+(see [ONE_PAGER.md](../ONE_PAGER.md) for the explicit unproven list), the docs
 say so instead of rounding up.
 
 ## What this means for evaluating the repo

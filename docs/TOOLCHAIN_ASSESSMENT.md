@@ -14,8 +14,15 @@ Date: 2026-06-06 (updated after the real-toolchain proof pass)
 |------|--------|
 | Nix (Determinate) | Installed; `nix develop` available |
 | NativeLink | 1.3.2 (from flake) |
-| Bazel | 9.1.1 via Bazelisk shim |
+| Bazel | 9.1.1 — historical: bazelisk resolved its default at `635ee36`, before the demo workspace committed a pinned `.bazelversion` |
 | Disk | ~82GB free after cleanup (required for first proof run) |
+
+> **Version note (current).** The demo workspace now pins
+> `demo/bazel-monorepo/.bazelversion` = `7.4.1`, so bazelisk resolves **7.4.1**
+> for the current cold/warm proof. The live cold/warm numbers and their CI
+> provenance live in the [README cache table](../README.md#the-cache-numbers) and
+> [ONE_PAGER](ONE_PAGER.md); the `9.1.1` above is retained only as the
+> as-recorded value for this historical snapshot.
 
 ## Proof Results (commit `635ee36`)
 

@@ -18,7 +18,7 @@ section). Product truth labels and evidence boundaries still govern all prose.
 
 Add a new numbered ADR when a choice:
 
-- Gates implementation work tracked in [`IMPLEMENTATION_DAG.md`](../../IMPLEMENTATION_DAG.md) or [`ARCHITECTURE_TRACK.md`](../../ARCHITECTURE_TRACK.md)
+- Gates implementation work tracked in [`IMPLEMENTATION_DAG.md`](../../internal/IMPLEMENTATION_DAG.md) or [`ARCHITECTURE_TRACK.md`](../../ARCHITECTURE_TRACK.md)
 - Changes operator expectations (CLI, proof scripts, canvas contract)
 - Establishes a documentation pattern reused across milestones
 
