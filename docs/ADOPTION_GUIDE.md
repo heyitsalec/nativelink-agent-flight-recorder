@@ -19,9 +19,13 @@ nlfr record -- bazel test //your:target
 
 It captures the build immutably, ingests it into SQLite, and writes projection
 JSON (action graph + proof packet), printing the run group, status, exit code,
-and evidence dir. When Bazel or NativeLink are absent it records an
-`environment_blocker` artifact — honest failure, never a silent skip. Full
-options (run-group, workspace root, output dir, machine-readable summary):
+and evidence dir. A failing build is a valid recording — the red result is
+captured as evidence, never masked. If `bazel`/`bazelisk` is missing from
+`PATH`, `nlfr record` refuses fast with exit `127` and an actionable message
+(nothing is written; see the exit-code contract in the how-to). NativeLink is
+not required — cache evidence simply appears only when your Bazel is configured
+against a remote cache. Full options (run-group, workspace root, output dir,
+machine-readable summary):
 [How-to: record your own Bazel build](wiki/how-to/record-your-own-build.md).
 
 Adopting a larger existing monorepo with `nlfr init` + a committed `nlfr.toml`:
