@@ -48,6 +48,7 @@ python3 -m nlfr run --mode generic --change-path README.md --provenance-sidecar 
 |------|---------|-------------|
 | `--mode` | `cache-only` | `cache-only`, `local-exec`, or `generic` |
 | `--scenario` | — | Scenario label for run key |
+| `--target` | `//...` | Alias for the positional target pattern (both forms accepted) |
 | `--run-group` | `latest` | Projection export grouping |
 | `--workspace` | `demo/bazel-monorepo` | Bazel workspace root |
 | `--output-dir` | `data/nlfr` | SQLite + artifact root |
