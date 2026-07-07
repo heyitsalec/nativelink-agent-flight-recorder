@@ -1,0 +1,103 @@
+# Tag-triggered release: build + smoke the wheel/sdist, cut a GitHub release,
+# and (once the owner opts in) publish to PyPI via OIDC trusted publishing.
+#
+# INERT BY DEFAULT: the `pypi-publish` job is skipped until the repo owner
+# completes a one-time setup — register the PyPI project
+# `nativelink-agent-flight-recorder`, add this repo/workflow as a trusted
+# publisher, create the `pypi` GitHub environment, then set repo variable
+# PYPI_PUBLISH_ENABLED=true. The `build` and `github-release` jobs run on every
+# `v*` tag regardless. See docs/RELEASING.md for the full runbook.
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build + smoke wheel/sdist
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Build sdist + wheel
+        run: uv build
+
+      - name: Smoke-test the built wheel outside the source tree
+        run: |
+          set -euo pipefail
+          wheel="$(ls "$GITHUB_WORKSPACE"/dist/*.whl)"
+          echo "Smoke-testing installed console script from: $wheel"
+          cd "$(mktemp -d)"
+          uvx --from "$wheel" nlfr --help
+          uvx --from "$wheel" nlfr --version
+          # Honest diagnostic path must not crash from a site-packages install.
+          # Expected on a bare runner: nonzero exit WITH valid JSON diagnostics;
+          # a traceback/crash produces non-JSON output and fails the step.
+          uvx --from "$wheel" nlfr doctor --mode cache-only --json > doctor-smoke.json || true
+          python3 -c "import json; json.load(open('doctor-smoke.json'))"
+
+      - name: Upload dist artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  github-release:
+    name: GitHub release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download dist artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Create GitHub release with dist artifacts attached
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh release create "$RELEASE_TAG" \
+            --repo "$RELEASE_REPO" \
+            --title "$RELEASE_TAG" \
+            --generate-notes \
+            dist/*
+
+  pypi-publish:
+    name: Publish to PyPI (trusted publishing)
+    needs: [build, github-release]
+    # Inert until the owner opts in — see the header comment and
+    # docs/RELEASING.md. Set repo variable PYPI_PUBLISH_ENABLED=true to enable.
+    if: ${{ vars.PYPI_PUBLISH_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/nativelink-agent-flight-recorder
+    permissions:
+      id-token: write # OIDC token for PyPI trusted publishing — no API token.
+    steps:
+      - name: Download dist artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist

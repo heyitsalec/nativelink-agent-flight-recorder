@@ -62,6 +62,33 @@ blocker instead of faking success
 
 ## Quickstart (no Nix, no NativeLink required)
 
+### Install the `nlfr` CLI (pip / uvx)
+
+The `nlfr` recorder CLI is a stdlib-only Python package with **zero runtime
+dependencies**. You do not need to clone the repo to run it:
+
+```bash
+# Run straight from GitHub (works today):
+uv tool install "git+https://github.com/heyitsalec/nativelink-agent-flight-recorder.git"
+nlfr --help
+
+# Or build and run a local wheel from a clone:
+uv build
+uvx --from dist/*.whl nlfr doctor --mode cache-only
+
+# Once published to PyPI, pip / uvx work directly:
+pip install nativelink-agent-flight-recorder
+uvx --from nativelink-agent-flight-recorder nlfr --help
+```
+
+PyPI publishing is **inert until the maintainer completes trusted-publisher
+setup** ([`docs/RELEASING.md`](docs/RELEASING.md)) — until then use the git or
+local-wheel paths above.
+
+### Full canvas + demo (clone)
+
+The hosted canvas and two-act demo run from the cloned repo:
+
 ```bash
 git clone https://github.com/heyitsalec/nativelink-agent-flight-recorder.git
 cd nativelink-agent-flight-recorder
