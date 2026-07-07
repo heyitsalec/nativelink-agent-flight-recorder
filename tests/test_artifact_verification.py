@@ -891,3 +891,79 @@ def test_cas_probe_attribute_access_that_raises_is_inconclusive() -> None:
     _assert_inconclusive_malformed(
         _build_remote_reference(probe), field_marker="attribute access raised"
     )
+
+
+def test_cas_probe_int_note_is_inconclusive_not_a_crash() -> None:
+    """note as int is malformed -> unverified (the remote_present append would crash).
+
+    ``if probe.note:`` on a well-typed str is safe, but a non-str note must never
+    reach that consumption: _probe_malformation rejects it by TYPE first.
+    """
+
+    def probe(uri, declared_digest, declared_size):
+        return ProbeResult(present=True, computed_digest=None, note=123)  # type: ignore[arg-type]
+
+    _assert_inconclusive_malformed(_build_remote_reference(probe), field_marker="note: int")
+
+
+def test_cas_probe_bytes_note_is_inconclusive() -> None:
+    """note as bytes is malformed -> unverified, never coerced, never a crash."""
+
+    def probe(uri, declared_digest, declared_size):
+        return ProbeResult(present=True, computed_digest=None, note=b"blob")  # type: ignore[arg-type]
+
+    _assert_inconclusive_malformed(_build_remote_reference(probe), field_marker="note: bytes")
+
+
+def test_cas_probe_note_whose_bool_raises_is_rejected_by_type_not_bool() -> None:
+    """An object whose __bool__ raises is rejected by TYPE — __bool__ never runs.
+
+    _probe_malformation checks note by isinstance only, so a hostile object never has
+    its (raising) __bool__ invoked; it degrades to the exact inconclusive state.
+    """
+
+    class _BoolExplodes:
+        def __bool__(self):
+            raise RuntimeError("hostile note: __bool__ blows up")
+
+    def probe(uri, declared_digest, declared_size):
+        return ProbeResult(present=True, computed_digest=None, note=_BoolExplodes())  # type: ignore[arg-type]
+
+    _assert_inconclusive_malformed(
+        _build_remote_reference(probe), field_marker="note: _BoolExplodes"
+    )
+
+
+def test_cas_probe_str_subclass_note_whose_bool_raises_never_crashes_ingest() -> None:
+    """A note that PASSES the type check but raises on truthiness re-read never crashes.
+
+    A ``str`` subclass whose ``__bool__`` raises satisfies ``isinstance(note, str)``,
+    so it clears _probe_malformation and reaches the remote_present note-append. The
+    guarded consumption must swallow the raising ``__bool__`` and keep the base
+    remote_present note — proving the consumption guard (not just the type check) is
+    load-bearing: a bad probe weakens/omits, it never breaks the parse.
+    """
+
+    class _BoolExplodesStr(str):
+        def __bool__(self):
+            raise RuntimeError("hostile note subclass: __bool__ blows up")
+
+    def probe(uri, declared_digest, declared_size):
+        # computed_digest=None keeps us on the remote_present branch that consumes note.
+        return ProbeResult(
+            present=True,
+            computed_digest=None,
+            note=_BoolExplodesStr("dropped-on-raise"),
+        )
+
+    ref = _build_remote_reference(probe)
+    assert ref is not None
+    # Present, digest not cross-checked -> the honest medium tier, never downgraded
+    # or promoted by the hostile note, and never an exception.
+    assert ref.presence == "remote_present"
+    assert ref.confidence == "medium"
+    assert ref.source_kind == "collectable_v1"
+    note = ref.verification_note or ""
+    assert "digest is neither confirmed nor contradicted" in note
+    # The hostile note is DROPPED, not appended (no "Probe:" suffix), and no crash.
+    assert "Probe:" not in note

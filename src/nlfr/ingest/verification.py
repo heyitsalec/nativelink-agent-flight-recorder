@@ -584,8 +584,17 @@ def _verify_remote(
         "not cross-checked as a recomputable SHA-256; presence is recorded, the "
         "digest is neither confirmed nor contradicted."
     )
-    if probe.note:
-        note = f"{note} Probe: {probe.note}"
+    # ``note`` was already validated str-or-None by _probe_malformation, but a
+    # hostile ProbeResult could re-read to a different value or a str subclass whose
+    # ``__bool__`` raises. Read and test it once under a guard so appending the
+    # probe's reason can only ever ADD context, never crash ingest — preserving the
+    # invariant that a bad probe weakens a claim, never breaks the parse.
+    try:
+        probe_note = probe.note
+        if isinstance(probe_note, str) and probe_note:
+            note = f"{note} Probe: {probe_note}"
+    except Exception:
+        pass  # keep the base remote_present note; a hostile note never crashes ingest
     return (
         PRESENCE_REMOTE_PRESENT,
         None,
@@ -601,14 +610,17 @@ def _probe_malformation(probe: Any) -> str | None:
     """Describe why ``probe`` is not a well-formed ``ProbeResult``, or ``None`` if it is.
 
     A probe is injected, untrusted code. Its return must be a ``ProbeResult`` whose
-    ``present`` is a real ``bool`` and whose ``computed_digest`` is ``str`` or
-    ``None``. Anything else is malformed and must be treated as inconclusive rather
-    than consumed: a non-str ``computed_digest`` would crash the SHA-256 compare, and
-    a bool-like ``int`` ``present`` would fabricate a presence verdict. ``present`` is
-    checked with ``isinstance(x, bool)`` precisely so ``1``/``0`` (``int``) and
-    ``"yes"`` (``str``) are rejected, not silently accepted as truthy. Attribute
-    access may itself raise for a hostile ``ProbeResult`` subclass, so callers wrap
-    this in ``try/except``.
+    ``present`` is a real ``bool``, whose ``computed_digest`` is ``str`` or ``None``,
+    and whose ``note`` is ``str`` or ``None``. Anything else is malformed and must be
+    treated as inconclusive rather than consumed: a non-str ``computed_digest`` would
+    crash the SHA-256 compare, a bool-like ``int`` ``present`` would fabricate a
+    presence verdict, and a non-str ``note`` (e.g. an object whose ``__bool__``
+    raises) would crash the ``remote_present`` note-append. ``present`` is checked
+    with ``isinstance(x, bool)`` precisely so ``1``/``0`` (``int``) and ``"yes"``
+    (``str``) are rejected, not silently accepted as truthy. Attribute access may
+    itself raise for a hostile ``ProbeResult`` subclass, so callers wrap this in
+    ``try/except``. Only type is checked here — never truthiness — so a note whose
+    ``__bool__`` raises is rejected by type without ever invoking ``__bool__``.
     """
 
     if not isinstance(probe, ProbeResult):
@@ -618,6 +630,9 @@ def _probe_malformation(probe: Any) -> str | None:
     computed = probe.computed_digest
     if computed is not None and not isinstance(computed, str):
         return f"computed_digest: {type(computed).__name__}"
+    note = probe.note
+    if note is not None and not isinstance(note, str):
+        return f"note: {type(note).__name__}"
     return None
 
 

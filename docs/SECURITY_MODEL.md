@@ -125,12 +125,23 @@ plugs into your safety case*, never *auditor acceptance*.
 - **It does not sign.** NLFR emits an unsigned, DSSE-ready in-toto Statement.
   Signing is an **external, operator-owned** step (cosign / Sigstore). NLFR
   holds no keys and asserts no signature.
-- **Remote-CAS references are downgraded, not verified.** References whose bytes
-  live only in a remote CAS (`bytestream://` and other REAPI URIs) cannot be
-  verified locally without a REAPI/CAS probe. In v1 they are labeled
-  `unverified_remote_reference` and never promoted to a high-confidence presence
-  claim. Verifying them instead of downgrading them is tracked in
-  [#81](https://github.com/heyitsalec/nativelink-agent-flight-recorder/issues/81).
+- **Remote-CAS references are downgraded by default, and optionally verified.**
+  References whose bytes live only in a remote CAS (`bytestream://` and other
+  REAPI URIs) cannot be verified locally. **By default** — no probe — they are
+  labeled `unverified_remote_reference` and never promoted to a high-confidence
+  presence claim. When the operator installs the optional `[reapi]` extra and
+  runs `nlfr ingest --cas-endpoint grpc://host:port`, NLFR **independently
+  verifies** each remote reference against the named CAS (issue #81): it checks
+  presence with `FindMissingBlobs` and, for present blobs, recomputes the
+  SHA-256 locally from the `ByteStream`-read bytes — earning `remote_verified`
+  (recomputed digest matches), `remote_mismatch`, `remote_missing`, or
+  `remote_present` (present but not hash-checked). This verifies CAS **content
+  presence and integrity**, *not* that Bazel actually consumed that blob during
+  the build; and any unreachable endpoint, over-read-limit blob, non-SHA-256
+  declared digest, or transport error falls back to the honest
+  `unverified_remote_reference` downgrade rather than a fabricated claim. See
+  [Verify remote CAS references](wiki/how-to/verify-remote-cas.md) and the
+  [truth-labels reference](wiki/reference/truth-labels.md#remote-verification-via-an-injectable-cas-probe-issue-81).
 - **Redaction is best-effort pattern matching, not a guarantee.** It reliably
   catches credentials with a recognizable *shape* (a known prefix, a structural
   marker, or a credential-named key). It **cannot** catch a free-standing
