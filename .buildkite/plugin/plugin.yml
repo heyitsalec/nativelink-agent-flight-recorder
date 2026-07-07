@@ -4,8 +4,8 @@
 # the SAME core script (lib/nlfr-ci-gate.sh) so the redact-before-upload
 # guarantee cannot drift between CI systems. The command hook records a Bazel
 # build, gates the evidence through `nlfr redact`, and uploads ONLY the
-# gate-blessed path with `buildkite-agent artifact upload` — never the raw tree
-# unless `redact --check` passed.
+# gate-blessed path with `buildkite-agent artifact upload` — always a
+# gate-private, symlink-free materialized copy, never the live evidence dir.
 #
 # Usage in pipeline.yml:
 #
@@ -47,11 +47,11 @@ configuration:
     strict-redact:
       type: boolean
       description: >-
-        true (default): fail the step on any redact finding OR any symlink in
-        the evidence tree, before upload (the raw tree ships only when the gate
-        could scan everything).
+        true (default): fail the step on any redact finding OR any symlink
+        present at gate time, before upload; the upload is a symlink-stripped
+        materialized copy, so a raced-in symlink is stripped, never followed.
         false: scrub to a redacted mirror (which excludes symlinks) and upload
-        only the mirror.
+        only a materialized copy of it.
   required:
     - command
   additionalProperties: false

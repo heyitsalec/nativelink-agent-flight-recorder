@@ -115,8 +115,11 @@ def test_action_yml_upload_is_gated_and_only_blesses_upload_path() -> None:
     # The uploaded path is ONLY the gate-blessed upload-path — never inputs.output-dir.
     assert upload["with"]["path"] == "${{ steps.gate.outputs.upload-path }}"
     assert "output-dir" not in upload["with"]["path"]
-    # Defense in depth: the uploader must not dereference a symlink either.
-    assert upload["with"]["follow-symbolic-links"] is False
+    # No dead safeguards: `follow-symbolic-links` is NOT a real upload-artifact@v4
+    # input (GitHub silently ignores unknown `with:` keys), so claiming it would
+    # be a false barrier. The real symlink defense is the gate's materialized,
+    # symlink-stripped upload copy — not any uploader flag.
+    assert "follow-symbolic-links" not in upload["with"]
 
 
 def test_action_yml_upload_guard_blocks_symlink_status() -> None:
@@ -170,28 +173,34 @@ def test_buildkite_hook_uploads_only_the_blessed_path_and_only_when_not_blocked(
     assert block_idx < upload_idx, "the block-check must precede (and can exit before) the upload"
 
 
-def test_gate_script_blesses_raw_tree_only_after_a_passing_check() -> None:
-    """Static proof over the gate: upload-path is set to the raw evidence dir
-    ONLY inside the branch where ``redact --check`` succeeded."""
+def test_gate_never_hands_the_live_dir_to_the_uploader() -> None:
+    """TOCTOU-safe: upload_path is ALWAYS a materialized copy, never the live
+    evidence dir or the deterministic mirror path directly."""
     text = GATE.read_text(encoding="utf-8")
-    lines = text.splitlines()
-    # Find every line that blesses the raw evidence dir for upload.
-    raw_bless = [i for i, ln in enumerate(lines) if 'upload_path="$evidence_dir"' in ln]
-    assert raw_bless, "expected the strict-clean branch to bless the evidence dir"
-    for idx in raw_bless:
-        # The nearest preceding control line must be the successful --check.
-        preceding = "\n".join(lines[max(0, idx - 3): idx])
-        assert "redact --check" in preceding and "if " in preceding, (
-            "the raw tree may only be blessed inside the `if redact --check` success branch"
-        )
-    # The blocked branch never sets a non-empty upload_path.
+    # The gate must never bless the live paths in place.
+    assert 'upload_path="$evidence_dir"' not in text, "must not upload the live evidence dir"
+    assert 'upload_path="$mirror"' not in text, "must not upload the deterministic mirror path"
+    # Both passing branches bless the materialize helper's output instead.
+    assert text.count('upload_path="$staging"') == 2, (
+        "strict-clean and non-strict must each bless a materialized staging copy"
+    )
+    # The blocked branches clear upload_path.
     assert 'redact_status="blocked"' in text
     assert 'upload_path=""' in text
 
 
+def test_gate_materialize_is_symlink_stripping_and_private() -> None:
+    """The materialize primitive: private temp dir + copy-without-follow + strip."""
+    text = GATE.read_text(encoding="utf-8")
+    assert "materialize_symlink_free()" in text
+    assert "mktemp -d" in text, "staging must live at an unpredictable, gate-private path"
+    assert "cp -RP" in text, "copy must preserve symlinks as symlinks (never dereference targets)"
+    assert 'find "$staging" -type l -delete' in text, "every symlink must be physically stripped"
+
+
 def test_gate_script_strict_mode_independently_detects_symlinks() -> None:
-    """Strict mode must block the raw tree on ANY symlink — detected with its own
-    `find -type l`, not merely trusting redact's skipped:symlink report."""
+    """Strict mode fast-fails the STATIC case on ANY symlink — detected with its
+    own `find -type l`, not merely trusting redact's skipped:symlink report."""
     text = GATE.read_text(encoding="utf-8")
     # Independent detection (not a parse of redact's output).
     assert 'find "$evidence_dir" -type l' in text
@@ -202,6 +211,6 @@ def test_gate_script_strict_mode_independently_detects_symlinks() -> None:
     lines = text.splitlines()
     sym_idx = next(i for i, ln in enumerate(lines) if 'redact_status="blocked-symlinks"' in ln)
     assert 'upload_path=""' in lines[sym_idx + 1], "the symlink block must clear upload-path"
-    # And the raw-tree bless is only reached AFTER the symlink check (in the elif).
-    bless_idx = next(i for i, ln in enumerate(lines) if 'upload_path="$evidence_dir"' in ln)
+    # And the materialized bless is only reached AFTER the symlink pre-check.
+    bless_idx = next(i for i, ln in enumerate(lines) if 'upload_path="$staging"' in ln)
     assert sym_idx < bless_idx, "symlink detection precedes any raw-tree bless"

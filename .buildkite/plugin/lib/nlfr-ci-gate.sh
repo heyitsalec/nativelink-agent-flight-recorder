@@ -36,7 +36,9 @@
 #   evidence-dir   the recorded evidence directory.
 #   proof-path     the proof-packet projection, if produced (else empty).
 #   redact-status  clean | scrubbed | blocked | blocked-symlinks | empty.
-#   upload-path    the ONLY path safe to upload; empty when nothing is safe.
+#   upload-path    the ONLY path safe to upload — always a gate-private,
+#                  symlink-free materialized copy (see Symlink safety), never the
+#                  live evidence dir. Empty when nothing is safe.
 #   record-exit    the wrapped build's honest exit code (faithfully surfaced;
 #                   a red build must stay red — the caller re-applies this).
 #
@@ -48,18 +50,23 @@
 #      the symlink note below. Nothing safe to upload.
 #   2  usage / internal error.
 #
-# Symlink safety (strict mode). `nlfr redact --check` REPORTS symlinks
-# (skipped:symlink) but exits 0 — it never follows them. Native artifact
-# uploaders, however, DO follow them: actions/upload-artifact@v4 defaults to
-# followSymbolicLinks:true, and buildkite-agent / Jenkins archiveArtifacts
-# behave the same. So a symlink planted inside the well-known evidence dir
-# (e.g. by a compromised build target: data/nlfr-record/.../x -> ~/.aws/creds)
-# would be DEREFERENCED and its target bytes shipped inside the "gate-blessed"
-# artifact — content the gate never scanned. Strict mode therefore blesses the
-# RAW tree only when it could scan EVERYTHING: this script independently detects
-# symlinks (`find -type l`, not just redact's report) and BLOCKS if any exist.
-# Non-strict is unaffected: `nlfr redact` write-mode never copies a symlink into
-# the redacted mirror, so the mirror it blesses cannot dereference one.
+# Symlink safety (TWO layers, no reliance on any uploader follow flag).
+# `nlfr redact --check` REPORTS symlinks (skipped:symlink) but exits 0 — it never
+# follows them. Native artifact uploaders DO follow them (actions/upload-artifact,
+# buildkite-agent, Jenkins archiveArtifacts), so a symlink planted in the
+# well-known evidence dir (e.g. data/nlfr-record/.../x -> ~/.aws/creds) would be
+# DEREFERENCED and its target bytes shipped inside a "gate-blessed" artifact —
+# content the gate never scanned. Two independent layers close this:
+#   1. Pre-check BLOCK (static case, loud): `find -type l` before blessing; any
+#      symlink present at gate time => blocked-symlinks, exit 4, honest message.
+#      Good operator UX — "you have symlinks, strict blocks."
+#   2. Materialize-strip (race case, structural): the uploader is NEVER handed
+#      the live evidence dir. `upload-path` is a gate-private `mktemp` copy made
+#      with `cp -RP` (symlinks copied as symlinks, targets never read) then
+#      `find -type l -delete` (every symlink physically stripped). A symlink
+#      that races past the pre-check (a detached process the wrapped build left
+#      running) cannot reach the uploader, and the copy lives at a path the
+#      attacker cannot target. This holds regardless of any uploader follow flag.
 set -uo pipefail
 
 : "${NLFR_COMMAND:?nlfr-ci-gate: NLFR_COMMAND (the bazel command to wrap) is required}"
@@ -81,6 +88,31 @@ fi
 
 emit() { printf '%s=%s\n' "$1" "$2" >>"$CI_OUTPUT"; }
 log() { printf 'nlfr-ci-gate: %s\n' "$*" >&2; }
+
+# Materialize a symlink-free copy of "$1" in a gate-private temp dir, then echo
+# its path. TOCTOU-safe upload primitive: the uploader is NEVER handed the live
+# evidence dir (whose path the wrapped build knows and a detached background
+# process could mutate after the pre-check). Instead:
+#   1. `mktemp -d` — an unpredictable path the wrapped build cannot target.
+#   2. `cp -RP` — copy preserving symlinks AS symlinks (-P never dereferences,
+#      POSIX; verified on BSD + GNU cp), so a symlink's TARGET bytes are never
+#      read or copied.
+#   3. `find -type l -delete` — physically strip every symlink (static OR
+#      raced-in), so no symlink can reach the uploader to be dereferenced.
+# Returns non-zero (and blesses nothing) if any step fails or a symlink survives.
+materialize_symlink_free() {
+  local src="$1" parent staging
+  parent="$(mktemp -d "${TMPDIR:-/tmp}/nlfr-ci-stage.XXXXXX")" || return 1
+  staging="$parent/upload"
+  cp -RP "$src" "$staging" || return 1
+  find "$staging" -type l -delete 2>/dev/null || true
+  # Fail closed if any symlink somehow survived the strip.
+  if find "$staging" -type l 2>/dev/null | grep -q .; then
+    log "materialize: a symlink survived the strip under $staging — refusing to bless it."
+    return 1
+  fi
+  printf '%s' "$staging"
+}
 
 # --------------------------------------------------------------------------- record
 # NLFR mirrors Bazel's own exit code, so a non-zero here is a VALID recording of
@@ -108,6 +140,11 @@ elif [[ "$STRICT" == "true" ]]; then
   # Strict mode blesses the RAW tree only when the gate could scan EVERYTHING.
   # Symlinks are scan-blind to `redact --check` (skipped:symlink, exit 0) yet
   # FOLLOWED by native uploaders, so detect them independently and BLOCK first.
+  # Pre-check: honest fast-fail for the normal STATIC case. Symlinks present at
+  # gate time BLOCK loudly (good operator UX) — the raw tree is scan-blind to
+  # them (`redact --check` reports skipped:symlink, exit 0) but native uploaders
+  # follow them. This is NOT the race defense: a symlink raced in AFTER this
+  # find is caught by the materialize-strip below, not here.
   symlink_list="$(find "$evidence_dir" -type l 2>/dev/null || true)"
   log "strict redact gate: ${NLFR[*]} redact --check $evidence_dir"
   if [[ -n "$symlink_list" ]]; then
@@ -117,8 +154,17 @@ elif [[ "$STRICT" == "true" ]]; then
       [[ -n "$link" ]] && log "  symlink: $link -> $(readlink "$link" 2>/dev/null || echo '?')"
     done <<<"$symlink_list"
   elif "${NLFR[@]}" redact --check "$evidence_dir"; then
-    redact_status="clean"
-    upload_path="$evidence_dir"
+    # Gate passed. Do NOT hand the live evidence_dir to the uploader (TOCTOU): a
+    # symlink raced in after the pre-check would otherwise be dereferenced.
+    # Upload a gate-private, symlink-STRIPPED materialized copy instead.
+    if staging="$(materialize_symlink_free "$evidence_dir")"; then
+      redact_status="clean"
+      upload_path="$staging"
+    else
+      log "could not materialize a symlink-free copy of $evidence_dir — refusing to upload."
+      redact_status="blocked"
+      upload_path=""
+    fi
   else
     redact_status="blocked"
     upload_path=""
@@ -129,11 +175,18 @@ else
   log "non-strict redact gate: scrubbing $evidence_dir -> $mirror"
   if "${NLFR[@]}" redact "$evidence_dir" "$mirror" \
     && "${NLFR[@]}" redact --check "$mirror"; then
-    # Bless ONLY the scrubbed mirror. It contains just the scrubbed text/JSON —
-    # binaries and the SQLite spine are skipped by redact and never copied, so
-    # the mirror is strictly safer to upload than the raw tree.
-    redact_status="scrubbed"
-    upload_path="$mirror"
+    # The scrubbed mirror already excludes symlinks (redact write-mode never
+    # copies one) — but its path (<dir>-redacted) is deterministic and thus
+    # attacker-knowable, so still upload a gate-private materialized copy, not
+    # the mirror in place. Same TOCTOU-safe uploader contract as strict.
+    if staging="$(materialize_symlink_free "$mirror")"; then
+      redact_status="scrubbed"
+      upload_path="$staging"
+    else
+      log "could not materialize a symlink-free copy of $mirror — refusing to upload."
+      redact_status="blocked"
+      upload_path=""
+    fi
   else
     redact_status="blocked"
     upload_path=""

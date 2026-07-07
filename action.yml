@@ -47,11 +47,11 @@ inputs:
     default: ""
   strict-redact:
     description: >-
-      true (default): FAIL the step on any redact finding OR any symlink in the
-      evidence tree, BEFORE upload — the raw tree is uploaded only when the gate
-      could scan everything.
+      true (default): FAIL the step on any redact finding OR any symlink present
+      at gate time, BEFORE upload; the upload is a symlink-stripped materialized
+      copy, so a raced-in symlink is stripped rather than followed.
       false: scrub to a redacted mirror (which excludes symlinks) and upload
-      ONLY the mirror.
+      ONLY a materialized copy of it.
     required: false
     default: "true"
 
@@ -91,9 +91,11 @@ runs:
           bash "${{ github.action_path }}/.buildkite/plugin/lib/nlfr-ci-gate.sh"
 
     - name: Upload gated evidence
-      # Uploads ONLY the gate's blessed `upload-path` — the raw tree only when
-      # `redact --check` passed, otherwise the scrubbed mirror. Never runs when
-      # the gate blocked. `always()` so a failed BUILD still uploads its evidence
+      # Uploads ONLY the gate's blessed `upload-path`, which is a gate-private,
+      # symlink-free materialized copy (the gate never hands the uploader the live
+      # evidence dir, so there is no symlink for the uploader to dereference and
+      # no dependence on any upload-artifact follow flag). Never runs when the
+      # gate blocked. `always()` so a failed BUILD still uploads its evidence
       # (then the next step re-fails the action on the build result).
       # `!startsWith(..., 'blocked')` fails safe for every block reason
       # (`blocked` findings AND `blocked-symlinks`); `upload-path != ''` is the
@@ -103,9 +105,6 @@ runs:
       with:
         name: ${{ inputs.artifact-name }}
         path: ${{ steps.gate.outputs.upload-path }}
-        # Defense in depth: the gate already blocks strict-clean on any symlink,
-        # so a blessed tree has none — but never let the uploader dereference one.
-        follow-symbolic-links: false
 
     - name: Surface the recorded build result
       # The redact gate never masks the build's real outcome: a red build stays

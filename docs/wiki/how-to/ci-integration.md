@@ -31,8 +31,11 @@ script](#one-shared-core-no-drift) all three reuse:
    - **non-strict**: `nlfr redact <dir> <mirror>` — scrub to a redacted mirror
      and upload **only the mirror**, never the raw tree. The mirror excludes
      symlinks entirely.
-3. Upload the gate-blessed path only (the raw tree solely when `--check` passed
-   and no symlink was present; otherwise the scrubbed mirror).
+3. Upload a **gate-private, symlink-free materialized copy** — never the live
+   evidence dir. The gate `cp -RP`s the passed evidence (or scrubbed mirror) into
+   an unpredictable temp path and strips every symlink, so a symlink that races
+   in after the check can never be handed to the uploader (see
+   [Honest boundary](#honest-boundary)).
 4. Re-apply the recorded build's exit code, so the gate never turns a red build
    green.
 
@@ -133,36 +136,44 @@ pipeline {
           uvx --from nativelink-agent-flight-recorder nlfr redact \
             --check data/nlfr-record
 
-          # 2b. Block on symlinks: archiveArtifacts FOLLOWS them, but redact
-          #     --check only reports them — a link to an outside secret would be
-          #     dereferenced into the archive. Fail if any exist.
+          # 2b. Static symlink fast-fail: archiveArtifacts FOLLOWS symlinks, but
+          #     redact --check only reports them — a link to an outside secret
+          #     would be dereferenced into the archive. Block if any exist now.
           if find data/nlfr-record -type l | grep -q .; then
             echo "BLOCKED: symlink(s) in evidence tree; refusing to archive." >&2
-            find data/nlfr-record -type l -printf "  %p -> %l\n" >&2
+            find data/nlfr-record -type l >&2
             exit 4
           fi
 
-          # (non-strict alternative: scrub to a mirror and archive only it — the
-          #  mirror excludes symlinks, so no symlink check is needed there)
+          # 2c. Materialize a symlink-STRIPPED copy and archive THAT, never the
+          #     live dir — so a symlink raced in after 2b (a detached build
+          #     process) is stripped and cannot be dereferenced into the archive.
+          rm -rf nlfr-upload && cp -RP data/nlfr-record nlfr-upload
+          find nlfr-upload -type l -delete
+
+          # (non-strict alternative: scrub to a mirror, then materialize-strip it
+          #  the same way — the mirror already excludes symlinks:
           #   uvx --from nativelink-agent-flight-recorder nlfr redact \
           #     data/nlfr-record data/nlfr-record-redacted
-          #   -> then archiveArtifacts 'data/nlfr-record-redacted/**'
+          #   rm -rf nlfr-upload && cp -RP data/nlfr-record-redacted nlfr-upload
+          #   find nlfr-upload -type l -delete )
 
           exit ${RECORD_EXIT:-0}   # surface the recorded build result
         '''
-        // 3. Archive only after the gate passed.
-        archiveArtifacts artifacts: 'data/nlfr-record/**', fingerprint: true
+        // 3. Archive the symlink-free materialized copy, only after the gate passed.
+        archiveArtifacts artifacts: 'nlfr-upload/**', fingerprint: true
       }
     }
   }
 }
 ```
 
-In strict mode the `nlfr redact --check` line exits non-zero on a finding, and
-the `find … -type l` guard fails on any symlink, so `archiveArtifacts` never runs
-on unredacted or symlink-bearing evidence. For non-strict, scrub to a mirror and
-archive only `data/nlfr-record-redacted/**` (the mirror already excludes
-symlinks).
+Strict mode enforces both layers: `nlfr redact --check` exits non-zero on a
+finding, the `find … -type l` guard fails on any symlink present at gate time,
+and `archiveArtifacts` runs against `nlfr-upload/` — a symlink-stripped `cp -RP`
+copy — so a symlink that races in after the guard is stripped rather than
+dereferenced. For non-strict, scrub to a mirror first, then materialize-strip it
+the same way.
 
 ## One shared core, no drift
 
@@ -170,10 +181,12 @@ All three primitives delegate the safety-critical sequence to a single script,
 [`.buildkite/plugin/lib/nlfr-ci-gate.sh`](../../../.buildkite/plugin/lib/nlfr-ci-gate.sh),
 so the redact-before-upload guarantee cannot drift between CI systems. Its
 behavior is covered by [`tests/test_ci_gate_script.py`](../../../tests/test_ci_gate_script.py)
-(strict blocks on a planted finding **and on a planted symlink** — file,
-directory, or nested; non-strict scrubs and blesses only the symlink-free
-mirror; a clean tree passes; a red build stays red) and the raw-tree-upload
-invariant by [`tests/test_ci_primitive_yaml.py`](../../../tests/test_ci_primitive_yaml.py).
+(strict blocks on a planted finding **and on a static symlink** — file,
+directory, or nested; a **raced-in symlink** planted during the check is stripped
+from the materialized upload copy so its target bytes never ship; non-strict
+scrubs and blesses only the symlink-free copy; a clean tree passes; a red build
+stays red) and the upload-safety invariants by
+[`tests/test_ci_primitive_yaml.py`](../../../tests/test_ci_primitive_yaml.py).
 
 ## Honest boundary
 
@@ -182,26 +195,32 @@ detects the [redaction registry's pattern classes](../reference/cli.md#redact) �
 secret/credential shapes, absolute paths, and (by default) email + IPv4 PII — not
 every conceivable secret. Honest limits worth stating in a procurement review:
 
-- **Symlinks: strict blocks, non-strict excludes.** `nlfr redact --check`
-  *reports* a symlink (`skipped:symlink`) but never follows it — while native
-  uploaders (GitHub `upload-artifact`, `buildkite-agent`, Jenkins
-  `archiveArtifacts`) **do** follow symlinks by default. So a link planted in the
-  well-known evidence dir (e.g. a compromised build target writing
-  `data/nlfr-record/.../x -> ~/.aws/credentials`) could otherwise ship unscanned
-  target bytes inside a "gate-blessed" artifact. The gate closes this: **strict
-  mode independently detects symlinks (`find -type l`) and BLOCKS**
-  (`redact-status: blocked-symlinks`, nothing uploaded), and **non-strict's
-  scrubbed mirror never copies a symlink** in the first place. This is a
-  different class from the binary/SQLite boundary below: a symlink can point
-  *outside* the tree at unbounded content, so it is blocked, not shipped.
+- **Symlinks: blocked when static, stripped structurally — no reliance on
+  uploader flags.** `nlfr redact --check` *reports* a symlink
+  (`skipped:symlink`) but never follows it, while native uploaders (GitHub
+  `upload-artifact`, `buildkite-agent`, Jenkins `archiveArtifacts`) **do** follow
+  symlinks. A link planted in the well-known evidence dir (e.g. a compromised
+  build target writing `data/nlfr-record/.../x -> ~/.aws/credentials`) could
+  otherwise ship unscanned target bytes inside a "gate-blessed" artifact. The
+  gate closes this with **two independent layers**: (1) a **static fast-fail** —
+  strict mode detects symlinks present at gate time (`find -type l`) and BLOCKS
+  loudly (`redact-status: blocked-symlinks`, nothing uploaded); and (2) a
+  **structural race defense** — the uploader is never handed the live dir, only a
+  gate-private `cp -RP` copy at an unpredictable temp path with **every symlink
+  physically stripped** (`find -type l -delete`), so a symlink that races in
+  after the fast-fail (a detached build process) is removed rather than followed.
+  This holds *regardless of any `follow-symbolic-links` uploader setting* — the
+  guarantee does not depend on the uploader honoring a flag. Non-strict's
+  scrubbed mirror also never copies a symlink in the first place.
 - **`--check` skips binaries and SQLite databases**, reporting them honestly
   (`skipped:binary`, `skipped:database`) rather than scanning them. This is a
-  bounded, disclosed boundary — the content lives *inside* the recorded tree. A
-  secret embedded in a binary blob is out of scope. In **strict-clean** mode the
-  raw tree — including the SQLite spine and any binary artifacts — is uploaded
-  once the *scannable* text/JSON passes and no symlink is present; if you do not
-  want those uploaded, use **non-strict**, whose redacted mirror contains only
-  the scrubbed text/JSON.
+  bounded, disclosed boundary — the content lives *inside* the recorded tree (a
+  different class from symlinks, which can point *outside* at unbounded content).
+  A secret embedded in a binary blob is out of scope. In **strict-clean** mode the
+  materialized copy — including the SQLite spine and any binary artifacts — is
+  uploaded once the *scannable* text/JSON passes and the symlink layers above are
+  satisfied; if you do not want those uploaded, use **non-strict**, whose redacted
+  mirror contains only the scrubbed text/JSON.
 - **Review sensitive evidence at the source too.** The gate is the last line of
   defense before upload, not a substitute for not recording secrets in the first
   place.

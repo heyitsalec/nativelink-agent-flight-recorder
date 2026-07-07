@@ -117,8 +117,9 @@ def test_strict_mode_blocks_on_planted_finding_before_any_upload(tmp_path) -> No
     assert out["upload-path"] == "", "nothing may be blessed for upload when blocked"
 
 
-def test_non_strict_scrubs_and_only_the_mirror_is_blessed(tmp_path) -> None:
-    """(b) non-strict + a planted secret => SCRUB: mirror is the upload target."""
+def test_non_strict_scrubs_and_blesses_a_symlink_free_copy(tmp_path) -> None:
+    """(b) non-strict + a planted secret => SCRUB: upload-path is a scrubbed,
+    materialized copy — never the raw tree, never the deterministic mirror path."""
     evidence = tmp_path / "evidence"
     _plant(evidence, leaky=True)
 
@@ -126,19 +127,22 @@ def test_non_strict_scrubs_and_only_the_mirror_is_blessed(tmp_path) -> None:
 
     assert code == 0
     assert out["redact-status"] == "scrubbed"
-    mirror = Path(out["upload-path"])
-    assert mirror == evidence.parent / f"{evidence.name}-redacted"
-    assert mirror != evidence, "the raw tree is never the upload target when scrubbing"
-    # The scrubbed mirror no longer carries the secret...
-    scrubbed = (mirror / "runs" / "abc" / "artifacts" / "bazel.stdout.txt").read_text()
+    upload = Path(out["upload-path"])
+    assert upload != evidence, "the raw tree is never the upload target"
+    assert upload != evidence.parent / f"{evidence.name}-redacted", (
+        "upload-path is a gate-private copy, not the deterministic mirror path"
+    )
+    # The blessed copy no longer carries the secret...
+    scrubbed = (upload / "runs" / "abc" / "artifacts" / "bazel.stdout.txt").read_text()
     assert FAKE_AWS_KEY not in scrubbed
-    # ...while the raw tree still does (proving the mirror, not the raw tree, is uploaded).
+    # ...while the raw tree still does (proving the copy, not the raw tree, is uploaded).
     raw = (evidence / "runs" / "abc" / "artifacts" / "bazel.stdout.txt").read_text()
     assert FAKE_AWS_KEY in raw
 
 
-def test_clean_tree_passes_strict_and_blesses_the_tree(tmp_path) -> None:
-    """(c) strict + a clean tree => PASS: exit 0, the tree itself is blessed."""
+def test_clean_tree_passes_strict_and_blesses_a_materialized_copy(tmp_path) -> None:
+    """(c) strict + a clean tree => PASS: exit 0; upload-path is a materialized,
+    symlink-free copy (NOT the live evidence dir), still holding the real files."""
     evidence = tmp_path / "evidence"
     _plant(evidence, leaky=False)
 
@@ -146,7 +150,14 @@ def test_clean_tree_passes_strict_and_blesses_the_tree(tmp_path) -> None:
 
     assert code == 0
     assert out["redact-status"] == "clean"
-    assert Path(out["upload-path"]) == evidence
+    upload = Path(out["upload-path"])
+    assert upload != evidence, "the uploader never receives the live evidence dir"
+    assert upload.is_dir()
+    # The real evidence is present in the materialized copy...
+    assert (upload / "runs" / "abc" / "artifacts" / "bazel.stdout.txt").is_file()
+    assert (upload / "projections" / "proof-G.json").is_file()
+    # ...and there are no symlinks in it.
+    assert not any(p.is_symlink() for p in upload.rglob("*"))
 
 
 def test_red_build_stays_red_the_gate_never_masks_the_result(tmp_path) -> None:
@@ -241,12 +252,14 @@ def test_non_strict_mirror_excludes_symlink_and_its_target(tmp_path) -> None:
 
     assert code == 0
     assert out["redact-status"] == "scrubbed"
-    mirror = Path(out["upload-path"])
-    assert mirror == evidence.parent / f"{evidence.name}-redacted"
-    # The symlink is absent from the mirror...
-    assert not (mirror / "runs" / "abc" / "artifacts" / "leak.link").exists()
-    # ...and the outside secret's bytes appear nowhere in the blessed mirror.
-    for path in mirror.rglob("*"):
+    upload = Path(out["upload-path"])
+    assert upload != evidence.parent / f"{evidence.name}-redacted", (
+        "upload-path is a gate-private copy, not the deterministic mirror path"
+    )
+    # No symlink survives into the blessed copy...
+    assert not any(p.is_symlink() for p in upload.rglob("*"))
+    # ...and the outside secret's bytes appear nowhere in it.
+    for path in upload.rglob("*"):
         if path.is_file():
             assert "wJalrXUtnFEMI" not in path.read_text(encoding="utf-8", errors="ignore")
 
@@ -262,4 +275,71 @@ def test_clean_tree_with_no_symlinks_still_passes_strict(tmp_path) -> None:
 
     assert code == 0
     assert out["redact-status"] == "clean"
-    assert Path(out["upload-path"]) == evidence
+    upload = Path(out["upload-path"])
+    assert upload != evidence  # a materialized copy, not the live dir
+    assert (upload / "runs" / "abc" / "artifacts" / "bazel.stdout.txt").is_file()
+
+
+def test_strict_race_symlink_stripped_from_materialized_copy(tmp_path) -> None:
+    """TOCTOU race: a symlink that appears AFTER the pre-check `find` (planted here
+    when `redact --check` runs, as a detached build process would) races past the
+    static block but is STRIPPED from the materialized upload copy — its target
+    bytes never reach the uploader, and the gate never blesses the raw tree."""
+    secret = tmp_path / "prod-creds.txt"
+    secret.write_text("aws_secret_access_key = wJalrXUtnFEMI/RACEKEY\n", encoding="utf-8")
+    evidence = tmp_path / "evidence"
+    _plant(evidence, leaky=False)  # clean at pre-check time; no symlink yet
+
+    # A stub whose `redact --check` plants the symlink into the dir being checked
+    # (after the gate's pre-check find has already run), then delegates to real
+    # redact — exactly the race window the materialize-strip closes.
+    race_stub = tmp_path / "race-stub.sh"
+    race_stub.write_text(
+        "#!/usr/bin/env bash\n"
+        "set -uo pipefail\n"
+        'sub="${1:-}"; shift || true\n'
+        "case \"$sub\" in\n"
+        '  record) exit "${STUB_RECORD_EXIT:-0}" ;;\n'
+        "  redact)\n"
+        '    if [ "${1:-}" = "--check" ] && [ -n "${RACE_SECRET:-}" ] && [ -d "${2:-}" ]; then\n'
+        '      ln -sf "$RACE_SECRET" "$2/raced.link" 2>/dev/null || true\n'
+        "    fi\n"
+        '    exec "$REAL_NLFR_PY" -m nlfr redact "$@" ;;\n'
+        '  *) echo "stub: unexpected $sub" >&2; exit 99 ;;\n'
+        "esac\n",
+        encoding="utf-8",
+    )
+    race_stub.chmod(0o755)
+
+    ci_out = tmp_path / "ci-output.txt"
+    ci_out.write_text("", encoding="utf-8")
+    env = {
+        "PATH": __import__("os").environ["PATH"],
+        "REAL_NLFR_PY": sys.executable,
+        "NLFR_CMD": str(race_stub),
+        "RACE_SECRET": str(secret),
+        "NLFR_COMMAND": "bazel test //...",
+        "NLFR_RUN_GROUP": "G",
+        "NLFR_OUTPUT_DIR": str(evidence),
+        "NLFR_STRICT": "true",
+        "NLFR_CI_OUTPUT": str(ci_out),
+    }
+    proc = subprocess.run(["bash", str(GATE)], env=env, capture_output=True, text=True)
+    out: dict[str, str] = {}
+    for line in ci_out.read_text(encoding="utf-8").splitlines():
+        if "=" in line:
+            k, _, v = line.partition("=")
+            out[k] = v
+
+    # The symlink really did race into the raw evidence dir.
+    assert (evidence / "raced.link").is_symlink(), "the race stub should have planted the symlink"
+    # The gate passed (raced past the pre-check) but did NOT bless the raw tree...
+    assert proc.returncode == 0
+    assert out["redact-status"] == "clean"
+    upload = Path(out["upload-path"])
+    assert upload != evidence, "the raw dir (which now holds the raced symlink) is never uploaded"
+    # ...the materialized copy has no symlink and no secret target bytes.
+    assert not any(p.is_symlink() for p in upload.rglob("*")), "raced symlink stripped from copy"
+    for path in upload.rglob("*"):
+        if path.is_file():
+            assert "wJalrXUtnFEMI" not in path.read_text(encoding="utf-8", errors="ignore")

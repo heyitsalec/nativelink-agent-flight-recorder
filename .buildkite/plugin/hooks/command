@@ -45,9 +45,11 @@ if [ "$gate_exit" -ne 0 ]; then
   exit "$gate_exit"
 fi
 
-# Upload ONLY the gate-blessed path (the buildkite-agent expands the glob).
-if [ "$upload" = "true" ] && [ -n "$upload_path" ]; then
-  buildkite-agent artifact upload "$upload_path/**/*"
+# Upload ONLY the gate-blessed path — a gate-private, symlink-free materialized
+# copy (see lib/nlfr-ci-gate.sh). `cd` into it so artifact keys stay relative
+# instead of embedding the temp path; buildkite-agent expands the glob.
+if [ "$upload" = "true" ] && [ -n "$upload_path" ] && [ -d "$upload_path" ]; then
+  ( cd "$upload_path" && buildkite-agent artifact upload "**/*" )
 fi
 
 # Faithfully surface the recorded build result: a red build stays red.
