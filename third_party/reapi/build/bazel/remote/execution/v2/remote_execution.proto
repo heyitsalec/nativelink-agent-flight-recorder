@@ -1,0 +1,97 @@
+// Copyright 2018 The Bazel Authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// NLFR VENDORED SUBSET — NOT the full upstream file.
+//
+// This is a minimal, wire-compatible extraction from
+// bazelbuild/remote-apis build/bazel/remote/execution/v2/remote_execution.proto
+// at commit becdd8f9ff811df88a22d3eadd6341753d51d167 (see
+// third_party/reapi/README.md for provenance and the verbatim-subset claim).
+// It keeps ONLY the messages NLFR's optional CAS probe needs to call
+// ContentAddressableStorage/FindMissingBlobs: Digest, DigestFunction,
+// FindMissingBlobsRequest, FindMissingBlobsResponse. The package, message
+// names, field names, field numbers, and field types are verbatim upstream —
+// protobuf wire compatibility depends only on field numbers and types, so a
+// server built against the full API interoperates with these messages
+// unchanged. Everything else (services, actions, execution, capabilities, and
+// their transitive imports) is intentionally removed to keep the vendored
+// surface reviewable.
+//
+// The upstream ContentAddressableStorage SERVICE definition is deliberately
+// not vendored: NLFR invokes the single RPC it needs through gRPC's generic
+// method API using the fully-qualified method path
+// /build.bazel.remote.execution.v2.ContentAddressableStorage/FindMissingBlobs.
+
+syntax = "proto3";
+
+package build.bazel.remote.execution.v2;
+
+// A content digest. A digest for a given blob consists of the size of the blob
+// and its hash. The hash algorithm to use is defined by the server.
+message Digest {
+  // The hash, represented as a lowercase hexadecimal string, padded with
+  // leading zeroes up to the hash function length.
+  string hash = 1;
+
+  // The size of the blob, in bytes.
+  int64 size_bytes = 2;
+}
+
+// The digest function used for converting values into keys for CAS and Action
+// Cache.
+message DigestFunction {
+  enum Value {
+    UNKNOWN = 0;
+    SHA256 = 1;
+    SHA1 = 2;
+    MD5 = 3;
+    VSO = 4;
+    SHA384 = 5;
+    SHA512 = 6;
+    MURMUR3 = 7;
+    SHA256TREE = 8;
+    BLAKE3 = 9;
+  }
+}
+
+// A request message for
+// [ContentAddressableStorage.FindMissingBlobs][build.bazel.remote.execution.v2.ContentAddressableStorage.FindMissingBlobs].
+message FindMissingBlobsRequest {
+  // The instance of the execution system to operate against. A server may
+  // support multiple instances of the execution system (with their own workers,
+  // storage, caches, etc.). The server MAY require use of this field to select
+  // between them in an implementation-defined fashion, otherwise it can be
+  // omitted.
+  string instance_name = 1;
+
+  // A list of the blobs to check. All digests MUST use the same digest
+  // function.
+  repeated Digest blob_digests = 2;
+
+  // The digest function of the blobs whose existence is checked.
+  //
+  // If the digest function used is one of MD5, MURMUR3, SHA1, SHA256,
+  // SHA384, SHA512, or VSO, the client MAY leave this field unset. In
+  // that case the server SHOULD infer the digest function using the
+  // length of the blob digest hashes and the digest functions announced
+  // in the server's capabilities.
+  DigestFunction.Value digest_function = 3;
+}
+
+// A response message for
+// [ContentAddressableStorage.FindMissingBlobs][build.bazel.remote.execution.v2.ContentAddressableStorage.FindMissingBlobs].
+message FindMissingBlobsResponse {
+  // A list of the blobs requested *not* present in the storage.
+  repeated Digest missing_blob_digests = 2;
+}
