@@ -2,8 +2,8 @@
 
 > **Historical planning artifact.** This DAG records the original MVP workstream
 > sequencing. For current milestones, execution-ladder boundaries, and
-> M5–M9 status, use **[ARCHITECTURE_TRACK.md](ARCHITECTURE_TRACK.md)** and
-> **[USEFULNESS_ROADMAP.md](USEFULNESS_ROADMAP.md)**.
+> M5–M9 status, use **[ARCHITECTURE_TRACK.md](../ARCHITECTURE_TRACK.md)** and
+> **[USEFULNESS_ROADMAP.md](../USEFULNESS_ROADMAP.md)**.
 
 ## Parent Objective
 
@@ -77,6 +77,6 @@ Then:
 
 ## Related docs
 
-- [ARCHITECTURE_TRACK.md](ARCHITECTURE_TRACK.md) — current phase map and M1–M9 ladder
-- [USEFULNESS_ROADMAP.md](USEFULNESS_ROADMAP.md) — product usefulness gaps and next work
-- [CONTRIBUTING.md](CONTRIBUTING.md) — proof scripts and contributor gates
+- [ARCHITECTURE_TRACK.md](../ARCHITECTURE_TRACK.md) — current phase map and M1–M9 ladder
+- [USEFULNESS_ROADMAP.md](../USEFULNESS_ROADMAP.md) — product usefulness gaps and next work
+- [CONTRIBUTING.md](../CONTRIBUTING.md) — proof scripts and contributor gates

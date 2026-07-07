@@ -36,6 +36,7 @@ for overlapping evaluator paths.
 | [Adopt existing Bazel monorepo](how-to/adopt-existing-bazel-monorepo.md) | Wave 11 — `nlfr init` + one-command record |
 | [Export and compare run groups](how-to/export-and-compare-run-groups.md) | M9 — `derived_v1` compare projection |
 | [Export an in-toto attestation](how-to/export-in-toto-attestation.md) | #26 — unsigned, DSSE-ready in-toto Statement |
+| [Manage the evidence store](reference/cli.md#db-upgrade) | `nlfr db upgrade` (schema migration) · [`db gc`](reference/cli.md#db-gc) (operator-consented retention) |
 | [Browse run history](how-to/browse-run-history.md) | W12 — multi-run `run_history` projection |
 | [Compare runs](compare-runs.md) | Alias → export and compare (README entry point) |
 | [Run tier1 live Bazel demo](how-to/run-tier1-live-bazel-demo.md) | Tier1 Acts 1+2 with live Bazel |
@@ -47,7 +48,7 @@ Related operator docs: [CI recipe](../CI_RECIPE.md), [Demo script](../DEMO_SCRIP
 
 | Page | Contents |
 |------|----------|
-| [CLI](reference/cli.md) | `nlfr doctor`, `run`, `graph export`, `proof export`, `compare` |
+| [CLI](reference/cli.md) | `nlfr doctor`, `run`, `record`, `graph export`, `proof export`, `compare`, [`db upgrade`](reference/cli.md#db-upgrade), [`db gc`](reference/cli.md#db-gc) |
 | [Truth labels](reference/truth-labels.md) | Four required fields on every projected claim |
 | [Proof scripts matrix](reference/proof-scripts-matrix.md) | Script → claim → artifact path |
 | [JSON contracts](reference/contracts/README.md) | Artifact manifest, proof packet, canvas projection, compare projection (M9) |

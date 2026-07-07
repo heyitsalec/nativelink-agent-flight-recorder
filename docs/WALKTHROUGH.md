@@ -12,7 +12,7 @@ artifacts that make the MVP work.
 If you only read one path, follow this order:
 
 1. This file for the system shape and demo flow.
-2. [`IMPLEMENTATION_WALKTHROUGH.md`](IMPLEMENTATION_WALKTHROUGH.md) for the
+2. [`IMPLEMENTATION_WALKTHROUGH.md`](internal/IMPLEMENTATION_WALKTHROUGH.md) for the
    file-by-file code tour.
 3. [`USEFULNESS_ROADMAP.md`](USEFULNESS_ROADMAP.md) for what is needed to make
    NLFR useful beyond the demo.

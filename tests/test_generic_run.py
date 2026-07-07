@@ -671,3 +671,40 @@ def test_generic_run_records_change_path(tmp_path: Path) -> None:
     assert change["before_hash"] is not None
     assert change["after_hash"] is not None
     assert change["before_hash"] != change["after_hash"]
+
+
+def test_matches_baseline_note_is_worded_from_resolved_ref() -> None:
+    """#62 nit: the baseline==after ("matches") note is worded from the RESOLVED
+    ref, not a hardcoded "HEAD". A non-HEAD ``--baseline-ref`` (HEAD~1 / a commit
+    sha) must be named as such; a HEAD baseline still reads "file matches HEAD"
+    (regression guard for the existing wording the recorder tests assert)."""
+
+    from nlfr.change_evidence import derive_change_details
+
+    after = "a" * 64
+
+    def _note(ref: str) -> str:
+        baselines = {
+            "leaf.py": {
+                "baseline_sha256": after,  # baseline == after -> ambiguous
+                "source": {"kind": "git_head", "commit": "c" * 40, "ref": ref},
+            }
+        }
+        entry = derive_change_details(
+            ["leaf.py"],
+            {"leaf.py": after},
+            {"leaf.py": after},
+            git_baselines=baselines,
+        )["leaf.py"]
+        assert entry["changed"] is False
+        assert entry["changed_basis"] == "git_baseline"
+        return entry["note"]
+
+    non_head = _note("git:HEAD~1:leaf.py")
+    assert non_head.startswith("file matches baseline ref HEAD~1")
+    assert "HEAD~1" in non_head
+    assert "--baseline-ref" in non_head
+
+    head = _note("git:HEAD:leaf.py")
+    assert head.startswith("file matches HEAD")
+    assert "--baseline-ref" in head

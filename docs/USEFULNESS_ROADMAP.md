@@ -1,7 +1,7 @@
 # Making NLFR actually useful
 
 ← [Docs index](INDEX.md) · [Architecture track](ARCHITECTURE_TRACK.md) ·
-[Contributing](CONTRIBUTING.md) · [Implementation DAG (historical)](IMPLEMENTATION_DAG.md)
+[Contributing](CONTRIBUTING.md) · [Implementation DAG (historical)](internal/IMPLEMENTATION_DAG.md)
 
 This document answers: what does the MVP do today, what makes it useful, what is
 still missing, and what should be built next?
@@ -97,7 +97,7 @@ The current repo now has:
 - [`ONE_PAGER.md`](ONE_PAGER.md)
 - [`DEMO_SCRIPT.md`](DEMO_SCRIPT.md)
 - [`WALKTHROUGH.md`](WALKTHROUGH.md)
-- [`IMPLEMENTATION_WALKTHROUGH.md`](IMPLEMENTATION_WALKTHROUGH.md)
+- [`IMPLEMENTATION_WALKTHROUGH.md`](internal/IMPLEMENTATION_WALKTHROUGH.md)
 - [`apps/canvas/README.md`](../apps/canvas/README.md)
 - [`proof-samples/`](proof-samples/)
 - screenshots and video in [`images/`](images/) and [`media/`](media/)

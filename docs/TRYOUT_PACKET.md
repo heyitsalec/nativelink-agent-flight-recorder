@@ -1,6 +1,6 @@
 # NLFR Tryout Packet
 
-Date: 2026-06-10 · Tag: `v0.2.0-mvp` (+ two-act spark, receipt lens) · Branch: `main`
+Date: 2026-07-07 · Tag: `v0.2.0-mvp` (+ two-act spark, receipt lens) · Branch: `main`
 
 Audience: a technical evaluator deciding in one sitting whether NLFR deserves a
 deeper look. Every claim below links to committed evidence; nothing asks you to
@@ -44,8 +44,10 @@ renders a canvas from those projections only — including what remains unproven
    is the zero-token CI mechanics gate.
 3. **Cache numbers:**
    [`proof-samples/cold-warm-summary.json`](proof-samples/cold-warm-summary.json)
-   — cold 8.17 s at `hit_rate` 0.0 → warm 5.48 s at `hit_rate` 1.0
-   (`collectable_v1`, `high`).
+   — the committed `summary.json` shape: cold `hit_rate` 0.0 → warm `hit_rate`
+   1.0, warm faster (`collectable_v1`, `high`). Wall-clock seconds drift run to
+   run; the latest CI timings (9.04 s → 6.12 s) and their Bazel-version
+   provenance are in the [Deep Path table](#deep-path--nix-real-toolchain).
 4. **Claims ledger:** [`ONE_PAGER.md`](ONE_PAGER.md) — proven vs explicitly
    unproven, on one page.
 
@@ -63,7 +65,7 @@ Committed screenshots (rendered from committed projection JSON, not mockups):
 git clone https://github.com/heyitsalec/nativelink-agent-flight-recorder.git
 cd nativelink-agent-flight-recorder
 uv sync
-uv run pytest -q                  # expected: 175 passed, 3 skipped
+uv run pytest -q                  # the full suite must pass (480+ tests as of 2026-07)
 ./scripts/verify-demo.sh          # fixture demo gates + canvas build
 npm --prefix apps/canvas install
 npm --prefix apps/canvas run dev  # http://127.0.0.1:5173/
@@ -71,8 +73,12 @@ npm --prefix apps/canvas run dev  # http://127.0.0.1:5173/
 
 What to check in the canvas:
 
-- `?view=two-act-spark` renders both acts with **STUB RECEIPT** badges from
-  the committed projections under `apps/canvas/public/projections/two-act/`.
+- `?view=two-act-spark` renders both acts with **verified-receipt**
+  (`receipt_verified_v1`) badges from the committed projections under
+  `apps/canvas/public/projections/two-act/` — the committed run is the live
+  Claude run (`claude-opus-4-8`), consistent with the README and one-pager. The
+  deterministic-stub path (`stub_receipt_v1`) exists only as the zero-token CI
+  mechanics gate, never presented as live.
 - The default view banner reads **`canvas-dev`** `collectable_v1` — a real
   record of NLFR building its own GUI, not a fixture.
 - Proof Packet entries carry `source_kind`, `confidence`, `evidence_refs`, and
@@ -86,7 +92,9 @@ NativeLink are not on PATH here, and real-tool scripts record truth-labeled
 ## Deep Path — Nix, real toolchain
 
 Requires Nix with flakes (~82 GB disk for the first Bazel fetch); toolchain is
-NativeLink 1.3.2 + Bazel 9.1.1. See [`DEV_ENVIRONMENT.md`](DEV_ENVIRONMENT.md).
+NativeLink from `flake.nix` + Bazel resolved by bazelisk from each workspace's
+`.bazelversion` (7.4.1 for the bundled demo). See
+[`DEV_ENVIRONMENT.md`](DEV_ENVIRONMENT.md).
 
 ```bash
 nix develop
@@ -100,12 +108,15 @@ NLFR_SPARK_CLAUDE_BIN=$PWD/scripts/spark-stub-claude.sh \
   ./scripts/two-act-spark-proof.sh
 ```
 
-Recorded results from this toolchain (committed, redacted; originally recorded
-2026-06-06 at commit `635ee36`):
+Recorded results from this toolchain. The cold/warm figures below are the latest
+CI numbers, recorded by CI run
+[`28862144465`](https://github.com/heyitsalec/nativelink-agent-flight-recorder/actions/runs/28862144465)
+on `main` (2026-07-07) under Bazel 7.4.1 (bazelisk-resolved from the demo
+workspace pin, in Nix); the remaining rows are committed, redacted proof samples:
 
 | Proof | Result |
 |-------|--------|
-| `scripts/cold-warm-cache-proof.sh` | Exit 0 — cold `hit_rate` 0.0 / 8.17 s vs warm `hit_rate` 1.0 / 5.48 s |
+| `scripts/cold-warm-cache-proof.sh` | Exit 0 — cold `hit_rate` 0.0 / 9.04 s vs warm `hit_rate` 1.0 / 6.12 s |
 | `scripts/local-exec-proof.sh` | Exit 0 — `worker_endpoints_ready` |
 | `NLFR_EXPECTED_WORKERS=2 … scripts/local-exec-proof.sh` | Exit 0 — `worker_endpoints_ready`, `expected_workers=2`, `configured_workers=2` |
 | `scripts/agent-loop-proof.sh` | Exit 0 — `chain_complete=true` (`agent → change → run → cache`) |
@@ -131,8 +142,8 @@ renders directly:
 
 | Badge | Meaning | Status today |
 |-------|---------|--------------|
-| `receipt_verified_v1` | Parsed live-CLI receipt: server-resolved model, session id, usage, response SHA-256 | Pending the live run |
-| `stub_receipt_v1` | Deterministic stub CLI — mechanics proof, never presented as live | The committed two-act run |
+| `receipt_verified_v1` | Parsed live-CLI receipt: server-resolved model, session id, usage, response SHA-256 | **The committed two-act run** (live Claude, `claude-opus-4-8`) |
+| `stub_receipt_v1` | Deterministic stub CLI — mechanics proof, never presented as live | Zero-token CI mechanics gate only |
 | `operator_asserted_v1` | Operator claim without a machine receipt | Supported, labeled as such |
 
 Raw prompts are never stored or exported — receipts carry `prompt_sha256` only,
@@ -184,8 +195,9 @@ These are explicit follow-ups, not implied claims:
 - load distribution;
 - multi-machine worker execution;
 - org-scale history;
-- live-LLM agent receipts (`receipt_verified_v1` — two-act mechanics are
-  stub-verified today; live receipts pending);
+- live-LLM **Gemini** receipts (`receipt_verified_v1` is proven live for the
+  **Claude** CLI in the committed two-act run; the Gemini parser is
+  fixture-tested, live validation is env-gated and pending a host with that CLI);
 - full NativeLink Local Remote Execution on every host shape (see LRE blocker
   samples in [`proof-samples/`](proof-samples/README.md)).
 

@@ -173,7 +173,7 @@
           }
         },
         "build": {
-          "artifact_root": "<repo>/data/two-act-spark/runs/run_2c59084cb1dee3245ea4e02d/artifacts",
+          "artifact_root": "<repo>[REDACTED:abs_path]/artifacts",
           "run_id": "run_2c59084cb1dee3245ea4e02d",
           "run_key": "two-act-underspec-act1:cache-only:2026-06-10T16:52:21.158511Z",
           "status": "failed"
@@ -204,13 +204,13 @@
         ],
         "generated_at": "2026-06-10T16:52:28.073352Z",
         "mode": "cache-only",
-        "redaction_state": "safe",
+        "redaction_state": "redacted",
         "run_group": "two-act-spark-act1",
         "scenario_id": "two-act-underspec-act1",
         "schema_version": "nlfr.agent_provenance.v1",
         "source_kind": "collectable_v1",
         "title": "Bounded agent change with hashed prompt provenance",
-        "workspace": "/private<scratch>/nlfr-two-act.uJcffr/workspace"
+        "workspace": "[REDACTED:abs_path]/workspace"
       },
       "redaction_state": "safe",
       "source_kind": "collectable_v1",

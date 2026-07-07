@@ -2,9 +2,9 @@
 
 > **Historical snapshot.** This planning doc records real NativeLink
 > toolchain proof completion.
-> For current product truth and milestone status, use **[ONE_PAGER.md](ONE_PAGER.md)**
-> and **[ARCHITECTURE_TRACK.md](ARCHITECTURE_TRACK.md)**.
-> Deep dives: **[Wiki hub](wiki/README.md)**.
+> For current product truth and milestone status, use **[ONE_PAGER.md](../ONE_PAGER.md)**
+> and **[ARCHITECTURE_TRACK.md](../ARCHITECTURE_TRACK.md)**.
+> Deep dives: **[Wiki hub](../wiki/README.md)**.
 
 ## Objective
 

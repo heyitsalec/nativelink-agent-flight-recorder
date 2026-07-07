@@ -17,6 +17,7 @@ entry; this index is the Diátaxis hub. Deep pages live under
 | Export projections or compare run groups (M9) | [How-to: export and compare](wiki/how-to/export-and-compare-run-groups.md) |
 | Run the tier1 live Bazel demo | [How-to: tier1 live Bazel](wiki/how-to/run-tier1-live-bazel-demo.md) |
 | Look up CLI flags or truth-label fields | [Reference: CLI](wiki/reference/cli.md) · [Truth labels](wiki/reference/truth-labels.md) |
+| Migrate an old DB schema or GC evidence-store growth | [CLI: `db upgrade`](wiki/reference/cli.md#db-upgrade) · [`db gc`](wiki/reference/cli.md#db-gc) |
 | See which proof script proves what | [Reference: proof scripts matrix](wiki/reference/proof-scripts-matrix.md) |
 | Understand why evidence comes before the canvas | [Explanation: evidence-first architecture](wiki/explanation/evidence-first-architecture.md) |
 | Understand projection-only canvas rules | [Explanation: projection-only canvas](wiki/explanation/projection-only-canvas.md) |
@@ -40,6 +41,7 @@ Solve a specific problem when you already know the goal.
 - [Record your own Bazel build](wiki/how-to/record-your-own-build.md) — `nlfr record` one-command capture in any Bazel repo
 - [Export and compare run groups](wiki/how-to/export-and-compare-run-groups.md) — M9 compare lens
 - [Export an in-toto attestation](wiki/how-to/export-in-toto-attestation.md) — unsigned, DSSE-ready Statement over recorded artifacts (issue #26)
+- [Manage the evidence store](wiki/reference/cli.md#db-upgrade) — `nlfr db upgrade` (schema migration) and [`nlfr db gc`](wiki/reference/cli.md#db-gc) (operator-consented retention)
 - [Run tier1 live Bazel demo](wiki/how-to/run-tier1-live-bazel-demo.md)
 - [Adoption guide](ADOPTION_GUIDE.md) — 5-minute fixture vs 30-minute Nix paths
 - [CI recipe](CI_RECIPE.md) — GitHub Actions proof jobs
@@ -67,10 +69,10 @@ Why the system is shaped this way. Not step-by-step commands.
 
 - [Evidence-first architecture](wiki/explanation/evidence-first-architecture.md)
 - [Projection-only canvas](wiki/explanation/projection-only-canvas.md)
-- [How this repo was built](METHOD.md) — contracts-first, agent-coordinated development
+- [How this repo was built](internal/METHOD.md) — contracts-first, agent-coordinated development
 - [Architecture track](ARCHITECTURE_TRACK.md) — L0–L2 spine, milestone gates
 - [Usefulness roadmap](USEFULNESS_ROADMAP.md) — MVP scope and next bets
-- [Contributing](CONTRIBUTING.md) · [Implementation DAG](IMPLEMENTATION_DAG.md)
+- [Contributing](CONTRIBUTING.md) · [Implementation DAG](internal/IMPLEMENTATION_DAG.md)
 - [Architecture diagrams](diagrams/README.md) — mermaid maps with honest `source_kind` captions
 
 ## Architecture diagrams
@@ -135,7 +137,18 @@ Optional when Nix is available: `nix develop --command ./scripts/lre-proof.sh`.
 
 Short planning records for shipped milestones live under
 [`docs/dags/`](dags/README.md). How this repo was built:
-[METHOD.md](METHOD.md).
+[internal/METHOD.md](internal/METHOD.md).
+
+## Internal / process docs
+
+Build-log and process narratives (how the repo was constructed) live under
+[`docs/internal/`](internal/) — separated from the product docs above so buyers
+read what NLFR *is* first. Included: [METHOD](internal/METHOD.md),
+[implementation DAG](internal/IMPLEMENTATION_DAG.md),
+[implementation walkthrough](internal/IMPLEMENTATION_WALKTHROUGH.md),
+[extension DAG](internal/EXTENSION_DAG.md),
+[real-toolchain DAG](internal/REAL_TOOLCHAIN_DAG.md), and
+[local-execution DAG](internal/LOCAL_EXECUTION_DAG.md).
 
 ## Wiki hub
 

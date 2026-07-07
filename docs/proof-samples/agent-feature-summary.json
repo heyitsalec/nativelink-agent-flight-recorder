@@ -19,22 +19,26 @@
   "proof_claims": [
     {
       "claim_id": "tier1.feature.provenance.hashed",
-      "statement": "Feature-slice agent provenance carries model + prompt_sha256; raw prompt withheld.",
-      "source_kind": "collectable_v1",
       "confidence": "high",
-      "evidence_refs": ["artifact:agent-provenance.json"],
-      "redaction_state": "redacted"
+      "evidence_refs": [
+        "artifact:agent-provenance.json"
+      ],
+      "redaction_state": "redacted",
+      "source_kind": "collectable_v1",
+      "statement": "Feature-slice agent provenance carries model + prompt_sha256; raw prompt withheld."
     },
     {
       "claim_id": "tier1.feature.scope.shared-module",
-      "statement": "Feature slice may touch shared module paths; compare narrative pairs with bugfix baseline.",
-      "source_kind": "collectable_v1",
       "confidence": "medium",
-      "evidence_refs": ["artifact:agent-provenance.json"],
-      "redaction_state": "safe"
+      "evidence_refs": [
+        "artifact:agent-provenance.json"
+      ],
+      "redaction_state": "safe",
+      "source_kind": "collectable_v1",
+      "statement": "Feature slice may touch shared module paths; compare narrative pairs with bugfix baseline."
     }
   ],
-  "redaction_state": "safe",
+  "redaction_state": "redacted",
   "run_group": "agent-feature-compare",
   "run_id": "run_cd9dca449589af9a7f8ceb70",
   "scenario_id": "agent-feature-compare",
@@ -46,6 +50,6 @@
       "demo/bazel-monorepo/tasks/policy.py",
       "demo/bazel-monorepo/tasks/priority.py"
     ],
-    "output_dir": "<repo>/data/agent-feature-compare"
+    "output_dir": "<repo>[REDACTED:abs_path]/agent-feature-compare"
   }
 }

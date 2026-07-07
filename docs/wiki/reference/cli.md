@@ -336,6 +336,28 @@ python3 -m nlfr compare index --db data/nlfr-record/baseline/nlfr.sqlite --json
 Lists run groups with run counts (retention index only). An existing DB with zero
 groups prints `no run groups recorded` (exit 0); a missing/empty `--db` exits 2.
 
+Pass **exactly one** of `--db` (a single shared database) or `--db-root DIR`
+(browse the whole `nlfr record` layout). Neither, or both, is a hard error
+(exit 2).
+
+```bash
+# Browse every per-run-group database `nlfr record` wrote under data/nlfr-record:
+python3 -m nlfr compare index --db-root data/nlfr-record --json
+```
+
+`--db-root` discovers databases at `<DIR>/<run-group>/nlfr.sqlite` — **exactly one
+directory level down**, matching the `nlfr record` layout; it never recurses into
+arbitrary trees, ignores subdirectories without an `nlfr.sqlite`, and **never
+follows symlinks** (a group-shaped symlink is reported as `symlinked_entry`, not
+read — aliases would double-count evidence and links can escape the root). The result is
+a LISTING keyed by `(database, run_group)`, **never a merge** (stable run ids can
+collide across independent databases). Each entry gains a `database` field
+(absolute paths are scrubbed at the sharing boundary; the run group survives in
+`discovered_group`). A zero-byte or old-schema database is reported honestly with
+its `reason` (old-schema entries carry `nlfr db upgrade` guidance in `detail`) —
+never silently skipped. A listing with such problems still exits 0; **zero
+readable databases** exits 2.
+
 ### compare history
 
 ```bash
@@ -346,6 +368,19 @@ python3 -m nlfr compare history --db data/nlfr-record/baseline/nlfr.sqlite --lim
 
 Exports multi-run `run_history` projection (`derived_v1`) with per-group proof
 summaries. Guide: [browse run history](../how-to/browse-run-history.md).
+
+`--db-root DIR` is the same one-of / mutually-exclusive choice as `compare index`
+(neither or both exits 2). It lists per-database summaries across the `nlfr record`
+layout, keyed by `(database, run_group)` — a listing, not a merge:
+
+```bash
+python3 -m nlfr compare history --db-root data/nlfr-record \
+  --output run-history.json
+```
+
+Any cross-database *comparison* goes through
+`compare export --left-db X --right-db Y` (below); `--db-root` history never
+builds cross-database deltas.
 
 ### compare export
 

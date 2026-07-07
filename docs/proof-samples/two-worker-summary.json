@@ -1,5 +1,5 @@
 {
-  "artifact_root": "<repo>/data/local-exec-proof-2w/nlfr/runs/run_92927aadd5f2587e178f4948/artifacts",
+  "artifact_root": "<repo>[REDACTED:abs_path]/artifacts",
   "confidence": "high",
   "evidence_refs": [
     "local-exec-run.json",
@@ -9,7 +9,7 @@
     "nativelink.stderr.txt"
   ],
   "mode": "local-exec",
-  "redaction_state": "safe",
+  "redaction_state": "redacted",
   "run_id": "run_92927aadd5f2587e178f4948",
   "source_kind": "collectable_v1",
   "status": "completed",

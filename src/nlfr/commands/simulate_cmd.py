@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from nlfr.artifacts import write_artifact
+from nlfr.change_evidence import derive_change_details, patch_applied_from
 from nlfr.config import WorkspaceResolutionError, resolve_workspace
 from nlfr.db import connect, initialize
 from nlfr.db.ingest import (
@@ -480,6 +481,19 @@ def _provenance_payload(
     if build.get("run_id"):
         evidence_refs.append(f"run:{build['run_id']}")
 
+    # Per-path change evidence, identical in shape to `nlfr run --mode generic`
+    # (GitHub issue #62). Simulate never supplies git baselines: its before/after
+    # come from a copied pristine template hashed, a deterministic scenario diff
+    # applied, then re-hashed — a fully observed fixture window, so every path
+    # carries changed_basis == "simulate_fixture" and no unobservable caveat.
+    change_details = derive_change_details(
+        affected_paths,
+        before_hashes,
+        after_hashes,
+        window_basis="simulate_fixture",
+        unobservable_note=None,
+    )
+
     return {
         "schema_version": "nlfr.agent_provenance.v1",
         "generated_at": _timestamp(),
@@ -499,9 +513,8 @@ def _provenance_payload(
             "before_hashes": before_hashes,
             "after_hashes": after_hashes,
             "patch_sha256": patch_sha,
-            "patch_applied": _derive_patch_applied(
-                affected_paths, before_hashes, after_hashes
-            ),
+            "paths": change_details,
+            "patch_applied": patch_applied_from(change_details),
         },
         "workspace": str(workspace),
         "build": build,
@@ -628,11 +641,19 @@ def _derive_patch_applied(
     ground truth. The flag is True iff at least one affected file's content hash
     actually changed. (A failed ``git apply`` never reaches here: it raises in
     :func:`_apply_patch`.)
+
+    As of #62 this delegates to the shared :func:`nlfr.change_evidence` derivation
+    so the boolean and the per-path ``change.paths`` map are computed identically.
     """
 
-    return any(
-        before_hashes.get(path) != after_hashes.get(path)
-        for path in affected_paths
+    return patch_applied_from(
+        derive_change_details(
+            affected_paths,
+            before_hashes,
+            after_hashes,
+            window_basis="simulate_fixture",
+            unobservable_note=None,
+        )
     )
 
 

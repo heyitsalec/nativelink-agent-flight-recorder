@@ -2,7 +2,7 @@
 
 **Status:** Accepted  
 **Date:** 2026-06-06  
-**Gates:** [Architecture track § Truth spine](../../ARCHITECTURE_TRACK.md), [IMPLEMENTATION_DAG](../../IMPLEMENTATION_DAG.md), all projection exporters and `apps/canvas`
+**Gates:** [Architecture track § Truth spine](../../ARCHITECTURE_TRACK.md), [IMPLEMENTATION_DAG](../../internal/IMPLEMENTATION_DAG.md), all projection exporters and `apps/canvas`
 
 ← [ADR index](README.md) · [Evidence-first architecture](../explanation/evidence-first-architecture.md)
 
