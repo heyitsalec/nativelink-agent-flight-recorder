@@ -37,6 +37,7 @@ Guided paths that assume little context. Goal: one honest win end-to-end.
 
 Solve a specific problem when you already know the goal.
 
+- [Record your own Bazel build](wiki/how-to/record-your-own-build.md) — `nlfr record` one-command capture in any Bazel repo
 - [Export and compare run groups](wiki/how-to/export-and-compare-run-groups.md) — M9 compare lens
 - [Run tier1 live Bazel demo](wiki/how-to/run-tier1-live-bazel-demo.md)
 - [Adoption guide](ADOPTION_GUIDE.md) — 5-minute fixture vs 30-minute Nix paths
