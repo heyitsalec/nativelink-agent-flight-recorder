@@ -75,6 +75,49 @@ what you want to keep. `nlfr record`:
 
 Nothing is masked green. See [AGENTS.md](../../../AGENTS.md) doctrine.
 
+## Exit codes & CI disambiguation
+
+`nlfr record` keeps its **own** failures out of Bazel's exit-code space so a CI
+pipeline can tell "you invoked nlfr wrong" apart from "your build failed":
+
+| Exit code | Meaning | Who to blame |
+|-----------|---------|--------------|
+| `64` | **nlfr usage error** — no command, a non-`bazel`/`bazelisk` executable, no workspace marker, or **no recognized Bazel verb** in your command | Fix the `nlfr record` invocation |
+| `127` | **bazel/bazelisk executable not found** on `PATH` | Install/point to Bazel |
+| anything else | **Bazel's own exit code, mirrored faithfully** (e.g. `0` pass, `1` build failed, `2` bad Bazel command line, `3`/`4` test failures) | Your build/tests |
+
+Why this matters: Bazel itself uses `1` (build failed) and `2` (command-line
+problem). If nlfr reused those for its own preflight rejections, a pipeline
+parsing the exit code could not distinguish a broken `nlfr record` call from a
+genuine build failure. `64` (BSD `EX_USAGE`) and `127` (shell "command not
+found") never collide with Bazel.
+
+The verb `64` case is deliberately honest: nlfr locates the Bazel verb by
+matching a **known-verb set** (`build`, `test`, `run`, `query`, `coverage`, …)
+rather than guessing "the first non-`--` token" — because startup options can
+take space-separated values (`--bazelrc /path`, `--output_base /path`) that
+would otherwise be mistaken for the verb, corrupting the injected
+`--build_event_json_file`. If nlfr can't find a known verb it **refuses to
+guess** and tells you to use a supported verb or pass your own
+`--build_event_json_file=PATH` (which bypasses verb detection entirely).
+
+**JSON consumers:** with `--json`, *every* failure path — preflight rejections,
+missing executable, and post-run results — emits a structured object on
+**stdout** (never empty stdout). Read `status` and `record_error` rather than
+inferring intent from the exit code; the `exit_code` field carries the same
+code the process returns. `record_error` is `null` on a successful recording.
+
+```bash
+# Fail the job on an nlfr misuse, but keep bazel's own codes intact:
+nlfr record --json -- bazel test //... > record.json
+code=$?
+if [ "$code" = 64 ] || [ "$code" = 127 ]; then
+  echo "nlfr was invoked incorrectly:"; jq -r .record_error record.json; exit 1
+fi
+# otherwise $code is bazel's own exit code (0 = green, non-zero = red)
+exit "$code"
+```
+
 ## CI snippets
 
 ### GitHub Actions

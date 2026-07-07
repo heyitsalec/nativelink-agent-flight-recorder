@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -41,38 +42,123 @@ _BAZEL_MARKERS = ("MODULE.bazel", "WORKSPACE.bazel", "WORKSPACE")
 _BEP_FLAG = "--build_event_json_file"
 _BEP_ARTIFACT_KEY = "bazel-bep.json"
 
+# Known Bazel command verbs. The verb is matched against this fixed set rather
+# than guessed as "the first non-``--`` token", because Bazel startup options
+# accept *space-separated* values (e.g. ``--bazelrc /path``,
+# ``--output_base /path``) whose value would otherwise be mistaken for the verb —
+# corrupting the injected ``--build_event_json_file`` into the startup segment,
+# which real Bazel rejects (exit 2) so the user's command never runs.
+_BAZEL_VERBS = frozenset(
+    {
+        "build",
+        "test",
+        "run",
+        "query",
+        "cquery",
+        "aquery",
+        "coverage",
+        "fetch",
+        "sync",
+        "vendor",
+        "mod",
+        "info",
+        "clean",
+        "shutdown",
+        "version",
+        "dump",
+        "canonicalize-flags",
+        "config",
+        "license",
+        "print_action",
+        "mobile-install",
+        "analyze-profile",
+        "help",
+    }
+)
+
+# Exit codes for nlfr's *own* failures, chosen to never collide with Bazel's
+# codes (which we mirror faithfully whenever Bazel actually ran).
+_EX_USAGE = 64  # BSD sysexits EX_USAGE: nlfr record was invoked incorrectly.
+_EX_NOTFOUND = 127  # shell convention: the bazel/bazelisk executable was not found.
+
 
 def run(args: argparse.Namespace) -> int:
     """Wrap a user's Bazel command, record evidence, and export projections."""
 
     command = _resolve_command(args.command)
     if not command:
-        print(
-            "nlfr record requires a command to wrap, e.g.\n"
-            "  nlfr record -- bazel test //foo:bar",
-            file=sys.stderr,
+        return _reject(
+            args,
+            status="no_command",
+            message=(
+                "nlfr record requires a command to wrap, e.g.\n"
+                "  nlfr record -- bazel test //foo:bar"
+            ),
+            exit_code=_EX_USAGE,
         )
-        return 2
 
     if not _is_bazel_command(command):
-        print(
-            f"nlfr record v1 wraps bazel/bazelisk commands only, got: {command[0]!r}\n"
-            "For other commands record them with:\n"
-            "  nlfr run --mode generic --command '<your command>'",
-            file=sys.stderr,
+        return _reject(
+            args,
+            status="non_bazel_command",
+            message=(
+                f"nlfr record v1 wraps bazel/bazelisk commands only, got: {command[0]!r}\n"
+                "For other commands record them with:\n"
+                "  nlfr run --mode generic --command '<your command>'"
+            ),
+            exit_code=_EX_USAGE,
         )
-        return 2
 
     workspace = Path(args.workspace).resolve() if args.workspace else Path.cwd().resolve()
     marker = _bazel_marker(workspace)
     if marker is None:
-        print(
-            f"no Bazel workspace marker found in {workspace}\n"
-            f"expected one of: {', '.join(_BAZEL_MARKERS)}\n"
-            "Run nlfr record from your Bazel repo root, or pass --workspace PATH.",
-            file=sys.stderr,
+        return _reject(
+            args,
+            status="no_workspace_marker",
+            message=(
+                f"no Bazel workspace marker found in {workspace}\n"
+                f"expected one of: {', '.join(_BAZEL_MARKERS)}\n"
+                "Run nlfr record from your Bazel repo root, or pass --workspace PATH."
+            ),
+            exit_code=_EX_USAGE,
         )
-        return 2
+
+    # Decide where the BEP will land: a user-supplied ``--build_event_json_file``
+    # is honored verbatim and *bypasses verb detection entirely*. Otherwise we
+    # must locate the Bazel verb so we can inject our own flag immediately after
+    # it — and we refuse to guess when no known verb is present.
+    user_bep = _user_bep_path(command, workspace)
+    verb_index: int | None = None
+    if user_bep is None:
+        verb_index = _verb_index(command)
+        if verb_index is None:
+            return _reject(
+                args,
+                status="no_bazel_verb",
+                message=(
+                    "nlfr record could not find a known Bazel command verb "
+                    "(build, test, run, query, coverage, ...) in:\n"
+                    f"  {' '.join(command)}\n"
+                    "nlfr will not guess which token is the verb: injecting "
+                    "--build_event_json_file into Bazel's startup options would "
+                    "corrupt your command and Bazel would reject it.\n"
+                    "Fix: use a supported bazel verb (e.g. bazel test //your:target), "
+                    "or pass your own --build_event_json_file=PATH, which nlfr "
+                    "ingests directly and which bypasses verb detection."
+                ),
+                exit_code=_EX_USAGE,
+            )
+
+    if shutil.which(command[0]) is None:
+        return _reject(
+            args,
+            status="bazel_not_found",
+            message=(
+                f"bazel executable not found on PATH: {command[0]!r}\n"
+                "Install bazel/bazelisk (or add it to PATH), then re-run nlfr record."
+            ),
+            exit_code=_EX_NOTFOUND,
+        )
 
     run_group = args.run_group or _default_run_group()
     output_dir = (
@@ -85,14 +171,11 @@ def run(args: argparse.Namespace) -> int:
     artifact_root = output_dir / "runs" / run_id / "artifacts"
     artifact_root.mkdir(parents=True, exist_ok=True)
 
-    # Decide where the BEP will land: honor a user-supplied flag, otherwise
-    # inject our own immediately after the Bazel verb.
-    verb_index = _verb_index(command)
-    user_bep = _user_bep_path(command, workspace)
     if user_bep is not None:
         bep_source = user_bep
         final_command = list(command)
     else:
+        assert verb_index is not None  # guaranteed: no user_bep -> verb found above
         bep_source = artifact_root / _BEP_ARTIFACT_KEY
         final_command = _inject_bep_flag(command, verb_index, bep_source)
 
@@ -155,6 +238,16 @@ def run(args: argparse.Namespace) -> int:
         )
 
     terminal_status = _terminal_status(result)
+    # nlfr mirrors Bazel's exit code whenever Bazel actually ran. If Bazel never
+    # produced an exit code (executable vanished after the preflight PATH check,
+    # or timed out), that is an nlfr-side blocker, not a Bazel result: surface it
+    # as 127 with an honest record_error rather than masquerading as Bazel's 1.
+    if result.exit_code is not None:
+        process_exit = int(result.exit_code)
+        record_error: str | None = None
+    else:
+        process_exit = _EX_NOTFOUND
+        record_error = result.detail or "bazel did not run"
     run_payload = {
         "run_id": run_id,
         "run_key": run_key,
@@ -166,6 +259,8 @@ def run(args: argparse.Namespace) -> int:
         "command": final_command,
         "user_command": command,
         "bazel_exit_code": result.exit_code,
+        "exit_code": process_exit,
+        "record_error": record_error,
         "bep_captured": bep_captured,
         "bep_path": str(bep_source),
         "status": terminal_status,
@@ -216,9 +311,43 @@ def run(args: argparse.Namespace) -> int:
         result=result,
     )
 
-    if result.exit_code is None:
-        return 1
-    return int(result.exit_code)
+    return process_exit
+
+
+def _reject(
+    args: argparse.Namespace,
+    *,
+    status: str,
+    message: str,
+    exit_code: int,
+) -> int:
+    """Emit an nlfr-side preflight failure and return its (non-Bazel) exit code.
+
+    Under ``--json`` the failure is a structured object on stdout (so a CI
+    pipeline parsing stdout JSON never gets empty output); otherwise the
+    human-readable message goes to stderr. Field names align with the summary
+    JSON: consumers read ``status`` / ``record_error`` / ``exit_code``.
+    """
+
+    if args.json:
+        print(
+            json.dumps(
+                {
+                    "status": status,
+                    "record_error": message,
+                    "exit_code": exit_code,
+                    "bep_captured": False,
+                    "source_kind": "collectable_v1",
+                    "confidence": "high",
+                    "redaction_state": "safe",
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+    else:
+        print(message, file=sys.stderr)
+    return exit_code
 
 
 def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -284,18 +413,23 @@ def _bazel_marker(workspace: Path) -> str | None:
     return None
 
 
-def _verb_index(command: list[str]) -> int:
-    """Index of the Bazel verb: the first post-executable token not starting ``--``.
+def _verb_index(command: list[str]) -> int | None:
+    """Index of the Bazel verb: the first post-executable token that *is* a verb.
 
-    Bazel invocations look like ``bazel [startup opts] VERB [opts] targets`` and
-    every startup option begins with ``--``. The verb is the first token after
-    the executable that is not a ``--`` startup option.
+    Bazel invocations look like ``bazel [startup opts] VERB [opts] targets``.
+    Startup options may take *space-separated* values (``--bazelrc /path``,
+    ``--output_base /path``), so a value token can appear between the executable
+    and the verb — which is exactly why we cannot use "first non-``--`` token".
+    Instead we match against the fixed set of known Bazel command verbs. A
+    target can never precede the verb, so the first known-verb match is the verb.
+
+    Returns ``None`` when no known verb is present; the caller must not guess.
     """
 
     for index in range(1, len(command)):
-        if not command[index].startswith("--"):
+        if command[index] in _BAZEL_VERBS:
             return index
-    return len(command) - 1
+    return None
 
 
 def _user_bep_path(command: list[str], workspace: Path) -> Path | None:
