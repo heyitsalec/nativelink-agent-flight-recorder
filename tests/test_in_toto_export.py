@@ -503,7 +503,13 @@ def test_cli_allow_empty_subject_exits_zero(tmp_path: Path, capsys) -> None:
 
 
 def test_cli_nonexistent_db_fails_without_traceback(tmp_path: Path) -> None:
-    """A wrong/nonexistent --db path fails cleanly — a guiding error, not a crash."""
+    """A wrong/nonexistent --db path fails cleanly and FABRICATES NOTHING (#47).
+
+    Previously (PR #46) the reader auto-created an empty database and then the
+    empty-subject check fired. Now the missing --db is refused up front by the
+    read-only opener: exit 2, a guiding error, and — critically — no database
+    file is left behind, so a path typo can never conjure a zero-value result.
+    """
 
     missing_db = tmp_path / "does" / "not" / "exist" / "nlfr.sqlite"
 
@@ -530,9 +536,13 @@ def test_cli_nonexistent_db_fails_without_traceback(tmp_path: Path) -> None:
 
     assert result.returncode == 2
     assert "Traceback (most recent call last)" not in result.stderr
-    assert "has no recorded artifacts" in result.stderr
-    # Empty DB: no run groups to list, so the message guides toward recording one.
-    assert "No run groups are recorded in this database" in result.stderr
+    # The reader refuses the missing DB instead of auto-creating an empty one.
+    assert "no NLFR database at" in result.stderr
+    assert "refusing to read" in result.stderr
+    assert "never creates or migrates a database" in result.stderr
+    # No file (and no parent dirs) were fabricated on the way to failing.
+    assert not missing_db.exists()
+    assert not missing_db.parent.exists()
 
 
 def test_predicate_contract_parses_and_matches_style(tmp_path: Path) -> None:

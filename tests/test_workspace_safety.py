@@ -418,6 +418,36 @@ def test_positional_target_default_is_preserved(tmp_path: Path) -> None:
     assert "//..." in command
 
 
+def test_identical_positional_and_flag_targets_accepted(tmp_path: Path) -> None:
+    # An IDENTICAL pair is not a conflict: --target //a:b //a:b resolves to //a:b
+    # and proceeds (only a *differing* pair is a usage error). This is the
+    # positive counterpart to test_conflicting_positional_and_flag_targets_error
+    # that PR #41's review flagged as untested.
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    result = run_nlfr(
+        "run",
+        "--mode",
+        "cache-only",
+        "--skip-nativelink",
+        "--no-remote-cache",
+        "--workspace",
+        str(workspace),
+        "--bazel-executable",
+        "definitely-missing-bazel-for-nlfr",
+        "--output-dir",
+        str(tmp_path / "out"),
+        "--json",
+        "--target",
+        "//a:b",
+        "//a:b",
+    )
+    assert result.returncode != 2, result.stderr  # not a usage error
+    assert "conflicting targets" not in result.stderr
+    command = _bazel_command_from_run(result)
+    assert "//a:b" in command
+
+
 def test_conflicting_positional_and_flag_targets_error(tmp_path: Path) -> None:
     workspace = tmp_path / "ws"
     workspace.mkdir()

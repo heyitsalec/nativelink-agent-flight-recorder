@@ -499,7 +499,9 @@ def _provenance_payload(
             "before_hashes": before_hashes,
             "after_hashes": after_hashes,
             "patch_sha256": patch_sha,
-            "patch_applied": True,
+            "patch_applied": _derive_patch_applied(
+                affected_paths, before_hashes, after_hashes
+            ),
         },
         "workspace": str(workspace),
         "build": build,
@@ -609,6 +611,28 @@ def _record_provenance_in_db(
         confidence="medium",
         evidence_refs=provenance["evidence_refs"],
         redaction_state="safe",
+    )
+
+
+def _derive_patch_applied(
+    affected_paths: list[str],
+    before_hashes: dict[str, str | None],
+    after_hashes: dict[str, str | None],
+) -> bool:
+    """Derive whether the patch changed the workspace, from real evidence.
+
+    ``patch_applied`` was previously a hardcoded ``True`` literal — the same
+    literal-vs-evidence class fixed for ``nlfr run`` in #52 (this is the #56
+    follow-up). Simulate copies a workspace, hashes the affected files, applies
+    the scenario diff, then hashes again; those before/after hashes are the
+    ground truth. The flag is True iff at least one affected file's content hash
+    actually changed. (A failed ``git apply`` never reaches here: it raises in
+    :func:`_apply_patch`.)
+    """
+
+    return any(
+        before_hashes.get(path) != after_hashes.get(path)
+        for path in affected_paths
     )
 
 

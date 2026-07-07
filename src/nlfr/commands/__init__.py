@@ -6,6 +6,7 @@ import argparse
 
 from nlfr.commands import agent_invoke_cmd
 from nlfr.commands import compare_cmd
+from nlfr.commands import db_cmd
 from nlfr.commands import doctor
 from nlfr.commands import export_cmds
 from nlfr.commands import ingest_cmd
@@ -27,5 +28,6 @@ def register_commands(subparsers: argparse._SubParsersAction[argparse.ArgumentPa
     ingest_cmd.register(subparsers)
     export_cmds.register(subparsers)
     compare_cmd.register(subparsers)
+    db_cmd.register(subparsers)
     serve_cmd.register(subparsers)
     simulate_cmd.register(subparsers)

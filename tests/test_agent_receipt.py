@@ -236,3 +236,79 @@ def test_agent_invoke_missing_cli_is_environment_blocker(tmp_path: Path):
     assert proc.returncode == 3
     receipt = json.loads(receipt_out.read_text(encoding="utf-8"))
     assert receipt["status"] == "environment_blocker"
+
+
+# --------------------------------------------------------------------------- #
+# Claude honest-degradation path (F1)
+#
+# The per-CLI parser registry added a success-downgrade block to build_receipt
+# that applies to EVERY family, including claude. This is a DELIBERATE behavior
+# change, now owned and tested: a claude "success" whose --output-format json
+# lacks a verification field (multi-key modelUsage, or a missing session_id)
+# previously raised ValueError from validate_receipt — traceback, exit 1, NO
+# receipt file written. It now records an honest ``invalid_output`` receipt
+# (exit 3, receipt written), mirroring the Gemini degraded tests. These are
+# strictly better outcomes, not byte-identical ones.
+# --------------------------------------------------------------------------- #
+
+_MULTI_MODEL_USAGE = {
+    "claude-sonnet-4-5-20250929": {"output_tokens": 45},
+    "claude-opus-4-1-20250805": {"output_tokens": 12},
+}
+
+
+def test_claude_multi_model_usage_degrades_not_verified():
+    receipt = _receipt(cli_result=dict(CLI_RESULT, modelUsage=_MULTI_MODEL_USAGE))
+    # Two modelUsage keys → no single resolved model → below the verified tier.
+    assert receipt["status"] == "invalid_output"
+    assert receipt["model"]["resolved"] is None
+    assert receipt["model"]["resolved_all"] == [
+        "claude-opus-4-1-20250805",
+        "claude-sonnet-4-5-20250929",
+    ]
+    # Honest evidence of the attempt (collectable), but NOT live.
+    assert receipt["source_kind"] == "collectable_v1"
+    assert not is_live_receipt(receipt)
+    assert "model.resolved" in receipt["detail"]
+    validate_receipt(receipt)  # invalid_output carries no success invariants
+
+
+def test_claude_missing_session_id_degrades_not_verified():
+    no_session = {k: v for k, v in CLI_RESULT.items() if k != "session_id"}
+    receipt = _receipt(cli_result=no_session)
+    assert receipt["status"] == "invalid_output"
+    assert receipt["session_id"] is None
+    assert receipt["model"]["resolved"] == "claude-sonnet-4-5-20250929"  # model present
+    assert not is_live_receipt(receipt)
+    assert "session_id" in receipt["detail"]
+    validate_receipt(receipt)
+
+
+def test_agent_invoke_claude_multi_model_degrades_writes_receipt(tmp_path: Path):
+    # Behavior change: this input used to raise (exit 1, no receipt). Now an
+    # honest invalid_output receipt IS written and the exit code (3) is
+    # consistent with the receipt status.
+    stub = _write_stub_cli(tmp_path, payload=dict(CLI_RESULT, modelUsage=_MULTI_MODEL_USAGE))
+    proc, receipt_out, response_out = _run_agent_invoke(tmp_path, stub, "p\n")
+
+    assert proc.returncode == 3, proc.stdout + proc.stderr
+    assert receipt_out.is_file()  # the key change: a receipt IS written now
+    receipt = json.loads(receipt_out.read_text(encoding="utf-8"))
+    assert receipt["status"] == "invalid_output"
+    assert receipt["model"]["resolved"] is None
+    assert not is_live_receipt(receipt)
+    assert not response_out.exists()  # no response file below the verified tier
+
+
+def test_agent_invoke_claude_missing_session_degrades_writes_receipt(tmp_path: Path):
+    payload = {k: v for k, v in CLI_RESULT.items() if k != "session_id"}
+    stub = _write_stub_cli(tmp_path, payload=payload)
+    proc, receipt_out, response_out = _run_agent_invoke(tmp_path, stub, "p\n")
+
+    assert proc.returncode == 3, proc.stdout + proc.stderr
+    assert receipt_out.is_file()
+    receipt = json.loads(receipt_out.read_text(encoding="utf-8"))
+    assert receipt["status"] == "invalid_output"
+    assert receipt["session_id"] is None
+    assert not is_live_receipt(receipt)
+    assert not response_out.exists()

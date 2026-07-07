@@ -10,8 +10,23 @@ across two groups. The canvas Compare mode renders **only** exported compare JSO
 
 ## Prerequisites
 
-- At least one SQLite DB with ingested runs (`nlfr.sqlite` under a proof output dir)
-- For cross-DB compare: two DBs (e.g. `record-proof` and `canvas-dev`)
+- At least one SQLite DB with recorded runs. `nlfr record` writes a per-run-group
+  database at **`data/nlfr-record/<run-group>/nlfr.sqlite`** (relative to the
+  Bazel workspace):
+
+  ```bash
+  PYTHONPATH=src uv run python -m nlfr record --run-group baseline -- bazel test //...
+  # -> data/nlfr-record/baseline/nlfr.sqlite
+  ```
+
+- For a cross-DB compare of two recorded groups: record two groups, each in its
+  own per-run-group database.
+
+> **Read commands never create a database.** A nonexistent, zero-byte, or
+> non-SQLite `--db` (or `--left-db`/`--right-db`) is a hard error (exit 2) that
+> names the path and fabricates no file — a typo can never conjure an empty,
+> zero-value projection. Record a run first, or point `--db` at an existing
+> database.
 
 M9 does **not** merge worker graphs across runs or claim queue time / placement.
 See [Architecture track](../../ARCHITECTURE_TRACK.md) and the
@@ -21,7 +36,7 @@ See [Architecture track](../../ARCHITECTURE_TRACK.md) and the
 
 ```bash
 PYTHONPATH=src uv run python -m nlfr compare index \
-  --db data/record-proof/nlfr.sqlite \
+  --db data/nlfr-record/baseline/nlfr.sqlite \
   --json
 ```
 
@@ -29,7 +44,7 @@ Limit the newest groups when the index grows large (index-only; no purge):
 
 ```bash
 PYTHONPATH=src uv run python -m nlfr compare index \
-  --db data/record-proof/nlfr.sqlite \
+  --db data/nlfr-record/baseline/nlfr.sqlite \
   --limit 5 \
   --json
 ```
@@ -49,42 +64,54 @@ Proof packet exports include a `retention` block with these notes (`derived_v1`,
 
 ```bash
 PYTHONPATH=src uv run python -m nlfr graph export \
-  --db data/record-proof/nlfr.sqlite \
-  --run-group record-proof \
+  --db data/nlfr-record/baseline/nlfr.sqlite \
+  --run-group baseline \
   --output apps/canvas/public/projections/graph-projection.json
 
 PYTHONPATH=src uv run python -m nlfr proof export \
-  --db data/record-proof/nlfr.sqlite \
-  --run-group record-proof \
+  --db data/nlfr-record/baseline/nlfr.sqlite \
+  --run-group baseline \
   --output apps/canvas/public/projections/proof-packet.json
 ```
 
-Default `--run-group` is `latest` when omitted.
+Default `--run-group` is `latest` when omitted — note `latest` is a **literal
+match**, not a resolver; pass the run group you actually recorded.
 
-## Export compare projection (same DB)
+## Export compare projection (two recorded groups, cross-DB)
+
+Because `nlfr record` writes one database per run group, the realistic way to
+compare two recorded groups is the cross-DB form — one `--*-db` per group. Each
+side is opened read-only and validated independently, so an empty side names
+*which* side failed:
 
 ```bash
 PYTHONPATH=src uv run python -m nlfr compare export \
-  --db data/record-proof/nlfr.sqlite \
-  --left record-proof \
-  --right canvas-dev \
+  --left-db data/nlfr-record/baseline/nlfr.sqlite \
+  --right-db data/nlfr-record/candidate/nlfr.sqlite \
+  --left baseline \
+  --right candidate \
   --output apps/canvas/public/projections/compare-projection.json
 ```
 
-## Export compare projection (two DBs)
+## Export compare projection (same DB)
+
+Use the single-`--db` form only when one database holds **both** groups — e.g.
+runs recorded into a shared `--output-dir`, or multiple groups ingested into one
+`nlfr.sqlite`:
 
 ```bash
 PYTHONPATH=src uv run python -m nlfr compare export \
-  --left-db data/record-proof/nlfr.sqlite \
-  --right-db data/canvas-dev/nlfr.sqlite \
-  --left record-proof \
-  --right canvas-dev \
+  --db data/nlfr-record/shared/nlfr.sqlite \
+  --left baseline \
+  --right candidate \
   --output apps/canvas/public/projections/compare-projection.json
 ```
 
 ## Run the compare proof script
 
-End-to-end proof with fixture-backed DBs:
+End-to-end proof with **demo-fixture** DBs. This script has its own output dirs
+(`data/record-proof/`, `data/canvas-dev/`) written by the demo record scripts —
+distinct from the `data/nlfr-record/<run-group>/` layout `nlfr record` produces:
 
 ```bash
 ./scripts/compare-proof.sh

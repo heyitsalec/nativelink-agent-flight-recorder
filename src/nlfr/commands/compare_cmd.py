@@ -6,20 +6,28 @@ import argparse
 import json
 import sys
 
-from nlfr.db import connect, initialize
+from nlfr.db.connection import UnreadableDatabaseError, connect_readonly
 from nlfr.projectors.common import run_rows, write_or_print
 from nlfr.projectors.compare import (
+    MissingRunGroupError,
     build_compare_projection,
     export_compare_projection,
     export_history_projection,
     list_run_group_index,
+    require_run_group,
 )
 from nlfr.projectors.proof import export_proof_packet
 from nlfr.retention_policy import retention_policy_summary
 
 
 def export_compare(args: argparse.Namespace) -> int:
-    """Export a compare projection for two run groups."""
+    """Export a compare projection for two run groups.
+
+    Every side is opened read-only (never auto-created) and validated to hold at
+    least one recorded run BEFORE any projection is built, so a wrong ``--db`` /
+    ``--left-db`` / ``--right-db`` or an empty run group is a hard error naming
+    the side, not a confident zero-value compare (GitHub #47).
+    """
 
     if args.left_db or args.right_db:
         if not (args.left_db and args.right_db):
@@ -28,8 +36,24 @@ def export_compare(args: argparse.Namespace) -> int:
                 file=sys.stderr,
             )
             return 2
-        left_conn = initialize(connect(args.left_db))
-        right_conn = initialize(connect(args.right_db))
+        try:
+            left_conn = connect_readonly(args.left_db)
+        except UnreadableDatabaseError as exc:
+            print("nlfr: the left compare database could not be read.", file=sys.stderr)
+            print(str(exc), file=sys.stderr)
+            return 2
+        try:
+            right_conn = connect_readonly(args.right_db)
+        except UnreadableDatabaseError as exc:
+            print("nlfr: the right compare database could not be read.", file=sys.stderr)
+            print(str(exc), file=sys.stderr)
+            return 2
+        try:
+            require_run_group(left_conn, "left", args.left)
+            require_run_group(right_conn, "right", args.right)
+        except MissingRunGroupError as exc:
+            print(str(exc), file=sys.stderr)
+            return 2
         left_proof = export_proof_packet(left_conn, run_group=args.left)
         right_proof = export_proof_packet(right_conn, run_group=args.right)
         left_runs = run_rows(left_conn, args.left)
@@ -43,25 +67,51 @@ def export_compare(args: argparse.Namespace) -> int:
             right_runs=right_runs,
         )
     else:
-        conn = initialize(connect(args.db))
+        try:
+            conn = connect_readonly(args.db)
+        except UnreadableDatabaseError as exc:
+            print(str(exc), file=sys.stderr)
+            return 2
+        try:
+            require_run_group(conn, "left", args.left)
+            require_run_group(conn, "right", args.right)
+        except MissingRunGroupError as exc:
+            print(str(exc), file=sys.stderr)
+            return 2
         payload = export_compare_projection(conn, args.left, args.right)
     write_or_print(payload, args.output)
     return 0
 
 
 def export_history(args: argparse.Namespace) -> int:
-    """Export a multi-run history projection from the retention index."""
+    """Export a multi-run history projection from the retention index.
 
-    conn = initialize(connect(args.db))
+    An existing-but-empty database is honest (zero run groups is a legitimate
+    report); a nonexistent/empty ``--db`` is a hard error, refused read-only.
+    """
+
+    try:
+        conn = connect_readonly(args.db)
+    except UnreadableDatabaseError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
     payload = export_history_projection(conn, limit=args.limit)
     write_or_print(payload, args.output)
     return 0
 
 
 def index_run_groups(args: argparse.Namespace) -> int:
-    """List distinct run groups and run counts from SQLite."""
+    """List distinct run groups and run counts from SQLite.
 
-    conn = initialize(connect(args.db))
+    An empty listing over an EXISTING database is a legitimate, honest report and
+    exits 0; only a nonexistent/empty ``--db`` is a hard error (refused read-only).
+    """
+
+    try:
+        conn = connect_readonly(args.db)
+    except UnreadableDatabaseError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
     groups = list_run_group_index(conn)
     total = len(groups)
     if args.limit is not None:

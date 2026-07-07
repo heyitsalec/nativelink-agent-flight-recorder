@@ -13,7 +13,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from nlfr.artifacts import ArtifactManifestEntry, write_artifact
-from nlfr.config import WorkspaceResolutionError, resolve_workspace
+from nlfr.config import WorkspaceResolutionError, doc_hint, resolve_workspace
 from nlfr.db import connect, initialize
 from nlfr.db.ingest import upsert_artifact, upsert_invocation, upsert_run
 from nlfr.ids import stable_id
@@ -429,7 +429,7 @@ def _unreachable_cache_message(endpoint: str) -> str:
         "be listening.\n"
         "  → pass --no-remote-cache to record a plain Bazel run\n"
         "  → pass --remote-cache URL to point at your own cache endpoint\n"
-        "  → or start NativeLink first (see docs/ADOPTION_GUIDE.md)"
+        f"  → or start NativeLink first (see {doc_hint('docs/ADOPTION_GUIDE.md')})"
     )
 
 

@@ -5,9 +5,78 @@ from __future__ import annotations
 from sqlite3 import Connection
 from typing import Any
 
-from nlfr.projectors.common import generated_at, row_to_dict, run_rows, status_counts, truth
+from nlfr.projectors.common import (
+    available_run_groups,
+    generated_at,
+    row_to_dict,
+    run_rows,
+    status_counts,
+    truth,
+)
 from nlfr.projectors.proof import export_proof_packet
 from nlfr.retention_policy import retention_policy_summary
+
+
+class MissingRunGroupError(ValueError):
+    """A compare side names a run group that has no recorded runs in its database.
+
+    A compare over an empty side is schema-valid and fully truth-labeled, yet it
+    compares real data against zero — the same silent-fabrication trap that a
+    wrong ``--db`` triggers, arriving through the ``--left``/``--right`` door
+    instead (GitHub #47). Rather than emit that confident zero-value delta, the
+    exporter raises this hard error whose message names WHICH side is empty, the
+    empty run group, and the run groups that ARE present in that database — so
+    the failure becomes recovery guidance. Mirrors the in-toto ``EmptySubjectError``
+    UX (GitHub #26 / PR #46). Note ``compare index``/``history`` do NOT raise this:
+    an empty listing over an existing database is a legitimate, honest report.
+    """
+
+    def __init__(
+        self, side: str, run_group: str, available: list[dict[str, Any]]
+    ) -> None:
+        self.side = side
+        self.run_group = run_group
+        self.available = available
+        super().__init__(self._render())
+
+    def _render(self) -> str:
+        lines = [
+            f"nlfr: {self.side} run group '{self.run_group}' has no recorded runs "
+            "in its database — refusing to emit a compare against nothing.",
+            "A compare with an empty side is schema-valid and fully truth-labeled, "
+            "yet it compares real data against zero — so this is a hard error, not "
+            "a silent zero-value result.",
+        ]
+        if self.available:
+            lines.append("Run groups present in that database:")
+            lines.extend(
+                f"  - {item['run_group']} ({item['run_count']} run(s))"
+                for item in self.available
+            )
+            lines.append(
+                "Re-run with one of the above (literal match — there is no "
+                "'latest' resolver)."
+            )
+        else:
+            lines.append(
+                "No run groups are recorded in that database. Record a build first "
+                "(e.g. `nlfr record -- bazel test //...`), or point the --db / "
+                "--left-db / --right-db at data/nlfr-record/<run-group>/nlfr.sqlite."
+            )
+        lines.append("List run groups any time with: `nlfr compare index --db <db>`.")
+        return "\n".join(lines)
+
+
+def require_run_group(conn: Connection, side: str, run_group: str) -> None:
+    """Raise :class:`MissingRunGroupError` if ``run_group`` has no runs in ``conn``.
+
+    ``side`` is ``"left"`` or ``"right"`` and is echoed in the error so a
+    cross-DB compare names exactly which database is missing the group.
+    """
+
+    if run_rows(conn, run_group):
+        return
+    raise MissingRunGroupError(side, run_group, available_run_groups(conn))
 
 
 def export_compare_projection(

@@ -55,6 +55,64 @@ Compare projections (M9) must reference **both** left and right run groups.
 Never export raw prompts, credentials, or full private logs. M8 stores
 `prompt_sha256` + `model` only: [Cursor adapter](../../../adapters/cursor/README.md).
 
+### Redaction pipeline (issue #29)
+
+> **Defense-in-depth, not a guarantee.** This pipeline is *best-effort pattern
+> matching.* It reliably catches credentials that carry a recognizable shape — a
+> known prefix (`AKIA`, `ghp_`, `github_pat_`, `glpat-`, `xox…`), a structural
+> marker (a PEM header, a `Bearer …` scheme, a `secret_access_key=…` /
+> `"SecretAccessKey": …` assignment), or a credential-named JSON key. It
+> **cannot** catch a *free-standing high-entropy secret* with no prefix and no
+> contextual marker — e.g. a bare 40-char AWS secret access key pasted into
+> narrative log text — because a context-free "high-entropy string" rule would
+> false-positive over the SHA-1/SHA-256 digests and base64 payloads that fill
+> NLFR evidence. Operators handling sensitive workspaces must treat published
+> projections as *scrubbed on a best-effort basis*, not as *proven secret-free*,
+> and should review evidence at the source rather than relying on regex
+> redaction alone.
+
+Every projection is scrubbed before it is committed to
+`apps/canvas/public/projections/`. `scripts/redact-projection.py` (a thin CLI
+over the stdlib-only [`nlfr.redaction`](../../../src/nlfr/redaction.py) module)
+walks the JSON structure — string values **and** keys — and applies:
+
+- **Home-path scrubbing** (legacy): `/Users/<name>` and `/home/<name>` collapse
+  to `${HOME}`.
+- **Secret detectors** (always on): `home_path`, `private_key_pem`,
+  `aws_access_key_id`, `aws_secret_access_key`, `github_token` (classic
+  `gh[pousr]_`), `github_pat` (fine-grained `github_pat_`), `gitlab_pat`,
+  `slack_token`, `jwt`, `url_credentials`, `authorization_credential`. Matched
+  spans become `[REDACTED:<detector>]`.
+- **PII tier**: `email` and `ipv4` are redacted by default (loopback and
+  link-local addresses are **not** sensitive and are excluded — `grpc://127.0.0.1`
+  is left intact). `hostname` is **opt-in** (`--hostname`): in NLFR evidence,
+  FQDN shapes are indistinguishable from tool/file names
+  (`record-agent-change.sh`, `receipt.v1`, `nlfr.ingest.worker`), so redacting
+  them by default would block honest publishes rather than protect anything.
+
+Two properties keep the detectors honest on NLFR's own corpus, which is full of
+64-hex SHA-256 digests and 40-hex shapes:
+
+- **No detector flags a bare hex digest.** `aws_secret_access_key` fires on a
+  40-char base64-ish value only when it is under a credential-ish key *or*
+  introduced by an in-text `secret_access_key=…` marker, and in both paths it
+  rejects a value that is pure hex (upper- **or** lowercase) or all-digits — so
+  it can never collide with a SHA-1/SHA-256 digest.
+- **Bazel labels** (`//foo:bar`), external repos (`@repo//pkg:tgt`), and
+  loopback endpoints are never flagged.
+
+When any value is redacted inside an object carrying `redaction_state`, that
+state is upgraded honestly: `safe` / `unknown` → `redacted`. `blocked` and an
+existing `redacted` are never downgraded. A secret-shaped **key** is *reported*
+but never rewritten (rewriting a key would break consumers) — it is a `--check`
+failure, not a silent mutation.
+
+**The `--check` gate.** `redact-projection.py --check INPUT.json` scans without
+writing and exits non-zero on any finding, printing a masked report (detector,
+JSON path, `[REDACTED:…]` excerpt — never the raw secret). `test_redaction.py`
+runs this scan over every committed projection and proof sample as a permanent
+CI property, so a leaked credential shape fails the build.
+
 ## Agent provenance class (`provenance_class`)
 
 The agent leg of a bounded-change record carries a `provenance_class` **in addition
@@ -184,6 +242,32 @@ The proof packet surfaces a rollup at `summary.artifact_verification` and in the
 `mismatched`, `missing`, `unverified_remote`, `total`. `present_unverified` counts
 `local_present` references (present but digest not cross-checked — see the
 `local_present` row above).
+
+## Agent receipt provenance ladder (multi-CLI)
+
+Agent legs carry a `provenance_class` that ranks how the model claim is backed:
+
+| Class | Meaning |
+|-------|---------|
+| `receipt_verified_v1` | Parsed live agent-CLI receipt: `status == success` **and** a response SHA-256, a `session_id`, and exactly one server-resolved model. Model label comes from the CLI, not the operator. |
+| `stub_receipt_v1` | Deterministic stub CLI (CI mechanics gate); `simulated_v1`, never live. |
+| `operator_asserted_v1` | Operator-typed model claim with no receipt. |
+
+Receipts are captured through a per-CLI parser registry in
+[`agent_receipt.py`](../../../src/nlfr/agent_receipt.py) (`CLI_PARSERS`): each
+CLI normalizes its own `--output-format json` shape onto one internal receipt
+shape, so the verified-tier bar and privacy posture (`prompt_sha256` only, raw
+prompt structurally rejected) are identical across CLIs. A receipt only earns
+`success` when the bar is met; otherwise it is recorded honestly as an
+`invalid_output` / `api_error` / blocker receipt — collected evidence of the
+attempt that stays **below** the verified tier (`is_live_receipt` is false).
+
+Supported CLIs and their evidence status:
+
+| `--agent-cli` | Verified-tier status |
+|---------------|----------------------|
+| `claude` | Live-proven — the committed two-act run carries `receipt_verified_v1` Claude receipts. |
+| `gemini` | Doc-derived from the official Gemini CLI `--output-format json` contract (`response` + `stats.models` + `session_id`, optional `error`) and **fixture-tested**. Live validation is env-gated (`NLFR_RUN_AGENT_LIVE_GEMINI=1` with the Gemini CLI on PATH) and pending a machine with that CLI — **not** yet live-proven. |
 
 ## Conditional claims (M7)
 
