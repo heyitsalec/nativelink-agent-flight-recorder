@@ -1,0 +1,206 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nativelink-agent-flight-recorder.local/contracts/in_toto_proof_predicate.v1.json",
+  "title": "NLFR in-toto Proof Packet Predicate v1",
+  "description": "Schema for the predicate object of an NLFR in-toto attestation Statement. The Statement wrapper is in-toto spec v1 (see $defs.in_toto_statement); this predicate carries the truth-labeled proof packet, the independent artifact-integrity verification summary, and agent-receipt provenance (hashes only). The predicateType is 'https://github.com/heyitsalec/nativelink-agent-flight-recorder/attestation/proof-packet/v1'. NLFR emits the Statement UNSIGNED (DSSE-ready) and makes no claim of auditor acceptance or compliance certification.",
+  "type": "object",
+  "required": [
+    "predicate_schema_version",
+    "builder",
+    "run_group",
+    "run_identity",
+    "proof_packet",
+    "artifact_verification",
+    "agent_provenance",
+    "positioning",
+    "limits"
+  ],
+  "properties": {
+    "predicate_schema_version": { "const": 1 },
+    "builder": {
+      "type": "object",
+      "required": ["id", "component"],
+      "properties": {
+        "id": { "type": "string", "description": "NLFR repository identity URL." },
+        "component": { "type": "string", "description": "The exact exporter invocation." }
+      }
+    },
+    "run_group": { "type": ["string", "null"] },
+    "run_identity": {
+      "type": "array",
+      "description": "Recorded identity of each run in the group. Recorded timestamps are retained (they are recorded evidence, not export wall-clock).",
+      "items": { "$ref": "#/$defs/run_identity" }
+    },
+    "proof_packet": {
+      "type": "object",
+      "description": "Stable subset of the NLFR proof-packet projection. The export-time wall-clock 'generated_at' is deliberately dropped so two exports of the same database are byte-identical.",
+      "required": ["projection_kind", "schema_version", "summary", "blocks"],
+      "properties": {
+        "projection_kind": { "const": "proof_packet" },
+        "schema_version": { "type": "integer" },
+        "summary": {
+          "type": "object",
+          "description": "Proof-packet rollup, including summary.artifact_verification counts."
+        },
+        "blocks": {
+          "type": "array",
+          "description": "Proof blocks, each carrying its own truth labels.",
+          "items": { "$ref": "#/$defs/truth_labeled" }
+        }
+      }
+    },
+    "artifact_verification": {
+      "type": "object",
+      "description": "Independent artifact-integrity verification. NLFR recomputes SHA-256 for every locally present BEP-referenced file and compares against the declared digest; it never trusts the build tool's self-reports. local_mismatch and missing are surfaced, not hidden.",
+      "required": ["summary", "references"],
+      "properties": {
+        "summary": { "$ref": "#/$defs/artifact_verification_metrics" },
+        "references": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/artifact_reference" }
+        },
+        "truth": { "$ref": "#/$defs/truth_labels" }
+      }
+    },
+    "agent_provenance": {
+      "type": "array",
+      "description": "One entry per agent_provenance proof block. Hashes only — the raw prompt is NEVER present (structurally rejected against FORBIDDEN_PROMPT_KEYS before export).",
+      "items": { "$ref": "#/$defs/agent_provenance_entry" }
+    },
+    "positioning": {
+      "type": "string",
+      "description": "Positioning guardrail: evidence that plugs into a safety case / provenance stack; no auditor-acceptance or compliance-certification claim."
+    },
+    "limits": {
+      "type": "array",
+      "description": "Honest limits, including that NLFR does not sign the Statement.",
+      "items": { "type": "string" }
+    }
+  },
+  "$defs": {
+    "in_toto_statement": {
+      "type": "object",
+      "description": "The in-toto attestation Statement (spec v1) that wraps this predicate. Documented here for completeness; NLFR emits it unsigned and DSSE-ready.",
+      "required": ["_type", "subject", "predicateType", "predicate"],
+      "properties": {
+        "_type": { "const": "https://in-toto.io/Statement/v1" },
+        "subject": {
+          "type": "array",
+          "description": "One ResourceDescriptor per recorded manifest artifact; digest.sha256 is the value NLFR recorded at capture time, never recomputed at export.",
+          "items": { "$ref": "#/$defs/subject" }
+        },
+        "predicateType": {
+          "const": "https://github.com/heyitsalec/nativelink-agent-flight-recorder/attestation/proof-packet/v1"
+        },
+        "predicate": { "$ref": "#" }
+      }
+    },
+    "subject": {
+      "type": "object",
+      "required": ["name", "digest"],
+      "properties": {
+        "name": { "type": "string" },
+        "digest": {
+          "type": "object",
+          "required": ["sha256"],
+          "properties": {
+            "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+          }
+        },
+        "annotations": {
+          "type": "object",
+          "description": "Recorded artifact metadata and truth labels attached to the subject."
+        }
+      }
+    },
+    "run_identity": {
+      "type": "object",
+      "properties": {
+        "run_id": { "type": ["string", "null"] },
+        "stable_key": { "type": ["string", "null"] },
+        "run_group": { "type": ["string", "null"] },
+        "scenario": { "type": ["string", "null"] },
+        "mode": { "type": ["string", "null"] },
+        "status": { "type": ["string", "null"] },
+        "started_at": { "type": ["string", "null"] },
+        "ended_at": { "type": ["string", "null"] },
+        "source_kind": { "enum": ["collectable_v1", "derived_v1", "simulated_v1", "future", "unknown"] },
+        "confidence": { "enum": ["high", "medium", "low", "unknown"] },
+        "evidence_refs": { "type": "array", "items": { "type": "string" } },
+        "redaction_state": { "enum": ["safe", "redacted", "blocked", "unknown"] }
+      }
+    },
+    "agent_provenance_entry": {
+      "type": "object",
+      "description": "Agent-receipt provenance class plus hashes. provenance_class is one of receipt_verified_v1 (live Claude CLI receipt), stub_receipt_v1 (non-live receipt), or operator_asserted_v1 (no receipt).",
+      "properties": {
+        "block_id": { "type": ["string", "null"] },
+        "provenance_class": {
+          "type": ["string", "null"],
+          "enum": ["receipt_verified_v1", "stub_receipt_v1", "operator_asserted_v1", null]
+        },
+        "model": { "type": ["string", "null"] },
+        "model_label_operator": { "type": ["string", "null"] },
+        "prompt_sha256": {
+          "type": ["string", "null"],
+          "description": "SHA-256 of the prompt. The raw prompt is never present."
+        },
+        "receipt": {
+          "type": ["object", "null"],
+          "description": "Compact receipt provenance summary (hashes, ids, token counts only)."
+        },
+        "source_kind": { "enum": ["collectable_v1", "derived_v1", "simulated_v1", "future", "unknown"] },
+        "confidence": { "enum": ["high", "medium", "low", "unknown"] },
+        "evidence_refs": { "type": "array", "items": { "type": "string" } },
+        "redaction_state": { "enum": ["safe", "redacted", "blocked", "unknown"] }
+      }
+    },
+    "truth_labels": {
+      "type": "object",
+      "properties": {
+        "source_kind": { "enum": ["collectable_v1", "derived_v1", "simulated_v1", "future", "unknown"] },
+        "confidence": { "enum": ["high", "medium", "low", "unknown"] },
+        "evidence_refs": { "type": "array", "items": { "type": "string" } },
+        "redaction_state": { "enum": ["safe", "redacted", "blocked", "unknown"] }
+      }
+    },
+    "truth_labeled": {
+      "type": "object",
+      "required": ["source_kind", "confidence", "evidence_refs", "redaction_state"],
+      "properties": {
+        "source_kind": { "enum": ["collectable_v1", "derived_v1", "simulated_v1", "future", "unknown"] },
+        "confidence": { "enum": ["high", "medium", "low", "unknown"] },
+        "evidence_refs": { "type": "array", "items": { "type": "string" } },
+        "redaction_state": { "enum": ["safe", "redacted", "blocked", "unknown"] }
+      }
+    },
+    "artifact_verification_metrics": {
+      "type": "object",
+      "description": "Rollup of independent artifact-integrity verification.",
+      "properties": {
+        "total": { "type": "integer" },
+        "verified_count": { "type": "integer" },
+        "present_unverified": { "type": "integer" },
+        "mismatched": { "type": "integer" },
+        "missing": { "type": "integer" },
+        "unverified_remote": { "type": "integer" }
+      }
+    },
+    "artifact_reference": {
+      "type": "object",
+      "description": "One BEP-referenced artifact with its independent verification state.",
+      "properties": {
+        "reference_key": { "type": "string" },
+        "name": { "type": ["string", "null"] },
+        "uri": { "type": ["string", "null"] },
+        "presence": { "enum": ["local_verified", "local_present", "local_mismatch", "missing", "unverified_remote_reference"] },
+        "digest_verified": { "type": ["boolean", "null"] },
+        "declared_digest": { "type": ["string", "null"] },
+        "computed_digest": { "type": ["string", "null"] },
+        "verification_note": { "type": ["string", "null"] },
+        "source_kind": { "enum": ["collectable_v1", "derived_v1", "simulated_v1", "future", "unknown"] },
+        "confidence": { "enum": ["high", "medium", "low", "unknown"] }
+      }
+    }
+  }
+}

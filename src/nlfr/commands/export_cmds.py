@@ -9,6 +9,7 @@ from pathlib import Path
 from nlfr.db import connect, initialize
 from nlfr.projectors import (
     export_action_graph,
+    export_in_toto_statement,
     export_proof_packet,
     export_validation_runway,
 )
@@ -36,6 +37,12 @@ def export_proof(args: argparse.Namespace) -> int:
     """Export a proof packet projection for a run group."""
 
     conn = initialize(connect(args.db))
+    if args.format == "in-toto":
+        # Unsigned, DSSE-ready in-toto Statement over the run group's recorded
+        # artifacts; existing json/markdown behavior is untouched.
+        statement = export_in_toto_statement(conn, run_group=args.run_group)
+        write_or_print(statement, args.output)
+        return 0
     proof = export_proof_packet(conn, run_group=args.run_group)
     if args.format == "markdown":
         projection_paths = {}
@@ -154,9 +161,12 @@ def _add_proof_export_command(
     )
     parser.add_argument(
         "--format",
-        choices=("json", "markdown"),
+        choices=("json", "markdown", "in-toto"),
         default="json",
-        help="output format (default: json)",
+        help=(
+            "output format (default: json). 'in-toto' emits an unsigned, "
+            "DSSE-ready in-toto Statement over recorded artifacts."
+        ),
     )
     parser.add_argument(
         "--manifest",

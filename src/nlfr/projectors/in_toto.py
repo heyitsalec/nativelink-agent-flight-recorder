@@ -1,0 +1,240 @@
+"""in-toto Statement projection for NLFR proof packets (GitHub issue #26).
+
+Emits a bare, UNSIGNED, DSSE-ready in-toto attestation Statement (spec v1) whose
+subjects are the run group's SHA-256'd manifest artifacts and whose predicate
+carries the NLFR proof packet: truth labels, the independent artifact-integrity
+verification summary, agent-receipt provenance class (hashes only), and run/
+run-group identity.
+
+Positioning (non-negotiable): this is evidence that plugs into an existing
+safety-case / provenance stack (SLSA / in-toto / Sigstore). NLFR does NOT sign it
+and makes NO claim of auditor acceptance or compliance certification.
+
+Determinism: every subject digest comes from RECORDED evidence (the ``artifacts``
+row's ``sha256``), never recomputed at export time; the export-time wall-clock
+``generated_at`` of the proof packet is dropped so two exports of the same
+database are byte-identical under ``json.dumps(sort_keys=True)``.
+"""
+
+from __future__ import annotations
+
+from sqlite3 import Connection
+from typing import Any
+
+from nlfr.agent_receipt import FORBIDDEN_PROMPT_KEYS
+from nlfr.projectors.common import rows, run_rows, truth
+from nlfr.projectors.proof import export_proof_packet
+
+#: in-toto attestation Statement type (spec v1).
+IN_TOTO_STATEMENT_TYPE = "https://in-toto.io/Statement/v1"
+
+#: predicateType URL under a namespace NLFR controls.
+PREDICATE_TYPE = (
+    "https://github.com/heyitsalec/nativelink-agent-flight-recorder"
+    "/attestation/proof-packet/v1"
+)
+
+#: Builder identity embedded in the predicate.
+BUILDER_ID = "https://github.com/heyitsalec/nativelink-agent-flight-recorder"
+
+#: Positioning guardrail language (non-negotiable — never claim auditor acceptance).
+POSITIONING = (
+    "Evidence that plugs into your existing safety case / provenance stack "
+    "(SLSA / in-toto / Sigstore). NLFR does not sign this attestation and makes "
+    "no claim of auditor acceptance or compliance certification."
+)
+
+#: Honest limits carried inside the predicate so a downstream reader cannot miss them.
+LIMITS = [
+    "UNSIGNED by NLFR: wrap and sign externally (e.g. cosign attest-blob) to add a "
+    "cryptographic signature; NLFR emits only the bare, DSSE-ready Statement.",
+    "Every subject digest is the SHA-256 NLFR recorded when it captured the "
+    "artifact; digests are NOT recomputed at export time.",
+    "Presence of local_mismatch or missing entries in artifact_verification is "
+    "surfaced, not hidden: an attestation over failing evidence is still an honest "
+    "attestation of exactly what was recorded.",
+]
+
+
+def export_in_toto_statement(conn: Connection, *, run_group: str) -> dict[str, Any]:
+    """Build an unsigned in-toto Statement for a run group's proof packet."""
+
+    proof = export_proof_packet(conn, run_group=run_group)
+    runs = run_rows(conn, run_group)
+    run_ids = [run["id"] for run in runs]
+    artifacts = rows(conn, "artifacts", run_ids)
+
+    statement = {
+        "_type": IN_TOTO_STATEMENT_TYPE,
+        "subject": _subjects(artifacts),
+        "predicateType": PREDICATE_TYPE,
+        "predicate": _predicate(proof, runs),
+    }
+    # Structural privacy gate: a raw prompt must never appear anywhere in the
+    # exported Statement. Enforced against the WHOLE tree, not just receipts.
+    _reject_forbidden_keys(statement, path="statement")
+    return statement
+
+
+def _subjects(artifacts: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """in-toto subjects: one ResourceDescriptor per recorded manifest artifact.
+
+    The digest is the ``sha256`` NLFR recorded at capture time (never recomputed
+    here). Subjects are sorted by (name, digest) for byte-stable output.
+    """
+
+    subjects: list[dict[str, Any]] = []
+    for artifact in artifacts:
+        sha256 = artifact.get("sha256")
+        if not _is_sha256(sha256):
+            # An artifact without a recomputable SHA-256 cannot be an in-toto
+            # sha256 subject; skip rather than emit an invalid digest.
+            continue
+        name = str(artifact.get("artifact_path") or artifact.get("artifact_key") or "")
+        subjects.append(
+            {
+                "name": name,
+                "digest": {"sha256": str(sha256).lower()},
+                "annotations": {
+                    "nlfr": {
+                        "artifact_key": artifact.get("artifact_key"),
+                        "size_bytes": artifact.get("size_bytes"),
+                        "content_type": artifact.get("content_type"),
+                        "recorded_manifest_path": artifact.get("manifest_path"),
+                        "source_kind": artifact.get("source_kind"),
+                        "confidence": artifact.get("confidence"),
+                    }
+                },
+            }
+        )
+    subjects.sort(key=lambda item: (item["name"], item["digest"]["sha256"]))
+    return subjects
+
+
+def _predicate(proof: dict[str, Any], runs: list[dict[str, Any]]) -> dict[str, Any]:
+    """The proof-packet predicate: truth-labeled subset of the proof projection."""
+
+    return {
+        "predicate_schema_version": 1,
+        "builder": {
+            "id": BUILDER_ID,
+            "component": "nlfr proof export --format in-toto",
+        },
+        "run_group": proof.get("run_group"),
+        "run_identity": [_run_identity(run) for run in runs],
+        "proof_packet": _proof_subset(proof),
+        "artifact_verification": _artifact_verification(proof),
+        "agent_provenance": _agent_provenance(proof),
+        "positioning": POSITIONING,
+        "limits": LIMITS,
+    }
+
+
+def _run_identity(run: dict[str, Any]) -> dict[str, Any]:
+    """Stable run identity from recorded evidence (recorded timestamps are kept)."""
+
+    return {
+        "run_id": run.get("id"),
+        "stable_key": run.get("stable_key"),
+        "run_group": run.get("run_group"),
+        "scenario": run.get("scenario"),
+        "mode": run.get("mode"),
+        "status": run.get("status"),
+        "started_at": run.get("started_at"),
+        "ended_at": run.get("ended_at"),
+        **truth(run),
+    }
+
+
+def _proof_subset(proof: dict[str, Any]) -> dict[str, Any]:
+    """Stable proof-packet subset: drops the export-time wall-clock ``generated_at``.
+
+    The blocks already carry per-block truth labels (source_kind, confidence,
+    evidence_refs, redaction_state); the summary carries the artifact-verification
+    rollup. Recorded timestamps inside stored block payloads are retained because
+    they are recorded evidence, not export wall-clock.
+    """
+
+    return {
+        "projection_kind": proof.get("projection_kind"),
+        "schema_version": proof.get("schema_version"),
+        "summary": proof.get("summary"),
+        "blocks": proof.get("blocks"),
+    }
+
+
+def _artifact_verification(proof: dict[str, Any]) -> dict[str, Any]:
+    """Independent artifact-integrity verification: rollup + per-reference presence."""
+
+    block = _find_block(proof, "artifact_verification")
+    payload = block.get("payload") if isinstance(block, dict) else None
+    references = payload.get("references") if isinstance(payload, dict) else None
+    summary = proof.get("summary") or {}
+    result: dict[str, Any] = {
+        "summary": summary.get("artifact_verification", {}),
+        "references": references or [],
+    }
+    if isinstance(block, dict):
+        result["truth"] = truth(block)
+    return result
+
+
+def _agent_provenance(proof: dict[str, Any]) -> list[dict[str, Any]]:
+    """Agent-receipt provenance class per agent_provenance block — hashes only.
+
+    Never emits a raw prompt: only ``prompt_sha256`` and the receipt provenance
+    summary (which is itself hash/id/usage only). The whole Statement is re-checked
+    against FORBIDDEN_PROMPT_KEYS before it is returned.
+    """
+
+    provenance: list[dict[str, Any]] = []
+    for block in proof.get("blocks") or []:
+        kind = block.get("kind") or block.get("block_kind")
+        if kind != "agent_provenance":
+            continue
+        payload = block.get("payload") if isinstance(block.get("payload"), dict) else {}
+        agent = payload.get("agent") if isinstance(payload.get("agent"), dict) else {}
+        provenance.append(
+            {
+                "block_id": block.get("id"),
+                "provenance_class": agent.get("provenance_class"),
+                "model": agent.get("model"),
+                "model_label_operator": agent.get("model_label_operator"),
+                "prompt_sha256": agent.get("prompt_sha256"),
+                "receipt": agent.get("receipt"),
+                **truth(block),
+            }
+        )
+    return provenance
+
+
+def _find_block(proof: dict[str, Any], block_id: str) -> dict[str, Any] | None:
+    for block in proof.get("blocks") or []:
+        if block.get("id") == block_id:
+            return block
+    return None
+
+
+def _reject_forbidden_keys(obj: Any, *, path: str) -> None:
+    """Raise if any raw-prompt key appears anywhere in the Statement tree."""
+
+    if isinstance(obj, dict):
+        for key, value in obj.items():
+            if key in FORBIDDEN_PROMPT_KEYS:
+                raise ValueError(
+                    f"in-toto Statement must not contain raw prompt field: {path}.{key}"
+                )
+            _reject_forbidden_keys(value, path=f"{path}.{key}")
+    elif isinstance(obj, list):
+        for index, item in enumerate(obj):
+            _reject_forbidden_keys(item, path=f"{path}[{index}]")
+
+
+def _is_sha256(value: Any) -> bool:
+    if not isinstance(value, str) or len(value) != 64:
+        return False
+    try:
+        int(value, 16)
+    except ValueError:
+        return False
+    return True
