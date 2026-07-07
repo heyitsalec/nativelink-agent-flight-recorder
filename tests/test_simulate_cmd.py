@@ -5,6 +5,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from nlfr.commands.simulate_cmd import _derive_patch_applied
+
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -37,7 +39,18 @@ def test_simulate_command_mutates_workspace_and_records_provenance(tmp_path) -> 
 
     provenance = json.loads(provenance_path.read_text())
     assert provenance["agent"]["name"] == "demo-leaf-worker"
-    assert provenance["change"]["patch_applied"] is True
+    # patch_applied is DERIVED from the before/after hashes the sim actually
+    # produced (GitHub issue #56), not a hardcoded literal. It is True here
+    # *because* the affected file's content hash changed when the diff applied.
+    change = provenance["change"]
+    affected = change["affected_paths"]
+    assert affected == ["tasks/priority_test.py"]
+    before = change["before_hashes"]["tasks/priority_test.py"]
+    after = change["after_hashes"]["tasks/priority_test.py"]
+    assert before is not None and after is not None
+    assert before != after, "the patch must change the file hash — that is the evidence"
+    assert change["patch_applied"] is True
+    assert change["patch_applied"] == _derive_patch_applied(affected, change["before_hashes"], change["after_hashes"])
     assert provenance["build"]["run_id"] == scenario["build"]["run_id"]
     assert "run:" in " ".join(provenance["evidence_refs"])
 
@@ -137,6 +150,17 @@ def test_simulate_command_records_build_blocker_provenance(tmp_path) -> None:
     assert "environment_blocker" in proof["summary"]
     assert proof["source_kind"] == "simulated_v1"
     assert f"run:{scenario['build']['run_id']}" in proof["evidence_refs"]
+
+
+def test_derive_patch_applied_reflects_hash_evidence() -> None:
+    # The flag is a function of evidence, not a constant: it flips with the
+    # hashes. A changed file -> True; identical before/after -> False.
+    paths = ["tasks/priority_test.py"]
+    assert _derive_patch_applied(paths, {"tasks/priority_test.py": "aaa"}, {"tasks/priority_test.py": "bbb"}) is True
+    assert _derive_patch_applied(paths, {"tasks/priority_test.py": "aaa"}, {"tasks/priority_test.py": "aaa"}) is False
+    # New file (absent before) counts as a change; no affected paths -> no evidence.
+    assert _derive_patch_applied(["new.py"], {"new.py": None}, {"new.py": "ccc"}) is True
+    assert _derive_patch_applied([], {}, {}) is False
 
 
 def run_nlfr(*args: str) -> subprocess.CompletedProcess[str]:
