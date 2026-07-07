@@ -116,10 +116,16 @@ class ProbeResult:
     reading/hashing the bytes (e.g. a ``FindMissingBlobs`` existence check). A probe
     that cannot reach a verdict returns ``None`` (not a ``ProbeResult``), and NLFR
     then falls back to ``unverified_remote_reference`` rather than fabricating one.
+
+    ``note`` (#81 part B, signature-compatible: defaults to ``None``) lets a probe
+    record WHY it confirmed presence without hashing the bytes (read limit
+    exceeded, no declared digest, compressed resource); the verifier appends it to
+    the reference's ``verification_note`` so the evidence states the honest reason.
     """
 
     present: bool
     computed_digest: str | None = None
+    note: str | None = None
 
 
 # An injectable CAS probe: given the remote URI and the BEP-declared digest/size,
@@ -571,11 +577,15 @@ def _verify_remote(
 
     # Present, but no recomputable-SHA-256 cross-check was possible: the probe did
     # not hash the bytes, or the BEP declared no digest / a non-SHA-256 digest.
+    # When the probe recorded WHY it did not hash the bytes (#81 part B), that
+    # honest reason is appended verbatim to the evidence note.
     note = (
         "CAS probe reports the BEP-referenced blob is present, but its digest was "
         "not cross-checked as a recomputable SHA-256; presence is recorded, the "
         "digest is neither confirmed nor contradicted."
     )
+    if probe.note:
+        note = f"{note} Probe: {probe.note}"
     return (
         PRESENCE_REMOTE_PRESENT,
         None,

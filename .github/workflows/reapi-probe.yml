@@ -1,0 +1,73 @@
+# REAPI CAS probe — optional-extra integration proof (issue #81 part B).
+#
+# The blocking pytest jobs (nlfr-proof.yml) run in the DEFAULT zero-dependency
+# environment, where every reapi integration test importorskips grpcio: that
+# proves the core never needs the extra. This workflow proves the other side —
+# `pip install .[reapi]` works and the probe speaks real gRPC — by installing
+# the extra and running the integration tests against an in-process gRPC
+# server (real channel, real wire encoding via the vendored stubs, real
+# deadline behavior).
+#
+# Non-blocking by design (continue-on-error, same pattern as sbom.yml): a
+# grpcio wheel/resolver hiccup must never flip `main` red, because the extra
+# is optional by contract. The honest-downgrade fallback path IS hard-gated in
+# the blocking jobs (tests/test_reapi_probe.py, test_reapi_cli.py,
+# test_stdlib_only_posture.py all run without the extra).
+#
+# Scope honesty: this job does NOT spin a real NativeLink CAS. Hosted runners
+# would need a nativelink binary (Nix/cargo build, multi-minute, historically
+# flaky on hosted runners — see the LRE probes in nlfr-proof.yml). The
+# in-process grpc server exercises the same two RPC method paths and message
+# types the probe sends to NativeLink; probing a live NativeLink deployment is
+# an operator-side proof documented in docs/wiki/how-to/verify-remote-cas.md.
+name: REAPI probe (optional extra)
+
+on:
+  push:
+    branches: [main, feat/**, fix/**]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: reapi-probe-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  reapi-integration:
+    name: "[reapi] extra: real-gRPC integration tests"
+    runs-on: ubuntu-latest
+    # Non-blocking: the optional extra must never gate main. The zero-dep
+    # fallback behavior is hard-gated in the blocking pytest jobs.
+    continue-on-error: true
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install with the [reapi] extra
+        run: uv sync --extra reapi
+
+      - name: Prove the extra resolved (grpcio + protobuf importable)
+        run: |
+          uv run python -c "import grpc, google.protobuf; print('grpcio', grpc.__version__, '| protobuf', google.protobuf.__version__)"
+
+      - name: Vendored stubs load on the resolved protobuf runtime
+        # The committed stubs are 4.25-era gencode by design (see
+        # scripts/regen-reapi-stubs.sh); this asserts they keep loading on
+        # whatever current protobuf the extra resolves to.
+        run: |
+          uv run python -c "from nlfr.reapi._gen.build.bazel.remote.execution.v2 import remote_execution_pb2; from nlfr.reapi._gen.google.bytestream import bytestream_pb2; print('vendored stubs OK')"
+
+      - name: Probe integration tests (real in-process gRPC server)
+        run: uv run pytest -q tests/test_reapi_probe_integration.py -v
+
+      - name: Probe unit + CLI + posture tests still pass WITH the extra installed
+        # The posture guarantees must hold in both worlds; the blocked-import
+        # subprocess tests prove lazy imports even when grpcio is present.
+        run: uv run pytest -q tests/test_reapi_probe.py tests/test_reapi_cli.py tests/test_stdlib_only_posture.py

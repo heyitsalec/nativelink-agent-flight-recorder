@@ -44,6 +44,18 @@ Issues = "https://github.com/heyitsalec/nativelink-agent-flight-recorder/issues"
 [project.scripts]
 nlfr = "nlfr.cli:main"
 
+[project.optional-dependencies]
+# Optional REAPI CAS probe (issue #81 part B): lets `nlfr ingest --cas-endpoint`
+# independently verify remote bytestream:// references against a running CAS.
+# STRICTLY optional — the runtime core stays stdlib-only (dependencies = []
+# above is the security posture) and `import nlfr` never requires these. The
+# probe module imports them lazily; absent the extra, remote references keep
+# the honest unverified_remote_reference downgrade. The protobuf>=4.25 floor is
+# real: the committed stubs are generated with 4.25-era gencode (no
+# runtime-version gate; loads on current 7.x runtimes) — see
+# scripts/regen-reapi-stubs.sh before regenerating.
+reapi = ["grpcio>=1.60", "protobuf>=4.25"]
+
 [dependency-groups]
 dev = [
   "pytest>=8.0",

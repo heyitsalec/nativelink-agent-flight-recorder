@@ -43,6 +43,7 @@ Solve a specific problem when you already know the goal.
 - [Record your own Bazel build](wiki/how-to/record-your-own-build.md) — `nlfr record` one-command capture in any Bazel repo
 - [Export and compare run groups](wiki/how-to/export-and-compare-run-groups.md) — M9 compare lens
 - [Export an in-toto attestation](wiki/how-to/export-in-toto-attestation.md) — unsigned, DSSE-ready Statement over recorded artifacts (issue #26)
+- [Verify remote CAS references](wiki/how-to/verify-remote-cas.md) — `nlfr ingest --cas-endpoint` + the optional `[reapi]` extra (issue #81)
 - [Manage the evidence store](wiki/reference/cli.md#db-upgrade) — `nlfr db upgrade` (schema migration) and [`nlfr db gc`](wiki/reference/cli.md#db-gc) (operator-consented retention)
 - [Air-gapped / offline-wheel install](wiki/how-to/air-gapped-install.md) — build the wheel on a connected host, transfer, run with no network egress
 - [Run tier1 live Bazel demo](wiki/how-to/run-tier1-live-bazel-demo.md)

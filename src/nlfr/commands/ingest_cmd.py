@@ -35,6 +35,34 @@ def run(args: argparse.Namespace) -> int:
         print("no Bazel evidence files found for ingest", file=sys.stderr)
         return 2
 
+    # Optional REAPI CAS probe (issue #81 part B). No --cas-endpoint means
+    # exactly today's behavior: remote references keep the honest
+    # unverified_remote_reference downgrade and none of this code runs. When
+    # the operator ASKS for verification, a missing [reapi] extra or a bad
+    # endpoint is a hard error — silently downgrading would misstate what was
+    # checked.
+    cas_probe = None
+    if getattr(args, "cas_endpoint", None):
+        try:
+            from nlfr.reapi.probe import make_cas_probe
+        except ImportError as exc:  # pragma: no cover — probe module is stdlib-only
+            print(str(exc), file=sys.stderr)
+            return 2
+        probe_kwargs: dict[str, object] = {"instance": args.cas_instance or ""}
+        if args.cas_read_limit is not None:
+            probe_kwargs["read_limit_bytes"] = args.cas_read_limit
+        try:
+            cas_probe = make_cas_probe(args.cas_endpoint, **probe_kwargs)
+        except ImportError as exc:
+            # The [reapi] extra is not installed. The operator asked for
+            # verification, so refuse honestly instead of quietly recording
+            # every remote reference as unverified.
+            print(str(exc), file=sys.stderr)
+            return 2
+        except ValueError as exc:
+            print(f"nlfr ingest: invalid --cas-endpoint: {exc}", file=sys.stderr)
+            return 2
+
     bundle = EvidenceBundle()
     if evidence_files["bep"] is not None:
         bundle.extend(
@@ -42,6 +70,7 @@ def run(args: argparse.Namespace) -> int:
                 evidence_files["bep"],
                 source_kind=args.source_kind,
                 evidence_ref=_evidence_ref(args.source_kind, evidence_files["bep"]),
+                cas_probe=cas_probe,
             )
         )
     if evidence_files["execution_log"] is not None:
@@ -138,6 +167,28 @@ def run(args: argparse.Namespace) -> int:
             bep_path=evidence_files["bep"],
             source_kind=args.source_kind,
         )
+    cas_probe_provenance = None
+    if cas_probe is not None and evidence_files["bep"] is not None:
+        cas_probe_provenance = _cas_probe_provenance(cas_probe, bundle)
+        counts["proof_blocks"] = counts.get("proof_blocks", 0) + _ingest_cas_probe_provenance(
+            conn,
+            run_id=run_id,
+            run_stable_key=run_stable_key,
+            bep_path=evidence_files["bep"],
+            source_kind=args.source_kind,
+            provenance=cas_probe_provenance,
+        )
+        inconclusive = cas_probe.stats.inconclusive
+        if inconclusive:
+            # Prominent, honest operator signal: verification was requested but
+            # the CAS reached no verdict for these references. The evidence is
+            # still recorded (unverified_remote_reference + probe-attempted
+            # note); nothing is fabricated and ingest still succeeds.
+            print(
+                f"CAS probe unreachable: {inconclusive} remote ref(s) left "
+                f"unverified (endpoint {cas_probe.endpoint})",
+                file=sys.stderr,
+            )
 
     payload = {
         "database": str(args.database),
@@ -145,6 +196,8 @@ def run(args: argparse.Namespace) -> int:
         "run_key": run_stable_key,
         "counts": counts,
     }
+    if cas_probe_provenance is not None:
+        payload["cas_probe"] = cas_probe_provenance
     if run_metadata:
         payload["run_metadata"] = {
             key: run_metadata[key]
@@ -228,6 +281,33 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         choices=("collectable_v1", "simulated_v1"),
         default="collectable_v1",
         help="truth source label for directly parsed fixture or artifact records",
+    )
+    parser.add_argument(
+        "--cas-endpoint",
+        help=(
+            "optional REAPI CAS endpoint (grpc://host:port or grpcs://host:port) "
+            "to independently verify remote bytestream:// references against; "
+            "requires the [reapi] extra. Without this flag remote references "
+            "keep the honest unverified_remote_reference downgrade"
+        ),
+    )
+    parser.add_argument(
+        "--cas-instance",
+        default="",
+        help=(
+            "REAPI instance name for CAS probes (e.g. 'main' for the NativeLink "
+            "demo config); an instance segment embedded in a bytestream:// URI "
+            "takes precedence over this flag"
+        ),
+    )
+    parser.add_argument(
+        "--cas-read-limit",
+        type=int,
+        help=(
+            "max blob size in bytes the CAS probe will stream to recompute a "
+            "digest (default 67108864 = 64 MiB); larger blobs are recorded as "
+            "present-but-not-hash-checked, never as verified"
+        ),
     )
     parser.add_argument("--json", action="store_true", help="emit machine-readable summary")
     parser.set_defaults(handler=run)
@@ -396,6 +476,85 @@ def _ingest_build_tool_identity(
             "build_tool": "bazel",
             "build_tool_version": tool_version,
             "field": "started.buildToolVersion",
+            "source_kind": source_kind,
+            "confidence": "high",
+            "redaction_state": "safe",
+        },
+        source_kind=source_kind,
+        confidence="high",
+        evidence_refs=_dedupe([evidence_ref, f"artifact:{bep_path.name}"]),
+        redaction_state="safe",
+    )
+    return 1
+
+
+_REMOTE_PRESENCE_KEYS = (
+    "remote_verified",
+    "remote_present",
+    "remote_mismatch",
+    "remote_missing",
+    "unverified_remote_reference",
+)
+
+
+def _cas_probe_provenance(cas_probe, bundle: EvidenceBundle) -> dict[str, object]:
+    """Assemble the honest record of what the CAS probe was asked and concluded.
+
+    ``probe`` carries the session's first-hand RPC outcome counters;
+    ``presence_counts`` are the FINAL verification labels the seam assigned to
+    this bundle's remote references (including any left unverified). Together
+    an exported packet can state which endpoint was probed, with which limits,
+    and what each probe concluded — including the failure modes.
+    """
+
+    presence_counts = {key: 0 for key in _REMOTE_PRESENCE_KEYS}
+    for reference in bundle.artifact_references:
+        if reference.presence in presence_counts:
+            presence_counts[reference.presence] += 1
+    provenance = cas_probe.describe()
+    provenance["presence_counts"] = presence_counts
+    return provenance
+
+
+def _ingest_cas_probe_provenance(
+    conn,
+    *,
+    run_id: str,
+    run_stable_key: str,
+    bep_path: Path,
+    source_kind: str,
+    provenance: dict[str, object],
+) -> int:
+    """Record the CAS probe session as a ``cas_probe_v1`` proof block.
+
+    This is NLFR's first-hand record of RPCs it performed itself (endpoint,
+    limits, outcome counts) — collectable evidence of the probe run, so proof
+    packets state what was probed rather than leaving remote-verification
+    labels unattributed.
+    """
+
+    outcomes = provenance.get("outcomes", {})
+    presence = provenance.get("presence_counts", {})
+    evidence_ref = _evidence_ref(source_kind, bep_path)
+    upsert_proof_block(
+        conn,
+        stable_key=f"{run_stable_key}:proof:cas-probe",
+        run_id=run_id,
+        block_key="cas-probe",
+        block_kind="cas_probe_v1",
+        title="Remote CAS Probe",
+        summary=(
+            f"REAPI CAS probe against {provenance.get('endpoint')} covered "
+            f"{outcomes.get('probed_references', 0)} remote reference(s): "
+            f"{presence.get('remote_verified', 0)} verified, "
+            f"{presence.get('remote_present', 0)} present-unread, "
+            f"{presence.get('remote_mismatch', 0)} mismatched, "
+            f"{presence.get('remote_missing', 0)} missing, "
+            f"{presence.get('unverified_remote_reference', 0)} left unverified "
+            "(probe reached no verdict or the URI was unsupported)."
+        ),
+        payload={
+            **provenance,
             "source_kind": source_kind,
             "confidence": "high",
             "redaction_state": "safe",
