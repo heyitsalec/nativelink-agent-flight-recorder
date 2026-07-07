@@ -362,17 +362,22 @@ def test_error_signal_accepts_string_error_code():
     assert _error_signal("gemini", {"response": "ok"}) == (False, None)
 
 
-def test_gemini_string_error_code_receipt_matches_frozen_contract():
+def test_gemini_string_error_code_receipt_matches_contract():
+    """Realistic error shape: real gemini-cli ALWAYS emits error.type alongside code.
+
+    The string code must survive verbatim in api_error_code even when type wins
+    result_subtype (review finding: type-or-code fallback silently dropped the
+    code on realistic input). api_error_status stays None: it is bound to
+    integer|null (an HTTP-style status), so a symbolic code is never coerced.
+    """
+
     receipt = _gemini_receipt(
         "error_string_code.json", status="api_error", detail="PERMISSION_DENIED"
     )
     assert receipt["status"] == "api_error"
-    # The symbolic code is preserved as-is via result_subtype (a contract string
-    # field). api_error_status stays None: the frozen contract binds it to
-    # integer|null, so a non-numeric code is never coerced into it.
-    assert receipt["result_subtype"] == "PERMISSION_DENIED"
+    assert receipt["result_subtype"] == "ApiError"
+    assert receipt["api_error_code"] == "PERMISSION_DENIED"
     assert receipt["api_error_status"] is None
-    # The frozen agent_receipt.v1.json still validates (no schema change needed).
     schema = json.loads(CONTRACT.read_text(encoding="utf-8"))
     Draft202012Validator(schema).validate(receipt)
 
@@ -387,7 +392,8 @@ def test_agent_invoke_gemini_string_error_code_is_api_error(tmp_path: Path):
     receipt = json.loads(receipt_out.read_text(encoding="utf-8"))
     assert receipt["status"] == "api_error"  # regression guard: was "cli_error"
     assert receipt["api_error_status"] is None
-    assert receipt["result_subtype"] == "PERMISSION_DENIED"
+    assert receipt["result_subtype"] == "ApiError"
+    assert receipt["api_error_code"] == "PERMISSION_DENIED"
     assert not is_live_receipt(receipt)
     assert not response_out.exists()
 

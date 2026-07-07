@@ -97,15 +97,16 @@ def _normalize_gemini(result: dict[str, Any]) -> dict[str, Any]:
     error = result.get("error") if isinstance(result.get("error"), dict) else {}
     error_code = error.get("code")
     # Gemini's error.code is string|number upstream (packages/core/src/output/
-    # types.ts). The receipt's api_error_status is contract-bound to
-    # integer|null (an HTTP-style status; contracts/agent_receipt.v1.json is
-    # frozen), so only a numeric code lands there. A symbolic string code (e.g.
-    # "PERMISSION_DENIED") is preserved as-is via result_subtype and still labels
-    # the attempt api_error through _error_signal — never dropped, never coerced.
+    # types.ts). api_error_status carries only a numeric HTTP-style code; a
+    # symbolic string code (e.g. "PERMISSION_DENIED") is preserved verbatim in
+    # api_error_code — real gemini-cli errors always carry a ``type`` too, so
+    # result_subtype alone would drop the string code (review finding). Both
+    # still label the attempt api_error through _error_signal.
     api_error_status = (
         error_code if isinstance(error_code, int) and not isinstance(error_code, bool) else None
     )
-    error_subtype = error.get("type") or (error_code if isinstance(error_code, str) else None)
+    api_error_code = error_code if isinstance(error_code, str) else None
+    error_subtype = error.get("type") or api_error_code
     return {
         "response_text": response_text,
         "resolved_models": sorted(models),
@@ -126,6 +127,7 @@ def _normalize_gemini(result: dict[str, Any]) -> dict[str, Any]:
         "total_cost_usd": None,
         "result_subtype": error_subtype if error else None,
         "api_error_status": api_error_status,
+        "api_error_code": api_error_code if error else None,
     }
 
 
@@ -301,6 +303,7 @@ def build_receipt(
         "total_cost_usd": parsed["total_cost_usd"],
         "result_subtype": parsed["result_subtype"],
         "api_error_status": parsed["api_error_status"],
+        "api_error_code": parsed.get("api_error_code"),
         "source_kind": "collectable_v1" if live else "simulated_v1",
         "confidence": "high" if live else "medium",
         "evidence_refs": [
