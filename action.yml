@@ -54,6 +54,22 @@ inputs:
       ONLY a materialized copy of it.
     required: false
     default: "true"
+  post-pr-comment:
+    description: >-
+      OPT-IN (default false). On a pull_request event, render the COMPACT proof
+      summary with `nlfr proof comment`, RE-GATE both the markdown and its JSON
+      sidecar through `nlfr redact --check`, and only then post the markdown as a
+      PR comment. A redact finding fails the step and posts NOTHING; a blocked
+      evidence gate skips this step entirely — the sharing boundary is never
+      bypassed. Requires `pull-requests: write` permission and GITHUB_TOKEN.
+    required: false
+    default: "false"
+  in-toto-ref:
+    description: >-
+      Optional in-toto attestation reference to cite in the posted comment
+      (e.g. a content digest). Redacted before it reaches the comment.
+    required: false
+    default: ""
 
 outputs:
   evidence-dir:
@@ -105,6 +121,57 @@ runs:
       with:
         name: ${{ inputs.artifact-name }}
         path: ${{ steps.gate.outputs.upload-path }}
+
+    - name: Post NLFR proof comment (optional)
+      # OPT-IN (post-pr-comment: true) and PR-only. Renders the COMPACT proof
+      # summary from the recorded SQLite, RE-GATES both the markdown and its JSON
+      # sidecar through `nlfr redact --check`, then posts the markdown as a PR
+      # comment. A redact finding here fails the step and posts NOTHING — the
+      # projection/redaction layer is the sharing boundary and is never bypassed.
+      # Skipped whenever the evidence gate blocked (`!startsWith(..., 'blocked')`),
+      # so a blocked run cannot leak via the comment path either. Placed BEFORE the
+      # build-result step so even a red build still posts its honest FAILED summary.
+      if: ${{ inputs.post-pr-comment == 'true' && github.event_name == 'pull_request' && steps.gate.outputs.redact-status != '' && !startsWith(steps.gate.outputs.redact-status, 'blocked') }}
+      shell: bash
+      env:
+        NLFR_OUTPUT_DIR: ${{ inputs.output-dir }}
+        NLFR_RUN_GROUP: ${{ inputs.run-group }}
+        NLFR_VERSION: ${{ inputs.nlfr-version }}
+        NLFR_IN_TOTO_REF: ${{ inputs.in-toto-ref }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        set -euo pipefail
+        spec="nativelink-agent-flight-recorder"
+        [[ -n "$NLFR_VERSION" ]] && spec="nativelink-agent-flight-recorder==$NLFR_VERSION"
+        NLFR=(uvx --from "$spec" nlfr)
+        db="$NLFR_OUTPUT_DIR/nlfr.sqlite"
+        if [[ ! -f "$db" ]]; then
+          echo "::notice::NLFR: no recorded DB at $db — skipping PR comment."
+          exit 0
+        fi
+        work="$(mktemp -d)"
+        md="$work/pr-comment.md"
+        json="$work/pr-comment.json"
+        intoto_args=()
+        [[ -n "${NLFR_IN_TOTO_REF:-}" ]] && intoto_args=(--in-toto-ref "$NLFR_IN_TOTO_REF")
+        # No --fail-on-validation: a red build should still POST its honest FAILED
+        # summary. Only a DB/CLI error (exit 2) fails the render here.
+        "${NLFR[@]}" proof comment \
+          --run-group "$NLFR_RUN_GROUP" \
+          --db "$db" \
+          --output "$md" \
+          --json-output "$json" \
+          "${intoto_args[@]}"
+        # Redact gate: NEVER post an artifact that has not cleared `redact --check`.
+        for artifact in "$md" "$json"; do
+          if ! "${NLFR[@]}" redact --check "$artifact"; then
+            echo "::error::NLFR redact gate found a leak in $artifact — refusing to post the PR comment." >&2
+            exit 1
+          fi
+        done
+        gh pr comment "$PR_NUMBER" --body-file "$md"
+        echo "::notice::NLFR: posted compact proof comment to PR #$PR_NUMBER."
 
     - name: Surface the recorded build result
       # The redact gate never masks the build's real outcome: a red build stays

@@ -17,6 +17,7 @@ entry; this index is the Diátaxis hub. Deep pages live under
 | Export projections or compare run groups (M9) | [How-to: export and compare](wiki/how-to/export-and-compare-run-groups.md) |
 | Run the tier1 live Bazel demo | [How-to: tier1 live Bazel](wiki/how-to/run-tier1-live-bazel-demo.md) |
 | Wire NLFR into CI (GitHub Actions / Buildkite / Jenkins) with the redact-gate baked in | [How-to: CI integration](wiki/how-to/ci-integration.md) |
+| Post a compact, redacted proof summary as a PR comment / CI artifact (#87) | [How-to: PR-comment proof](wiki/how-to/pr-comment-proof.md) |
 | Look up CLI flags or truth-label fields | [Reference: CLI](wiki/reference/cli.md) · [Truth labels](wiki/reference/truth-labels.md) |
 | Check which Bazel versions the parsers are tested against | [Reference: Bazel version matrix](wiki/reference/bazel-version-matrix.md) |
 | Review the security posture for procurement | [Security policy](../SECURITY.md) · [Threat model](SECURITY_MODEL.md) |
@@ -44,6 +45,7 @@ Solve a specific problem when you already know the goal.
 
 - [Record your own Bazel build](wiki/how-to/record-your-own-build.md) — `nlfr record` one-command capture in any Bazel repo
 - [CI integration (redact-gate baked in)](wiki/how-to/ci-integration.md) — drop-in GitHub Action / Buildkite plugin / Jenkins snippet; never uploads evidence that hasn't passed the redact gate
+- [Post a compact proof comment](wiki/how-to/pr-comment-proof.md) — `nlfr proof comment` renders a redacted PR-comment summary + JSON sidecar, gated before posting (issue #87)
 - [Export and compare run groups](wiki/how-to/export-and-compare-run-groups.md) — M9 compare lens
 - [Export an in-toto attestation](wiki/how-to/export-in-toto-attestation.md) — unsigned, DSSE-ready Statement over recorded artifacts (issue #26)
 - [Verify remote CAS references](wiki/how-to/verify-remote-cas.md) — `nlfr ingest --cas-endpoint` + the optional `[reapi]` extra (issue #81)

@@ -35,6 +35,7 @@ safety-critical) who has to show *what actually ran* when an agent wrote the cod
 | **Artifact-integrity verification** | Recorded SHA-256 digests re-checked and surfaced as an `artifact_verification` rollup in proof packets and the in-toto predicate. |
 | **Remote CAS verification** | `nlfr ingest --cas-endpoint` independently confirms `bytestream://` references against a running CAS via the optional `[reapi]` extra — honest downgrade when absent ([how-to](docs/wiki/how-to/verify-remote-cas.md)). |
 | **in-toto export** | `nlfr proof export --format in-toto` → unsigned, DSSE-ready in-toto v1 Statement; sign externally with cosign ([how-to](docs/wiki/how-to/export-in-toto-attestation.md)). |
+| **PR-comment / CI-attachment proof** | `nlfr proof comment` → a compact, redact-gated proof summary (status, cache economics, artifact-verification rollup, agent-receipt presence, in-toto ref) as a PR comment + JSON sidecar ([how-to](docs/wiki/how-to/pr-comment-proof.md)). |
 | **Contract-enforced projections** | Projection JSON shape is CI-gated against committed JSON contracts ([contracts](docs/wiki/reference/contracts/README.md)). |
 | **Verified agent receipts** | `receipt_verified_v1` receipts — model, session, token usage, prompt/response SHA-256; raw prompt structurally absent. Claude is live-proven in the committed two-act run; the Gemini parser is fixture-tested (live validation env-gated). |
 | **`nlfr db upgrade` / `db gc`** | Schema migration and operator-consented evidence retention ([CLI reference](docs/wiki/reference/cli.md#db-upgrade)). |
