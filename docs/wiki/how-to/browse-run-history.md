@@ -65,7 +65,10 @@ It never recurses into arbitrary trees, and any subdirectory without an
 Symlinks are **never followed** — a same-tree alias would double-count the same
 physical evidence and a link can point outside the root. A group-shaped symlink
 is reported in the listing (`reason: symlinked_entry`), never silently skipped;
-pass the real database with `--db` if you meant it.
+pass the real database with `--db` if you meant it. Hardlinks are **not
+detectable** (same inode, ordinary paths): duplicate directory entries for one
+physical database will list — and count — twice. They cannot cross filesystems
+or escape the root, so this is an accepted, documented residual.
 
 **It is a LISTING, not a merge.** Entries are keyed by `(database, run_group)`
 and never combined, because stable run ids are only unique *within* one database
