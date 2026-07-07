@@ -233,7 +233,7 @@ import os
 import sys
 from pathlib import Path
 
-from nlfr.db import connect, initialize
+from nlfr.db import UnreadableDatabaseError, connect_readonly
 from nlfr.projectors.compare import build_compare_projection
 from nlfr.projectors.common import run_rows
 from nlfr.projectors.proof import export_proof_packet
@@ -259,8 +259,14 @@ for spec in pair_specs:
         print(f"right db missing: {right_db}", file=sys.stderr)
         sys.exit(1)
 
-    left_conn = initialize(connect(left_db))
-    right_conn = initialize(connect(right_db))
+    # Read-only: comparing recorded evidence must never migrate or auto-create a
+    # database (that would be a silent WRITE to the evidence being compared).
+    try:
+        left_conn = connect_readonly(left_db)
+        right_conn = connect_readonly(right_db)
+    except UnreadableDatabaseError as exc:
+        print(str(exc), file=sys.stderr)
+        sys.exit(1)
 
     left_proof = export_proof_packet(left_conn, run_group=left_group)
     right_proof = export_proof_packet(right_conn, run_group=right_group)

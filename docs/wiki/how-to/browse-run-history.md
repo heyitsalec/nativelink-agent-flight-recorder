@@ -11,8 +11,15 @@ packet metadata per group — it does **not** invent fleet trends or auto-purge 
 
 ## Prerequisites
 
-- SQLite DB with ingested runs (`nlfr.sqlite` under a proof output dir)
-- M9 retention semantics: `compare index` lists groups; v1 never auto-purges
+- A recorded SQLite DB. `nlfr record` writes one at
+  **`data/nlfr-record/<run-group>/nlfr.sqlite`** (relative to the workspace).
+- M9 retention semantics: `compare index` lists groups; v1 never auto-purges.
+
+> **The database must already exist.** `compare index`/`history` open the `--db`
+> read-only and never auto-create it: a nonexistent or zero-byte path is a hard
+> error (exit 2), so a typo cannot fabricate an empty index. An *existing* DB
+> with zero recorded groups is different — that is an honest empty report
+> (`no run groups recorded`, exit 0).
 
 ## List run groups (index)
 
@@ -20,7 +27,7 @@ Same retention index as M9 compare:
 
 ```bash
 PYTHONPATH=src uv run python -m nlfr compare index \
-  --db data/record-proof/nlfr.sqlite \
+  --db data/nlfr-record/baseline/nlfr.sqlite \
   --json
 ```
 
@@ -28,16 +35,20 @@ Limit when the index grows:
 
 ```bash
 PYTHONPATH=src uv run python -m nlfr compare index \
-  --db data/record-proof/nlfr.sqlite \
+  --db data/nlfr-record/baseline/nlfr.sqlite \
   --limit 10 \
   --json
 ```
 
 ## Export multi-run history projection
 
+History is richest when one database holds several groups (multiple runs
+recorded into a shared `--output-dir`, or several groups ingested into one
+`nlfr.sqlite`):
+
 ```bash
 PYTHONPATH=src uv run python -m nlfr compare history \
-  --db data/record-proof/nlfr.sqlite \
+  --db data/nlfr-record/baseline/nlfr.sqlite \
   --output apps/canvas/public/projections/run-history.json
 ```
 
@@ -45,7 +56,7 @@ Limit to the newest groups (index-only; no purge):
 
 ```bash
 PYTHONPATH=src uv run python -m nlfr compare history \
-  --db data/record-proof/nlfr.sqlite \
+  --db data/nlfr-record/baseline/nlfr.sqlite \
   --limit 5 \
   --output /tmp/run-history.json
 ```
@@ -72,7 +83,9 @@ Load order in `RunGroupSelector`:
 2. **`run-history.json`** — richer multi-run projection with per-group summaries
 3. **`compare-projection.json`** — pairwise fallback from `left`/`right` groups
 
-Regenerate history for tier1 demo:
+Regenerate history for tier1 demo (the `data/canvas-dev/nlfr.sqlite` **demo
+fixture** DB, produced by the canvas demo scripts — not the `nlfr record`
+default path):
 
 ```bash
 PYTHONPATH=src uv run python -m nlfr compare history \
