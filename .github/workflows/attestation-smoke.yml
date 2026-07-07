@@ -89,7 +89,10 @@ jobs:
         # pin in lockstep with the cosign version the how-to doc documents; a bump
         # PR re-runs this smoke and proves the new line before users hit it. The
         # exact version that ran is recorded in the next step.
-        uses: sigstore/cosign-installer@v3
+        # Installer must be @v4+: cosign v3.x releases publish .sigstore.json
+        # bundle signatures instead of the .sig/.pem assets the @v3 installer
+        # curl -f's (404 -> exit 22 -- proven by this smoke's own first run).
+        uses: sigstore/cosign-installer@v4
         with:
           cosign-release: "v3.1.1"
 
