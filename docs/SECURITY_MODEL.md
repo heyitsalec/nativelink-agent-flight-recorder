@@ -137,9 +137,11 @@ plugs into your safety case*, never *auditor acceptance*.
   (recomputed digest matches), `remote_mismatch`, `remote_missing`, or
   `remote_present` (present but not hash-checked). This verifies CAS **content
   presence and integrity**, *not* that Bazel actually consumed that blob during
-  the build; and any unreachable endpoint, over-read-limit blob, non-SHA-256
-  declared digest, or transport error falls back to the honest
-  `unverified_remote_reference` downgrade rather than a fabricated claim. See
+  the build. A blob that is present but cannot be integrity-checked — an
+  over-read-limit blob or a non-SHA-256 declared digest — earns
+  `remote_present` (present, not verified), while an unreachable endpoint or
+  transport error falls back to the honest `unverified_remote_reference`
+  downgrade. Neither ever fabricates a verified claim. See
   [Verify remote CAS references](wiki/how-to/verify-remote-cas.md) and the
   [truth-labels reference](wiki/reference/truth-labels.md#remote-verification-via-an-injectable-cas-probe-issue-81).
 - **Redaction is best-effort pattern matching, not a guarantee.** It reliably
