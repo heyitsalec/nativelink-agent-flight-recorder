@@ -1,0 +1,15 @@
+{
+  "response": "Done.\n",
+  "stats": {
+    "models": {
+      "gemini-2.5-pro": {
+        "tokens": {
+          "prompt": 900,
+          "candidates": 120,
+          "total": 1020,
+          "cached": 0
+        }
+      }
+    }
+  }
+}

@@ -133,6 +133,32 @@ The proof packet surfaces a rollup at `summary.artifact_verification` and in the
 `local_present` references (present but digest not cross-checked — see the
 `local_present` row above).
 
+## Agent receipt provenance ladder (multi-CLI)
+
+Agent legs carry a `provenance_class` that ranks how the model claim is backed:
+
+| Class | Meaning |
+|-------|---------|
+| `receipt_verified_v1` | Parsed live agent-CLI receipt: `status == success` **and** a response SHA-256, a `session_id`, and exactly one server-resolved model. Model label comes from the CLI, not the operator. |
+| `stub_receipt_v1` | Deterministic stub CLI (CI mechanics gate); `simulated_v1`, never live. |
+| `operator_asserted_v1` | Operator-typed model claim with no receipt. |
+
+Receipts are captured through a per-CLI parser registry in
+[`agent_receipt.py`](../../../src/nlfr/agent_receipt.py) (`CLI_PARSERS`): each
+CLI normalizes its own `--output-format json` shape onto one internal receipt
+shape, so the verified-tier bar and privacy posture (`prompt_sha256` only, raw
+prompt structurally rejected) are identical across CLIs. A receipt only earns
+`success` when the bar is met; otherwise it is recorded honestly as an
+`invalid_output` / `api_error` / blocker receipt — collected evidence of the
+attempt that stays **below** the verified tier (`is_live_receipt` is false).
+
+Supported CLIs and their evidence status:
+
+| `--agent-cli` | Verified-tier status |
+|---------------|----------------------|
+| `claude` | Live-proven — the committed two-act run carries `receipt_verified_v1` Claude receipts. |
+| `gemini` | Doc-derived from the official Gemini CLI `--output-format json` contract (`response` + `stats.models` + `session_id`, optional `error`) and **fixture-tested**. Live validation is env-gated (`NLFR_RUN_AGENT_LIVE_GEMINI=1` with the Gemini CLI on PATH) and pending a machine with that CLI — **not** yet live-proven. |
+
 ## Conditional claims (M7)
 
 `worker_identity` is `collectable_v1` **only when**:

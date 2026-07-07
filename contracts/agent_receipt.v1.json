@@ -69,6 +69,10 @@
     "total_cost_usd": { "type": ["number", "null"] },
     "result_subtype": { "type": ["string", "null"] },
     "api_error_status": { "type": ["integer", "null"] },
+    "api_error_code": {
+      "type": ["string", "null"],
+      "description": "Symbolic error code preserved verbatim (e.g. Gemini's string codes like PERMISSION_DENIED); numeric HTTP-style codes go to api_error_status instead."
+    },
     "detail": { "type": "string" },
     "source_kind": {
       "enum": ["collectable_v1", "simulated_v1"],

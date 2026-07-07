@@ -135,6 +135,17 @@ Agent nodes additionally carry a receipt provenance badge:
 `stub_receipt_v1` (deterministic stub used by the CI mechanics gate), or
 `operator_asserted_v1` (operator claim without a receipt).
 
+Receipts are captured through a per-CLI parser registry
+([`src/nlfr/agent_receipt.py`](src/nlfr/agent_receipt.py)): `nlfr agent-invoke
+--agent-cli {claude,gemini}`. Every CLI clears the same verified-tier bar
+(success + response SHA-256 + session id + single server-resolved model) and the
+same privacy posture (prompt hashed, raw prompt structurally rejected). The
+committed two-act run is a live **Claude** receipt. The **Gemini** integration
+is derived from the official Gemini CLI `--output-format json` docs and is
+fixture-tested — live validation is env-gated (`NLFR_RUN_AGENT_LIVE_GEMINI=1`
+with the Gemini CLI on PATH) and pending a machine with that CLI; it has not
+been live-proven here.
+
 V1 does **not** claim remote worker assignment, queue time, action placement,
 scheduler assignment, load distribution, or full remote-execution fleet
 behavior. Worker identity is **conditional** on M7 stdout capture — not a

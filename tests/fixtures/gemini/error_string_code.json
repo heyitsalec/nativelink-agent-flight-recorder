@@ -1,0 +1,8 @@
+{
+  "error": {
+    "message": "The caller does not have permission for this operation.",
+    "code": "PERMISSION_DENIED",
+    "type": "ApiError"
+  },
+  "session_id": "cccccccc-dddd-eeee-ffff-000000000000"
+}

@@ -1,0 +1,8 @@
+{
+  "error": {
+    "type": "ApiError",
+    "message": "Failed to authenticate. API Error: 401 Invalid authentication credentials",
+    "code": 401
+  },
+  "session_id": "eeee0000-eeee-0000-eeee-000000000000"
+}
