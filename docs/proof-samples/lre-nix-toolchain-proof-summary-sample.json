@@ -13,10 +13,10 @@
   "monorepo_lre_bazelrc_path": "demo/bazel-monorepo/lre.bazelrc",
   "platform": "linux",
   "machine": "x86_64",
-  "recorded_at": "2026-06-06T20:15:00Z",
+  "recorded_at": "2026-07-07T15:46:21Z",
   "build_config_lre": {
     "attempted": true,
-    "succeeded": true,
+    "succeeded": false,
     "target": "@local-remote-execution//examples:lre-cc",
     "skip_reason": null
   },

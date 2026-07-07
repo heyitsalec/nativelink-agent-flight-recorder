@@ -6,8 +6,10 @@ Phase 4 of the LRE proof ladder records **observed LRE cold/warm cache economics
 x86_64-linux inside `nix develop`. The script is `scripts/lre-cold-warm-proof.sh`; the
 claim ceiling is `lre_cache_parity_observed` (`collectable_v1`, `medium`).
 
-While GitHub Actions is offline, this manual path is the supported way to produce a green
-`summary.json` or to promote a redacted sample for skeptics who will not run Nix locally.
+The hosted `lre-cold-warm-ci` job is `schedule`/`workflow_dispatch`-only and has not passed
+on hosted runners (LRE overlay version-block + Magic Nix Cache throttling), so this manual
+x86_64-linux path remains the **canonical** way to produce a green `summary.json` or to
+promote a redacted sample for skeptics who will not run Nix locally.
 
 Related:
 

@@ -1,11 +1,14 @@
 # GHA restore runbook
 
-**Quadrant:** How-to · **Audience:** operators restoring CI after the GHA offline period.
+**Quadrant:** How-to · **Audience:** operators (historical restore procedure; CI restored 2026-07-07) and air-gapped reproducers.
 
-**Status (2026-06-07):** GitHub Actions had not produced a sustained green run
-in this repo before the public release. Workflow YAML audits and local
-substitutes pass; sustained green is **not** proven. This document is the
-**procedure to run when Actions return**, plus **local substitutes** until then.
+**Status (2026-07-07): RESOLVED — GitHub Actions is live and `main` is green.**
+`nlfr-proof.yml` has been green across every completed push run on `main` since
+2026-07-07 (e.g. run
+[`28878270360`](https://github.com/heyitsalec/nativelink-agent-flight-recorder/actions/runs/28878270360)).
+This runbook is retained as the **historical restore procedure** and as the
+**local-substitute** reference for air-gapped reproduction; the restore trigger
+below has already fired.
 
 Committed blocker sample: [`proof-samples/ci-offline-blocker-sample.json`](proof-samples/ci-offline-blocker-sample.json).
 
@@ -49,11 +52,14 @@ Detail and operator checklist: [`CI_RECIPE.md`](CI_RECIPE.md#sustained-green-cri
 
 ---
 
-## GHA offline blocker (wave 10 honest close)
+## GHA offline blocker (wave 10 honest close — superseded 2026-07-07)
+
+_Historical record. Superseded: `main` has been green on hosted runners since
+2026-07-07 (see Status banner above). Kept for provenance of the offline period._
 
 | Field | Value |
 |-------|-------|
-| **Observation** | GHA offline ~1 month; no sustained green run captured |
+| **Observation** | (historical) GHA was offline ~1 month; no sustained green run was captured **at that time** — resolved 2026-07-07 |
 | **Audit status** | readiness audit + local gates only |
 | **Truth label** | `collectable_v1` / `high` (negative) |
 | **Readiness script** | [`scripts/verify-gha-readiness.sh`](../scripts/verify-gha-readiness.sh) |

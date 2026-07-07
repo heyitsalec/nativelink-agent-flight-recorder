@@ -1,13 +1,14 @@
 # CI recipe (M5+)
 
-**Quadrant:** How-to · **Audience:** skeptics reproducing proofs on Linux/x86_64 and operators when GitHub Actions is offline.
+**Quadrant:** How-to · **Audience:** skeptics reproducing proofs on Linux/x86_64 and operators reproducing hosted CI locally (or offline).
 
 How NLFR proofs are declared in GitHub Actions and how to reproduce the same proofs locally.
 
 ## Local verification policy
 
-Until the first sustained green public run of `nlfr-proof.yml`, local proof
-gates are the canonical verification (see README § Status):
+[`nlfr-proof.yml`](../.github/workflows/nlfr-proof.yml) is green on hosted
+GitHub Actions today; local proof gates remain the canonical **offline**
+substitute and the fastest pre-push smoke:
 
 ```bash
 uv run pytest -q
@@ -23,7 +24,7 @@ nix develop --command ./scripts/lre-cold-warm-proof.sh
 nix develop --command ./scripts/tier1-live-bazel-proof.sh
 ```
 
-Full restore procedure when Actions return: [GHA_RESTORE_RUNBOOK.md](GHA_RESTORE_RUNBOOK.md).
+Historical restore procedure (Actions are live now): [GHA_RESTORE_RUNBOOK.md](GHA_RESTORE_RUNBOOK.md).
 
 ## Sustained-green criteria
 
@@ -31,15 +32,15 @@ Full restore procedure when Actions return: [GHA_RESTORE_RUNBOOK.md](GHA_RESTORE
 
 | Criterion | `NLFR proof` (`nlfr-proof.yml`) | `NLFR cache-only gate` |
 |-----------|--------------------------------|------------------------|
-| Jobs green on one run | All **seven** parallel jobs | `cache-only-gate` only |
+| Jobs green on one run | All **five** per-push jobs (2 LRE jobs are `schedule`/`workflow_dispatch`-only, non-blocking) | `cache-only-gate` only |
 | Consecutive greens | **≥3** on `main` (no intervening failure) | **1** green sufficient for doctor contract |
 | Artifact promotion | Required before `proof-samples/` Linux CI provenance | Not a promotion source |
 | Local substitute | [`verify-gha-readiness.sh`](../scripts/verify-gha-readiness.sh) | [`cache-only-ci-gate.sh`](../scripts/cache-only-ci-gate.sh) |
 
-Until a real workflow run meets the table above, run the readiness script and
-treat [`ci-offline-blocker-sample.json`](proof-samples/ci-offline-blocker-sample.json) as the
-committed negative evidence. Do **not** tick the [restore checklist](#gha-restore-checklist)
-before that.
+This is now **met** — `main` has been green on hosted runners across every
+completed push run since 2026-07-07. The readiness script and
+[`ci-offline-blocker-sample.json`](proof-samples/ci-offline-blocker-sample.json)
+remain as the committed **offline** substitute for air-gapped reproduction.
 
 ```bash
 ./scripts/verify-gha-readiness.sh
@@ -75,12 +76,13 @@ Run the local script before merge; trigger with
 | Claim | `source_kind` | Gate |
 |-------|---------------|------|
 | cache-only doctor JSON on PR | `collectable_v1` / `high` | script + optional workflow artifact |
-| Full `nlfr-proof.yml` green | deferred | [GHA restore checklist](#gha-restore-checklist) |
+| Full `nlfr-proof.yml` green | **live** (green on `main` since 2026-07-07) | [promotion matrix](proof-samples/CI_PROMOTION_MATRIX.md) |
 
 ## GHA restore checklist
 
-Use when operator declares GHA restored or the first sustained green `nlfr-proof.yml` run
-lands. Tick only after a real workflow run. Promotion steps follow [`GITHUB_RELEASE.md`](GITHUB_RELEASE.md#ci-restore--promotion-runbook).
+GHA was restored 2026-07-07 (`main` green on hosted runners); this checklist is
+retained as the promotion procedure and historical reference. Promotion steps
+follow [`GITHUB_RELEASE.md`](GITHUB_RELEASE.md#ci-restore--promotion-runbook).
 
 ### Pre-restore (local smoke)
 
