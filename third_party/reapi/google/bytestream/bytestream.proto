@@ -1,0 +1,66 @@
+// Copyright 2025 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// NLFR VENDORED SUBSET — NOT the full upstream file.
+//
+// This is a minimal, wire-compatible extraction from
+// googleapis/googleapis google/bytestream/bytestream.proto at commit
+// af2513fa2dc3b1fb9992faaf900807f856d35990 (see third_party/reapi/README.md
+// for provenance and the verbatim-subset claim). It keeps ONLY the messages
+// NLFR's optional CAS probe needs to call ByteStream/Read: ReadRequest and
+// ReadResponse. The package, message names, field names, field numbers, and
+// field types are verbatim upstream — protobuf wire compatibility depends only
+// on field numbers and types. The ByteStream SERVICE definition, the write
+// messages, and the upstream file options/imports (google/api/annotations,
+// google/protobuf/wrappers) are intentionally removed to keep the vendored
+// surface reviewable.
+//
+// The upstream ByteStream SERVICE definition is deliberately not vendored:
+// NLFR invokes the single RPC it needs through gRPC's generic method API using
+// the fully-qualified method path /google.bytestream.ByteStream/Read.
+
+syntax = "proto3";
+
+package google.bytestream;
+
+// Request object for ByteStream.Read.
+message ReadRequest {
+  // The name of the resource to read.
+  string resource_name = 1;
+
+  // The offset for the first byte to return in the read, relative to the start
+  // of the resource.
+  //
+  // A `read_offset` that is negative or greater than the size of the resource
+  // will cause an `OUT_OF_RANGE` error.
+  int64 read_offset = 2;
+
+  // The maximum number of `data` bytes the server is allowed to return in the
+  // sum of all `ReadResponse` messages. A `read_limit` of zero indicates that
+  // there is no limit, and a negative `read_limit` will cause an error.
+  //
+  // If the stream returns fewer bytes than allowed by the `read_limit` and no
+  // error occurred, the stream includes all data from the `read_offset` to the
+  // end of the resource.
+  int64 read_limit = 3;
+}
+
+// Response object for ByteStream.Read.
+message ReadResponse {
+  // A portion of the data for the resource. The service **may** leave `data`
+  // empty for any given `ReadResponse`. This enables the service to inform the
+  // client that the request is still live while it is running an operation to
+  // generate more data.
+  bytes data = 10;
+}

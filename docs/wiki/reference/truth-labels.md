@@ -242,18 +242,28 @@ mirrors the local `*` symmetry:
 | `presence` | Probe verdict | Truth-label consequence |
 |------------|---------------|-------------------------|
 | `remote_verified` | present, and the recomputed SHA-256 matched the declared digest | kept `collectable_v1` / `high` — the only remote tier that stays collectable |
-| `remote_present` | present, but bytes not hash-checked (probe read no digest, or a non-recomputable-SHA-256 declared digest) | unchanged / `medium` |
+| `remote_present` | present, but bytes not hash-checked (no declared digest, a non-recomputable-SHA-256 declared digest, a blob over the probe's read limit, or a `compressed-blobs` resource) — the honest reason is appended to `verification_note` | unchanged / `medium` |
 | `remote_mismatch` | read, but recomputed SHA-256 contradicts the declared digest | downgraded (`collectable_v1` → `derived_v1`) / `low` |
 | `remote_missing` | the CAS confirms the blob is **absent** (the bazel#23250 failure mode) | downgraded / `low` — the strongest downgrade |
 
 A probe that raises or returns no verdict falls back to
 `unverified_remote_reference` — NLFR **never** fabricates a presence claim from a
-failed probe. NLFR ships **no probe backend yet**: the label vocabulary and the
-seam land in **part A** (this change), and CAS verification is **not live**. The
-gRPC/REAPI probe (an optional `[reapi]` dependency extra plus vendored protos) is a
-separate follow-up, **#81 part B**. Until then every remote reference stays
-`unverified_remote_reference` by default, and no exported packet claims remote CAS
-was checked.
+failed probe.
+
+**Part B is live**: NLFR ships the actual REAPI probe backend behind the optional
+`[reapi]` extra (`pip install "nativelink-agent-flight-recorder[reapi]"`), wired
+to `nlfr ingest --cas-endpoint grpc://host:port [--cas-instance NAME]
+[--cas-read-limit BYTES]`. The probe checks presence with
+`ContentAddressableStorage/FindMissingBlobs` and, for present blobs with a
+recomputable-SHA-256 declared digest within the read limit, streams the bytes
+via `ByteStream/Read` and recomputes the SHA-256 locally — NLFR compares what
+**it** hashed, never the store's self-report. Each probed ingest also records a
+`cas_probe_v1` proof block (endpoint, instance, read limit, per-outcome counts)
+so packets state what was probed. Without the flag — or without the extra, or
+when the CAS is unreachable — every remote reference keeps the honest
+`unverified_remote_reference` downgrade, and no exported packet claims remote
+CAS was checked. Operator guide, including what the probe deliberately does
+**not** prove: [Verify remote CAS references](../how-to/verify-remote-cas.md).
 
 ### Symlink and inline-content File entries
 

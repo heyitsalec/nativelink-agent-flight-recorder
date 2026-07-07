@@ -33,6 +33,7 @@ safety-critical) who has to show *what actually ran* when an agent wrote the cod
 | --- | --- |
 | **`nlfr record`** | One-command evidence capture on any Bazel repo — wrap any `bazel` invocation ([how-to](docs/wiki/how-to/record-your-own-build.md)). |
 | **Artifact-integrity verification** | Recorded SHA-256 digests re-checked and surfaced as an `artifact_verification` rollup in proof packets and the in-toto predicate. |
+| **Remote CAS verification** | `nlfr ingest --cas-endpoint` independently confirms `bytestream://` references against a running CAS via the optional `[reapi]` extra — honest downgrade when absent ([how-to](docs/wiki/how-to/verify-remote-cas.md)). |
 | **in-toto export** | `nlfr proof export --format in-toto` → unsigned, DSSE-ready in-toto v1 Statement; sign externally with cosign ([how-to](docs/wiki/how-to/export-in-toto-attestation.md)). |
 | **Contract-enforced projections** | Projection JSON shape is CI-gated against committed JSON contracts ([contracts](docs/wiki/reference/contracts/README.md)). |
 | **Verified agent receipts** | `receipt_verified_v1` receipts — model, session, token usage, prompt/response SHA-256; raw prompt structurally absent. Claude is live-proven in the committed two-act run; the Gemini parser is fixture-tested (live validation env-gated). |

@@ -116,10 +116,16 @@ class ProbeResult:
     reading/hashing the bytes (e.g. a ``FindMissingBlobs`` existence check). A probe
     that cannot reach a verdict returns ``None`` (not a ``ProbeResult``), and NLFR
     then falls back to ``unverified_remote_reference`` rather than fabricating one.
+
+    ``note`` (#81 part B, signature-compatible: defaults to ``None``) lets a probe
+    record WHY it confirmed presence without hashing the bytes (read limit
+    exceeded, no declared digest, compressed resource); the verifier appends it to
+    the reference's ``verification_note`` so the evidence states the honest reason.
     """
 
     present: bool
     computed_digest: str | None = None
+    note: str | None = None
 
 
 # An injectable CAS probe: given the remote URI and the BEP-declared digest/size,
@@ -571,11 +577,24 @@ def _verify_remote(
 
     # Present, but no recomputable-SHA-256 cross-check was possible: the probe did
     # not hash the bytes, or the BEP declared no digest / a non-SHA-256 digest.
+    # When the probe recorded WHY it did not hash the bytes (#81 part B), that
+    # honest reason is appended verbatim to the evidence note.
     note = (
         "CAS probe reports the BEP-referenced blob is present, but its digest was "
         "not cross-checked as a recomputable SHA-256; presence is recorded, the "
         "digest is neither confirmed nor contradicted."
     )
+    # ``note`` was already validated str-or-None by _probe_malformation, but a
+    # hostile ProbeResult could re-read to a different value or a str subclass whose
+    # ``__bool__`` raises. Read and test it once under a guard so appending the
+    # probe's reason can only ever ADD context, never crash ingest — preserving the
+    # invariant that a bad probe weakens a claim, never breaks the parse.
+    try:
+        probe_note = probe.note
+        if isinstance(probe_note, str) and probe_note:
+            note = f"{note} Probe: {probe_note}"
+    except Exception:
+        pass  # keep the base remote_present note; a hostile note never crashes ingest
     return (
         PRESENCE_REMOTE_PRESENT,
         None,
@@ -591,14 +610,17 @@ def _probe_malformation(probe: Any) -> str | None:
     """Describe why ``probe`` is not a well-formed ``ProbeResult``, or ``None`` if it is.
 
     A probe is injected, untrusted code. Its return must be a ``ProbeResult`` whose
-    ``present`` is a real ``bool`` and whose ``computed_digest`` is ``str`` or
-    ``None``. Anything else is malformed and must be treated as inconclusive rather
-    than consumed: a non-str ``computed_digest`` would crash the SHA-256 compare, and
-    a bool-like ``int`` ``present`` would fabricate a presence verdict. ``present`` is
-    checked with ``isinstance(x, bool)`` precisely so ``1``/``0`` (``int``) and
-    ``"yes"`` (``str``) are rejected, not silently accepted as truthy. Attribute
-    access may itself raise for a hostile ``ProbeResult`` subclass, so callers wrap
-    this in ``try/except``.
+    ``present`` is a real ``bool``, whose ``computed_digest`` is ``str`` or ``None``,
+    and whose ``note`` is ``str`` or ``None``. Anything else is malformed and must be
+    treated as inconclusive rather than consumed: a non-str ``computed_digest`` would
+    crash the SHA-256 compare, a bool-like ``int`` ``present`` would fabricate a
+    presence verdict, and a non-str ``note`` (e.g. an object whose ``__bool__``
+    raises) would crash the ``remote_present`` note-append. ``present`` is checked
+    with ``isinstance(x, bool)`` precisely so ``1``/``0`` (``int``) and ``"yes"``
+    (``str``) are rejected, not silently accepted as truthy. Attribute access may
+    itself raise for a hostile ``ProbeResult`` subclass, so callers wrap this in
+    ``try/except``. Only type is checked here — never truthiness — so a note whose
+    ``__bool__`` raises is rejected by type without ever invoking ``__bool__``.
     """
 
     if not isinstance(probe, ProbeResult):
@@ -608,6 +630,9 @@ def _probe_malformation(probe: Any) -> str | None:
     computed = probe.computed_digest
     if computed is not None and not isinstance(computed, str):
         return f"computed_digest: {type(computed).__name__}"
+    note = probe.note
+    if note is not None and not isinstance(note, str):
+        return f"note: {type(note).__name__}"
     return None
 
 

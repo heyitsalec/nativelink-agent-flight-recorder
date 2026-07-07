@@ -21,6 +21,11 @@ build/
 .next/
 playwright-report/
 test-results/
+# The vendored REAPI proto subset and its committed protobuf stubs mirror the
+# upstream proto paths, which start with a literal build/ segment — re-include
+# those two trees (and only those) from the frontend build/ rule above.
+!third_party/reapi/build/
+!src/nlfr/reapi/_gen/build/
 
 # Bazel output roots inside demo workspaces.
 # Deliberately NOT `bazel-*`: that pattern also matched the
