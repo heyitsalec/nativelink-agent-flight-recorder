@@ -605,6 +605,87 @@ def test_placeholder_vocabulary_is_derived_from_the_registry():
     assert "abs_path" in _PLACEHOLDER_NAMES
 
 
+# Detectors whose match body is ARBITRARY (a placeholder-shaped substring can be
+# spliced inside a single match span). private_key_pem is the whole-block case; a
+# guard keyed on OVERLAP (not containment) would drop the entire span and leak the
+# key. Derived by inspection of the registry regexes: only patterns with a
+# free-form body (`[\s\S]*?`) can wrap a bracketed token — the token-shaped
+# detectors use character classes that exclude `[` / `]`.
+WHOLE_MATCH_SECRETS = {
+    "private_key_pem": (
+        "-----BEGIN RSA PRIVATE KEY-----",
+        "-----END RSA PRIVATE KEY-----",
+    ),
+}
+
+
+def test_whole_match_secret_wrapping_a_placeholder_is_never_dropped():
+    """FAIL-SAFE: a whole-match secret whose BODY contains a recognized placeholder
+    is still detected. The guard is CONTAINMENT, never overlap.
+
+    private_key_pem matches an entire BEGIN..END block via a free-form body. An
+    overlap-based idempotency guard would drop that whole span the moment its body
+    happened to contain a recognized ``[REDACTED:<name>]`` token — splicing one in
+    would leak the private key while ``--check`` reported clean (the #71 cardinal
+    sin). Containment only drops a candidate FULLY INSIDE a placeholder, so a
+    secret span that WRAPS or STRADDLES one is never dropped. Every one of the 14
+    recognized names is spliced mid-body and the secret must still be redacted.
+    """
+
+    from nlfr.redaction import _PLACEHOLDER_NAMES
+
+    body = "MIISECRETKEYMATERIALdoNotLeak"
+    for detector_name, (begin, end) in WHOLE_MATCH_SECRETS.items():
+        for placeholder_name in _PLACEHOLDER_NAMES:
+            poisoned = f"{begin}\n{body}1\n[REDACTED:{placeholder_name}]\n{body}2\n{end}"
+            result = redact_text(poisoned)
+            assert detector_name in _detectors(result), (placeholder_name, result.findings)
+            assert body not in result.payload, placeholder_name
+            assert f"[REDACTED:{detector_name}]" in result.payload, placeholder_name
+
+
+def test_poisoned_pem_variants_fail_safe_in_text_and_json():
+    """The reviewer's exact PEM shapes: mid-body, pre-END, verbatim, and JSON."""
+
+    begin, end = "-----BEGIN RSA PRIVATE KEY-----", "-----END RSA PRIVATE KEY-----"
+    body = "MIISECRETKEYMATERIALverbatim"
+
+    # (mid-body) a recognized placeholder in the middle of the key body.
+    mid = f"{begin}\n{body}\n[REDACTED:email]\n{body}\n{end}"
+    out_mid = redact_text(mid)
+    assert "private_key_pem" in _detectors(out_mid), out_mid.findings
+    assert body not in out_mid.payload  # the full key does not leak verbatim
+
+    # (placeholder on its own line immediately before END).
+    pre_end = f"{begin}\n{body}\n[REDACTED:abs_path]\n{end}"
+    out_pre = redact_text(pre_end)
+    assert "private_key_pem" in _detectors(out_pre), out_pre.findings
+    assert body not in out_pre.payload
+
+    # (JSON payload path) poisoned PEM under a safe-labelled node → detected and
+    # the node's redaction_state honestly upgraded.
+    doc = {"log": f"{begin}\n{body}\n[REDACTED:jwt]\n{end}", "redaction_state": "safe"}
+    res = redact_payload(doc, RedactionConfig())
+    assert "private_key_pem" in _detectors(res), res.findings
+    assert res.payload["redaction_state"] == "redacted"
+    assert body not in json.dumps(res.payload)
+
+
+def test_nested_placeholder_output_is_byte_stable_under_repeat_redaction():
+    """A secret wrapped in fake brackets redacts once, then re-runs are no-ops.
+
+    ``[REDACTED:AKIA...]`` redacts to a nested
+    ``[REDACTED:[REDACTED:aws_access_key_id]]``; the recognized INNER token is the
+    only contained span, so a 2nd and 3rd pass are byte-stable.
+    """
+
+    first = redact_text("the leaked key was [REDACTED:AKIAABCDEFGHIJKLMNOP] here").payload
+    second = redact_text(first).payload
+    third = redact_text(second).payload
+    assert first == second == third
+    assert "AKIAABCDEFGHIJKLMNOP" not in first
+
+
 def test_scrub_local_paths_roots_catches_single_segment_root_without_corruption():
     out, count = scrub_local_paths("/data", roots=["/data"])
     assert out == "[REDACTED:abs_path]/data"

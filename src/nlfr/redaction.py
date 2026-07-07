@@ -626,19 +626,33 @@ class RedactionResult:
 # ---------------------------------------------------------------------------
 
 
-def _overlaps_any(start: int, end: int, spans: list[Span]) -> bool:
-    """True when ``[start, end)`` overlaps any span in ``spans`` (half-open)."""
+def _contained_in_any(start: int, end: int, spans: list[Span]) -> bool:
+    """True when ``[start, end)`` is FULLY CONTAINED within some span in ``spans``.
 
-    return any(start < span_end and span_start < end for span_start, span_end in spans)
+    Containment (``span_start <= start and end <= span_end``), NOT mere overlap,
+    is the safe idempotency test. A recognized ``[REDACTED:<name>]`` placeholder's
+    entire interior is a fixed detector NAME (never a secret), so the only
+    candidate spans fully inside one are false re-matches of the placeholder's own
+    text — e.g. ``url_credentials`` re-matching ``[REDACTED:url_credentials]`` —
+    which is exactly what must be dropped for idempotency. A candidate that WRAPS
+    a placeholder (a ``private_key_pem`` block whose arbitrary body happens to
+    contain ``[REDACTED:email]``) or STRADDLES its boundary is NOT contained, so a
+    real secret is never dropped. An overlap test would drop the whole PEM span
+    and leak the key — the fail-unsafe #71 class this guard must avoid.
+    """
+
+    return any(span_start <= start and end <= span_end for span_start, span_end in spans)
 
 
 def _resolve_spans(value: str, key: str | None, config: RedactionConfig):
     """Collect enabled-detector spans and greedily pick non-overlapping ones.
 
     Deterministic: sort by (start, longest-first, registry-order); earliest
-    wins, longest breaks ties, registry order is the final tie-break. Candidates
-    overlapping an already-written ``[REDACTED:...]`` placeholder are dropped so
-    redaction is idempotent (a re-run over redacted text finds nothing new).
+    wins, longest breaks ties, registry order is the final tie-break. A candidate
+    is dropped only when it is FULLY CONTAINED within an already-written
+    ``[REDACTED:<known-name>]`` placeholder, so redaction is idempotent (a re-run
+    over redacted text finds nothing new) WITHOUT ever dropping a real secret that
+    merely wraps or straddles a placeholder.
     """
 
     candidates = []
@@ -649,15 +663,17 @@ def _resolve_spans(value: str, key: str | None, config: RedactionConfig):
             if end > start:
                 candidates.append((start, end, idx, detector))
 
-    # Idempotency guard: never re-detect inside a placeholder we already wrote,
-    # so a second pass over redacted text is a no-op (see _PLACEHOLDER_RE). This
-    # is what keeps the export-then-re-check flow from failing on its own output.
+    # Idempotency guard: drop a candidate ONLY when it is fully contained within a
+    # placeholder we already wrote, so a second pass over redacted text is a no-op
+    # (see _PLACEHOLDER_RE) WITHOUT ever dropping a real secret that wraps or
+    # straddles a placeholder. This is what keeps the export-then-re-check flow
+    # from failing on its own output while staying fail-safe.
     placeholders = [match.span() for match in _PLACEHOLDER_RE.finditer(value)]
     if placeholders:
         candidates = [
             candidate
             for candidate in candidates
-            if not _overlaps_any(candidate[0], candidate[1], placeholders)
+            if not _contained_in_any(candidate[0], candidate[1], placeholders)
         ]
 
     candidates.sort(key=lambda c: (c[0], -(c[1] - c[0]), c[2]))
