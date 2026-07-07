@@ -14,6 +14,7 @@ from nlfr.ingest.bazel import (
     parse_bazel_bep,
     parse_bazel_execution_log,
     parse_bazel_profile,
+    extract_bep_tool_version,
 )
 from nlfr.ingest.models import EvidenceBundle
 from nlfr.ingest.sqlite import ingest_evidence_bundle
@@ -127,6 +128,14 @@ def run(args: argparse.Namespace) -> int:
             run_id=run_id,
             run_stable_key=run_stable_key,
             path=worker_stdout_path,
+            source_kind=args.source_kind,
+        )
+    if evidence_files["bep"] is not None:
+        counts["proof_blocks"] = counts.get("proof_blocks", 0) + _ingest_build_tool_identity(
+            conn,
+            run_id=run_id,
+            run_stable_key=run_stable_key,
+            bep_path=evidence_files["bep"],
             source_kind=args.source_kind,
         )
 
@@ -343,6 +352,57 @@ def _ingest_worker_admin_stdout(
         source_kind=source_kind,
         confidence="high",
         evidence_refs=_dedupe([evidence_ref, f"artifact:{path.name}"]),
+        redaction_state="safe",
+    )
+    return 1
+
+
+def _ingest_build_tool_identity(
+    conn,
+    *,
+    run_id: str,
+    run_stable_key: str,
+    bep_path: Path,
+    source_kind: str,
+) -> int:
+    """Record which Bazel produced the BEP as a ``build_tool_identity_v1`` proof block.
+
+    The BEP ``started`` event's ``buildToolVersion`` is the build tool's
+    self-reported release string. NLFR stores it verbatim — evidence-carried, not
+    fabricated — so an exported proof packet can state which Bazel produced the
+    evidence. Returns 0 and stores nothing when the BEP declares no build tool
+    version; the packet then reports the tool version as unknown rather than
+    inventing one.
+    """
+
+    tool_version = extract_bep_tool_version(bep_path)
+    if tool_version is None:
+        return 0
+
+    evidence_ref = _evidence_ref(source_kind, bep_path)
+    upsert_proof_block(
+        conn,
+        stable_key=f"{run_stable_key}:proof:build-tool-identity",
+        run_id=run_id,
+        block_key="build-tool-identity",
+        block_kind="build_tool_identity_v1",
+        title="Build Tool Identity",
+        summary=(
+            f"BEP started event reports build tool version {tool_version}. This is "
+            "the build tool's self-reported release string, recorded verbatim from "
+            "the started event's buildToolVersion field — not fabricated."
+        ),
+        payload={
+            "build_tool": "bazel",
+            "build_tool_version": tool_version,
+            "field": "started.buildToolVersion",
+            "source_kind": source_kind,
+            "confidence": "high",
+            "redaction_state": "safe",
+        },
+        source_kind=source_kind,
+        confidence="high",
+        evidence_refs=_dedupe([evidence_ref, f"artifact:{bep_path.name}"]),
         redaction_state="safe",
     )
     return 1

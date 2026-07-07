@@ -357,6 +357,33 @@ def parse_bazel_profile(
     return EvidenceBundle(cache_events=events)
 
 
+def extract_bep_tool_version(path: str | Path) -> str | None:
+    """Return the Bazel version that produced this BEP, or ``None``.
+
+    The Build Event Protocol's ``started`` event (``BuildStarted``) carries
+    ``buildToolVersion`` — the exact build tool release string, e.g. ``"7.4.1"``
+    or ``"9.0.0"`` (proto field ``build_tool_version`` = 3, present across the
+    7.x LTS line and the 9.x line alike; see ``tests/fixtures/bazel/matrix``).
+    NLFR reads it verbatim from the evidence so an exported proof packet can state
+    which build tool produced the evidence.
+
+    It returns ``None`` when no ``started`` event carries a non-empty
+    ``buildToolVersion`` — older evidence, a hand-authored fixture that omits it,
+    or a non-Bazel BEP. NLFR then records the build tool version as *unknown*
+    rather than fabricating one. Extra 9.x-only started fields (``host``, ``user``)
+    are simply ignored; a version is read whenever the field is present.
+    """
+
+    for event in _load_json_events(Path(path)):
+        started = event.get("started")
+        if not isinstance(started, dict):
+            continue
+        version = started.get("buildToolVersion")
+        if isinstance(version, str) and version.strip():
+            return version.strip()
+    return None
+
+
 def _load_json_events(path: Path) -> list[dict[str, Any]]:
     text = _read_text(path).strip()
     if not text:
