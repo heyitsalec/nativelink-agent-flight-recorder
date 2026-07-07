@@ -72,17 +72,31 @@ jobs:
           RELEASE_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          gh release create "$RELEASE_TAG" \
-            --repo "$RELEASE_REPO" \
-            --title "$RELEASE_TAG" \
-            --generate-notes \
-            dist/*
+          # Idempotent: a re-run after a config fix (e.g. the publish job was
+          # skipped) must not fail on "release already exists" and force a
+          # tag-delete dance -- learned on v0.2.1 (issue #91).
+          if gh release view "$RELEASE_TAG" --repo "$RELEASE_REPO" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" \
+              --repo "$RELEASE_REPO" \
+              --clobber \
+              dist/*
+          else
+            gh release create "$RELEASE_TAG" \
+              --repo "$RELEASE_REPO" \
+              --title "$RELEASE_TAG" \
+              --generate-notes \
+              dist/*
+          fi
 
   pypi-publish:
     name: Publish to PyPI (trusted publishing)
     needs: [build, github-release]
     # Inert until the owner opts in — see the header comment and
     # docs/RELEASING.md. Set repo variable PYPI_PUBLISH_ENABLED=true to enable.
+    # REPOSITORY variable, not an environment variable: a job-level `if:`
+    # cannot read env-scoped vars (they resolve only after a job enters its
+    # environment). Setting this on the `pypi` environment silently skips the
+    # publish -- exactly what happened on v0.2.1's first tag (issue #91).
     if: ${{ vars.PYPI_PUBLISH_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     environment:
