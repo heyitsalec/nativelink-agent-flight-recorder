@@ -176,6 +176,48 @@ def test_validation_exit_code_separates_failures_from_boundary_labels(tmp_path: 
     assert proof_markdown_exit_code(ok_proof) == 0
 
 
+def test_markdown_renders_artifact_verification_summary_readably() -> None:
+    """The artifact_verification rollup renders as readable markdown, not a dict repr.
+
+    Regression for issue #44: the top-level metrics table used to print the
+    ``artifact_verification`` summary as a raw Python dict repr
+    (``{'total': 3, ...}``); render it as a ``·``-separated breakdown instead.
+    """
+
+    proof = {
+        "run_group": "record-2026-07-06",
+        "generated_at": "2026-07-06T00:00:00.000000Z",
+        "summary": {
+            "runs": 1,
+            "artifacts": 2,
+            "artifact_verification": {
+                "total": 3,
+                "verified_count": 1,
+                "present_unverified": 0,
+                "mismatched": 0,
+                "missing": 1,
+                "unverified_remote": 1,
+            },
+        },
+        "blocks": [],
+    }
+
+    markdown = export_proof_markdown(proof)
+
+    # The readable breakdown is present.
+    assert "3 total" in markdown
+    assert "1 verified" in markdown
+    assert "1 missing" in markdown
+    assert "1 unverified-remote" in markdown
+
+    # The raw Python dict repr is gone from the artifact_verification row.
+    verification_row = next(
+        line for line in markdown.splitlines() if line.startswith("| artifact_verification")
+    )
+    assert "{'" not in verification_row
+    assert "3 total · 1 verified" in verification_row
+
+
 def test_redact_repo_path_replaces_root() -> None:
     assert (
         redact_repo_path("/Users/example/repo/data/nlfr.sqlite", repo_root="/Users/example/repo")

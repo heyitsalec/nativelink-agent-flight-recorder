@@ -56,7 +56,7 @@ def export_proof_markdown(
         lines.append("| Metric | Count |")
         lines.append("|--------|------:|")
         for key in sorted(summary):
-            lines.append(f"| {key} | {summary[key]} |")
+            lines.append(f"| {key} | {_render_summary_value(key, summary[key])} |")
         lines.append("")
 
     evidence_lines = _evidence_path_lines(
@@ -99,6 +99,48 @@ def export_proof_markdown(
 
     text = "\n".join(lines)
     return _scrub_sensitive_markdown(text)
+
+
+#: (summary key, human label) pairs for the artifact_verification rollup, in the
+#: order they read best in the top-level metrics table.
+_ARTIFACT_VERIFICATION_LABELS = (
+    ("total", "total"),
+    ("verified_count", "verified"),
+    ("present_unverified", "present-unverified"),
+    ("mismatched", "mismatched"),
+    ("missing", "missing"),
+    ("unverified_remote", "unverified-remote"),
+)
+
+
+def _render_summary_value(key: str, value: Any) -> str:
+    """Render a top-level summary metric for the markdown table.
+
+    The ``artifact_verification`` rollup is a dict; rendering it with ``str()``
+    leaks a raw Python dict repr (``{'total': 3, ...}``) into the table. Render it
+    as a readable ``·``-separated breakdown instead, and defensively flatten any
+    other dict-valued metric so a raw repr never reaches a reader.
+    """
+
+    if key == "artifact_verification" and isinstance(value, dict):
+        return _render_artifact_verification(value)
+    if isinstance(value, dict):
+        return " · ".join(f"{k}: {value[k]}" for k in value)
+    return str(value)
+
+
+def _render_artifact_verification(counts: dict[str, Any]) -> str:
+    """Readable one-line breakdown of the artifact-integrity verification rollup."""
+
+    parts = [
+        f"{counts.get(field, 0)} {label}"
+        for field, label in _ARTIFACT_VERIFICATION_LABELS
+        if field in counts
+    ]
+    if not parts:
+        # Unexpected shape: flatten rather than emit a raw dict repr.
+        return " · ".join(f"{k}: {counts[k]}" for k in counts)
+    return " · ".join(parts)
 
 
 def validation_status(proof: dict[str, Any]) -> dict[str, Any]:

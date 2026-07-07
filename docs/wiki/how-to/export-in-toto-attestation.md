@@ -49,14 +49,34 @@ An in-toto v1 Statement is a small JSON envelope:
 
 ## Export it
 
+This continues directly from **[record your own Bazel build](record-your-own-build.md)**.
+That guide writes its SQLite spine to `data/nlfr-record/<run-group>/nlfr.sqlite` and
+prints the run group it used (default `record-<UTC date>`, e.g. `record-2026-07-06`).
+Point `--db` at that file and `--run-group` at that exact group — both values come
+straight from the summary `nlfr record` prints:
+
 ```bash
-# Unsigned, DSSE-ready in-toto Statement (default output is stdout)
+# Unsigned, DSSE-ready in-toto Statement (default output is stdout).
 uv run nlfr proof export \
-  --db data/record-proof/nlfr.sqlite \
-  --run-group latest \
+  --db data/nlfr-record/record-2026-07-06/nlfr.sqlite \
+  --run-group record-2026-07-06 \
   --format in-toto \
   --output out/proof.intoto.json
 ```
+
+> **`--run-group` is a literal match, not "latest wins."** There is no `latest`
+> resolver — the value must equal a run group actually recorded in that DB. If it
+> matches nothing (or `--db` points at the wrong file), the export **fails hard**
+> with a nonzero exit rather than emit a vacuous empty-subject attestation that
+> cosign would happily sign and verify. The error lists the run groups that *are*
+> present; you can also list them yourself any time:
+>
+> ```bash
+> nlfr compare index --db data/nlfr-record/record-2026-07-06/nlfr.sqlite
+> ```
+>
+> Automation that genuinely wants the empty envelope can pass
+> `--allow-empty-subject` to downgrade the hard error to a warning.
 
 `--format json` (default) and `--format markdown` are unchanged. The `in-toto`
 output is **deterministic**: two exports of the same database are byte-identical
@@ -144,6 +164,7 @@ downstream verifier expects.
 
 ## Related
 
+- [Record your own Bazel build](record-your-own-build.md) — produces the `--db` and `--run-group` this guide consumes
 - [Attach proof to a PR](attach-proof-to-pr.md)
 - [Export and compare run groups](export-and-compare-run-groups.md)
 - [Truth labels reference](../reference/truth-labels.md)
