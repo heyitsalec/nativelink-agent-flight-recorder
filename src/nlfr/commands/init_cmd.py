@@ -7,8 +7,13 @@ import json
 import sys
 from pathlib import Path
 
-from nlfr.commands.doctor import ADOPTION_GUIDE, ADOPTION_HINT, DEV_ENVIRONMENT, FIRST_EVIDENCE_LOOP
-from nlfr.config import DEMO_WORKSPACE_NOTICE, resolve_defaults, scaffold_workspace
+from nlfr.commands.doctor import (
+    ADOPTION_GUIDE,
+    DEV_ENVIRONMENT,
+    FIRST_EVIDENCE_LOOP,
+    adoption_hint,
+)
+from nlfr.config import DEMO_WORKSPACE_NOTICE, doc_hint, resolve_defaults, scaffold_workspace
 
 
 def run(args: argparse.Namespace) -> int:
@@ -49,10 +54,10 @@ def run(args: argparse.Namespace) -> int:
 
 def _print_next_steps() -> None:
     print("next: nlfr doctor --mode cache-only")
-    print(f"  → adoption walkthrough: {FIRST_EVIDENCE_LOOP}")
-    print(f"  → toolchain setup: {DEV_ENVIRONMENT}")
-    print(f"  → overview: {ADOPTION_GUIDE}")
-    print(f"  → {ADOPTION_HINT}")
+    print(f"  → adoption walkthrough: {doc_hint(FIRST_EVIDENCE_LOOP)}")
+    print(f"  → toolchain setup: {doc_hint(DEV_ENVIRONMENT)}")
+    print(f"  → overview: {doc_hint(ADOPTION_GUIDE)}")
+    print(f"  → {adoption_hint()}")
 
 
 def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:

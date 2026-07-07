@@ -131,6 +131,42 @@ def is_within_source_checkout(path: Path) -> bool:
     return root is not None and _is_within(path, root)
 
 
+GITHUB_REPO_URL = "https://github.com/heyitsalec/nativelink-agent-flight-recorder"
+GITHUB_BLOB_BASE = f"{GITHUB_REPO_URL}/blob/main"
+
+
+def doc_url(repo_relative_path: str) -> str:
+    """Return the canonical GitHub blob URL for a repo-relative path."""
+
+    return f"{GITHUB_BLOB_BASE}/{repo_relative_path.strip('/')}"
+
+
+def doc_hint(repo_relative_path: str) -> str:
+    """Format a "read next" pointer that resolves for BOTH NLFR personas.
+
+    Every CLI doc pointer must route through here (GitHub issue #39). A bare
+    repo-relative path like ``docs/DEV_ENVIRONMENT.md`` is a dead end for the
+    documented uvx/pip adopter who never cloned the repo, so this helper:
+
+    * ALWAYS emits the canonical GitHub URL — the one pointer that resolves with
+      no clone; and
+    * additionally appends ``(local: <path>)`` only when the path exists as a
+      file relative to the detected source checkout
+      (:func:`source_checkout_root`), so an in-repo contributor also gets the
+      on-disk pointer.
+
+    It never returns a bare path as the sole (dead-end) pointer. Centralizing
+    formatting here is what stops future hints from regressing to bare paths.
+    """
+
+    clean = repo_relative_path.strip("/")
+    url = doc_url(clean)
+    root = source_checkout_root()
+    if root is not None and (root / clean).is_file():
+        return f"{url} (local: {clean})"
+    return url
+
+
 def bazel_marker(cwd: Path) -> str | None:
     """Return the first Bazel workspace marker present in ``cwd``, else ``None``."""
 

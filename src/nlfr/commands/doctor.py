@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from nlfr.config import (
+    doc_hint,
     is_within_source_checkout,
     nativelink_config_from_toml,
 )
@@ -18,16 +19,35 @@ from nlfr.config import (
 ADOPTION_GUIDE = "docs/ADOPTION_GUIDE.md"
 DEV_ENVIRONMENT = "docs/DEV_ENVIRONMENT.md"
 FIRST_EVIDENCE_LOOP = "docs/wiki/tutorial/first-evidence-loop.md"
+LOCAL_EXEC_CONFIG = "demo/nativelink/local-execution.json5"
 
-ADOPTION_HINT = (
-    f"Adoption: {ADOPTION_GUIDE} · {DEV_ENVIRONMENT} · {FIRST_EVIDENCE_LOOP}"
-)
 
-TOOL_ADOPTION_HINTS: dict[str, str] = {
-    "bazel": f"Install Bazel or Bazelisk — see {DEV_ENVIRONMENT}",
-    "nativelink": f"Install NativeLink — see {ADOPTION_GUIDE}",
-    "local-exec-config": f"Configure local execution — see {DEV_ENVIRONMENT} and demo/nativelink/",
-}
+def adoption_hint() -> str:
+    """Return the resolvable "adoption docs" pointer line (both personas).
+
+    Formatted at call time so persona detection reflects the runtime
+    environment, and routed through :func:`doc_hint` so it can never regress to
+    a bare, no-clone dead-end path (GitHub issue #39).
+    """
+
+    return "Adoption: " + " · ".join(
+        doc_hint(path)
+        for path in (ADOPTION_GUIDE, DEV_ENVIRONMENT, FIRST_EVIDENCE_LOOP)
+    )
+
+
+def tool_adoption_hint(name: str) -> str | None:
+    """Return the resolvable per-tool "what to install next" hint, or ``None``."""
+
+    hints = {
+        "bazel": f"Install Bazel or Bazelisk — see {doc_hint(DEV_ENVIRONMENT)}",
+        "nativelink": f"Install NativeLink — see {doc_hint(ADOPTION_GUIDE)}",
+        "local-exec-config": (
+            "Configure local execution — see "
+            f"{doc_hint(DEV_ENVIRONMENT)} and {doc_hint(LOCAL_EXEC_CONFIG)}"
+        ),
+    }
+    return hints.get(name)
 
 
 @dataclass(frozen=True)
@@ -128,10 +148,10 @@ def emit_text(
         for check in checks:
             if check.ok:
                 continue
-            hint = TOOL_ADOPTION_HINTS.get(check.name)
+            hint = tool_adoption_hint(check.name)
             if hint:
                 print(f"  → {hint}", file=sys.stderr)
-        print(f"  → {ADOPTION_HINT}", file=sys.stderr)
+        print(f"  → {adoption_hint()}", file=sys.stderr)
         print(f"  → Run: nlfr doctor --mode {mode} --json", file=sys.stderr)
 
 
