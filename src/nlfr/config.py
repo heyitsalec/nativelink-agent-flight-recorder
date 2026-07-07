@@ -53,12 +53,149 @@ class WorkspaceDefaults:
 
 
 def default_workspace(cwd: Path) -> str:
-    """Pick a sensible Bazel workspace path relative to ``cwd``."""
+    """Pick a sensible Bazel workspace path relative to ``cwd``.
+
+    Used only by ``nlfr init`` (metadata scaffolding). ``init`` stays lenient —
+    it falls back to ``.`` in a fresh directory rather than erroring — because
+    it never invokes Bazel. The hard "no workspace found" error lives in
+    :func:`resolve_workspace`, which the Bazel-invoking ``run``/``simulate``
+    commands use.
+    """
 
     demo_workspace = cwd / "demo" / "bazel-monorepo"
     if demo_workspace.is_dir():
         return "demo/bazel-monorepo"
     return "."
+
+
+BAZEL_MARKERS = ("MODULE.bazel", "WORKSPACE", "WORKSPACE.bazel")
+
+DEMO_WORKSPACE_NOTICE = (
+    "nlfr: using bundled demo workspace demo/bazel-monorepo "
+    "(pass --workspace for your own repo)"
+)
+
+
+class WorkspaceResolutionError(RuntimeError):
+    """Raised when no Bazel workspace can be resolved and none was provided."""
+
+
+def _package_root() -> Path:
+    """Return the checkout root as seen from this module.
+
+    ``src/nlfr/config.py`` -> ``parents[2]`` is the repository root when running
+    from a source tree (editable install or ``PYTHONPATH=src``). For a wheel
+    install this points into ``site-packages`` and the source-checkout heuristic
+    below fails — which is the desired behaviour: adopters who ``pip install``
+    NLFR never silently inherit the bundled demo workspace.
+    """
+
+    return Path(__file__).resolve().parents[2]
+
+
+def source_checkout_root() -> Path | None:
+    """Return the NLFR source-checkout root, or ``None`` when not a source tree.
+
+    Heuristic: the root contains ``demo/bazel-monorepo`` AND a ``pyproject.toml``
+    whose ``project.name`` is ``nativelink-agent-flight-recorder``.
+    """
+
+    root = _package_root()
+    if not (root / "demo" / "bazel-monorepo").is_dir():
+        return None
+    pyproject = root / "pyproject.toml"
+    if not pyproject.is_file():
+        return None
+    try:
+        data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+    except (OSError, tomllib.TOMLDecodeError):
+        return None
+    project = data.get("project")
+    if not isinstance(project, dict):
+        return None
+    if project.get("name") != "nativelink-agent-flight-recorder":
+        return None
+    return root
+
+
+def _is_within(path: Path, root: Path) -> bool:
+    path = path.resolve()
+    root = root.resolve()
+    return path == root or root in path.parents
+
+
+def is_within_source_checkout(path: Path) -> bool:
+    """Return True when ``path`` lies inside the NLFR source checkout."""
+
+    root = source_checkout_root()
+    return root is not None and _is_within(path, root)
+
+
+def bazel_marker(cwd: Path) -> str | None:
+    """Return the first Bazel workspace marker present in ``cwd``, else ``None``."""
+
+    for marker in BAZEL_MARKERS:
+        if (cwd / marker).is_file():
+            return marker
+    return None
+
+
+def resolve_workspace(
+    cwd: Path,
+    explicit: str | None = None,
+) -> tuple[Path, str | None]:
+    """Resolve the Bazel workspace for ``run``/``simulate``.
+
+    Precedence (explicit ``--workspace`` always wins):
+
+    0. explicit path -> use it, no notice.
+    a. ``cwd`` inside the NLFR source checkout -> bundled demo workspace, with a
+       one-line stderr notice so in-repo/CI usage keeps working transparently.
+    b. ``cwd`` contains a Bazel marker (MODULE.bazel / WORKSPACE / WORKSPACE.bazel)
+       -> use ``cwd`` as the workspace, with a stderr notice.
+    c. otherwise -> :class:`WorkspaceResolutionError` (caller exits 2, no trace).
+
+    Returns ``(workspace_path, notice_or_None)``.
+    """
+
+    if explicit:
+        return Path(explicit).resolve(), None
+
+    cwd = cwd.resolve()
+    src_root = source_checkout_root()
+    if src_root is not None and _is_within(cwd, src_root):
+        return (src_root / "demo" / "bazel-monorepo").resolve(), DEMO_WORKSPACE_NOTICE
+
+    if bazel_marker(cwd) is not None:
+        return cwd, f"nlfr: using workspace {cwd}"
+
+    raise WorkspaceResolutionError(
+        f"no Bazel workspace found in {cwd}; pass --workspace PATH"
+    )
+
+
+def nativelink_config_from_toml(cwd: Path) -> str | None:
+    """Return a NativeLink config path declared in ``<cwd>/nlfr.toml``.
+
+    Optional key ``[nlfr.defaults] nativelink_config = "path"``. ``doctor``
+    consults this as the middle tier of its local-exec config precedence.
+    Missing file/key -> ``None``.
+    """
+
+    config_path = cwd / NLFR_TOML
+    if not config_path.is_file():
+        return None
+    try:
+        payload = tomllib.loads(config_path.read_text(encoding="utf-8"))
+    except (OSError, tomllib.TOMLDecodeError):
+        return None
+    defaults = payload.get("nlfr", {}).get("defaults", {})
+    if not isinstance(defaults, dict):
+        return None
+    value = defaults.get("nativelink_config")
+    if isinstance(value, str) and value:
+        return value
+    return None
 
 
 def resolve_defaults(

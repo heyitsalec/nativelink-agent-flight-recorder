@@ -62,6 +62,17 @@ When Bazel or NativeLink are missing, `doctor` returns a non-zero exit with an
 honest blocker — not a silent success. Fix the environment (Nix shell, devcontainer,
 or host install) before expecting `collectable_v1` cache proof.
 
+For `--mode local-exec`, `doctor` checks **your** NativeLink config, not a bundled
+fixture. The config path is resolved by precedence and echoed as
+`nativelink_config_checked` in the JSON output:
+
+1. `--nativelink-config PATH` flag;
+2. `nativelink_config` under `[nlfr.defaults]` in your workspace `nlfr.toml`;
+3. the bundled demo config **only** when run inside the NLFR source checkout.
+
+Outside the source checkout with no flag and no `nlfr.toml` entry, the check fails
+honestly and names what to pass — it never silently validates the demo config.
+
 ## 3. Record one target
 
 ### Reference repo one-command path
@@ -106,6 +117,22 @@ Override defaults with environment variables when needed:
 | `NLFR_OUTPUT_DIR` | `data/nlfr` |
 | `NLFR_RUN_GROUP` | `latest` |
 | `NLFR_MODE` | `cache-only` |
+
+### Workspace and remote-cache defaults
+
+- **Always pass `--workspace`** for your own repo (the examples above do). If you
+  omit it, `nlfr run` resolves the workspace from the current directory: it uses
+  the bundled demo workspace **only** inside the NLFR source checkout (with a
+  stderr notice), else the cwd when it holds a Bazel marker
+  (`MODULE.bazel` / `WORKSPACE` / `WORKSPACE.bazel`), else it exits `2` with
+  `no Bazel workspace found in <cwd>; pass --workspace PATH`. It never silently
+  records the demo fixture from outside the source checkout.
+- **Remote cache is preflighted.** When you do not pass `--remote-cache`, NLFR
+  TCP-checks the default endpoint (`grpc://127.0.0.1:50051`, override with
+  `NLFR_REMOTE_CACHE_DEFAULT`) before invoking Bazel. If nothing is listening it
+  fails fast with an actionable message instead of a raw Bazel connection error.
+  Pass `--no-remote-cache` to record a plain Bazel run with no cache, or
+  `--remote-cache URL` to point at your own endpoint (used as-is, no preflight).
 
 ## 4. Export proof and graph
 
