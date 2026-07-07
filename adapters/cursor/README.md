@@ -27,6 +27,50 @@ capture:
 The canvas and proof exports derive the `agent` node from the
 `agent-provenance.json` artifact — never from a stored prompt.
 
+## Observation modes — what `changed` is derived against
+
+`changed` (and the `patch_applied` rollup) is always **derived**, never asserted.
+But the recorder can only honestly derive a change from what it can **observe**.
+There are three modes, and each per-path entry records which one applied via
+`changed_basis`:
+
+| Mode | When | `changed_basis` | What it attests |
+|------|------|-----------------|-----------------|
+| **(a) git baseline** | The change path is **tracked in a git workspace**. The adapter captures the pre-edit bytes from `git show <ref>:<path>` into the sidecar. **Takes priority for every tracked path** — even when the edit happens inside `--command`. | `git_baseline` | `changed = baseline_sha256 != after_sha256`. Honest claim: *"differs from the baseline ref."* **Works edit-first** — this is the recommended documented flow. |
+| **(b) recorder window** | The change path is **untracked, or the workspace is not a git repo**, and the edit happens **inside** `--command`. | `recorder_window` | `changed = before_sha256 != after_sha256`. The recorder samples the file at process start and end, so it observes the edit directly. |
+| **(c) unobservable** | **Untracked or non-git** path **and** the file is already at its final state when recording begins (edit happened before the invocation). | `recorder_window` | `changed=false` with an explicit note **and a stderr warning** — the recorder cannot attest whether the agent changed the file. Recorded honestly, never silently. |
+
+Why this matters: the documented flow below **edits first, then records** (the
+`--command` is validation only). Without a baseline, `before == after` on every
+such invocation and `changed` would be a silent, always-false — the recorder
+would fail to attest a real change. Mode (a) fixes this with **verifiable git
+evidence**: the git object store still holds the committed pre-edit bytes, so a
+skeptic can recompute `git show <commit>:<path> | sha256sum` and match it against
+the recorded `baseline_sha256`. The baseline is labeled explicitly
+(`baseline_source: {kind: git_head, commit, ref}`) and never conflated with the
+recorder's own before/after window. Note that **`recorder_window` is the fallback
+for untracked or non-git paths only** — a tracked path always uses mode (a), even
+for edits made inside `--command`.
+
+Baselines are **re-verified, not trusted**: the sidecar is a public interface, so
+`nlfr run` recomputes `git show <commit>:<path>` in the workspace and hashes it
+before honoring any supplied `git_baseline`. A forged/stale `baseline_sha256`, or
+a commit/object that cannot be resolved in this workspace, is **refused** — that
+path falls back to `recorder_window` with an explicit note and a stderr warning,
+recorded honestly rather than hard-failed.
+
+Commit-before-record: if the edit was **committed before recording began**, the
+default `HEAD` baseline already equals the final state (`baseline == after`), so
+the change is not attestable against `HEAD`. Rather than emit a silent
+`changed=false`, the recorder flags it — a per-path note naming the commit and a
+stderr warning pointing at **`--baseline-ref`**. Pass the true pre-edit ref
+(`--baseline-ref HEAD~1` or a commit sha) to capture the pre-edit blob and attest
+the committed change.
+
+Honesty ceiling: mode (a) attests **"differs from the baseline ref"** — the honest
+claim when the operator edited before invoking. It does **not** prove the named
+model authored the edit (that requires a receipt; see [Provenance ladder](#provenance-ladder)).
+
 ## Live E2E runbook
 
 Use this path when you need a **non-dry-run** `collectable_v1` chain that matches
@@ -45,7 +89,14 @@ you pass to `--command` (pytest is the usual dogfood leg).
 
 ### Operator flow (manual live proof)
 
-1. **Bounded edit in Cursor** — change one leaf file; save the workspace file.
+Run this in a **git-tracked workspace** with the edited file tracked (mode (a)
+above). Editing first and recording second is fully supported: the adapter reads
+the pre-edit bytes from `git show HEAD:<path>`, so `changed` is evidence-backed
+even though your edit already landed in the working tree.
+
+1. **Bounded edit in Cursor** — change one tracked leaf file; save the workspace
+   file. (No need to record before editing — the git baseline captures the
+   pre-edit state from HEAD.)
 2. **Capture prompt locally** — export or copy the session prompt to a file on
    disk (e.g. `/tmp/cursor-prompt.txt`). This file is hashed at record time and
    never ingested.
@@ -166,13 +217,21 @@ Blocker shape matches other proof scripts (`status`, `reason`, truth labels,
   --prompt-file /tmp/cursor-prompt.txt \
   --dry-run
 
-# Record a real session (agent already edited the file)
+# Record a real session (agent already edited the file).
+# In a git-tracked workspace the pre-edit state is read from HEAD, so recording
+# AFTER the edit still yields an evidence-backed changed=true (mode (a) above).
 ./scripts/record-agent-change.sh \
   --change-path src/nlfr/commands/generic_run.py \
   --model composer-2.5 \
   --prompt-file ~/.cursor/sessions/latest-prompt.txt \
   --command "uv run pytest tests/test_generic_run.py -q --tb=no"
 ```
+
+> If the workspace is **not** a git repo (or the path is untracked) and the edit
+> already landed before recording, the change is **not observable** — the record
+> completes with `changed=false`, an explicit note, and a stderr warning naming
+> the path (mode (c) above). Either record inside a git-tracked workspace or make
+> the edit happen inside `--command` (mode (b)).
 
 ## Arguments
 
@@ -182,6 +241,7 @@ Blocker shape matches other proof scripts (`status`, `reason`, truth labels,
 | `--model` | yes | Model label (e.g. `composer-2.5`, `claude-4.6-sonnet`) |
 | `--prompt-file` | yes | Local prompt text; hashed at record time, never exported |
 | `--command` | no | Shell command for validation leg (default: `true`) |
+| `--baseline-ref` | no | Git ref holding the **pre-edit** state (default: `HEAD`). Use `HEAD~1` or a commit sha when the edit was **committed** before recording — otherwise `HEAD` equals the final state and the change is not attestable (see [Observation modes](#observation-modes--what-changed-is-derived-against)) |
 | `--dry-run` | no | Emit sidecar JSON + planned `nlfr` command only |
 | `--output-dir` | no | Default: `data/agent-change-proof` |
 | `--workspace` | no | Default: repo root |
@@ -228,7 +288,7 @@ privacy violation, not a successful proof.
 |-----|---------------|-------|
 | Agent adapter metadata | `collectable_v1` | From `record-agent-change.sh` sidecar |
 | Validation command | `collectable_v1` | From `nlfr run --mode generic` process capture |
-| Graph `agent` node | `derived_v1` | Projected from `agent_provenance` proof block |
+| Graph `agent` node | **inherits the proof block** — `collectable_v1` (recorded adapter run) / `simulated_v1` (simulate) | `_project_agents` copies the `agent_provenance` block's own `source_kind`/`confidence` verbatim; it does **not** re-label the node to `derived_v1` |
 | Simulated demo scenarios | `simulated_v1` | `nlfr simulate` only — not this adapter |
 | Environment blocker | `collectable_v1` | Honest probe when live E2E cannot run |
 
@@ -240,6 +300,33 @@ through real command capture.
 | Agent change recorded non-dry-run | `collectable_v1` / `high` | `chain_complete=true` in summary |
 | Prompt content stored | **blocked** | Stop if raw prompt in artifacts |
 | Live LLM reasoning as proof | **blocked** | Provenance is claim source, not validation proof |
+
+## Provenance ladder
+
+Separately from the four truth labels, the agent leg carries a **`provenance_class`**
+that records *how the model attribution was established*:
+
+| `provenance_class` | Established by | Model label is | This adapter |
+|--------------------|----------------|----------------|--------------|
+| `operator_asserted_v1` | Operator `--model` + hashed prompt; no server verification | An operator claim | **Ceiling for this path** |
+| `stub_receipt_v1` | A deterministic (non-live) `nlfr.agent_receipt.v1` receipt | Simulated (`simulated_v1` agent leg) | Not reachable here |
+| `receipt_verified_v1` | A live `nlfr agent-invoke` receipt pinning the server-resolved model id, session id, and `response_sha256` | Server-verified | Not reachable here |
+
+`record-agent-change.sh` invokes `nlfr run --mode generic` with `--provenance-sidecar`
+**only** — it cannot pass `--agent-receipt`. So this integration's maximum is
+**`operator_asserted_v1`**: the `model` you supply is an operator assertion, not a
+verified fact.
+
+**What operator assertion does NOT prove:** that the named model actually authored
+the edit. It proves only that *these bytes changed* (derived by
+[observation mode](#observation-modes--what-changed-is-derived-against) — against
+the git baseline when available, else the recorder's own before/after window) and
+that *this operator asserted this model over this prompt hash*. To upgrade to
+`receipt_verified_v1`, capture the session with
+[`nlfr agent-invoke`](../../docs/proof-samples/README.md) and record its
+`nlfr.agent_receipt.v1` receipt. The full class ladder is defined in the
+[truth labels reference](../../docs/wiki/reference/truth-labels.md#agent-provenance-class-provenance_class)
+and the [in-toto attestation how-to](../../docs/wiki/how-to/export-in-toto-attestation.md).
 
 ## Under the hood
 

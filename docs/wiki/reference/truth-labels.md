@@ -113,6 +113,58 @@ JSON path, `[REDACTED:…]` excerpt — never the raw secret). `test_redaction.p
 runs this scan over every committed projection and proof sample as a permanent
 CI property, so a leaked credential shape fails the build.
 
+## Agent provenance class (`provenance_class`)
+
+The agent leg of a bounded-change record carries a `provenance_class` **in addition
+to** its four truth labels. It records *how the model attribution was established*,
+which is orthogonal to `source_kind` (how the value entered the system):
+
+| `provenance_class` | Established by | Model label is |
+|--------------------|----------------|----------------|
+| `operator_asserted_v1` | Operator `--model` + hashed prompt; no server verification | An operator claim |
+| `stub_receipt_v1` | A deterministic (non-live) `nlfr.agent_receipt.v1` receipt | Simulated (`simulated_v1` agent leg) |
+| `receipt_verified_v1` | A live `nlfr agent-invoke` receipt pinning the server-resolved model id, session id, and `response_sha256` | Server-verified |
+
+`operator_asserted_v1` proves only that the recorded bytes changed (the
+`patch_applied` flag is **derived**, never asserted — see observation modes below)
+and that the operator asserted this model over this prompt hash — **not** that the
+named model authored the edit. The [Cursor adapter](../../../adapters/cursor/README.md)
+path tops out at `operator_asserted_v1` because `record-agent-change.sh` cannot
+attach a receipt; `receipt_verified_v1` requires `nlfr agent-invoke`.
+
+### Change observation modes (what `changed` / `patch_applied` is derived against)
+
+A bounded change is only as honest as what the recorder could **observe**. Each
+per-path entry in the change block records `changed_basis`:
+
+| `changed_basis` | When | `changed` derived from | Note |
+|-----------------|------|------------------------|------|
+| `git_baseline` | Tracked path in a git workspace; the adapter captured the pre-edit bytes from `git show <ref>:<path>`. **Takes priority for every tracked path** — including edits made inside `--command`. | `baseline_sha256 != after_sha256` | Verifiable evidence (git object store); `baseline_source` carries `{kind: git_head, commit, ref}` and the commit-pinned ref is added to `evidence_refs`. Attests **"differs from the baseline ref"** — works even when the edit landed *before* recording. |
+| `recorder_window` | **Untracked or non-git path** (no baseline available), or a supplied baseline that was refused (see below). | `before_sha256 != after_sha256` | The recorder's own before/after sample — only observes an edit made **inside** `--command`. |
+
+**Sidecar baselines are re-verified, not trusted.** `--provenance-sidecar` is a
+public interface, so every supplied `git_baseline` is re-checked against the
+workspace git object store at record time (`git show <commit>:<path>` recomputed
+and hashed here). A forged or stale `baseline_sha256`, or a baseline whose
+commit/object cannot be resolved in this workspace, is **refused**: that path
+falls back to `recorder_window` with an explicit note (`sidecar git_baseline did
+not match …` or `baseline unverifiable in this workspace`) **and a stderr
+warning**. The conflict is recorded honestly; the run is never hard-failed.
+
+**Commit-before-record is flagged, not silently passed.** Under `git_baseline`,
+when the baseline **equals** `after` the recorder cannot distinguish a genuine
+no-op from a change already **committed before recording began** (HEAD moved past
+the edit). It records `changed=false` with an explicit note naming the commit
+**and a stderr warning** pointing at `--baseline-ref` — pass the true pre-edit ref
+(e.g. `HEAD~1` or a commit sha) to attest a committed change.
+
+When there is **no** git baseline and `before == after` (both non-null), the file
+was already at its final state when recording began: the change is **not
+observable**. This is recorded as `changed=false` with an explicit note **and a
+stderr warning** — never a silent false (GitHub issue #52). The git baseline is
+collectable git-object evidence and is labeled as such; it is never conflated with
+the recorder's own observation window.
+
 ## Artifact verification (issue #25)
 
 NLFR does not trust the build tool's self-reports. Every file the ingested BEP

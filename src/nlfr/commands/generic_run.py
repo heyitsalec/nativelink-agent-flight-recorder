@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 import shlex
+import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -63,6 +64,13 @@ def run_generic(args: argparse.Namespace) -> int:
 
     change_paths = list(args.change_path or [])
     before_hashes = _file_hashes(workspace, change_paths)
+    # A sidecar git_baseline is a public-interface ASSERTION: re-verify every one
+    # against this workspace's git object store BEFORE it can wear the verified
+    # git_baseline label. Forged/unverifiable baselines are refused here and fall
+    # back to recorder-window semantics with an honest note (see R2).
+    git_baselines, baseline_rejections = _verify_git_baselines(
+        workspace, _git_baselines_from_sidecar(args.provenance_sidecar)
+    )
 
     runner = ProcessRunner(artifact_dir=artifact_root)
     results: list[ProcessResult] = []
@@ -80,6 +88,10 @@ def run_generic(args: argparse.Namespace) -> int:
         )
 
     after_hashes = _file_hashes(workspace, change_paths)
+    change_details = _derive_change_details(
+        change_paths, before_hashes, after_hashes, git_baselines, baseline_rejections
+    )
+    _warn_unobservable_paths(change_details)
     _record_changes(
         conn,
         run_key=run_key,
@@ -87,6 +99,7 @@ def run_generic(args: argparse.Namespace) -> int:
         change_paths=change_paths,
         before_hashes=before_hashes,
         after_hashes=after_hashes,
+        git_baselines=git_baselines,
         run_id=run_id,
     )
 
@@ -149,6 +162,8 @@ def run_generic(args: argparse.Namespace) -> int:
                 change_paths=change_paths,
                 before_hashes=before_hashes,
                 after_hashes=after_hashes,
+                git_baselines=git_baselines,
+                baseline_rejections=baseline_rejections,
                 terminal_status=terminal_status,
                 receipt_path=(
                     Path(args.agent_receipt).resolve() if args.agent_receipt else None
@@ -247,6 +262,356 @@ def _sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+# Per-path change notes. Kept as constants (or single-source builders) so the
+# stderr warnings and the JSON evidence can never drift apart.
+_NOTE_NEVER_OBSERVED = "path never observed on disk"
+_NOTE_UNOBSERVABLE = (
+    "file already at its final state when recording began; change not observable "
+    "in the recording window (no git baseline available)"
+)
+# A supplied sidecar git_baseline that this workspace's git object store could
+# not confirm. Both are recorded honestly and fall back to the recorder window.
+_NOTE_BASELINE_UNVERIFIABLE = "baseline unverifiable in this workspace"
+_NOTE_MATCHES_HEAD_PREFIX = "file matches HEAD"
+_NOTE_BASELINE_MISMATCH_PREFIX = "sidecar git_baseline did not match"
+
+
+def _note_matches_head(commit: str | None) -> str:
+    """Baseline == after under the strongest label is AMBIGUOUS, not proof.
+
+    The recorder cannot tell a genuine no-op (file truly unchanged) from an edit
+    that was committed *before* recording began (HEAD already moved past it). It
+    must SAY so rather than emit a silent ``changed=false`` under
+    ``git_baseline`` — and point at the escape hatch (``--baseline-ref``).
+    """
+
+    label = commit or "unknown commit"
+    return (
+        f"file matches HEAD ({label}) — either no change occurred, or the change "
+        "was already committed before recording began; pass --baseline-ref "
+        "<pre-edit-ref> to attest a committed change"
+    )
+
+
+def _note_baseline_mismatch(commit: str) -> str:
+    return (
+        f"sidecar git_baseline did not match the git object at {commit} — "
+        "baseline ignored"
+    )
+
+
+def _extract_git_baselines(
+    sidecar: dict[str, Any] | None,
+) -> dict[str, dict[str, Any]]:
+    """Pull attestable git baselines out of a provenance sidecar.
+
+    The sidecar's optional ``git_baseline`` block maps a change path to its
+    PRE-EDIT state captured from the git object store. This is verifiable
+    evidence — the committed bytes survive a working-tree edit, so a skeptic can
+    recompute it with ``git show <commit>:<path> | sha256sum``. Only paths git
+    could attest appear here; untracked or non-repo paths are absent and fall
+    back to the recorder's own before/after observation window.
+    """
+
+    if not isinstance(sidecar, dict):
+        return {}
+    raw = sidecar.get("git_baseline")
+    if not isinstance(raw, dict):
+        return {}
+    baselines: dict[str, dict[str, Any]] = {}
+    for path, entry in raw.items():
+        if not isinstance(entry, dict):
+            continue
+        source = entry.get("source")
+        if not isinstance(source, dict) or source.get("kind") != "git_head":
+            continue
+        baselines[path] = {
+            "baseline_sha256": entry.get("baseline_sha256"),
+            "source": source,
+        }
+    return baselines
+
+
+def _git_baselines_from_sidecar(
+    sidecar_path: str | None,
+) -> dict[str, dict[str, Any]]:
+    """Read git baselines from a sidecar path without full validation.
+
+    Full sidecar validation happens later in ``_record_agent_provenance``; this
+    tolerant read only needs the (optional) ``git_baseline`` block so the change
+    derivation and the stderr warnings can run at the recorded-hashes stage.
+    """
+
+    if not sidecar_path:
+        return {}
+    try:
+        sidecar = json.loads(Path(sidecar_path).read_text())
+    except (OSError, ValueError):
+        return {}
+    return _extract_git_baselines(sidecar)
+
+
+def _baseline_evidence_ref(source: dict[str, Any]) -> str | None:
+    """A commit-pinned, directly verifiable evidence ref for a git baseline.
+
+    ``source.ref`` is symbolic (``git:HEAD:<path>``) because HEAD is what the
+    adapter read at record time; HEAD moves, so the evidence ref pins the
+    resolved commit as ``git:<commit>:<path>`` — verifiable with
+    ``git show <commit>:<path> | sha256sum``.
+    """
+
+    ref = source.get("ref")
+    commit = source.get("commit")
+    if not isinstance(ref, str) or not commit:
+        return None
+    parts = ref.split(":", 2)
+    if len(parts) == 3 and parts[0] == "git":
+        return f"git:{commit}:{parts[2]}"
+    return ref
+
+
+def _baseline_relpath(source: Any) -> str | None:
+    """The repo-relative path a git baseline is pinned to (from ``source.ref``).
+
+    ``git show <commit>:<path>`` resolves ``<path>`` against the repo root, not
+    the process cwd, so re-verification must use the repo-relative path the
+    adapter recorded in ``source.ref`` (``git:<ref>:<repo_rel>``) — never the
+    workspace-relative ``--change-path``, which can differ.
+    """
+
+    if not isinstance(source, dict):
+        return None
+    ref = source.get("ref")
+    if not isinstance(ref, str):
+        return None
+    parts = ref.split(":", 2)
+    if len(parts) == 3 and parts[0] == "git":
+        return parts[2]
+    return None
+
+
+def _git_show_object(
+    workspace: Path, commit: str, relpath: str
+) -> tuple[str, bytes | None]:
+    """Resolve ``git show <commit>:<relpath>`` in ``workspace``.
+
+    Returns one of:
+
+    - ``("present", bytes)`` — the object exists at that commit; bytes returned;
+    - ``("missing", None)`` — the commit resolves but the path is absent there;
+    - ``("unresolvable", None)`` — not a git repo, git binary absent, or the
+      commit itself does not resolve.
+
+    Uses subprocess git (stdlib only). A git-absent host is a non-fatal
+    ``unresolvable`` — the sidecar generator already assumes git, so a missing
+    git here is just an unverifiable baseline, not a crash.
+    """
+
+    def _run(*args: str, capture_bytes: bool = False) -> subprocess.CompletedProcess:
+        return subprocess.run(
+            ["git", "-C", str(workspace), *args],
+            capture_output=True,
+            text=not capture_bytes,
+            check=False,
+        )
+
+    try:
+        inside = _run("rev-parse", "--is-inside-work-tree")
+    except (OSError, ValueError):
+        return ("unresolvable", None)  # git binary absent / unusable
+    if inside.returncode != 0 or inside.stdout.strip() != "true":
+        return ("unresolvable", None)
+    resolved = _run("rev-parse", "--verify", "--quiet", f"{commit}^{{commit}}")
+    if resolved.returncode != 0:
+        return ("unresolvable", None)  # commit does not resolve in this workspace
+    shown = _run("show", f"{commit}:{relpath}", capture_bytes=True)
+    if shown.returncode != 0:
+        return ("missing", None)  # path absent at that commit
+    return ("present", shown.stdout)
+
+
+def _verify_git_baselines(
+    workspace: Path,
+    git_baselines: dict[str, dict[str, Any]],
+) -> tuple[dict[str, dict[str, Any]], dict[str, str]]:
+    """Re-verify every sidecar git_baseline against the workspace git objects.
+
+    ``--provenance-sidecar`` is a PUBLIC interface, so a supplied ``git_baseline``
+    is an ASSERTION until proven — a forged ``baseline_sha256`` must not wear the
+    verified ``git_baseline`` label. For each path we recompute
+    ``git show <commit>:<relpath>`` here and hash the bytes:
+
+    - **match** — keep the baseline (``changed_basis`` stays ``git_baseline``);
+    - **mismatch** (object present but the hash differs, or ``null`` claimed yet
+      the object exists) — refuse it, note ``sidecar git_baseline did not match``;
+    - **unverifiable** (not a git repo, git absent, or the commit/object is
+      missing) — refuse it, note ``baseline unverifiable in this workspace``.
+
+    A ``null`` baseline (absent-at-commit) verifies when git confirms the path is
+    absent at that commit. Refused paths are dropped from the returned baselines
+    and fall back to recorder-window semantics. The conflict is recorded honestly
+    (per-path note + stderr warning); the run is never hard-failed.
+
+    Returns ``(verified_baselines, rejection_notes)``.
+    """
+
+    verified: dict[str, dict[str, Any]] = {}
+    rejections: dict[str, str] = {}
+    for path, baseline in git_baselines.items():
+        source = baseline.get("source")
+        commit = source.get("commit") if isinstance(source, dict) else None
+        relpath = _baseline_relpath(source)
+        if not isinstance(commit, str) or not commit or relpath is None:
+            rejections[path] = _NOTE_BASELINE_UNVERIFIABLE
+            continue
+        status, data = _git_show_object(workspace, commit, relpath)
+        expected = baseline.get("baseline_sha256")
+        if status == "present":
+            actual = hashlib.sha256(data or b"").hexdigest()
+            if expected is not None and actual == expected:
+                verified[path] = baseline
+            else:
+                # Hash differs, or the sidecar claimed a null baseline yet the
+                # object exists — either way the assertion is refuted.
+                rejections[path] = _note_baseline_mismatch(commit)
+        elif status == "missing":
+            if expected is None:
+                verified[path] = baseline  # git confirms absent-at-commit
+            else:
+                # Sidecar claims specific pre-edit bytes but git has no such
+                # object at that commit — unverifiable in this workspace.
+                rejections[path] = _NOTE_BASELINE_UNVERIFIABLE
+        else:  # unresolvable
+            rejections[path] = _NOTE_BASELINE_UNVERIFIABLE
+    return verified, rejections
+
+
+def _derive_change_details(
+    change_paths: list[str],
+    before_hashes: dict[str, str | None],
+    after_hashes: dict[str, str | None],
+    git_baselines: dict[str, dict[str, Any]] | None = None,
+    baseline_rejections: dict[str, str] | None = None,
+) -> dict[str, dict[str, Any]]:
+    """Derive per-path change evidence honestly, by OBSERVATION MODE.
+
+    ``changed`` is always derived, never asserted. What it is derived *against*
+    depends on what the recorder could actually OBSERVE:
+
+    - **git baseline present** (``changed_basis="git_baseline"``): the pre-edit
+      bytes came from ``git show <ref>:<path>`` and were RE-VERIFIED here against
+      the workspace git object store (see ``_verify_git_baselines``) — verifiable
+      evidence that survives the documented edit-first workflow. ``changed`` is
+      ``baseline_sha256 != after_sha256``. A ``null`` baseline means the path was
+      absent at the ref, so a present ``after`` is an honest *appeared*. When the
+      baseline EQUALS ``after`` the recorder cannot tell a genuine no-op from an
+      edit committed *before* recording began, so it emits an explicit note (and
+      a stderr warning) pointing at ``--baseline-ref`` — never a silent false.
+    - **no git baseline** (``changed_basis="recorder_window"``): fall back to the
+      recorder's own before/after sample. ``changed`` is ``before != after``.
+
+      - ``sha != sha'`` (edited in window) / ``null -> sha`` (appeared) /
+        ``sha -> null`` (deleted) -> ``changed=true``.
+      - ``null == null`` (never on disk) -> ``changed=false`` + a note, so an
+        operator typo in ``--change-path`` stays visible.
+      - ``sha == sha`` with no baseline -> the file was already at its final
+        state when recording began; the recorder CANNOT attest whether the agent
+        changed it. ``changed=false`` + an explicit unobservable note (the
+        flagship edit-first case — recorded honestly, never silent; issue #52).
+      - a REFUSED sidecar baseline (forged or unverifiable, see
+        ``baseline_rejections``) falls here too, carrying the refusal note.
+    """
+
+    git_baselines = git_baselines or {}
+    baseline_rejections = baseline_rejections or {}
+    details: dict[str, dict[str, Any]] = {}
+    for path in change_paths:
+        before = before_hashes.get(path)
+        after = after_hashes.get(path)
+        entry: dict[str, Any] = {
+            "before_sha256": before,
+            "after_sha256": after,
+        }
+        baseline = git_baselines.get(path)
+        if baseline is not None:
+            baseline_sha = baseline.get("baseline_sha256")
+            source = baseline.get("source")
+            entry["baseline_sha256"] = baseline_sha
+            entry["baseline_source"] = source
+            entry["changed"] = baseline_sha != after
+            entry["changed_basis"] = "git_baseline"
+            if baseline_sha is not None and baseline_sha == after:
+                commit = source.get("commit") if isinstance(source, dict) else None
+                entry["note"] = _note_matches_head(commit)
+        else:
+            entry["changed"] = before != after
+            entry["changed_basis"] = "recorder_window"
+            rejection = baseline_rejections.get(path)
+            if rejection is not None:
+                # A supplied baseline was refused (forged / unverifiable). The
+                # refusal is the salient story; it takes note precedence over the
+                # generic recorder-window notes below.
+                entry["note"] = rejection
+            elif before is None and after is None:
+                entry["note"] = _NOTE_NEVER_OBSERVED
+            elif before is not None and before == after:
+                entry["note"] = _NOTE_UNOBSERVABLE
+        details[path] = entry
+    return details
+
+
+def _warn_unobservable_paths(change_details: dict[str, dict[str, Any]]) -> None:
+    """Emit an honest stderr warning for each path the recorder could not attest."""
+
+    for path, entry in change_details.items():
+        note = entry.get("note")
+        if not note:
+            continue
+        if note == _NOTE_NEVER_OBSERVED:
+            print(
+                f"warning: --change-path {path!r} was never observed on disk "
+                "(before and after hashes both absent); recorded as changed=false",
+                file=sys.stderr,
+            )
+        elif note == _NOTE_UNOBSERVABLE:
+            print(
+                f"warning: --change-path {path!r} was already at its final state "
+                "when recording began and no git baseline is available, so the "
+                "recorder cannot attest whether the agent changed it (recorded as "
+                "changed=false). Record inside a git-tracked workspace so the "
+                "pre-edit state is captured from HEAD, or perform the edit inside "
+                "--command.",
+                file=sys.stderr,
+            )
+        elif note.startswith(_NOTE_MATCHES_HEAD_PREFIX):
+            print(
+                f"warning: --change-path {path!r} matches its git baseline, so "
+                "changed=false — but the recorder CANNOT tell a genuine no-op from "
+                "a change that was already committed before recording began. Pass "
+                "--baseline-ref <pre-edit-ref> (e.g. HEAD~1 or the pre-edit commit "
+                "sha) to attest a committed change.",
+                file=sys.stderr,
+            )
+        elif note.startswith(_NOTE_BASELINE_MISMATCH_PREFIX):
+            print(
+                f"warning: --change-path {path!r} supplied a git baseline whose "
+                "recorded hash did not match the git object at the referenced "
+                "commit; the baseline was forged or stale and has been IGNORED. "
+                "The change was derived from the recorder's own before/after "
+                "window instead.",
+                file=sys.stderr,
+            )
+        elif note == _NOTE_BASELINE_UNVERIFIABLE:
+            print(
+                f"warning: --change-path {path!r} supplied a git baseline that "
+                "could not be verified in this workspace (not a git repo, git "
+                "absent, or the commit/object is missing); the baseline was "
+                "IGNORED and the change was derived from the recorder's own "
+                "before/after window instead.",
+                file=sys.stderr,
+            )
+
+
 def _record_changes(
     conn: Any,
     *,
@@ -256,8 +621,16 @@ def _record_changes(
     before_hashes: dict[str, str | None],
     after_hashes: dict[str, str | None],
     run_id: str,
+    git_baselines: dict[str, dict[str, Any]] | None = None,
 ) -> None:
+    git_baselines = git_baselines or {}
     for path in change_paths:
+        evidence_refs = [f"run:{run_id}", f"path:{path}"]
+        baseline = git_baselines.get(path)
+        if baseline is not None and isinstance(baseline.get("source"), dict):
+            ref = _baseline_evidence_ref(baseline["source"])
+            if ref:
+                evidence_refs.append(ref)
         upsert_change(
             conn,
             stable_key=f"{run_key}:change:{path}",
@@ -269,7 +642,7 @@ def _record_changes(
             summary=f"generic run touched {path}",
             source_kind="collectable_v1",
             confidence="high",
-            evidence_refs=[f"run:{run_id}", f"path:{path}"],
+            evidence_refs=evidence_refs,
             redaction_state="safe",
         )
 
@@ -530,10 +903,17 @@ def _agent_provenance_payload(
     run_group: str,
     terminal_status: str,
     artifact_root: Path,
+    git_baselines: dict[str, dict[str, Any]] | None = None,
+    baseline_rejections: dict[str, str] | None = None,
     receipt: dict[str, Any] | None = None,
     mode: str = "generic",
 ) -> dict[str, Any]:
     agent_side = sidecar["agent"]
+    # Only RE-VERIFIED baselines reach here (forged/unverifiable ones were refused
+    # in run_generic and moved into baseline_rejections). Never re-extract raw
+    # sidecar baselines — that would re-trust the very assertion R2 guards against.
+    git_baselines = git_baselines or {}
+    baseline_rejections = baseline_rejections or {}
     scenario_id = scenario or "agent-change"
     agent_name = str(agent_side.get("name") or "cursor-agent-change")
     prompt_sha = str(agent_side["prompt_sha256"])
@@ -546,6 +926,14 @@ def _agent_provenance_payload(
     adapter = sidecar.get("adapter")
     if isinstance(adapter, str) and adapter:
         evidence_refs.append(f"adapter:{adapter}")
+    # Verifiable pre-edit evidence: a skeptic can recompute each git baseline via
+    # `git show <commit>:<path> | sha256sum` and match it against baseline_sha256.
+    for baseline in git_baselines.values():
+        source = baseline.get("source")
+        if isinstance(source, dict):
+            ref = _baseline_evidence_ref(source)
+            if ref and ref not in evidence_refs:
+                evidence_refs.append(ref)
 
     # Receipt-verified agent provenance: a live Claude CLI receipt upgrades the
     # agent leg to collectable_v1 with the SERVER-resolved model id. Without a
@@ -568,6 +956,21 @@ def _agent_provenance_payload(
             provenance_class = "stub_receipt_v1"
             agent_source_kind = "simulated_v1"
             agent_confidence = "medium"
+
+    # patch_applied is DERIVED, never asserted, and by OBSERVATION MODE: against
+    # the RE-VERIFIED git baseline (pre-edit bytes) when the adapter captured one
+    # — which makes the documented edit-first flow evidence-backed — else against
+    # the recorder's own before/after window. Identical hashes with no baseline are
+    # an honest, LOUD changed=false (unobservable), not a silent one; a baseline
+    # equal to after is flagged as an ambiguous commit-before-record case.
+    change_details = _derive_change_details(
+        change_paths,
+        before_hashes,
+        after_hashes,
+        git_baselines,
+        baseline_rejections,
+    )
+    patch_applied = any(entry["changed"] for entry in change_details.values())
 
     return {
         "schema_version": "nlfr.agent_provenance.v1",
@@ -592,7 +995,8 @@ def _agent_provenance_payload(
             "affected_paths": change_paths,
             "before_hashes": before_hashes,
             "after_hashes": after_hashes,
-            "patch_applied": True,
+            "paths": change_details,
+            "patch_applied": patch_applied,
         },
         "workspace": str(workspace),
         "build": {
@@ -625,6 +1029,8 @@ def _record_agent_provenance(
     before_hashes: dict[str, str | None],
     after_hashes: dict[str, str | None],
     terminal_status: str,
+    git_baselines: dict[str, dict[str, Any]] | None = None,
+    baseline_rejections: dict[str, str] | None = None,
     receipt_path: Path | None = None,
     mode: str = "generic",
 ) -> list[ArtifactManifestEntry]:
@@ -661,6 +1067,8 @@ def _record_agent_provenance(
         run_group=run_group,
         terminal_status=terminal_status,
         artifact_root=artifact_root,
+        git_baselines=git_baselines,
+        baseline_rejections=baseline_rejections,
         receipt=receipt,
         mode=mode,
     )
