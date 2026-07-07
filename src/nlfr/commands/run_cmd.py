@@ -4,11 +4,16 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import shutil
+import socket
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
+from urllib.parse import urlparse
 
 from nlfr.artifacts import ArtifactManifestEntry, write_artifact
+from nlfr.config import WorkspaceResolutionError, resolve_workspace
 from nlfr.db import connect, initialize
 from nlfr.db.ingest import upsert_artifact, upsert_invocation, upsert_run
 from nlfr.ids import stable_id
@@ -22,8 +27,22 @@ from nlfr.commands.generic_run import (
 from nlfr.runners import BazelRunner, NativeLinkRunner, ProcessResult
 
 
+DEFAULT_REMOTE_CACHE = "grpc://127.0.0.1:50051"
+
+
 def run(args: argparse.Namespace) -> int:
     """Execute a recorder run and persist artifacts plus SQLite rows."""
+
+    # Resolve the workspace for every mode before dispatching. ``run_generic``
+    # reads ``args.workspace`` directly, so the resolved value is written back.
+    try:
+        workspace, workspace_notice = resolve_workspace(Path.cwd(), args.workspace)
+    except WorkspaceResolutionError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    if workspace_notice:
+        print(workspace_notice, file=sys.stderr)
+    args.workspace = str(workspace)
 
     if args.mode == "generic":
         return run_generic(args)
@@ -32,7 +51,25 @@ def run(args: argparse.Namespace) -> int:
         print(f"unsupported run mode: {args.mode}", file=sys.stderr)
         return 2
 
-    workspace = Path(args.workspace).resolve()
+    # Resolve the remote cache endpoint. ``--no-remote-cache`` suppresses any
+    # injection; an explicit ``--remote-cache`` is used as-is (the operator owns
+    # it); the bundled default is preflighted so an adopter without NativeLink
+    # gets an honest, actionable message instead of a raw Bazel connection error.
+    user_passed_cache = args.remote_cache is not None
+    if args.no_remote_cache:
+        remote_cache = None
+    else:
+        remote_cache = args.remote_cache or _default_remote_cache()
+
+    if (
+        remote_cache is not None
+        and not user_passed_cache
+        and _bazel_available(args.bazel_executable)
+        and not _endpoint_reachable(remote_cache)
+    ):
+        print(_unreachable_cache_message(remote_cache), file=sys.stderr)
+        return 2
+
     output_dir = Path(args.output_dir).resolve()
     nativelink_config = args.nativelink_config or str(_default_nativelink_config(args.mode))
     run_key = _run_key(args.scenario, args.mode)
@@ -66,7 +103,7 @@ def run(args: argparse.Namespace) -> int:
         artifact_dir=artifact_root,
         bazel_executable=args.bazel_executable,
         startup_args=args.bazel_startup_arg,
-        remote_cache_url=args.remote_cache,
+        remote_cache_url=remote_cache,
         remote_executor_url=args.remote_executor if args.mode == "local-exec" else None,
     )
 
@@ -237,8 +274,12 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
     )
     parser.add_argument(
         "--workspace",
-        default=str(_repo_root() / "demo" / "bazel-monorepo"),
-        help="Bazel workspace directory",
+        default=None,
+        help=(
+            "Bazel workspace directory. Default: the current directory when it "
+            "holds a Bazel marker (MODULE.bazel/WORKSPACE); the bundled demo "
+            "workspace only when run inside the NLFR source checkout"
+        ),
     )
     parser.add_argument(
         "--output-dir",
@@ -282,8 +323,18 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
     )
     parser.add_argument(
         "--remote-cache",
-        default="grpc://127.0.0.1:50051",
-        help="Bazel remote cache endpoint",
+        default=None,
+        help=(
+            "Bazel remote cache endpoint. When omitted, defaults to "
+            f"{DEFAULT_REMOTE_CACHE} (override with NLFR_REMOTE_CACHE_DEFAULT) and "
+            "is TCP-preflighted before Bazel runs; an explicit endpoint is used "
+            "as-is without a preflight veto"
+        ),
+    )
+    parser.add_argument(
+        "--no-remote-cache",
+        action="store_true",
+        help="suppress remote-cache injection and run plain Bazel (no NativeLink needed)",
     )
     parser.add_argument(
         "--remote-executor",
@@ -307,6 +358,50 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
 
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[3]
+
+
+def _default_remote_cache() -> str:
+    """Return the default remote cache endpoint (overridable for testing/adoption)."""
+
+    return os.environ.get("NLFR_REMOTE_CACHE_DEFAULT", DEFAULT_REMOTE_CACHE)
+
+
+def _bazel_available(executable: str) -> bool:
+    """Return True when the Bazel executable can be found (mirrors BazelRunner)."""
+
+    path = Path(executable)
+    if path.is_absolute() or len(path.parts) > 1:
+        return path.exists()
+    return shutil.which(executable) is not None
+
+
+def _endpoint_reachable(endpoint: str, *, timeout: float = 1.0) -> bool:
+    """TCP-connect to a ``grpc[s]://host:port`` endpoint within ``timeout`` seconds.
+
+    Unparseable endpoints (no host/port) return True — the preflight only vetoes
+    when it can positively determine the endpoint is refusing connections.
+    """
+
+    parsed = urlparse(endpoint)
+    host = parsed.hostname
+    port = parsed.port
+    if not host or not port:
+        return True
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except OSError:
+        return False
+
+
+def _unreachable_cache_message(endpoint: str) -> str:
+    return (
+        f"nlfr: remote cache {endpoint} is unreachable — no NativeLink appears to "
+        "be listening.\n"
+        "  → pass --no-remote-cache to record a plain Bazel run\n"
+        "  → pass --remote-cache URL to point at your own cache endpoint\n"
+        "  → or start NativeLink first (see docs/ADOPTION_GUIDE.md)"
+    )
 
 
 def _default_nativelink_config(mode: str) -> Path:

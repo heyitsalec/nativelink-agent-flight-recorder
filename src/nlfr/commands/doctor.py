@@ -9,6 +9,11 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+from nlfr.config import (
+    is_within_source_checkout,
+    nativelink_config_from_toml,
+)
+
 
 ADOPTION_GUIDE = "docs/ADOPTION_GUIDE.md"
 DEV_ENVIRONMENT = "docs/DEV_ENVIRONMENT.md"
@@ -42,7 +47,7 @@ def find_any(names: tuple[str, ...]) -> str | None:
     return None
 
 
-def tool_checks(mode: str) -> list[Check]:
+def tool_checks(mode: str, local_exec_config: str | None = None) -> list[Check]:
     """Build environment checks for the requested proof mode."""
 
     python_ok = sys.version_info >= (3, 11)
@@ -67,14 +72,48 @@ def tool_checks(mode: str) -> list[Check]:
             nativelink_path is not None,
             nativelink_path or "missing nativelink or native-link on PATH",
         ),
-        *(_local_exec_checks() if mode == "local-exec" else []),
+        *(_local_exec_checks(local_exec_config) if mode == "local-exec" else []),
     ]
 
 
-def emit_text(mode: str, checks: list[Check]) -> None:
+def resolve_local_exec_config(args: argparse.Namespace) -> str | None:
+    """Resolve which NativeLink local-exec config to check.
+
+    Precedence:
+      1. ``--nativelink-config`` flag.
+      2. ``nativelink_config`` in the workspace ``nlfr.toml``.
+      3. bundled demo config, ONLY when run inside the NLFR source checkout.
+      4. otherwise ``None`` -> an honest "no config found" failed check.
+    """
+
+    flag = getattr(args, "nativelink_config", None)
+    if flag:
+        return flag
+
+    workspace = Path(getattr(args, "workspace", None) or Path.cwd()).resolve()
+    from_toml = nativelink_config_from_toml(workspace)
+    if from_toml:
+        candidate = Path(from_toml)
+        if not candidate.is_absolute():
+            candidate = workspace / candidate
+        return str(candidate)
+
+    if is_within_source_checkout(workspace):
+        return str(_repo_root() / "demo" / "nativelink" / "local-execution.json5")
+
+    return None
+
+
+def emit_text(
+    mode: str,
+    checks: list[Check],
+    nativelink_config_checked: str | None = None,
+) -> None:
     """Print human-readable doctor results to stdout and stderr."""
 
     print(f"nlfr doctor ({mode})")
+    if mode == "local-exec":
+        print(f"nativelink_config_checked: {nativelink_config_checked or '(none found)'}")
     for check in checks:
         status = "ok" if check.ok else "missing"
         print(f"[{status}] {check.name}: {check.detail}")
@@ -96,12 +135,17 @@ def emit_text(mode: str, checks: list[Check]) -> None:
         print(f"  → Run: nlfr doctor --mode {mode} --json", file=sys.stderr)
 
 
-def emit_json(mode: str, checks: list[Check]) -> None:
+def emit_json(
+    mode: str,
+    checks: list[Check],
+    nativelink_config_checked: str | None = None,
+) -> None:
     """Print machine-readable doctor results as JSON."""
 
     payload = {
         "mode": mode,
         "ok": all(check.ok for check in checks),
+        "nativelink_config_checked": nativelink_config_checked,
         "checks": [
             {
                 "name": check.name,
@@ -117,11 +161,14 @@ def emit_json(mode: str, checks: list[Check]) -> None:
 def run(args: argparse.Namespace) -> int:
     """Run environment checks and return a process exit code."""
 
-    checks = tool_checks(args.mode)
+    config_checked = (
+        resolve_local_exec_config(args) if args.mode == "local-exec" else None
+    )
+    checks = tool_checks(args.mode, config_checked)
     if args.json:
-        emit_json(args.mode, checks)
+        emit_json(args.mode, checks, config_checked)
     else:
-        emit_text(args.mode, checks)
+        emit_text(args.mode, checks, config_checked)
     return 0 if all(check.ok for check in checks) else 1
 
 
@@ -140,6 +187,18 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         help="proof mode to validate",
     )
     parser.add_argument(
+        "--nativelink-config",
+        help=(
+            "NativeLink local-exec config to check (local-exec mode). Precedence: "
+            "this flag > nativelink_config in the workspace nlfr.toml > bundled "
+            "demo config (only inside the NLFR source checkout)"
+        ),
+    )
+    parser.add_argument(
+        "--workspace",
+        help="workspace directory whose nlfr.toml is consulted (default: cwd)",
+    )
+    parser.add_argument(
         "--json",
         action="store_true",
         help="emit machine-readable check results",
@@ -147,8 +206,18 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
     parser.set_defaults(handler=run)
 
 
-def _local_exec_checks() -> list[Check]:
-    config_path = _repo_root() / "demo" / "nativelink" / "local-execution.json5"
+def _local_exec_checks(config: str | None = None) -> list[Check]:
+    if config is None:
+        return [
+            Check(
+                "local-exec-config",
+                False,
+                "no NativeLink local-execution config found; pass --nativelink-config "
+                "PATH or set nativelink_config in nlfr.toml",
+            )
+        ]
+
+    config_path = Path(config)
     if not config_path.exists():
         return [
             Check(
@@ -159,24 +228,24 @@ def _local_exec_checks() -> list[Check]:
         ]
 
     try:
-        config = json.loads(config_path.read_text())
+        config_data = json.loads(config_path.read_text())
     except json.JSONDecodeError as exc:
         return [
             Check(
                 "local-exec-config",
                 False,
-                f"invalid NativeLink local execution config JSON: {exc}",
+                f"invalid NativeLink local execution config JSON: {config_path}: {exc}",
             )
         ]
 
     services = {
         service
-        for server in config.get("servers", [])
+        for server in config_data.get("servers", [])
         if isinstance(server, dict)
         for service in (server.get("services") or {})
     }
-    has_scheduler = bool(config.get("schedulers"))
-    has_worker = bool(config.get("workers"))
+    has_scheduler = bool(config_data.get("schedulers"))
+    has_worker = bool(config_data.get("workers"))
     required_services = {"execution", "worker_api", "capabilities", "cas", "ac"}
     missing_services = sorted(required_services - services)
     ok = has_scheduler and has_worker and not missing_services

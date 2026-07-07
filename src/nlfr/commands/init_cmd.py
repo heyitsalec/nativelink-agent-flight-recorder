@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 from nlfr.commands.doctor import ADOPTION_GUIDE, ADOPTION_HINT, DEV_ENVIRONMENT, FIRST_EVIDENCE_LOOP
-from nlfr.config import resolve_defaults, scaffold_workspace
+from nlfr.config import DEMO_WORKSPACE_NOTICE, resolve_defaults, scaffold_workspace
 
 
 def run(args: argparse.Namespace) -> int:
@@ -22,6 +22,8 @@ def run(args: argparse.Namespace) -> int:
         database=args.database,
         run_group=args.run_group,
     )
+    if args.workspace is None and defaults.workspace == "demo/bazel-monorepo":
+        print(DEMO_WORKSPACE_NOTICE, file=sys.stderr)
     result = scaffold_workspace(cwd, defaults, force=args.force)
 
     if args.json:

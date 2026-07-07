@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from nlfr.artifacts import write_artifact
+from nlfr.config import WorkspaceResolutionError, resolve_workspace
 from nlfr.db import connect, initialize
 from nlfr.db.ingest import (
     upsert_artifact,
@@ -25,6 +26,15 @@ from nlfr.db.ingest import (
 
 def run(args: argparse.Namespace) -> int:
     """Apply demo agent patches and record simulated provenance."""
+
+    try:
+        template, template_notice = resolve_workspace(Path.cwd(), args.workspace_template)
+    except WorkspaceResolutionError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    if template_notice:
+        print(template_notice, file=sys.stderr)
+    args.workspace_template = str(template)
 
     try:
         scenario_paths = _scenario_paths(args)
@@ -81,8 +91,12 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
     )
     parser.add_argument(
         "--workspace-template",
-        default=str(_repo_root() / "demo" / "bazel-monorepo"),
-        help="Bazel workspace copied before each simulated agent patch",
+        default=None,
+        help=(
+            "Bazel workspace copied before each simulated agent patch. Default: "
+            "the bundled demo workspace inside the NLFR source checkout, else the "
+            "current directory when it holds a Bazel marker"
+        ),
     )
     parser.add_argument(
         "--output-dir",
