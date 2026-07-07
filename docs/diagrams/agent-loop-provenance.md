@@ -24,7 +24,7 @@ flowchart LR
     end
 
     subgraph project["Project — derived_v1"]
-        AG["agent node\nfrom agent_provenance block"]
+        AG["agent node\ninherits proof block label\n(collectable_v1 / simulated_v1)"]
         CH["change node"]
         RN["run / target / action"]
         CE["cache_event node"]
@@ -47,7 +47,7 @@ flowchart LR
 | Patch application | `collectable_v1` | `high` | Scenario JSON + change row; raw prompt never stored |
 | Bazel validation run | `collectable_v1` | `high` | Cache-mode evidence only in v1 proof path |
 | `agent_provenance` block | `collectable_v1` | `high` | Model name + prompt hash + change refs |
-| Graph `agent` node | `derived_v1` | `medium` | Derived from proof block + `changes` table |
+| Graph `agent` node | **inherits proof block** — `collectable_v1` (recorded) / `simulated_v1` (simulate) | **inherits** — `high` (recorded) / `medium` (simulate) | `_project_agents` copies the `agent_provenance` block's own `source_kind`/`confidence` verbatim; it never re-labels the node to `derived_v1` |
 | `authored_change` / `validated_by` edges | `derived_v1` | `medium` | Projector linkage — not live agent session state |
 
 **Privacy:** `redaction_state` = `redacted` for prompt fields (hash only). Do not export raw prompts, credentials, or customer data.

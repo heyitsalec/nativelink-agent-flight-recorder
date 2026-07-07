@@ -134,6 +134,186 @@ def test_generic_run_idempotent_rerun(tmp_path: Path) -> None:
     assert count == 2
 
 
+def _write_sidecar(path: Path) -> Path:
+    path.write_text(
+        json.dumps(
+            {
+                "schema_version": "nlfr.agent_provenance.sidecar.v1",
+                "adapter": "test-record-agent-change",
+                "agent": {
+                    "kind": "cursor_adapter_v1",
+                    "name": "test-cursor-agent",
+                    "model": "composer-2.5",
+                    "prompt_sha256": "abc123" * 10 + "abcd",
+                },
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return path
+
+
+def _run_generic_with_change(
+    tmp_path: Path,
+    *,
+    change_path: str,
+    command: str,
+    seed: dict[str, str] | None = None,
+) -> tuple[subprocess.CompletedProcess[str], dict, Path]:
+    """Run generic mode with an agent sidecar and return (result, provenance, out).
+
+    ``seed`` maps workspace-relative paths to initial contents written before the
+    run, so before/after hashes can be exercised across identical / edited /
+    appeared / deleted / never-observed states.
+    """
+
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    for rel, contents in (seed or {}).items():
+        (workspace / rel).write_text(contents, encoding="utf-8")
+    sidecar = _write_sidecar(tmp_path / "sidecar.json")
+    output_dir = tmp_path / "out"
+
+    result = run_nlfr(
+        "run",
+        "--mode",
+        "generic",
+        "--scenario",
+        "patch-derive-probe",
+        "--run-group",
+        "patch-derive",
+        "--workspace",
+        str(workspace),
+        "--output-dir",
+        str(output_dir),
+        "--change-path",
+        change_path,
+        "--provenance-sidecar",
+        str(sidecar),
+        "--command",
+        command,
+        "--json",
+    )
+    payload = json.loads(result.stdout)
+    provenance = json.loads(
+        (Path(payload["artifact_root"]) / "agent-provenance.json").read_text()
+    )
+    return result, provenance, output_dir
+
+
+def test_patch_applied_false_on_identical_hash(tmp_path: Path) -> None:
+    result, provenance, _ = _run_generic_with_change(
+        tmp_path,
+        change_path="stable.txt",
+        command="true",
+        seed={"stable.txt": "unchanged\n"},
+    )
+
+    assert result.returncode == 0, result.stderr
+    change = provenance["change"]
+    assert change["patch_applied"] is False
+    assert change["paths"]["stable.txt"]["changed"] is False
+    assert (
+        change["paths"]["stable.txt"]["before_sha256"]
+        == change["paths"]["stable.txt"]["after_sha256"]
+    )
+
+
+def test_patch_applied_true_on_edited_file(tmp_path: Path) -> None:
+    command = (
+        f"{sys.executable} -c "
+        "\"from pathlib import Path; Path('edit.txt').write_text('after\\\\n')\""
+    )
+    result, provenance, _ = _run_generic_with_change(
+        tmp_path,
+        change_path="edit.txt",
+        command=command,
+        seed={"edit.txt": "before\n"},
+    )
+
+    assert result.returncode == 0, result.stderr
+    change = provenance["change"]
+    assert change["patch_applied"] is True
+    assert change["paths"]["edit.txt"]["changed"] is True
+    assert (
+        change["paths"]["edit.txt"]["before_sha256"]
+        != change["paths"]["edit.txt"]["after_sha256"]
+    )
+
+
+def test_patch_applied_true_on_appeared_file(tmp_path: Path) -> None:
+    command = (
+        f"{sys.executable} -c "
+        "\"from pathlib import Path; Path('appeared.txt').write_text('new\\\\n')\""
+    )
+    result, provenance, _ = _run_generic_with_change(
+        tmp_path,
+        change_path="appeared.txt",
+        command=command,
+    )
+
+    assert result.returncode == 0, result.stderr
+    change = provenance["change"]
+    assert change["paths"]["appeared.txt"]["before_sha256"] is None
+    assert change["paths"]["appeared.txt"]["after_sha256"] is not None
+    assert change["paths"]["appeared.txt"]["changed"] is True
+    assert change["patch_applied"] is True
+
+
+def test_patch_applied_true_on_deleted_file(tmp_path: Path) -> None:
+    command = (
+        f"{sys.executable} -c "
+        "\"from pathlib import Path; Path('gone.txt').unlink()\""
+    )
+    result, provenance, _ = _run_generic_with_change(
+        tmp_path,
+        change_path="gone.txt",
+        command=command,
+        seed={"gone.txt": "doomed\n"},
+    )
+
+    assert result.returncode == 0, result.stderr
+    change = provenance["change"]
+    assert change["paths"]["gone.txt"]["before_sha256"] is not None
+    assert change["paths"]["gone.txt"]["after_sha256"] is None
+    assert change["paths"]["gone.txt"]["changed"] is True
+    assert change["patch_applied"] is True
+
+
+def test_change_path_never_observed_completes_with_note_and_warning(
+    tmp_path: Path,
+) -> None:
+    result, provenance, output_dir = _run_generic_with_change(
+        tmp_path,
+        change_path="typo-does-not-exist.txt",
+        command="true",
+    )
+
+    # The run must COMPLETE — recording an attempt honestly is valid — but the
+    # evidence must say the path was never seen, and stderr must name it.
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "completed"
+    assert "typo-does-not-exist.txt" in result.stderr
+    assert "never observed on disk" in result.stderr
+
+    change = provenance["change"]
+    entry = change["paths"]["typo-does-not-exist.txt"]
+    assert entry["before_sha256"] is None
+    assert entry["after_sha256"] is None
+    assert entry["changed"] is False
+    assert entry["note"] == "path never observed on disk"
+    assert change["patch_applied"] is False
+
+    conn = initialize(connect(output_dir / "nlfr.sqlite"))
+    run = conn.execute(
+        "SELECT status FROM runs WHERE run_group = ?", ("patch-derive",)
+    ).fetchone()
+    assert run["status"] == "completed"
+
+
 def test_generic_run_records_change_path(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()

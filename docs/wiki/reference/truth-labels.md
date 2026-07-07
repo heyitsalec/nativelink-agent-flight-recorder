@@ -55,6 +55,25 @@ Compare projections (M9) must reference **both** left and right run groups.
 Never export raw prompts, credentials, or full private logs. M8 stores
 `prompt_sha256` + `model` only: [Cursor adapter](../../../adapters/cursor/README.md).
 
+## Agent provenance class (`provenance_class`)
+
+The agent leg of a bounded-change record carries a `provenance_class` **in addition
+to** its four truth labels. It records *how the model attribution was established*,
+which is orthogonal to `source_kind` (how the value entered the system):
+
+| `provenance_class` | Established by | Model label is |
+|--------------------|----------------|----------------|
+| `operator_asserted_v1` | Operator `--model` + hashed prompt; no server verification | An operator claim |
+| `stub_receipt_v1` | A deterministic (non-live) `nlfr.agent_receipt.v1` receipt | Simulated (`simulated_v1` agent leg) |
+| `receipt_verified_v1` | A live `nlfr agent-invoke` receipt pinning the server-resolved model id, session id, and `response_sha256` | Server-verified |
+
+`operator_asserted_v1` proves only that the recorded bytes changed (the
+`patch_applied` flag is **derived** from the before/after SHA-256, never asserted)
+and that the operator asserted this model over this prompt hash — **not** that the
+named model authored the edit. The [Cursor adapter](../../../adapters/cursor/README.md)
+path tops out at `operator_asserted_v1` because `record-agent-change.sh` cannot
+attach a receipt; `receipt_verified_v1` requires `nlfr agent-invoke`.
+
 ## Artifact verification (issue #25)
 
 NLFR does not trust the build tool's self-reports. Every file the ingested BEP

@@ -143,7 +143,16 @@ def test_generic_run_records_agent_provenance_from_sidecar(tmp_path: Path) -> No
     assert provenance["agent"]["model"] == "composer-2.5"
     assert provenance["agent"]["prompt_sha256"].startswith("abc123")
     assert "prompt" not in provenance["agent"]
-    assert provenance["change"]["affected_paths"] == ["probe.txt"]
+    change = provenance["change"]
+    assert change["affected_paths"] == ["probe.txt"]
+    # patch_applied is DERIVED: probe.txt goes before -> after (bytes differ), so
+    # the recorded hashes back a genuine change. This must never be a literal True.
+    assert change["patch_applied"] is True
+    assert change["paths"]["probe.txt"]["changed"] is True
+    assert (
+        change["paths"]["probe.txt"]["before_sha256"]
+        != change["paths"]["probe.txt"]["after_sha256"]
+    )
 
     conn = initialize(connect(output_dir / "nlfr.sqlite"))
     block = conn.execute(

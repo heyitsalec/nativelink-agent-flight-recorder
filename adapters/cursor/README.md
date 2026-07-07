@@ -228,7 +228,7 @@ privacy violation, not a successful proof.
 |-----|---------------|-------|
 | Agent adapter metadata | `collectable_v1` | From `record-agent-change.sh` sidecar |
 | Validation command | `collectable_v1` | From `nlfr run --mode generic` process capture |
-| Graph `agent` node | `derived_v1` | Projected from `agent_provenance` proof block |
+| Graph `agent` node | **inherits the proof block** — `collectable_v1` (recorded adapter run) / `simulated_v1` (simulate) | `_project_agents` copies the `agent_provenance` block's own `source_kind`/`confidence` verbatim; it does **not** re-label the node to `derived_v1` |
 | Simulated demo scenarios | `simulated_v1` | `nlfr simulate` only — not this adapter |
 | Environment blocker | `collectable_v1` | Honest probe when live E2E cannot run |
 
@@ -240,6 +240,31 @@ through real command capture.
 | Agent change recorded non-dry-run | `collectable_v1` / `high` | `chain_complete=true` in summary |
 | Prompt content stored | **blocked** | Stop if raw prompt in artifacts |
 | Live LLM reasoning as proof | **blocked** | Provenance is claim source, not validation proof |
+
+## Provenance ladder
+
+Separately from the four truth labels, the agent leg carries a **`provenance_class`**
+that records *how the model attribution was established*:
+
+| `provenance_class` | Established by | Model label is | This adapter |
+|--------------------|----------------|----------------|--------------|
+| `operator_asserted_v1` | Operator `--model` + hashed prompt; no server verification | An operator claim | **Ceiling for this path** |
+| `stub_receipt_v1` | A deterministic (non-live) `nlfr.agent_receipt.v1` receipt | Simulated (`simulated_v1` agent leg) | Not reachable here |
+| `receipt_verified_v1` | A live `nlfr agent-invoke` receipt pinning the server-resolved model id, session id, and `response_sha256` | Server-verified | Not reachable here |
+
+`record-agent-change.sh` invokes `nlfr run --mode generic` with `--provenance-sidecar`
+**only** — it cannot pass `--agent-receipt`. So this integration's maximum is
+**`operator_asserted_v1`**: the `model` you supply is an operator assertion, not a
+verified fact.
+
+**What operator assertion does NOT prove:** that the named model actually authored
+the edit. It proves only that *these bytes changed* (derived from the recorded
+before/after SHA-256) and that *this operator asserted this model over this prompt
+hash*. To upgrade to `receipt_verified_v1`, capture the session with
+[`nlfr agent-invoke`](../../docs/proof-samples/README.md) and record its
+`nlfr.agent_receipt.v1` receipt. The full class ladder is defined in the
+[truth labels reference](../../docs/wiki/reference/truth-labels.md#agent-provenance-class-provenance_class)
+and the [in-toto attestation how-to](../../docs/wiki/how-to/export-in-toto-attestation.md).
 
 ## Under the hood
 

@@ -80,6 +80,8 @@ def run_generic(args: argparse.Namespace) -> int:
         )
 
     after_hashes = _file_hashes(workspace, change_paths)
+    change_details = _derive_change_details(change_paths, before_hashes, after_hashes)
+    _warn_never_observed_paths(change_details)
     _record_changes(
         conn,
         run_key=run_key,
@@ -245,6 +247,51 @@ def _file_hashes(workspace: Path, paths: list[str]) -> dict[str, str | None]:
 
 def _sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _derive_change_details(
+    change_paths: list[str],
+    before_hashes: dict[str, str | None],
+    after_hashes: dict[str, str | None],
+) -> dict[str, dict[str, Any]]:
+    """Derive per-path change evidence from the ALREADY-RECORDED hashes.
+
+    ``changed`` is computed as ``before_sha256 != after_sha256`` — never asserted.
+    The mapping between hash states and ``changed`` is exactly:
+
+    - ``sha == sha`` (identical bytes) -> ``changed=false``
+    - ``sha != sha'`` (edited) -> ``changed=true``
+    - ``null -> sha`` (file appeared) / ``sha -> null`` (deleted) -> ``changed=true``
+    - ``null == null`` (absent on both sides) -> ``changed=false`` and a ``note``,
+      so an operator typo in ``--change-path`` stays visible in the evidence
+      instead of being silently recorded as a completed change.
+    """
+
+    details: dict[str, dict[str, Any]] = {}
+    for path in change_paths:
+        before = before_hashes.get(path)
+        after = after_hashes.get(path)
+        entry: dict[str, Any] = {
+            "before_sha256": before,
+            "after_sha256": after,
+            "changed": before != after,
+        }
+        if before is None and after is None:
+            entry["note"] = "path never observed on disk"
+        details[path] = entry
+    return details
+
+
+def _warn_never_observed_paths(change_details: dict[str, dict[str, Any]]) -> None:
+    """Emit an honest stderr warning for each --change-path never seen on disk."""
+
+    for path, entry in change_details.items():
+        if entry.get("note"):
+            print(
+                f"warning: --change-path {path!r} was never observed on disk "
+                "(before and after hashes both absent); recorded as changed=false",
+                file=sys.stderr,
+            )
 
 
 def _record_changes(
@@ -569,6 +616,12 @@ def _agent_provenance_payload(
             agent_source_kind = "simulated_v1"
             agent_confidence = "medium"
 
+    # patch_applied is DERIVED from the recorded hashes, never asserted. A change
+    # is real only when a path's before/after SHA-256 differ; identical hashes and
+    # never-observed paths (null == null) are honestly changed=false.
+    change_details = _derive_change_details(change_paths, before_hashes, after_hashes)
+    patch_applied = any(entry["changed"] for entry in change_details.values())
+
     return {
         "schema_version": "nlfr.agent_provenance.v1",
         "generated_at": _timestamp(),
@@ -592,7 +645,8 @@ def _agent_provenance_payload(
             "affected_paths": change_paths,
             "before_hashes": before_hashes,
             "after_hashes": after_hashes,
-            "patch_applied": True,
+            "paths": change_details,
+            "patch_applied": patch_applied,
         },
         "workspace": str(workspace),
         "build": {
