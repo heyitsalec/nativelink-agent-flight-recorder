@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import gzip
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -171,6 +172,65 @@ def parse_bazel_bep(
         actions=list(actions.values()),
         failures=list(failures.values()),
         artifact_references=list(artifact_references.values()),
+    )
+
+
+def extract_bep_started_at(path: str | Path) -> str | None:
+    """Return the build's REAL start time from the BEP ``started`` event, or ``None``.
+
+    The Bazel Build Event Protocol's ``started`` event records the moment the build
+    actually began — as ``startTime`` (an ISO-8601 timestamp, newer Bazel) and/or
+    ``startTimeMillis`` (Unix epoch milliseconds, older Bazel). This reads that
+    evidence-recorded instant and renders it as an ISO-8601 UTC string (``...Z``).
+
+    It returns ``None`` when the BEP has no ``started`` event or no usable start
+    field — so ingest can carry a start time it can *observe in the evidence*, but
+    NEVER fabricates one from wall-clock ingest time. A run with no observable
+    start stays age-unknown, which `db gc` refuses to auto-delete.
+    """
+
+    for event in _load_json_events(Path(path)):
+        started = event.get("started")
+        if not isinstance(started, dict):
+            continue
+        # Prefer the explicit ISO timestamp when present (newer Bazel).
+        iso = started.get("startTime")
+        if isinstance(iso, str) and iso.strip():
+            normalized = _normalize_iso_utc(iso)
+            if normalized is not None:
+                return normalized
+        # Fall back to epoch milliseconds (older Bazel; also our fixtures).
+        millis = started.get("startTimeMillis")
+        if isinstance(millis, bool):
+            continue
+        if isinstance(millis, int):
+            return _millis_to_iso_utc(millis)
+        if isinstance(millis, float):
+            return _millis_to_iso_utc(int(millis))
+        if isinstance(millis, str) and millis.strip().lstrip("-").isdigit():
+            return _millis_to_iso_utc(int(millis))
+    return None
+
+
+def _millis_to_iso_utc(millis: int) -> str:
+    """Render Unix epoch milliseconds as an ISO-8601 UTC timestamp (``...Z``)."""
+
+    seconds, millis_part = divmod(millis, 1000)
+    moment = datetime.fromtimestamp(seconds, tz=UTC).replace(microsecond=millis_part * 1000)
+    return moment.isoformat(timespec="microseconds").replace("+00:00", "Z")
+
+
+def _normalize_iso_utc(value: str) -> str | None:
+    """Normalize an ISO-8601 timestamp string to UTC ``...Z`` form, or ``None``."""
+
+    try:
+        moment = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=UTC)
+    return (
+        moment.astimezone(UTC).isoformat(timespec="microseconds").replace("+00:00", "Z")
     )
 
 
