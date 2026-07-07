@@ -88,26 +88,29 @@ def _write_strict_bazel_shim(bin_dir: Path, *, exit_code: int = 0) -> Path:
         f"VERBS = set({verbs_literal})\n"
         "VALUE_STARTUP = {'--bazelrc', '--output_base', '--output_user_root', '--server_javabase'}\n"
         "BOOL_STARTUP = {'--nohome_rc', '--noworkspace_rc', '--batch'}\n"
-        "verb_i = next((i for i, a in enumerate(args) if a in VERBS), None)\n"
-        "if verb_i is None:\n"
-        "    sys.stderr.write(f'ERROR: no command verb in {args}\\n')\n"
-        "    sys.exit(2)\n"
-        "# Validate the startup segment [0, verb_i): only recognized startup\n"
-        "# options may appear. An injected --build_event_json_file here is an\n"
-        "# unknown startup option -> real bazel exits 2 before running anything.\n"
+        "# Sequential arity-aware startup parsing, exactly like real Bazel: walk\n"
+        "# left to right consuming options (unary options swallow the NEXT token,\n"
+        "# even one that spells a verb); the first bare token is the verb slot.\n"
+        "# A first-verb-string scan would misparse `--output_base test build` and\n"
+        "# give regressions a false pass. An injected --build_event_json_file in\n"
+        "# the startup segment is an unknown startup option -> exit 2, no BEP.\n"
         "i = 0\n"
-        "while i < verb_i:\n"
+        "while i < len(args) and args[i].startswith('-'):\n"
         "    a = args[i]\n"
         "    if a in VALUE_STARTUP:\n"
-        "        if i + 1 >= verb_i:\n"
+        "        if i + 1 >= len(args):\n"
         "            sys.stderr.write(f'ERROR: startup option {a} missing value\\n')\n"
         "            sys.exit(2)\n"
         "        i += 2\n"
         "        continue\n"
-        "    if a in BOOL_STARTUP:\n"
+        "    if a in BOOL_STARTUP or ('=' in a and a.split('=', 1)[0] in VALUE_STARTUP):\n"
         "        i += 1\n"
         "        continue\n"
         "    sys.stderr.write(f'ERROR: unknown startup option before verb: {a}\\n')\n"
+        "    sys.exit(2)\n"
+        "verb_i = i\n"
+        "if verb_i >= len(args) or args[verb_i] not in VERBS:\n"
+        "    sys.stderr.write(f'ERROR: no command verb at position {verb_i} in {args}\\n')\n"
         "    sys.exit(2)\n"
         "flag = '--build_event_json_file'\n"
         "bep = None\n"
@@ -414,6 +417,81 @@ def test_record_injects_bep_after_verb_with_space_valued_startup_option(
     conn = sqlite3.connect(output_dir / "nlfr.sqlite")
     conn.row_factory = sqlite3.Row
     assert conn.execute("SELECT COUNT(*) c FROM targets").fetchone()["c"] == 2
+
+
+def test_record_startup_value_colliding_with_verb_string(tmp_path: Path) -> None:
+    """Regression: a startup-option *value* that spells a verb (``--output_base
+    test``) must not steal the verb slot from the real verb (``build``). The
+    sequential strict shim exits 2 if the BEP flag lands in the startup segment.
+    """
+
+    workspace = _bazel_workspace(tmp_path)
+    bin_dir = _write_strict_bazel_shim(tmp_path / "bin", exit_code=0)
+
+    result = _run_record(
+        "--run-group",
+        "rec-collide",
+        "--json",
+        "--",
+        "bazel",
+        "--output_base",
+        "test",
+        "build",
+        "//demo:x",
+        cwd=workspace,
+        bin_dir=bin_dir,
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["bep_captured"] is True
+    command = payload["command"]
+    verb_i = command.index("build")
+    assert command[:verb_i] == ["bazel", "--output_base", "test"]
+    assert command[verb_i + 1].startswith("--build_event_json_file=")
+    assert command[verb_i + 2] == "//demo:x"
+
+
+def test_verb_index_arity_aware_scan() -> None:
+    """Unit coverage for the arity-aware startup-segment scan."""
+
+    from nlfr.commands.record_cmd import _verb_index
+
+    # Unary option value spelling a verb is skipped, real verb found.
+    assert _verb_index(["bazel", "--output_base", "test", "build", "//x"]) == 3
+    # ``=``-form consumes one token regardless of its value.
+    assert _verb_index(["bazel", "--output_base=test", "build", "//x"]) == 2
+    # Chained nullary options (--no prefix normalized).
+    assert _verb_index(["bazel", "--nohome_rc", "--nosystem_rc", "test", "//x"]) == 3
+    # Unary value starting with ``-`` (jvm-arg style) is still consumed.
+    assert _verb_index(["bazel", "--host_jvm_args", "-Xmx4g", "test", "//x"]) == 3
+    # Unknown option followed by a non-flag, non-verb token: ambiguous -> None.
+    assert _verb_index(["bazel", "--future_flag", "value", "test", "//x"]) is None
+    # Unknown option directly followed by a verb: unambiguous enough.
+    assert _verb_index(["bazel", "--future_flag", "test", "//x"]) == 2
+    # First bare token that is not a verb -> None (never scan past the verb slot).
+    assert _verb_index(["bazel", "frobnicate", "test", "//x"]) is None
+
+
+def test_record_ambiguous_unknown_startup_option_refuses(tmp_path: Path) -> None:
+    """Unknown startup option whose next token is not a flag or verb: exit 64."""
+
+    workspace = _bazel_workspace(tmp_path)
+    result = _run_record(
+        "--json",
+        "--",
+        "bazel",
+        "--future_flag",
+        "somevalue",
+        "test",
+        "//demo:x",
+        cwd=workspace,
+    )
+    assert result.returncode == 64
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "no_bazel_verb"
+    assert payload["exit_code"] == 64
+    assert payload["record_error"]
 
 
 def test_record_no_known_verb_is_honest_usage_error(tmp_path: Path) -> None:

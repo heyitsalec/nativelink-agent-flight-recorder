@@ -76,6 +76,68 @@ _BAZEL_VERBS = frozenset(
     }
 )
 
+# Bazel startup options that consume a SEPARATE following token as their value
+# when written without ``=`` (unary options, per Bazel's own
+# startup_options.cc GetUnaryOption). Their space-separated values must be
+# skipped while scanning for the verb — otherwise a value that happens to
+# equal a verb string (e.g. ``--output_base test``) is misdetected as the verb.
+_UNARY_STARTUP_OPTIONS = frozenset(
+    {
+        "--bazelrc",
+        "--command_port",
+        "--connect_timeout_secs",
+        "--digest_function",
+        "--failure_detail_out",
+        "--host_jvm_args",
+        "--host_jvm_profile",
+        "--install_base",
+        "--invocation_policy",
+        "--io_nice_level",
+        "--local_startup_timeout_secs",
+        "--macos_qos_class",
+        "--max_idle_secs",
+        "--output_base",
+        "--output_root",
+        "--output_user_root",
+        "--server_javabase",
+        "--server_jvm_out",
+        "--unix_digest_hash_attribute_name",
+    }
+)
+
+# Boolean (nullary) startup options, matched by base name so both ``--home_rc``
+# and ``--nohome_rc`` forms resolve. These never consume a following token.
+_NULLARY_STARTUP_BASE = frozenset(
+    {
+        "autodetect_server_javabase",
+        "batch",
+        "batch_cpu_scheduling",
+        "block_for_lock",
+        "client_debug",
+        "expand_configs_in_place",
+        "home_rc",
+        "host_jvm_debug",
+        "idle_server_tasks",
+        "ignore_all_rc_files",
+        "preemptible",
+        "shutdown_on_low_sys_mem",
+        "system_rc",
+        "unlimit_coredumps",
+        "watchfs",
+        "windows_enable_symlinks",
+        "workspace_rc",
+        "write_command_log",
+    }
+)
+
+
+def _is_nullary_startup_option(token: str) -> bool:
+    name = token.lstrip("-")
+    if name.startswith("no"):
+        name = name[2:]
+    return name in _NULLARY_STARTUP_BASE
+
+
 # Exit codes for nlfr's *own* failures, chosen to never collide with Bazel's
 # codes (which we mirror faithfully whenever Bazel actually ran).
 _EX_USAGE = 64  # BSD sysexits EX_USAGE: nlfr record was invoked incorrectly.
@@ -414,21 +476,48 @@ def _bazel_marker(workspace: Path) -> str | None:
 
 
 def _verb_index(command: list[str]) -> int | None:
-    """Index of the Bazel verb: the first post-executable token that *is* a verb.
+    """Index of the Bazel verb, found by an arity-aware left-to-right scan.
 
     Bazel invocations look like ``bazel [startup opts] VERB [opts] targets``.
     Startup options may take *space-separated* values (``--bazelrc /path``,
-    ``--output_base /path``), so a value token can appear between the executable
-    and the verb — which is exactly why we cannot use "first non-``--`` token".
-    Instead we match against the fixed set of known Bazel command verbs. A
-    target can never precede the verb, so the first known-verb match is the verb.
-
-    Returns ``None`` when no known verb is present; the caller must not guess.
+    ``--output_base /path``) — and such a value can even be the literal string
+    of a verb (``--output_base test``), so neither "first non-``--`` token" nor
+    "first token that matches a verb" is safe. Instead, walk the startup
+    segment consuming options by arity: ``=``-form and nullary options take one
+    token, known unary options take two. The first bare token reached this way
+    must be the verb; if it isn't a known verb, or an unknown startup option
+    makes the scan ambiguous, return ``None`` — the caller must not guess.
     """
 
-    for index in range(1, len(command)):
-        if command[index] in _BAZEL_VERBS:
-            return index
+    index = 1
+    while index < len(command):
+        token = command[index]
+        if not token.startswith("-"):
+            # First non-option token reached by arity-aware scanning: this is
+            # the verb position. A target can never precede the verb.
+            return index if token in _BAZEL_VERBS else None
+        if "=" in token or _is_nullary_startup_option(token):
+            index += 1
+            continue
+        if token in _UNARY_STARTUP_OPTIONS:
+            index += 2  # skip the option's separated value, verb or not
+            continue
+        # Unknown startup option written without ``=``: unary vs nullary is
+        # undecidable from the token alone.
+        nxt = command[index + 1] if index + 1 < len(command) else None
+        if nxt is not None and nxt.startswith("-"):
+            # A separated value starting with ``-`` only occurs for jvm-arg
+            # style options, which are all in the unary table — treat as
+            # nullary and keep scanning.
+            index += 1
+            continue
+        if nxt in _BAZEL_VERBS:
+            # ``--unknown-flag test //x``: reading ``test`` as the verb matches
+            # intent overwhelmingly more often than an unknown unary option
+            # whose value is literally a verb string followed by another verb.
+            index += 1
+            continue
+        return None
     return None
 
 

@@ -92,14 +92,15 @@ parsing the exit code could not distinguish a broken `nlfr record` call from a
 genuine build failure. `64` (BSD `EX_USAGE`) and `127` (shell "command not
 found") never collide with Bazel.
 
-The verb `64` case is deliberately honest: nlfr locates the Bazel verb by
-matching a **known-verb set** (`build`, `test`, `run`, `query`, `coverage`, …)
-rather than guessing "the first non-`--` token" — because startup options can
-take space-separated values (`--bazelrc /path`, `--output_base /path`) that
-would otherwise be mistaken for the verb, corrupting the injected
-`--build_event_json_file`. If nlfr can't find a known verb it **refuses to
-guess** and tells you to use a supported verb or pass your own
-`--build_event_json_file=PATH` (which bypasses verb detection entirely).
+The verb `64` case is deliberately honest: nlfr locates the Bazel verb with an
+**arity-aware scan** of the startup segment — `=`-form and boolean startup
+options consume one token, known unary options (`--bazelrc /path`,
+`--output_base /path`, …) consume two — so even a startup-option *value* that
+spells a verb (`--output_base test build //x`) cannot steal the verb slot.
+When an unknown startup option makes the scan ambiguous, or no known verb is
+present, nlfr **refuses to guess** (injecting into Bazel's startup segment
+would corrupt your command) and tells you to use a supported verb or pass your
+own `--build_event_json_file=PATH` (which bypasses verb detection entirely).
 
 **JSON consumers:** with `--json`, *every* failure path — preflight rejections,
 missing executable, and post-run results — emits a structured object on
@@ -108,13 +109,19 @@ inferring intent from the exit code; the `exit_code` field carries the same
 code the process returns. `record_error` is `null` on a successful recording.
 
 ```bash
-# Fail the job on an nlfr misuse, but keep bazel's own codes intact:
+# Fail the job on an nlfr misuse, but keep bazel's own codes intact.
+# Disambiguate via the JSON contract, not the raw exit code: `bazel run`
+# passes the wrapped tool's own exit code through, so a tool that itself
+# exits 64/127 would be indistinguishable from nlfr's sentinels by code
+# alone. `record_error` is non-null exactly when nlfr (not your build)
+# failed.
 nlfr record --json -- bazel test //... > record.json
 code=$?
-if [ "$code" = 64 ] || [ "$code" = 127 ]; then
-  echo "nlfr was invoked incorrectly:"; jq -r .record_error record.json; exit 1
+err=$(jq -r '.record_error // empty' record.json 2>/dev/null)
+if [ -n "$err" ]; then
+  echo "nlfr could not record: $err"; exit 1
 fi
-# otherwise $code is bazel's own exit code (0 = green, non-zero = red)
+# $code is bazel's own exit code (0 = green, non-zero = red), evidence recorded
 exit "$code"
 ```
 
