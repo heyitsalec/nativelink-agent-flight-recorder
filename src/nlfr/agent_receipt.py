@@ -1,16 +1,24 @@
-"""Verifiable agent receipts for headless Claude Code CLI invocations.
+"""Verifiable agent receipts for headless AI-agent CLI invocations.
 
 A receipt is collected evidence that a live LLM call produced an agent change:
 it carries the server-resolved model id, session id, token usage, the SHA-256
 of the response text, and the SHA-256 of the prompt. The raw prompt is NEVER
 stored or exported (AGENTS.md privacy rule) — hash only. The response text is
 code and may be stored as a separate artifact.
+
+Each supported CLI has a *normalizer* in ``CLI_PARSERS`` that maps that CLI's
+raw ``--output-format json`` shape onto one internal receipt shape. Claude Code
+was the first integration; Gemini CLI is the second (its shape is doc-derived
+and fixture-tested — see contracts and tests). Adding a CLI is a normalizer
+plus a ``LIVE_CLI_NAMES`` entry; the receipt/validation/privacy machinery is
+shared, so every CLI clears the exact same verified-receipt bar.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -20,8 +28,8 @@ RECEIPT_SCHEMA_VERSION = "nlfr.agent_receipt.v1"
 #: Keys that must never appear anywhere inside a receipt payload.
 FORBIDDEN_PROMPT_KEYS = frozenset({"prompt", "raw_prompt", "prompt_text", "system_prompt"})
 
-#: CLI basenames accepted as live Claude Code invocations.
-LIVE_CLI_NAMES = frozenset({"claude"})
+#: CLI basenames accepted as live agent invocations (one parser family each).
+LIVE_CLI_NAMES = frozenset({"claude", "gemini"})
 
 
 def sha256_text(text: str) -> str:
@@ -30,50 +38,20 @@ def sha256_text(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-def build_receipt(
-    *,
-    cli_result: dict[str, Any] | None,
-    prompt_sha256: str,
-    cli_name: str,
-    cli_version: str | None,
-    requested_model: str | None,
-    sanitized_command: list[str],
-    status: str,
-    detail: str | None = None,
-    captured_at: str | None = None,
-) -> dict[str, Any]:
-    """Build a receipt payload from a parsed ``claude -p --output-format json`` result.
+def _normalize_claude(result: dict[str, Any]) -> dict[str, Any]:
+    """Map a parsed ``claude -p --output-format json`` object to the internal shape.
 
-    ``status`` is ``success`` for a completed live call, otherwise an honest
-    failure label (``api_error``, ``environment_blocker``, ``invalid_output``,
-    ``timeout``). The raw prompt never enters the payload; callers pass only
-    its SHA-256.
+    This reproduces exactly the fields ``build_receipt`` historically read from
+    the raw Claude result, so Claude receipts stay byte-identical.
     """
 
-    result = cli_result or {}
     response_text = result.get("result") if isinstance(result.get("result"), str) else None
     usage = result.get("usage") if isinstance(result.get("usage"), dict) else {}
     model_usage = result.get("modelUsage") if isinstance(result.get("modelUsage"), dict) else {}
-    resolved_models = sorted(model_usage)
-    live = cli_name in LIVE_CLI_NAMES and status == "success"
-
-    receipt: dict[str, Any] = {
-        "schema_version": RECEIPT_SCHEMA_VERSION,
-        "captured_at": captured_at or _timestamp(),
-        "status": status,
-        "cli": {
-            "name": cli_name,
-            "version": cli_version,
-            "command": sanitized_command,
-        },
-        "prompt_sha256": prompt_sha256,
-        "response_sha256": sha256_text(response_text) if response_text is not None else None,
-        "response_chars": len(response_text) if response_text is not None else None,
-        "model": {
-            "requested": requested_model,
-            "resolved": resolved_models[0] if len(resolved_models) == 1 else None,
-            "resolved_all": resolved_models,
-        },
+    return {
+        "response_text": response_text,
+        # modelUsage is a dict-of-one-key on success; sorted keys → resolved model.
+        "resolved_models": sorted(model_usage),
         "session_id": result.get("session_id"),
         "usage": {
             "input_tokens": usage.get("input_tokens"),
@@ -87,6 +65,181 @@ def build_receipt(
         "total_cost_usd": result.get("total_cost_usd"),
         "result_subtype": result.get("subtype"),
         "api_error_status": result.get("api_error_status"),
+    }
+
+
+def _normalize_gemini(result: dict[str, Any]) -> dict[str, Any]:
+    """Map a parsed ``gemini -p --output-format json`` object to the internal shape.
+
+    Doc-derived from the official Gemini CLI ``--output-format json`` contract
+    (merged google-gemini/gemini-cli#14504, Dec 2025): a single JSON object with
+    ``response`` (text), ``stats.models`` (dict keyed by model name, each with a
+    ``tokens`` block: ``prompt``/``candidates``/``total``/``cached``),
+    ``session_id`` (shipped Dec 2025), and an optional ``error`` object.
+
+    ``stats.models`` is structurally analogous to Claude's ``modelUsage`` — a
+    dict whose sole key on a clean run is the resolved model. Multiple keys (or
+    none) leave ``model.resolved`` absent, degrading below the verified tier.
+    Token counts are mapped only where semantics MATCH; fields Gemini does not
+    report (e.g. cache-creation tokens) are left absent rather than invented.
+    """
+
+    response_text = result.get("response") if isinstance(result.get("response"), str) else None
+    stats = result.get("stats") if isinstance(result.get("stats"), dict) else {}
+    models = stats.get("models") if isinstance(stats.get("models"), dict) else {}
+    error = result.get("error") if isinstance(result.get("error"), dict) else {}
+    error_code = error.get("code") if isinstance(error.get("code"), int) else None
+    return {
+        "response_text": response_text,
+        "resolved_models": sorted(models),
+        "session_id": result.get("session_id"),
+        "usage": {
+            "input_tokens": _sum_gemini_tokens(models, "prompt"),
+            "output_tokens": _sum_gemini_tokens(models, "candidates"),
+            # Gemini reports cached (read) tokens but NOT cache-creation tokens.
+            "cache_creation_input_tokens": None,
+            "cache_read_input_tokens": _sum_gemini_tokens(models, "cached"),
+        },
+        # Gemini's JSON does not carry these; omit rather than invent values.
+        "num_turns": None,
+        "duration_ms": None,
+        "duration_api_ms": None,
+        "total_cost_usd": None,
+        "result_subtype": error.get("type") if error else None,
+        "api_error_status": error_code,
+    }
+
+
+def _sum_gemini_tokens(models: dict[str, Any], field: str) -> int | None:
+    """Sum ``tokens.<field>`` across every model in ``stats.models``.
+
+    Returns ``None`` (absent, not zero) when no model reports the field, so a
+    missing count is never fabricated as a real zero.
+    """
+
+    total = 0
+    found = False
+    for entry in models.values():
+        if not isinstance(entry, dict):
+            continue
+        tokens = entry.get("tokens")
+        if not isinstance(tokens, dict):
+            continue
+        value = tokens.get(field)
+        if isinstance(value, int) and not isinstance(value, bool):
+            total += value
+            found = True
+    return total if found else None
+
+
+#: Per-CLI normalizers: raw CLI ``--output-format json`` object → internal shape.
+CLI_PARSERS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
+    "claude": _normalize_claude,
+    "gemini": _normalize_gemini,
+}
+
+
+def cli_family_for(cli_name: str) -> str:
+    """Infer the parser family from a CLI basename.
+
+    Explicit families are passed through unchanged by ``build_receipt``; this
+    heuristic only covers callers that pass a bare name (including test stubs
+    such as ``spark-stub-claude.sh``). Anything not recognizably Gemini falls
+    back to the Claude family, preserving historical behavior.
+    """
+
+    lowered = (cli_name or "").lower()
+    if "gemini" in lowered:
+        return "gemini"
+    return "claude"
+
+
+def build_receipt(
+    *,
+    cli_result: dict[str, Any] | None,
+    prompt_sha256: str,
+    cli_name: str,
+    cli_version: str | None,
+    requested_model: str | None,
+    sanitized_command: list[str],
+    status: str,
+    detail: str | None = None,
+    captured_at: str | None = None,
+    cli_family: str | None = None,
+) -> dict[str, Any]:
+    """Build a receipt payload from a parsed agent-CLI ``--output-format json`` result.
+
+    ``cli_family`` selects the per-CLI normalizer (``claude`` or ``gemini``);
+    when omitted it is inferred from ``cli_name`` so existing callers that pass
+    only a name keep working. ``status`` is ``success`` for a completed live
+    call, otherwise an honest failure label (``api_error``, ``cli_error``,
+    ``environment_blocker``, ``invalid_output``, ``timeout``). The raw prompt
+    never enters the payload; callers pass only its SHA-256.
+
+    Honest degradation: a caller may request ``success``, but a receipt only
+    earns that (verified-eligible) status when the evidence bar is met — a
+    response, exactly one resolved model, and a session id. If the CLI's JSON
+    lacked any of those (e.g. Gemini emitted multi-model stats, or no
+    ``session_id``), the attempt is recorded as ``invalid_output`` rather than
+    raising, so the receipt is preserved below the verified tier.
+    """
+
+    result = cli_result or {}
+    family = cli_family or cli_family_for(cli_name)
+    normalizer = CLI_PARSERS.get(family, _normalize_claude)
+    parsed = normalizer(result)
+
+    response_text = parsed["response_text"]
+    response_sha = sha256_text(response_text) if response_text is not None else None
+    resolved_models = parsed["resolved_models"]
+    resolved_model = resolved_models[0] if len(resolved_models) == 1 else None
+    session_id = parsed["session_id"]
+
+    if status == "success" and not (response_sha and resolved_model and session_id):
+        missing = [
+            name
+            for name, present in (
+                ("response", response_sha),
+                ("model.resolved", resolved_model),
+                ("session_id", session_id),
+            )
+            if not present
+        ]
+        status = "invalid_output"
+        detail = detail or f"CLI output missing verification fields: {', '.join(missing)}"
+
+    live = cli_name in LIVE_CLI_NAMES and status == "success"
+
+    receipt: dict[str, Any] = {
+        "schema_version": RECEIPT_SCHEMA_VERSION,
+        "captured_at": captured_at or _timestamp(),
+        "status": status,
+        "cli": {
+            "name": cli_name,
+            "version": cli_version,
+            "command": sanitized_command,
+        },
+        "prompt_sha256": prompt_sha256,
+        "response_sha256": response_sha,
+        "response_chars": len(response_text) if response_text is not None else None,
+        "model": {
+            "requested": requested_model,
+            "resolved": resolved_model,
+            "resolved_all": resolved_models,
+        },
+        "session_id": session_id,
+        "usage": {
+            "input_tokens": parsed["usage"].get("input_tokens"),
+            "output_tokens": parsed["usage"].get("output_tokens"),
+            "cache_creation_input_tokens": parsed["usage"].get("cache_creation_input_tokens"),
+            "cache_read_input_tokens": parsed["usage"].get("cache_read_input_tokens"),
+        },
+        "num_turns": parsed["num_turns"],
+        "duration_ms": parsed["duration_ms"],
+        "duration_api_ms": parsed["duration_api_ms"],
+        "total_cost_usd": parsed["total_cost_usd"],
+        "result_subtype": parsed["result_subtype"],
+        "api_error_status": parsed["api_error_status"],
         "source_kind": "collectable_v1" if live else "simulated_v1",
         "confidence": "high" if live else "medium",
         "evidence_refs": [

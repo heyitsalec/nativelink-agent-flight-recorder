@@ -1,0 +1,24 @@
+{
+  "response": "Done.\n",
+  "stats": {
+    "models": {
+      "gemini-2.5-flash": {
+        "tokens": {
+          "prompt": 300,
+          "candidates": 40,
+          "total": 340,
+          "cached": 0
+        }
+      },
+      "gemini-2.5-pro": {
+        "tokens": {
+          "prompt": 900,
+          "candidates": 120,
+          "total": 1020,
+          "cached": 50
+        }
+      }
+    }
+  },
+  "session_id": "ffffffff-1111-2222-3333-444444444444"
+}

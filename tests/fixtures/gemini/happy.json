@@ -1,0 +1,16 @@
+{
+  "response": "Done.\n\n```python\nVALUE = 1\n```\n",
+  "stats": {
+    "models": {
+      "gemini-2.5-pro": {
+        "tokens": {
+          "prompt": 1200,
+          "candidates": 340,
+          "total": 1540,
+          "cached": 200
+        }
+      }
+    }
+  },
+  "session_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+}
