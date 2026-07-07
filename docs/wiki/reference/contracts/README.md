@@ -23,7 +23,7 @@ Projectors that emit projection JSON live under
 | [Artifact manifest v1](artifact-manifest-v1.md) | `1` | — | [`artifact_manifest.v1.json`](../../../../contracts/artifact_manifest.v1.json) | [`artifacts.py`](../../../../src/nlfr/artifacts.py) |
 | [Proof packet v1](proof-packet-v1.md) | `1` | `proof_packet` | [`proof_packet.v1.json`](../../../../contracts/proof_packet.v1.json) | [`proof.py`](../../../../src/nlfr/projectors/proof.py) |
 | [Canvas projection v1](canvas-projection-v1.md) | `1` | `action_graph` | [`canvas_projection.v1.json`](../../../../contracts/canvas_projection.v1.json) | [`graph.py`](../../../../src/nlfr/projectors/graph.py) |
-| [Compare projection v1](compare-projection-v1.md) | `1` | `compare` | *(implementation contract)* | [`compare.py`](../../../../src/nlfr/projectors/compare.py) |
+| [Compare projection v1](compare-projection-v1.md) | `1` | `compare` | [`compare_projection.v1.json`](../../../../contracts/compare_projection.v1.json) | [`compare.py`](../../../../src/nlfr/projectors/compare.py) |
 
 ## Truth labels on every claim
 
@@ -39,6 +39,42 @@ four fields (see [truth labels](../truth-labels.md)):
 
 Compare projections are always `derived_v1` at the root and per dimension. They
 summarize proof packets — they do not invent scheduler or fleet state.
+
+## Validation policy: additive by design
+
+These contracts are **deliberately additive**. Fields have been added to
+projections (for example, the proof packet's `summary.artifact_verification`
+rollup) without a breaking `schema_version` bump, and more will be. Two rules
+follow from that and are load-bearing — do not "fix" them by tightening blindly:
+
+- **Extra keys are permitted by design.** Most contracts intentionally do **not**
+  set `additionalProperties: false`. Absence of that keyword is a policy choice,
+  not an oversight.
+- **Consumers must ignore unknown fields.** A reader that rejects a payload for
+  carrying a key it does not recognize is non-conformant. Validation exists to
+  check the **presence, type, and enum of the KNOWN fields** — not to prove the
+  object is closed.
+
+Within that additive frame, contracts still constrain what they *do* describe:
+
+- **Numeric substance is enforced, not waved through.** `compare_projection.v1.json`
+  constrains each dimension's `left`/`right`/`delta` per dimension `id` (derived
+  from `compare.py`): counts (`hits`, `misses`, `unknown`, `runs`, block counts,
+  per-status counts) are integers `>= 0`; hit rates are numbers in `[0,1]` (or
+  `null` when there are no known cache events); right-minus-left **deltas are
+  signed** because a difference can legitimately be negative. Adding a new key to a
+  dimension side stays valid; replacing a count with a string, emptying a side, or
+  emitting a negative count or a `hit_rate > 1` does not.
+- **Redaction/privacy strictness is deliberately tight.** `agent_receipt.v1.json`
+  and `in_toto_proof_predicate.v1.json` pin `prompt_sha256` to a 64-char lowercase
+  hex digest (`^[0-9a-f]{64}$`) and structurally forbid raw-prompt key names
+  (`prompt`, `raw_prompt`, `prompt_text`, `system_prompt`) via a `not`/`anyOf`
+  clause. This is the one axis where closure is intentional: a leaked prompt must
+  fail validation, additive policy notwithstanding.
+
+Every contract is exercised against **real exporter output** plus mutation-based
+negative controls in [`tests/test_contracts.py`](../../../../tests/test_contracts.py),
+so a gate that cannot fail is itself a test failure.
 
 ## Export commands
 

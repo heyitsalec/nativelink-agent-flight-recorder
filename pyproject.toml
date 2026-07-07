@@ -47,6 +47,10 @@ nlfr = "nlfr.cli:main"
 [dependency-groups]
 dev = [
   "pytest>=8.0",
+  # Dev-only: contract enforcement tests validate real exporter output against
+  # contracts/*.v1.json (JSON Schema Draft 2020-12). NOT a runtime dependency —
+  # NLFR stays stdlib-only at runtime (see project.dependencies).
+  "jsonschema>=4.20",
 ]
 
 [tool.hatch.build.targets.wheel]

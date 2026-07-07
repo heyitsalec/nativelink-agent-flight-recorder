@@ -132,7 +132,7 @@
     },
     "agent_provenance_entry": {
       "type": "object",
-      "description": "Agent-receipt provenance class plus hashes. provenance_class is one of receipt_verified_v1 (live Claude CLI receipt), stub_receipt_v1 (non-live receipt), or operator_asserted_v1 (no receipt).",
+      "description": "Agent-receipt provenance class plus hashes. provenance_class is one of receipt_verified_v1 (live Claude CLI receipt), stub_receipt_v1 (non-live receipt), or operator_asserted_v1 (no receipt). prompt_sha256 is constrained to a 64-char lowercase hex SHA-256 (matching agent_receipt.v1.json), and the entry structurally forbids raw-prompt key names — the same two guarantees the agent receipt contract carries — so the predicate cannot silently admit a non-hash prompt_sha256 or a leaked raw prompt.",
       "properties": {
         "block_id": { "type": ["string", "null"] },
         "provenance_class": {
@@ -143,7 +143,8 @@
         "model_label_operator": { "type": ["string", "null"] },
         "prompt_sha256": {
           "type": ["string", "null"],
-          "description": "SHA-256 of the prompt. The raw prompt is never present."
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "SHA-256 of the prompt as 64-char lowercase hex, or null. The raw prompt is never present. Pattern mirrors agent_receipt.v1.json.prompt_sha256."
         },
         "receipt": {
           "type": ["object", "null"],
@@ -153,6 +154,14 @@
         "confidence": { "enum": ["high", "medium", "low", "unknown"] },
         "evidence_refs": { "type": "array", "items": { "type": "string" } },
         "redaction_state": { "enum": ["safe", "redacted", "blocked", "unknown"] }
+      },
+      "not": {
+        "anyOf": [
+          { "required": ["prompt"] },
+          { "required": ["raw_prompt"] },
+          { "required": ["prompt_text"] },
+          { "required": ["system_prompt"] }
+        ]
       }
     },
     "truth_labels": {
