@@ -358,7 +358,10 @@ python3 -m nlfr compare index --db-root data/nlfr-record --json
 directory level down**, matching the `nlfr record` layout; it never recurses into
 arbitrary trees, ignores subdirectories without an `nlfr.sqlite`, and **never
 follows symlinks** (a group-shaped symlink is reported as `symlinked_entry`, not
-read — aliases would double-count evidence and links can escape the root). The result is
+read — aliases would double-count evidence and links can escape the root).
+Hardlinks are **not detectable** (same inode, ordinary paths): duplicate
+directory entries for one physical database list — and count — twice; they
+cannot cross filesystems or escape the root (accepted residual). The result is
 a LISTING keyed by `(database, run_group)`, **never a merge** (stable run ids can
 collide across independent databases). Each entry gains a `database` field
 (absolute paths are scrubbed at the sharing boundary; the run group survives in

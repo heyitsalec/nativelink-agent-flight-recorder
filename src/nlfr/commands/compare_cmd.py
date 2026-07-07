@@ -60,6 +60,12 @@ def _discover_record_dbs(
     database via ``--db`` if intended. As defense in depth, a candidate whose
     RESOLVED path escapes the resolved root is likewise reported, not read.
 
+    Known residual: HARDLINKS are not detectable (``is_symlink()`` is false and
+    a hardlinked path resolves under the root), so duplicate directory entries
+    for the same inode will list — and count — twice. Accepted: hardlinks
+    cannot cross filesystems or escape the root, and require deliberate
+    same-filesystem operator action (GitHub issue #76).
+
     Returns ``(discovered_group, db_path, exclusion)`` triples sorted by
     directory name; ``exclusion`` is ``None`` for readable candidates or an
     honest ``{reason, detail}`` dict. ``discovered_group`` is the directory

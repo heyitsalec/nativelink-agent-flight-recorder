@@ -34,6 +34,10 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "redact-projection.py"
 
 # Roots whose committed *.json must always scan clean under the publish config.
+# apps/canvas/public/views/ is deliberately OUT of scope: view specs carry
+# app-relative route paths ("/projections/...") that the abs_path detector
+# would false-positive on; they contain no evidence content (decision from
+# PR #75's review; recorded on issue #76's addendum comment).
 COMMITTED_ROOTS = [
     ROOT / "apps" / "canvas" / "public" / "projections",
     ROOT / "docs" / "proof-samples",
