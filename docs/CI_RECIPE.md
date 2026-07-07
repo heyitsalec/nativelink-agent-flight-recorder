@@ -32,7 +32,7 @@ Historical restore procedure (Actions are live now): [GHA_RESTORE_RUNBOOK.md](GH
 
 | Criterion | `NLFR proof` (`nlfr-proof.yml`) | `NLFR cache-only gate` |
 |-----------|--------------------------------|------------------------|
-| Jobs green on one run | All **five** per-push jobs (2 LRE jobs are `schedule`/`workflow_dispatch`-only, non-blocking) | `cache-only-gate` only |
+| Jobs green on one run | All **four** blocking per-push jobs (`lre-nix-ci` runs per-push but is `continue-on-error`/non-blocking, #100; 2 other LRE jobs are `schedule`/`workflow_dispatch`-only) | `cache-only-gate` only |
 | Consecutive greens | **≥3** on `main` (no intervening failure) | **1** green sufficient for doctor contract |
 | Artifact promotion | Required before `proof-samples/` Linux CI provenance | Not a promotion source |
 | Local substitute | [`verify-gha-readiness.sh`](../scripts/verify-gha-readiness.sh) | [`cache-only-ci-gate.sh`](../scripts/cache-only-ci-gate.sh) |
@@ -136,7 +136,7 @@ Triggers: `push` to `main`, `codex/**`, `fix/**`; all `pull_request`; `workflow_
 | `linux-nix-toolchain` | Nix toolchain proofs | `ubuntu-latest` + Nix | 90m | `cold-warm-cache-proof.sh`, `agent-loop-proof.sh` | `nix-toolchain-proof` | Cache economics + agent-loop chain `collectable_v1`; agent leg may stay `simulated_v1` |
 | `tier1-bazel` | Tier1 Bazel validation (Nix) | `ubuntu-latest` + Nix | 45m | `tier1-bazel-ci-proof.sh` | `tier1-bazel-ci` | Act 1+2 Bazel validation `collectable_v1`; no LRE/worker placement |
 | `lre-proof-probe` | LRE substrate proof | `ubuntu-latest` + Nix | 30m | `lre-proof.sh` | `lre-proof-probe` | `lre_substrate_ready` or honest `environment-blocker.json` |
-| `lre-nix-ci` | LRE Nix toolchain proof | `ubuntu-latest` + Nix | 45m | `lre-nix-toolchain-proof.sh` | `lre-nix-toolchain-proof` | `lre_bazelrc_generated` or blocker; no cache parity claim |
+| `lre-nix-ci` | LRE Nix toolchain proof | `ubuntu-latest` + Nix | 45m | `lre-nix-toolchain-proof.sh` | `lre-nix-toolchain-proof` | `lre_bazelrc_generated` or blocker; no cache parity claim. Runs per-push but **non-blocking** (`continue-on-error`, #100) — cold-cache disk exhaustion records an honest blocker without gating |
 | `lre-cold-warm-ci` | LRE cold/warm cache parity proof | `ubuntu-latest` + Nix | 60m | `lre-cold-warm-proof.sh` | `lre-cold-warm-proof` | `lre_cache_parity_observed` on x86_64-linux or blocker |
 | `verify-demo-fixture` | Fixture demo path | `ubuntu-latest` | 20m | `verify-demo.sh` | `demo-proof` | Fixture ingest + `simulated_v1` demo projections |
 

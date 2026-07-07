@@ -174,9 +174,46 @@ jobs:
 
   lre-nix-ci:
     name: LRE Nix toolchain proof
+    # Non-blocking: on a cold Nix cache the hosted runner exhausts disk
+    # ("No space left on device", os error 28) building NativeLink's Rust deps
+    # from source — an ENVIRONMENTAL limit, not a code regression. This flakes
+    # repeatedly and forced re-runs. continue-on-error matches the sibling LRE
+    # jobs (lre-proof-probe, lre-cold-warm-ci) so the environmental failure
+    # surfaces as a visible NON-blocking signal — the job still runs per-push
+    # and still writes/uploads its honest environment-blocker.json — instead of
+    # spuriously hard-failing PRs. Tracked in GitHub issue #100.
+    continue-on-error: true
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
+      - name: Reclaim runner disk before Nix build (guarded; non-fatal)
+        run: |
+          echo "## LRE Nix disk reclaim" >> "$GITHUB_STEP_SUMMARY"
+          echo "### df -h / before reclaim" >> "$GITHUB_STEP_SUMMARY"
+          df -h / | tee -a "$GITHUB_STEP_SUMMARY"
+          # Drop large preinstalled toolchains the Nix build never uses. Each
+          # path is guarded with -e so a missing/renamed dir can never fail this
+          # step; inline rm keeps the supply surface minimal (no third-party
+          # action). Frees ~25-30 GB on ubuntu-latest, cutting the cold-cache
+          # disk-exhaustion flake rate.
+          for d in \
+            /usr/local/lib/android \
+            /opt/ghc \
+            /usr/local/.ghcup \
+            /usr/share/dotnet \
+            /opt/hostedtoolcache/CodeQL \
+            /usr/local/share/boost \
+            /usr/share/swift \
+            /usr/local/lib/node_modules \
+            /opt/microsoft ; do
+            if [ -e "$d" ]; then
+              echo "reclaiming $d"
+              sudo rm -rf "$d" || echo "warn: could not remove $d (ignored)"
+            fi
+          done
+          echo "### df -h / after reclaim" >> "$GITHUB_STEP_SUMMARY"
+          df -h / | tee -a "$GITHUB_STEP_SUMMARY"
+
       - uses: actions/checkout@v4
 
       - uses: DeterminateSystems/nix-installer-action@main
