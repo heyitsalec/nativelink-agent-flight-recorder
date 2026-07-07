@@ -10,6 +10,11 @@ PUBLIC="$ROOT/apps/canvas/public/projections"
 cd "$ROOT"
 mkdir -p "$OUT" "$PROJECTIONS" "$PUBLIC"
 
+if [ ! -d "$ROOT/apps/canvas/node_modules" ]; then
+  echo "== Install canvas deps (node_modules missing) =="
+  npm ci --prefix "$ROOT/apps/canvas"
+fi
+
 echo "== Build canvas =="
 npm --prefix apps/canvas run build
 

@@ -1,4 +1,5 @@
 import { chromium } from "playwright";
+import { preview } from "vite";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -6,7 +7,17 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const canvasRoot = path.resolve(__dirname, "..");
 
-const url = process.env.CANVAS_URL ?? "http://127.0.0.1:5174/";
+// CANVAS_URL targets an already-running server; otherwise serve the built
+// dist/ ourselves so the guard is one command locally and in CI.
+let previewServer = null;
+let url = process.env.CANVAS_URL;
+if (!url) {
+  previewServer = await preview({
+    root: canvasRoot,
+    preview: { host: "127.0.0.1", port: 5174, strictPort: false },
+  });
+  url = previewServer.resolvedUrls.local[0];
+}
 const projectionPath = path.join(canvasRoot, "public", "projections", "action-graph.json");
 const comparePath = path.join(canvasRoot, "public", "projections", "compare-projection.json");
 
@@ -87,6 +98,9 @@ const overflowChipVisible = await page
   .catch(() => false);
 
 await browser.close();
+if (previewServer) {
+  await previewServer.close();
+}
 
 const maxVisibleNodes =
   typeof projection.summary?.max_visible_nodes === "number"
