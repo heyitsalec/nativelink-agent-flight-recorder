@@ -1,0 +1,111 @@
+# SBOM + dependency audit — informational, non-blocking.
+#
+# NLFR's enterprise-security-review argument rests on one auditable fact: the
+# RUNTIME dependency set is empty (stdlib-only). This workflow makes that fact
+# machine-checkable and publishes an SBOM for reviewers.
+#
+# Non-blocking by design (continue-on-error, like the LRE probes in
+# nlfr-proof.yml): a hiccup in third-party SBOM tooling must never flip `main`
+# red. The empty-runtime-deps invariant is *also* hard-gated by
+# tests/test_stdlib_only_posture.py inside the blocking pytest jobs, so this
+# workflow is the auditable disclosure surface, not the sole guard.
+name: SBOM / dependency audit
+
+on:
+  push:
+    branches: [main, feat/**, fix/**, docs/**]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    # Weekly refresh so the published SBOM tracks the pinned dev toolchain.
+    - cron: "23 6 * * 1"
+
+concurrency:
+  group: sbom-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  sbom-audit:
+    name: SBOM + empty-runtime-deps assertion
+    runs-on: ubuntu-latest
+    # Non-blocking: informational disclosure surface. The hard gate on the
+    # empty-runtime-deps invariant lives in the pytest jobs.
+    continue-on-error: true
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install (dev group; zero runtime deps to resolve)
+        run: uv sync
+
+      - name: Assert runtime dependency set is empty (security selling point)
+        # Stdlib-only assertion — no third-party tooling, so this step is
+        # reliable even when the SBOM generators below are unavailable. Fails
+        # loudly if pyproject grows a runtime dependency.
+        run: uv run pytest -q tests/test_stdlib_only_posture.py
+
+      - name: Dependency inventory (stdlib fallback SBOM, always produced)
+        # Guarantees a non-empty artifact regardless of external SBOM tooling.
+        # Reads pyproject.toml with stdlib tomllib and records the runtime vs
+        # dev split plus the empty-runtime-deps claim.
+        run: |
+          mkdir -p sbom
+          uv run python - <<'PY'
+          import json, tomllib
+          from pathlib import Path
+
+          data = tomllib.loads(Path("pyproject.toml").read_text())
+          project = data["project"]
+          runtime = project.get("dependencies", [])
+          dev = data.get("dependency-groups", {}).get("dev", [])
+
+          inventory = {
+              "name": project["name"],
+              "version": project["version"],
+              "runtime_dependencies": runtime,
+              "runtime_dependency_count": len(runtime),
+              "stdlib_only_runtime": runtime == [],
+              "dev_dependencies": dev,
+              "trust_root": "CPython stdlib + operator-supplied Bazel/NativeLink",
+          }
+          Path("sbom/dependency-inventory.json").write_text(
+              json.dumps(inventory, indent=2) + "\n"
+          )
+          print(json.dumps(inventory, indent=2))
+
+          assert runtime == [], (
+              f"Runtime dependency set is not empty: {runtime!r}. "
+              "NLFR must stay stdlib-only at runtime."
+          )
+          PY
+
+      - name: Generate SPDX SBOM (syft; non-blocking)
+        id: syft
+        continue-on-error: true
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: spdx-json
+          output-file: sbom/nlfr.spdx.json
+
+      - name: Audit dev dependencies (uv tree; non-blocking)
+        continue-on-error: true
+        run: |
+          uv export --format requirements-txt --all-groups > sbom/locked-requirements.txt || true
+          uv tree > sbom/dependency-tree.txt || true
+          cat sbom/dependency-tree.txt || true
+
+      - name: Upload SBOM + dependency audit artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-dependency-audit
+          path: sbom/
+          if-no-files-found: warn
