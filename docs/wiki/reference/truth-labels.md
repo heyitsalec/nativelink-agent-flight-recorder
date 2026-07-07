@@ -75,7 +75,7 @@ weakens an existing honest claim):
 | `presence` | `source_kind` | `confidence` |
 |------------|---------------|--------------|
 | `local_verified` | unchanged (e.g. `collectable_v1`) | `high` (or `medium` when BEP declared no digest to cross-check) |
-| `local_present` | unchanged (e.g. `collectable_v1`) | `medium` — bytes are on disk, but the declared digest was **not** cross-checked because it is not a recomputable SHA-256 |
+| `local_present` | unchanged (e.g. `collectable_v1`) | `medium` — the artifact is present but its digest was **not** cross-checked: a file with a non-recomputable-SHA-256 declared digest, a symlink output whose target exists (symlinks declare no digest), or inline bytes with a non-SHA-256 declared digest |
 | `local_mismatch` | downgraded (`collectable_v1` → `derived_v1`) | `low` |
 | `missing` | downgraded (`collectable_v1` → `derived_v1`) | `low` |
 | `unverified_remote_reference` | downgraded (`collectable_v1` → `derived_v1`) | `low` |
@@ -112,10 +112,26 @@ so it must never treat a non-SHA-256 digest as a failed SHA-256 comparison:
 A remote reference is **never** promoted to a `collectable_v1` / `high` presence
 claim; verifying remote CAS via REAPI is a documented follow-up, not v1.
 
+### Symlink and inline-content File entries
+
+A Bazel BEP `File` populates exactly one of `uri`, `symlinkTargetPath`, or inline
+`contents` (its `file` oneof). NLFR records all three rather than dropping the
+non-`uri` shapes:
+
+- A **symlink** output carries no digest to recompute. Presence comes from an
+  existence probe of the resolved target — `local_present` when the target is on
+  disk, `missing` when a resolvable target is absent — with `digest_verified = null`
+  and a note. NLFR never fabricates a verified digest for a symlink.
+- **Inline** `contents` (base64 in proto3 JSON) are hashed directly from the BEP
+  with no filesystem access: a matching declared SHA-256 verifies (`local_verified`,
+  `high`), a wrong one downgrades (`local_mismatch`), and a non-SHA-256 declared
+  digest records `local_present` without cross-checking.
+
 The proof packet surfaces a rollup at `summary.artifact_verification` and in the
 `artifact_verification` block metrics: `verified_count`, `present_unverified`,
 `mismatched`, `missing`, `unverified_remote`, `total`. `present_unverified` counts
-`local_present` references (bytes on disk, digest not a recomputable SHA-256).
+`local_present` references (present but digest not cross-checked — see the
+`local_present` row above).
 
 ## Conditional claims (M7)
 

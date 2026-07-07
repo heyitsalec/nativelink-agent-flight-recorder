@@ -11,6 +11,7 @@ verification outcomes for BEP-referenced artifacts:
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 from pathlib import Path
@@ -19,6 +20,7 @@ from nlfr.db import connect, initialize
 from nlfr.db.ingest import upsert_run
 from nlfr.ingest.bazel import parse_bazel_bep
 from nlfr.ingest.sqlite import ingest_evidence_bundle
+from nlfr.ingest.verification import iter_bep_file_references
 from nlfr.projectors import export_proof_packet
 
 FIXTURE_ROOT = Path(__file__).resolve().parents[0] / "fixtures" / "bazel"
@@ -369,3 +371,147 @@ def test_default_sha256_build_still_verifies_and_mismatches(tmp_path: Path) -> N
     assert refs["bad.bin"].confidence == "low"
     # optionsDescription was visible and named no override, so no uncertainty caveat.
     assert "did not expose" not in (refs["bad.bin"].verification_note or "")
+
+
+def test_symlink_file_is_captured_not_dropped(tmp_path: Path) -> None:
+    """A BEP File whose oneof is ``symlinkTargetPath`` must be recorded, truthfully.
+
+    Bazel's File proto lets a File populate ``symlink_target_path`` INSTEAD of
+    ``uri`` — a symlink output carries no digest to recompute. An earlier fix that
+    required uri/digest/pathPrefix/length alongside ``name`` structurally mistook a
+    symlink-only entry for an OutputGroup and SILENTLY dropped it. It must now be
+    captured: presence taken from an existence probe of the target, digest_verified
+    null (a symlink declares no digest), and never promoted to a verified claim.
+    """
+
+    # The symlink's target exists on disk -> honest presence is local_present.
+    target = tmp_path / "resolved" / "payload.bin"
+    target.parent.mkdir(parents=True)
+    target.write_bytes(b"symlink target bytes\n")
+
+    events = [
+        {"id": {"started": {}}, "started": {"command": "build"}},
+        {
+            "id": {"namedSetOfFiles": {"id": "0"}},
+            "namedSetOfFiles": {
+                "files": [
+                    {"name": "link-to-payload", "symlinkTargetPath": str(target)},
+                    {"name": "dangling-link", "symlinkTargetPath": str(tmp_path / "nope.bin")},
+                ]
+            },
+        },
+    ]
+    bep_path = tmp_path / "symlink.bep.json"
+    bep_path.write_text("\n".join(json.dumps(event) for event in events) + "\n")
+
+    # The parser no longer drops the symlink entries: both are collected as Files.
+    named_set_event = events[1]
+    collected = iter_bep_file_references(named_set_event)
+    assert {f["name"] for f in collected} == {"link-to-payload", "dangling-link"}
+
+    bundle = parse_bazel_bep(bep_path, source_kind="collectable_v1")
+    refs = {ref.name: ref for ref in bundle.artifact_references}
+    assert set(refs) == {"link-to-payload", "dangling-link"}
+
+    # Target exists -> present, but no digest was (or could be) cross-checked.
+    resolved = refs["link-to-payload"]
+    assert resolved.presence == "local_present"
+    assert resolved.digest_verified is None
+    assert resolved.computed_digest is None
+    assert resolved.source_kind == "collectable_v1"  # not overclaimed as verified
+    assert "symlink" in (resolved.verification_note or "").lower()
+
+    # Target absent -> missing, downgraded; still recorded rather than dropped.
+    dangling = refs["dangling-link"]
+    assert dangling.presence == "missing"
+    assert dangling.digest_verified is None
+    assert dangling.source_kind == "derived_v1"
+
+
+def test_inline_contents_file_is_hashed_and_verified(tmp_path: Path) -> None:
+    """A BEP File whose oneof is inline ``contents`` is hashable from the BEP itself.
+
+    Inline bytes are base64 in proto3 JSON, so NLFR decodes and SHA-256s them with
+    no filesystem access. A declared SHA-256 that matches verifies at high
+    confidence; the entry must be captured, never dropped as an OutputGroup.
+    """
+
+    raw = b"inline artifact bytes\n"
+    encoded = base64.b64encode(raw).decode("ascii")
+    digest = _sha256(raw)
+
+    events = [
+        {"id": {"started": {}}, "started": {"command": "build"}},
+        {
+            "id": {"namedSetOfFiles": {"id": "0"}},
+            "namedSetOfFiles": {
+                "files": [
+                    {
+                        "name": "inline.stamp",
+                        "contents": encoded,
+                        "digest": digest,
+                        "length": str(len(raw)),
+                    }
+                ]
+            },
+        },
+    ]
+    bep_path = tmp_path / "inline.bep.json"
+    bep_path.write_text("\n".join(json.dumps(event) for event in events) + "\n")
+
+    bundle = parse_bazel_bep(bep_path, source_kind="collectable_v1")
+    (ref,) = bundle.artifact_references
+    assert ref.name == "inline.stamp"
+    assert ref.presence == "local_verified"
+    assert ref.digest_verified is True
+    assert ref.computed_digest == digest
+    assert ref.confidence == "high"
+
+
+def test_inline_contents_wrong_digest_downgrades(tmp_path: Path) -> None:
+    """Inline bytes whose declared SHA-256 is wrong are a real mismatch, not dropped."""
+
+    raw = b"the true inline bytes\n"
+    encoded = base64.b64encode(raw).decode("ascii")
+
+    events = [
+        {"id": {"started": {}}, "started": {"command": "build"}},
+        {
+            "id": {"namedSetOfFiles": {"id": "0"}},
+            "namedSetOfFiles": {
+                "files": [
+                    {"name": "inline.stamp", "contents": encoded, "digest": "0" * 64}
+                ]
+            },
+        },
+    ]
+    bep_path = tmp_path / "inline-bad.bep.json"
+    bep_path.write_text("\n".join(json.dumps(event) for event in events) + "\n")
+
+    bundle = parse_bazel_bep(bep_path, source_kind="collectable_v1")
+    (ref,) = bundle.artifact_references
+    assert ref.presence == "local_mismatch"
+    assert ref.digest_verified is False
+    assert ref.source_kind == "derived_v1"
+    assert ref.confidence == "low"
+
+
+def test_output_group_still_rejected_alongside_symlink_signal_keys() -> None:
+    """The structural OutputGroup rejection survives adding symlink/contents keys.
+
+    Adding ``symlinkTargetPath``/``contents`` to the File-signal set must not let an
+    OutputGroup ({name, fileSets, inlineFiles}) be mistaken for a File: an
+    OutputGroup never carries either key, so a group-name dict is still dropped.
+    """
+
+    event = {
+        "id": {"targetCompleted": {}},
+        "completed": {
+            "outputGroup": [
+                {"name": "default", "fileSets": [{"id": "0"}]},
+                {"name": "_validation"},  # bare group name, no File signals
+            ]
+        },
+    }
+    # No inlineFiles on either group -> zero Files harvested, no group name leaks in.
+    assert iter_bep_file_references(event) == []

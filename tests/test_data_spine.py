@@ -1,11 +1,12 @@
 import hashlib
 import json
+import sqlite3
 
 import pytest
 
 from nlfr.artifacts import ArtifactExistsError, read_manifest, write_artifact
 from nlfr.db import connect, initialize
-from nlfr.db.ingest import upsert_artifact, upsert_run
+from nlfr.db.ingest import upsert_artifact, upsert_artifact_reference, upsert_run
 from nlfr.db.schema import CORE_TABLES, MIGRATIONS, SCHEMA_VERSION, migrate
 
 
@@ -184,13 +185,47 @@ def _user_version(conn):
     return conn.execute("PRAGMA user_version").fetchone()[0]
 
 
-def test_v1_database_upgrades_to_v2_without_losing_rows(tmp_path):
-    """A populated pre-PR (v1) database upgrades cleanly to the artifact-ref v2.
+# The artifact_references table exactly as commit 4406a0a first shipped it in
+# schema version 2 — the NARROW presence CHECK, before v3 widened it with
+# 'local_present'. Embedded verbatim (not fetched from git) so the regression is
+# reproducible from the test alone: a DB stamped user_version=2 against this exact
+# CHECK is what an early feat/artifact-verify checkout left on disk.
+OLD_NARROW_V2_ARTIFACT_REFERENCES = """
+CREATE TABLE IF NOT EXISTS artifact_references (
+    id TEXT PRIMARY KEY,
+    stable_key TEXT NOT NULL UNIQUE,
+    run_id TEXT REFERENCES runs(id) ON DELETE CASCADE,
+    target_id TEXT REFERENCES targets(id) ON DELETE SET NULL,
+    reference_key TEXT NOT NULL,
+    name TEXT,
+    uri TEXT,
+    local_path TEXT,
+    declared_digest TEXT,
+    declared_size_bytes INTEGER,
+    computed_digest TEXT,
+    digest_verified INTEGER CHECK (digest_verified IS NULL OR digest_verified IN (0, 1)),
+    presence TEXT CHECK (presence IS NULL OR presence IN
+        ('local_verified','local_mismatch','missing','unverified_remote_reference')),
+    verification_note TEXT,
+    source_kind TEXT,
+    confidence TEXT NOT NULL DEFAULT 'unknown',
+    evidence_refs TEXT NOT NULL DEFAULT '[]',
+    redaction_state TEXT NOT NULL DEFAULT 'unknown',
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    UNIQUE(run_id, reference_key)
+);
+CREATE INDEX IF NOT EXISTS idx_artifact_references_run_id ON artifact_references(run_id);
+"""
+
+
+def test_v1_database_upgrades_to_latest_without_losing_rows(tmp_path):
+    """A populated pre-PR (v1) database upgrades cleanly to the latest schema.
 
     Builds a real v1 spine (core schema only, user_version=1, no
-    artifact_references), populates it, then reopens under current (v2) code and
-    asserts the upgrade preserves existing rows and is idempotent on a second
-    reopen.
+    artifact_references), populates it, then reopens under current code and asserts
+    the upgrade preserves existing rows, accepts the widened presence vocabulary,
+    and is idempotent on a second reopen.
     """
 
     db_path = tmp_path / "nlfr.sqlite"
@@ -220,10 +255,10 @@ def test_v1_database_upgrades_to_v2_without_losing_rows(tmp_path):
     )
     conn.close()
 
-    # Reopen under current code: migrate() must lift v1 -> v2.
+    # Reopen under current code: migrate() must lift v1 -> latest.
     conn = connect(db_path)
     migrate(conn)
-    assert _user_version(conn) == SCHEMA_VERSION == 2
+    assert _user_version(conn) == SCHEMA_VERSION
     assert "artifact_references" in table_names(conn)
 
     # The pre-existing row is intact and unchanged.
@@ -235,7 +270,7 @@ def test_v1_database_upgrades_to_v2_without_losing_rows(tmp_path):
     assert row["run_group"] == "legacy"
     assert row["status"] == "completed"
 
-    # The widened presence CHECK accepts the new local_present value.
+    # The widened presence CHECK accepts the local_present value.
     with conn:
         conn.execute(
             "INSERT INTO artifact_references (id, stable_key, run_id, reference_key, presence) "
@@ -244,9 +279,107 @@ def test_v1_database_upgrades_to_v2_without_losing_rows(tmp_path):
         )
     conn.close()
 
-    # A second reopen is idempotent: still v2, rows preserved, no error.
+    # A second reopen is idempotent: still latest, rows preserved, no error.
     conn = connect(db_path)
     initialize(conn)
-    assert _user_version(conn) == 2
+    assert _user_version(conn) == SCHEMA_VERSION
     assert conn.execute("SELECT COUNT(*) AS c FROM runs").fetchone()["c"] == 1
     assert conn.execute("SELECT COUNT(*) AS c FROM artifact_references").fetchone()["c"] == 1
+
+
+def test_old_narrow_v2_database_migrates_to_v3_and_accepts_local_present(tmp_path):
+    """Regression: a DB stamped v2 under the OLD narrow presence CHECK upgrades to v3.
+
+    An early feat/artifact-verify checkout (commit 4406a0a) shipped
+    ``artifact_references`` with a narrow presence CHECK that lacked
+    ``local_present``. A prior fix widened that CHECK by EDITING the version-2
+    migration SQL in place — but ``migrate()`` skips any migration whose version a
+    DB already has and ``CREATE TABLE IF NOT EXISTS`` is a no-op, so a DB already
+    stamped v2 kept the narrow CHECK forever and ``upsert`` of a ``local_present``
+    row raised ``RuntimeError``. This test constructs exactly that stuck DB (via raw
+    SQL, no git dependency) and proves the version-3 rebuild migration widens the
+    CHECK on an existing database while preserving its rows and staying idempotent.
+    """
+
+    db_path = tmp_path / "nlfr.sqlite"
+
+    # Build a genuine OLD-narrow v2 database: real v1 core schema + the verbatim
+    # narrow-CHECK artifact_references, stamped user_version=2.
+    v1_migration = next(m for m in MIGRATIONS if m.version == 1)
+    conn = connect(db_path)
+    with conn:
+        conn.executescript(v1_migration.sql)
+        conn.executescript(OLD_NARROW_V2_ARTIFACT_REFERENCES)
+        conn.execute("PRAGMA user_version = 2")
+    assert _user_version(conn) == 2
+
+    # Seed a run and an artifact_reference row that must survive the rebuild.
+    run_id = upsert_run(
+        conn,
+        stable_key="legacy-run:narrow-v2",
+        run_group="legacy",
+        status="completed",
+        source_kind="collectable_v1",
+        confidence="high",
+        evidence_refs=["run:legacy"],
+        redaction_state="safe",
+    )
+    with conn:
+        conn.execute(
+            "INSERT INTO artifact_references (id, stable_key, run_id, reference_key, name, presence) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            ("ar-narrow", "legacy:artifact_reference:a", run_id, "legacy:artifact:a", "a.txt", "missing"),
+        )
+
+    # Prove the OLD narrow CHECK is really in force: local_present is rejected today.
+    with pytest.raises(sqlite3.IntegrityError):
+        with conn:
+            conn.execute(
+                "INSERT INTO artifact_references (id, stable_key, run_id, reference_key, presence) "
+                "VALUES (?, ?, ?, ?, ?)",
+                ("ar-reject", "legacy:artifact_reference:reject", run_id, "legacy:artifact:reject", "local_present"),
+            )
+    conn.close()
+
+    # Reopen under current code: migrate() must lift the stuck v2 DB to v3.
+    conn = connect(db_path)
+    migrate(conn)
+    assert _user_version(conn) == SCHEMA_VERSION == 3
+
+    # Existing rows are intact after the table rebuild.
+    row = conn.execute(
+        "SELECT run_id, name, presence FROM artifact_references WHERE id = ?",
+        ("ar-narrow",),
+    ).fetchone()
+    assert row["run_id"] == run_id
+    assert row["name"] == "a.txt"
+    assert row["presence"] == "missing"
+    assert conn.execute("SELECT COUNT(*) AS c FROM artifact_references").fetchone()["c"] == 1
+    # Foreign keys survive the drop/rename and the run FK still resolves.
+    assert conn.execute("PRAGMA foreign_key_check").fetchall() == []
+    # The interim rebuild table was cleaned up.
+    assert "artifact_references_v3_rebuild" not in table_names(conn)
+
+    # The widened CHECK now accepts a local_present upsert that previously raised.
+    ref_id = upsert_artifact_reference(
+        conn,
+        stable_key="legacy:artifact_reference:present",
+        run_id=run_id,
+        reference_key="legacy:artifact:present",
+        presence="local_present",
+        source_kind="collectable_v1",
+        confidence="medium",
+        evidence_refs=["ref:present"],
+        redaction_state="safe",
+    )
+    assert conn.execute(
+        "SELECT presence FROM artifact_references WHERE id = ?", (ref_id,)
+    ).fetchone()["presence"] == "local_present"
+    conn.close()
+
+    # A second reopen is idempotent: still v3, rows preserved, no rebuild churn.
+    conn = connect(db_path)
+    initialize(conn)
+    assert _user_version(conn) == SCHEMA_VERSION == 3
+    assert conn.execute("SELECT COUNT(*) AS c FROM artifact_references").fetchone()["c"] == 2
+    assert "artifact_references_v3_rebuild" not in table_names(conn)

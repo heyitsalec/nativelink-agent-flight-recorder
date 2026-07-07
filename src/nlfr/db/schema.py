@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from sqlite3 import Connection
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 CORE_TABLES = (
     "runs",
@@ -190,14 +190,35 @@ CREATE INDEX IF NOT EXISTS idx_graph_edges_run_id ON graph_edges(run_id);
 CREATE INDEX IF NOT EXISTS idx_proof_blocks_run_id ON proof_blocks(run_id);
 """
 
-_PRESENCE_CHECK = (
+# The presence vocabulary shipped in v2 (schema version 2). Kept verbatim so any
+# database stamped user_version=2 was created against EXACTLY this CHECK; v3 is
+# what widens it. Never edit a shipped migration's SQL in place — migrate() skips
+# a migration whose version a DB already has, and CREATE TABLE IF NOT EXISTS is a
+# no-op, so an in-place widening silently never reaches an existing v2 database.
+_PRESENCE_CHECK_V2 = (
+    "presence IS NULL OR presence IN "
+    "('local_verified','local_mismatch','missing','unverified_remote_reference')"
+)
+
+# v3 adds 'local_present': bytes are on disk (or a symlink target / inlined bytes
+# exist) but the BEP-declared digest was NOT cross-checked as SHA-256, so presence
+# is recorded without a verified digest. SQLite cannot ALTER a CHECK constraint, so
+# v3 widens it by rebuilding the table (create new -> copy rows -> drop -> rename).
+_PRESENCE_CHECK_V3 = (
     "presence IS NULL OR presence IN "
     "('local_verified','local_present','local_mismatch','missing',"
     "'unverified_remote_reference')"
 )
 
-_CREATE_ARTIFACT_REFERENCES = f"""
-CREATE TABLE IF NOT EXISTS artifact_references (
+
+def _artifact_references_columns(presence_check: str) -> str:
+    """Column definitions for ``artifact_references``, parameterized by presence CHECK.
+
+    Shared by the v2 create and the v3 rebuild so the two table definitions cannot
+    drift apart in anything but the presence CHECK.
+    """
+
+    return f"""
     id TEXT PRIMARY KEY,
     stable_key TEXT NOT NULL UNIQUE,
     run_id TEXT REFERENCES runs(id) ON DELETE CASCADE,
@@ -210,11 +231,46 @@ CREATE TABLE IF NOT EXISTS artifact_references (
     declared_size_bytes INTEGER,
     computed_digest TEXT,
     digest_verified INTEGER CHECK (digest_verified IS NULL OR digest_verified IN (0, 1)),
-    presence TEXT CHECK ({_PRESENCE_CHECK}),
+    presence TEXT CHECK ({presence_check}),
     verification_note TEXT,
 {_COMMON_COLUMNS},
     UNIQUE(run_id, reference_key)
+"""
+
+
+# Non-key columns copied during the v3 rebuild, in a stable explicit order (never
+# ``SELECT *``, which would silently mis-map if the column order ever changes).
+_ARTIFACT_REFERENCE_COPY_COLUMNS = (
+    "id, stable_key, run_id, target_id, reference_key, name, uri, local_path, "
+    "declared_digest, declared_size_bytes, computed_digest, digest_verified, "
+    "presence, verification_note, source_kind, confidence, evidence_refs, "
+    "redaction_state, created_at, updated_at"
+)
+
+_CREATE_ARTIFACT_REFERENCES = f"""
+CREATE TABLE IF NOT EXISTS artifact_references (
+{_artifact_references_columns(_PRESENCE_CHECK_V2)}
 );
+
+CREATE INDEX IF NOT EXISTS idx_artifact_references_run_id ON artifact_references(run_id);
+"""
+
+# v3: widen the presence CHECK by table rebuild. artifact_references is a leaf (no
+# other table references it), so the drop/rename is safe with foreign_keys ON. The
+# leading DROP ... IF EXISTS clears any temp table left by a prior interrupted run.
+_WIDEN_ARTIFACT_REFERENCES_PRESENCE = f"""
+DROP TABLE IF EXISTS artifact_references_v3_rebuild;
+
+CREATE TABLE artifact_references_v3_rebuild (
+{_artifact_references_columns(_PRESENCE_CHECK_V3)}
+);
+
+INSERT INTO artifact_references_v3_rebuild ({_ARTIFACT_REFERENCE_COPY_COLUMNS})
+SELECT {_ARTIFACT_REFERENCE_COPY_COLUMNS}
+FROM artifact_references;
+
+DROP TABLE artifact_references;
+ALTER TABLE artifact_references_v3_rebuild RENAME TO artifact_references;
 
 CREATE INDEX IF NOT EXISTS idx_artifact_references_run_id ON artifact_references(run_id);
 """
@@ -229,6 +285,7 @@ class Migration:
 MIGRATIONS = (
     Migration(version=1, sql=_CREATE_CORE_SCHEMA),
     Migration(version=2, sql=_CREATE_ARTIFACT_REFERENCES),
+    Migration(version=3, sql=_WIDEN_ARTIFACT_REFERENCES_PRESENCE),
 )
 
 

@@ -18,6 +18,8 @@ This module verifies what it can and explicitly labels what it cannot:
 
 from __future__ import annotations
 
+import base64
+import binascii
 import hashlib
 import re
 from dataclasses import dataclass
@@ -56,8 +58,12 @@ _DIGEST_FUNCTION_RE = re.compile(r"--digest[_-]?function[=\s]+([A-Za-z0-9_.-]+)"
 
 # A real Bazel BEP ``File`` always carries at least one of these fields alongside
 # its ``name``. A dict that has only ``name`` (or a ``fileSets`` list) is an
-# ``OutputGroup``, not a File — see ``iter_bep_file_references``.
-_FILE_SIGNAL_KEYS = ("uri", "digest", "pathPrefix", "length")
+# ``OutputGroup``, not a File — see ``iter_bep_file_references``. ``symlinkTargetPath``
+# and ``contents`` are the other two members of File's ``file`` oneof (proto field 8
+# and 3): a File may populate one of them INSTEAD of ``uri``, and neither ever
+# appears on an OutputGroup, so listing them here keeps the structural rejection of
+# output groups intact while no longer silently dropping symlink/inline File entries.
+_FILE_SIGNAL_KEYS = ("uri", "digest", "pathPrefix", "length", "symlinkTargetPath", "contents")
 
 
 @dataclass(frozen=True)
@@ -189,14 +195,37 @@ def build_reference(
 
     name = _string_or_none(file_payload.get("name"))
     uri = _string_or_none(file_payload.get("uri"))
+    symlink_target = _string_or_none(file_payload.get("symlinkTargetPath"))
+    inline_contents = _string_or_none(file_payload.get("contents"))
     declared_digest = _declared_digest(file_payload)
     declared_size = _declared_size(file_payload)
-    if uri is None and name is None:
+    if uri is None and name is None and symlink_target is None and inline_contents is None:
         return None
 
-    presence, digest_verified, computed_digest, local_path, note, ref_source_kind, confidence = (
-        _verify(uri, declared_digest, artifact_base, source_kind, digest_function)
-    )
+    # File's ``file`` oneof is exactly one of uri / contents / symlinkTargetPath. A
+    # uri (or bare name) goes through the local-path/remote verifier; a symlink or
+    # inline-bytes entry has no local file to open at ``uri`` and is verified on its
+    # own terms. We never fabricate a digest a symlink cannot carry, and we hash
+    # inline bytes only when they are actually present.
+    if uri is None and symlink_target is not None and inline_contents is None:
+        verification = _verify_symlink(symlink_target, artifact_base, source_kind)
+    elif uri is None and inline_contents is not None and symlink_target is None:
+        verification = _verify_inline_contents(
+            inline_contents, declared_digest, source_kind, digest_function
+        )
+    else:
+        verification = _verify(
+            uri, declared_digest, artifact_base, source_kind, digest_function
+        )
+    (
+        presence,
+        digest_verified,
+        computed_digest,
+        local_path,
+        note,
+        ref_source_kind,
+        confidence,
+    ) = verification
 
     reference_key = _reference_key(label, name, uri, index)
     return ArtifactReferenceEvidence(
@@ -375,6 +404,132 @@ def _verify(
     )
 
 
+def _verify_symlink(
+    symlink_target: str,
+    artifact_base: Path | None,
+    source_kind: str,
+) -> tuple[str | None, bool | None, str | None, str | None, str, str, str]:
+    """Verify a BEP ``File`` whose populated oneof is ``symlinkTargetPath``.
+
+    A symlink entry declares no digest — there is nothing to recompute and nothing
+    to cross-check — so ``digest_verified`` is always ``None`` and NLFR never
+    fabricates a verified/collectable claim from it. Presence is taken honestly
+    from an existence probe of the resolved target: ``local_present`` when the
+    target is on disk, ``missing`` when a resolvable target is absent, and ``NULL``
+    (presence not claimed) when the target path cannot be resolved locally.
+    """
+
+    target_path = _resolve_local_reference(symlink_target, artifact_base)
+    if target_path is None:
+        note = (
+            "BEP declares a symlink output (symlinkTargetPath) whose target could not "
+            "be resolved to a local path; a symlink carries no digest, so nothing was "
+            "recomputed and presence is not claimed."
+        )
+        return (None, None, None, symlink_target, note, _downgraded_source_kind(source_kind), "low")
+
+    if target_path.exists():
+        note = (
+            "BEP declares a symlink output; its target exists locally but a symlink "
+            "carries no BEP digest to cross-check, so presence is recorded without a "
+            "verified digest (digest_verified is null)."
+        )
+        return (PRESENCE_LOCAL_PRESENT, None, None, str(target_path), note, source_kind, "medium")
+
+    note = (
+        "BEP declares a symlink output whose target is not present on disk; presence "
+        "downgraded and no digest could be recomputed (symlinks declare no digest)."
+    )
+    return (PRESENCE_MISSING, None, None, str(target_path), note, _downgraded_source_kind(source_kind), "low")
+
+
+def _verify_inline_contents(
+    contents: str,
+    declared_digest: str | None,
+    source_kind: str,
+    digest_function: DigestFunctionInfo,
+) -> tuple[str, bool | None, str | None, str | None, str, str, str]:
+    """Verify a BEP ``File`` whose populated oneof is inline ``contents``.
+
+    Inline bytes travel in the BEP itself (base64 per proto3 JSON), so NLFR can hash
+    them directly — no filesystem access. When a recomputable SHA-256 digest is
+    declared, the decoded bytes are hashed and cross-checked exactly like a local
+    file; a non-SHA-256 or ill-shaped declared digest yields ``local_present`` with
+    ``digest_verified=null`` rather than a fabricated mismatch.
+    """
+
+    raw = _decode_inline_contents(contents)
+    if raw is None:
+        note = (
+            "BEP declares an inline-contents File whose bytes could not be base64-"
+            "decoded; nothing was recomputed and presence is not claimed."
+        )
+        return (PRESENCE_MISSING, None, None, None, note, _downgraded_source_kind(source_kind), "low")
+
+    computed_digest = hashlib.sha256(raw).hexdigest()
+
+    if declared_digest is None:
+        note = (
+            "Hashed inline BEP contents (SHA-256); BEP declared no digest, so the "
+            "value is self-attested rather than cross-checked."
+        )
+        return (PRESENCE_LOCAL_VERIFIED, None, computed_digest, None, note, source_kind, "medium")
+
+    declared_prefix, declared_hex = _split_digest_prefix(declared_digest)
+
+    non_sha256_function = (
+        digest_function.options_available
+        and digest_function.name is not None
+        and digest_function.name != _SHA256_NAME
+    )
+    if non_sha256_function or declared_prefix not in (None, _SHA256_NAME) or not _is_sha256_hex(declared_hex):
+        note = (
+            "Inline BEP contents are present, but the BEP-declared digest is not a "
+            "recomputable SHA-256 (v1 only recomputes SHA-256); presence is recorded, "
+            "the digest is neither confirmed nor contradicted."
+        )
+        return (PRESENCE_LOCAL_PRESENT, None, computed_digest, None, note, source_kind, "medium")
+
+    if _normalize_digest(computed_digest) == declared_hex:
+        note = "Hashed inline BEP contents (SHA-256) match the BEP-declared digest."
+        return (PRESENCE_LOCAL_VERIFIED, True, computed_digest, None, note, source_kind, "high")
+
+    note = (
+        "Hashed inline BEP contents (SHA-256) do NOT match the BEP-declared digest; "
+        "the build tool's self-report is contradicted by the inlined bytes. Presence "
+        "downgraded."
+    )
+    return (PRESENCE_LOCAL_MISMATCH, False, computed_digest, None, note, _downgraded_source_kind(source_kind), "low")
+
+
+def _resolve_local_reference(reference: str, artifact_base: Path | None) -> Path | None:
+    """Resolve a bare local path (e.g. a symlink target) to a filesystem path.
+
+    Absolute paths are returned as-is; a relative path is joined onto
+    ``artifact_base`` when one is available, and is otherwise unresolvable (``None``).
+    """
+
+    path = Path(reference)
+    if path.is_absolute():
+        return path
+    if artifact_base is not None:
+        return artifact_base / path
+    return None
+
+
+def _decode_inline_contents(contents: str) -> bytes | None:
+    """Base64-decode BEP inline ``contents`` (proto3 JSON encodes bytes as base64).
+
+    Returns ``None`` when the value is not valid base64 so the caller records the
+    entry un-fabricated rather than hashing a guess.
+    """
+
+    try:
+        return base64.b64decode(contents, validate=True)
+    except (binascii.Error, ValueError):
+        return None
+
+
 def _local_path(uri: str | None, artifact_base: Path | None) -> Path | None:
     """Resolve a BEP URI to a local filesystem path, or ``None`` if not local."""
 
@@ -483,7 +638,10 @@ def _is_file_payload(value: Any) -> bool:
         return False
     if _looks_like_output_group(value):
         return False
-    return any(key in value for key in ("uri", "name", "digest", "pathPrefix"))
+    return any(
+        key in value
+        for key in ("uri", "name", "digest", "pathPrefix", "symlinkTargetPath", "contents")
+    )
 
 
 def _looks_like_output_group(value: dict[str, Any]) -> bool:
