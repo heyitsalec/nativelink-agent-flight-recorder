@@ -181,8 +181,8 @@ of the four truth labels:
 
 | Field | Values | Meaning |
 |-------|--------|---------|
-| `digest_verified` | `true`, `false`, `null` | `true` when the recomputed SHA-256 matched the BEP-declared digest; `false` on mismatch; `null` when no local comparison was possible (missing file, remote URI, no declared digest, or a declared digest NLFR cannot prove is SHA-256) |
-| `presence` | `local_verified`, `local_present`, `local_mismatch`, `missing`, `unverified_remote_reference` | What NLFR could actually confirm about the bytes |
+| `digest_verified` | `true`, `false`, `null` | `true` when the recomputed SHA-256 matched the BEP-declared digest; `false` on mismatch; `null` when no comparison was possible (missing file, unprobed remote URI, no declared digest, or a declared digest NLFR cannot prove is SHA-256) |
+| `presence` | `local_verified`, `local_present`, `local_mismatch`, `missing`, `unverified_remote_reference`, `remote_verified`, `remote_present`, `remote_mismatch`, `remote_missing` | What NLFR could actually confirm about the bytes. The `remote_*` values require an injected CAS probe (issue #81 part A); with no probe a remote reference stays `unverified_remote_reference` |
 
 Truth-label consequences (this feature only **adds** verification state — it never
 weakens an existing honest claim):
@@ -194,6 +194,10 @@ weakens an existing honest claim):
 | `local_mismatch` | downgraded (`collectable_v1` → `derived_v1`) | `low` |
 | `missing` | downgraded (`collectable_v1` → `derived_v1`) | `low` |
 | `unverified_remote_reference` | downgraded (`collectable_v1` → `derived_v1`) | `low` |
+| `remote_verified` | unchanged (e.g. `collectable_v1`) | `high` — the CAS probe read the blob and its recomputed SHA-256 matched the BEP-declared digest (the only remote tier that keeps a collectable claim) |
+| `remote_present` | unchanged (e.g. `collectable_v1`) | `medium` — the CAS reports the blob present but its bytes were **not** hash-checked (the probe read no digest, or the declared digest is not a recomputable SHA-256) |
+| `remote_mismatch` | downgraded (`collectable_v1` → `derived_v1`) | `low` — the CAS bytes were read and their recomputed SHA-256 contradicts the declared digest |
+| `remote_missing` | downgraded (`collectable_v1` → `derived_v1`) | `low` — the CAS confirms the blob is **absent** (the actual bazelbuild/bazel#23250 upload-failure mode; the strongest downgrade) |
 
 A `derived_v1` label on a downgraded reference means **NLFR derived a contradicting
 or unverifiable state from its own recomputation** — it is not the build tool's
@@ -224,8 +228,32 @@ so it must never treat a non-SHA-256 digest as a failed SHA-256 comparison:
 `unverified_remote_reference` exists because a BEP can reference an artifact at a
 `bytestream://` URI even when the cache upload FAILED
 ([bazelbuild/bazel#23250](https://github.com/bazelbuild/bazel/issues/23250)).
-A remote reference is **never** promoted to a `collectable_v1` / `high` presence
-claim; verifying remote CAS via REAPI is a documented follow-up, not v1.
+It is the **no-probe default**: with no CAS probe supplied, a remote reference is
+recorded exactly this way and is **never** promoted to a `collectable_v1` / `high`
+presence claim.
+
+### Remote verification via an injectable CAS probe (issue #81)
+
+NLFR exposes an **optional, injectable** CAS probe on `parse_bazel_bep` /
+`build_reference` (`cas_probe`). When a probe is supplied, a remote reference is
+checked against the content-addressable store and earns an honest label that
+mirrors the local `*` symmetry:
+
+| `presence` | Probe verdict | Truth-label consequence |
+|------------|---------------|-------------------------|
+| `remote_verified` | present, and the recomputed SHA-256 matched the declared digest | kept `collectable_v1` / `high` — the only remote tier that stays collectable |
+| `remote_present` | present, but bytes not hash-checked (probe read no digest, or a non-recomputable-SHA-256 declared digest) | unchanged / `medium` |
+| `remote_mismatch` | read, but recomputed SHA-256 contradicts the declared digest | downgraded (`collectable_v1` → `derived_v1`) / `low` |
+| `remote_missing` | the CAS confirms the blob is **absent** (the bazel#23250 failure mode) | downgraded / `low` — the strongest downgrade |
+
+A probe that raises or returns no verdict falls back to
+`unverified_remote_reference` — NLFR **never** fabricates a presence claim from a
+failed probe. NLFR ships **no probe backend yet**: the label vocabulary and the
+seam land in **part A** (this change), and CAS verification is **not live**. The
+gRPC/REAPI probe (an optional `[reapi]` dependency extra plus vendored protos) is a
+separate follow-up, **#81 part B**. Until then every remote reference stays
+`unverified_remote_reference` by default, and no exported packet claims remote CAS
+was checked.
 
 ### Symlink and inline-content File entries
 
@@ -244,9 +272,11 @@ non-`uri` shapes:
 
 The proof packet surfaces a rollup at `summary.artifact_verification` and in the
 `artifact_verification` block metrics: `verified_count`, `present_unverified`,
-`mismatched`, `missing`, `unverified_remote`, `total`. `present_unverified` counts
-`local_present` references (present but digest not cross-checked — see the
-`local_present` row above).
+`mismatched`, `missing`, `unverified_remote`, `total`, plus the additive
+remote-verification counts `remote_verified`, `remote_present`, `remote_mismatch`,
+and `remote_missing` (issue #81 part A — all `0` unless a CAS probe was injected).
+`present_unverified` counts `local_present` references (present but digest not
+cross-checked — see the `local_present` row above).
 
 ## Agent receipt provenance ladder (multi-CLI)
 

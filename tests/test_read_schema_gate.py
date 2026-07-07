@@ -185,7 +185,7 @@ def test_db_upgrade_migrates_v1_to_current_preserving_rows(tmp_path: Path) -> No
     result = run_nlfr("db", "upgrade", "--db", str(db))
 
     assert result.returncode == 0, result.stderr
-    assert "from schema v1 to v3" in result.stdout
+    assert f"from schema v1 to v{SCHEMA_VERSION}" in result.stdout
     assert _user_version(db) == SCHEMA_VERSION
 
     conn = connect(db)
@@ -211,7 +211,7 @@ def test_db_upgrade_is_idempotent(tmp_path: Path) -> None:
 
     second = run_nlfr("db", "upgrade", "--db", str(db))
     assert second.returncode == 0, second.stderr
-    assert "already at schema v3" in second.stdout
+    assert f"already at schema v{SCHEMA_VERSION}" in second.stdout
     assert _user_version(db) == SCHEMA_VERSION
 
 

@@ -346,7 +346,7 @@ def test_old_narrow_v2_database_migrates_to_v3_and_accepts_local_present(tmp_pat
     # Reopen under current code: migrate() must lift the stuck v2 DB to v3.
     conn = connect(db_path)
     migrate(conn)
-    assert _user_version(conn) == SCHEMA_VERSION == 3
+    assert _user_version(conn) == SCHEMA_VERSION == 4
 
     # Existing rows are intact after the table rebuild.
     row = conn.execute(
@@ -382,7 +382,7 @@ def test_old_narrow_v2_database_migrates_to_v3_and_accepts_local_present(tmp_pat
     # A second reopen is idempotent: still v3, rows preserved, no rebuild churn.
     conn = connect(db_path)
     initialize(conn)
-    assert _user_version(conn) == SCHEMA_VERSION == 3
+    assert _user_version(conn) == SCHEMA_VERSION == 4
     assert conn.execute("SELECT COUNT(*) AS c FROM artifact_references").fetchone()["c"] == 2
     assert "artifact_references_v3_rebuild" not in table_names(conn)
 
@@ -455,7 +455,7 @@ def test_v3_rebuild_is_atomic_under_mid_script_failure(tmp_path):
 
     # The real migration still lifts the DB cleanly after the failed attempt.
     migrate(conn)
-    assert _user_version(conn) == SCHEMA_VERSION == 3
+    assert _user_version(conn) == SCHEMA_VERSION == 4
     assert conn.execute("SELECT COUNT(*) AS c FROM artifact_references").fetchone()["c"] == 1
 
 
@@ -507,9 +507,175 @@ def test_v3_replay_after_lost_stamp_is_lossless(tmp_path):
 
     conn = connect(db_path)
     initialize(conn)
-    assert _user_version(conn) == SCHEMA_VERSION == 3
+    assert _user_version(conn) == SCHEMA_VERSION == 4
     row = conn.execute(
         "SELECT presence FROM artifact_references WHERE stable_key = ?",
         ("replay:artifact_reference:present",),
     ).fetchone()
     assert row["presence"] == "local_present"
+
+
+def _build_real_v3_database(conn):
+    """Apply the real migrations 1-3 and stamp user_version=3 (a genuine v3 spine).
+
+    Runs the shipped v1/v2/v3 migration SQL verbatim (no embedded copy that could
+    drift), stopping BEFORE v4 — exactly the database an older nlfr left behind. The
+    v3 presence CHECK accepts the local_* vocabulary but NOT the remote_* values.
+    """
+
+    with conn:
+        for migration in MIGRATIONS:
+            if migration.version <= 3:
+                conn.executescript(migration.sql)
+        conn.execute("PRAGMA user_version = 3")
+
+
+def test_old_v3_database_migrates_to_v4_and_accepts_remote_verified(tmp_path):
+    """A DB stamped v3 upgrades to v4, keeps its rows, and accepts remote_verified.
+
+    Regression guard for issue #81 part A: the v4 table-rebuild migration widens the
+    presence CHECK to admit the honest remote-verification vocabulary
+    (remote_verified / remote_present / remote_mismatch / remote_missing). This
+    constructs a genuine v3 database (real migrations 1-3), proves the v3 CHECK
+    really rejects ``remote_verified`` today, then proves migrate() lifts it to v4
+    while preserving rows, foreign keys, and idempotency.
+    """
+
+    db_path = tmp_path / "nlfr.sqlite"
+    conn = connect(db_path)
+    _build_real_v3_database(conn)
+    assert _user_version(conn) == 3
+
+    # Seed a run and a v3-valid artifact_reference row that must survive the rebuild.
+    run_id = upsert_run(
+        conn,
+        stable_key="legacy-run:v3",
+        run_group="legacy",
+        status="completed",
+        source_kind="collectable_v1",
+        confidence="high",
+        evidence_refs=["run:legacy"],
+        redaction_state="safe",
+    )
+    with conn:
+        conn.execute(
+            "INSERT INTO artifact_references (id, stable_key, run_id, reference_key, name, presence) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            ("ar-v3", "legacy:artifact_reference:a", run_id, "legacy:artifact:a", "a.bin", "local_present"),
+        )
+
+    # Prove the v3 CHECK is really in force: remote_verified is rejected today.
+    with pytest.raises(sqlite3.IntegrityError):
+        with conn:
+            conn.execute(
+                "INSERT INTO artifact_references (id, stable_key, run_id, reference_key, presence) "
+                "VALUES (?, ?, ?, ?, ?)",
+                ("ar-reject", "legacy:artifact_reference:reject", run_id, "legacy:artifact:reject", "remote_verified"),
+            )
+    conn.close()
+
+    # Reopen under current code: migrate() must lift the v3 DB to v4.
+    conn = connect(db_path)
+    migrate(conn)
+    assert _user_version(conn) == SCHEMA_VERSION == 4
+
+    # Existing rows are intact after the table rebuild.
+    row = conn.execute(
+        "SELECT run_id, name, presence FROM artifact_references WHERE id = ?",
+        ("ar-v3",),
+    ).fetchone()
+    assert row["run_id"] == run_id
+    assert row["name"] == "a.bin"
+    assert row["presence"] == "local_present"
+    assert conn.execute("SELECT COUNT(*) AS c FROM artifact_references").fetchone()["c"] == 1
+    # Foreign keys survive the drop/rename and the run FK still resolves.
+    assert conn.execute("PRAGMA foreign_key_check").fetchall() == []
+    # The interim rebuild table was cleaned up.
+    assert "artifact_references_v4_rebuild" not in table_names(conn)
+
+    # The widened v4 CHECK now accepts a remote_verified upsert that previously raised.
+    ref_id = upsert_artifact_reference(
+        conn,
+        stable_key="legacy:artifact_reference:remote",
+        run_id=run_id,
+        reference_key="legacy:artifact:remote",
+        presence="remote_verified",
+        source_kind="collectable_v1",
+        confidence="high",
+        evidence_refs=["ref:remote"],
+        redaction_state="safe",
+    )
+    assert conn.execute(
+        "SELECT presence FROM artifact_references WHERE id = ?", (ref_id,)
+    ).fetchone()["presence"] == "remote_verified"
+
+    # All four remote_* values are admitted by the widened CHECK.
+    for i, presence in enumerate(("remote_present", "remote_mismatch", "remote_missing")):
+        upsert_artifact_reference(
+            conn,
+            stable_key=f"legacy:artifact_reference:remote-{i}",
+            run_id=run_id,
+            reference_key=f"legacy:artifact:remote-{i}",
+            presence=presence,
+            source_kind="derived_v1",
+            confidence="low",
+            evidence_refs=[f"ref:remote-{i}"],
+            redaction_state="safe",
+        )
+    conn.close()
+
+    # A second reopen is idempotent: still v4, rows preserved, no rebuild churn.
+    conn = connect(db_path)
+    initialize(conn)
+    assert _user_version(conn) == SCHEMA_VERSION == 4
+    assert conn.execute("SELECT COUNT(*) AS c FROM artifact_references").fetchone()["c"] == 5
+    assert "artifact_references_v4_rebuild" not in table_names(conn)
+
+
+def test_v4_rebuild_is_atomic_under_mid_script_failure(tmp_path):
+    """Fault injection on the v4 rebuild: a failure after the DROP rolls back fully.
+
+    Mirrors the v3 atomicity guard. An interruption late in the v4 rebuild must leave
+    the original table, its rows, and the version stamp untouched — and the real
+    migration must still complete cleanly afterwards.
+    """
+
+    from nlfr.db.schema import atomic_migration_script
+
+    db_path = tmp_path / "nlfr.sqlite"
+    conn = connect(db_path)
+    _build_real_v3_database(conn)
+    run_id = upsert_run(
+        conn,
+        stable_key="legacy-run:v4-atomicity",
+        run_group="legacy",
+        status="completed",
+        source_kind="collectable_v1",
+        confidence="high",
+        evidence_refs=["run:legacy"],
+        redaction_state="safe",
+    )
+    with conn:
+        conn.execute(
+            "INSERT INTO artifact_references (id, stable_key, run_id, reference_key, name, presence) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            ("ar-v4-atomic", "legacy:artifact_reference:atomic", run_id, "legacy:artifact:atomic", "a.bin", "local_present"),
+        )
+
+    v4_migration = next(m for m in MIGRATIONS if m.version == 4)
+    script = atomic_migration_script(v4_migration)
+    broken = script.replace("COMMIT;", "INSERT INTO nlfr_no_such_table VALUES (1);\nCOMMIT;")
+    assert broken != script
+    with pytest.raises(sqlite3.OperationalError):
+        conn.executescript(broken)
+    conn.rollback()
+
+    # All-or-nothing: the canonical table, its row, and the stamp are untouched.
+    assert "artifact_references" in table_names(conn)
+    assert conn.execute("SELECT COUNT(*) AS c FROM artifact_references").fetchone()["c"] == 1
+    assert _user_version(conn) == 3
+
+    # The real migration still lifts the DB cleanly after the failed attempt.
+    migrate(conn)
+    assert _user_version(conn) == SCHEMA_VERSION == 4
+    assert conn.execute("SELECT COUNT(*) AS c FROM artifact_references").fetchone()["c"] == 1

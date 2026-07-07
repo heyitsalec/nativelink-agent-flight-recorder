@@ -17,6 +17,7 @@ from nlfr.ingest.models import (
     TargetEvidence,
 )
 from nlfr.ingest.verification import (
+    CasProbe,
     DigestFunctionInfo,
     build_reference,
     detect_digest_function,
@@ -32,6 +33,7 @@ def parse_bazel_bep(
     evidence_ref: str | None = None,
     verify_artifacts: bool = True,
     artifact_base: str | Path | None = None,
+    cas_probe: CasProbe | None = None,
 ) -> EvidenceBundle:
     """Parse Bazel Build Event Protocol JSON lines or JSON objects.
 
@@ -40,6 +42,13 @@ def parse_bazel_bep(
     compared against the BEP-declared digest, while remote-only URIs are labeled
     ``unverified_remote_reference``. ``artifact_base`` resolves relative and
     ``file://`` paths; it defaults to the directory containing the BEP file.
+
+    ``cas_probe`` is an OPTIONAL injectable CAS probe (issue #81 part A). With no
+    probe (the default) remote references keep the historical
+    ``unverified_remote_reference`` downgrade — unchanged behavior. When supplied,
+    each remote reference is checked against the CAS and earns an honest
+    ``remote_verified`` / ``remote_present`` / ``remote_mismatch`` /
+    ``remote_missing`` label. NLFR ships no probe backend in part A.
     """
 
     evidence_path = Path(path)
@@ -72,6 +81,7 @@ def parse_bazel_bep(
                 evidence_refs=evidence_refs,
                 artifact_base=resolved_base,
                 digest_function=digest_function,
+                cas_probe=cas_probe,
             )
 
         if label and "configured" in event:
@@ -244,6 +254,7 @@ def _collect_artifact_references(
     evidence_refs: list[str],
     artifact_base: Path,
     digest_function: DigestFunctionInfo,
+    cas_probe: CasProbe | None = None,
 ) -> None:
     for offset, file_payload in enumerate(iter_bep_file_references(event)):
         reference = build_reference(
@@ -254,6 +265,7 @@ def _collect_artifact_references(
             evidence_refs=evidence_refs,
             artifact_base=artifact_base,
             digest_function=digest_function,
+            cas_probe=cas_probe,
         )
         if reference is None:
             continue

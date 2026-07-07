@@ -154,6 +154,13 @@ def _artifact_verification_summary(references: list[dict[str, Any]]) -> dict[str
         "mismatched": 0,
         "missing": 0,
         "unverified_remote": 0,
+        # Remote-verification tiers (issue #81 part A). Additive keys — the local_*
+        # rollups above are unchanged. These stay 0 unless a CAS probe was injected;
+        # with no probe every remote reference lands in ``unverified_remote``.
+        "remote_verified": 0,
+        "remote_present": 0,
+        "remote_mismatch": 0,
+        "remote_missing": 0,
     }
     for reference in references:
         presence = reference.get("presence")
@@ -167,6 +174,14 @@ def _artifact_verification_summary(references: list[dict[str, Any]]) -> dict[str
             counts["missing"] += 1
         elif presence == "unverified_remote_reference":
             counts["unverified_remote"] += 1
+        elif presence == "remote_verified":
+            counts["remote_verified"] += 1
+        elif presence == "remote_present":
+            counts["remote_present"] += 1
+        elif presence == "remote_mismatch":
+            counts["remote_mismatch"] += 1
+        elif presence == "remote_missing":
+            counts["remote_missing"] += 1
     return counts
 
 
@@ -183,6 +198,10 @@ def _artifact_verification_block(references: list[dict[str, Any]]) -> dict[str, 
     mismatched = summary_counts["mismatched"]
     missing = summary_counts["missing"]
     unverified_remote = summary_counts["unverified_remote"]
+    remote_verified = summary_counts["remote_verified"]
+    remote_present = summary_counts["remote_present"]
+    remote_mismatch = summary_counts["remote_mismatch"]
+    remote_missing = summary_counts["remote_missing"]
 
     summary = (
         "Independent artifact-integrity verification. NLFR recomputes SHA-256 for "
@@ -207,10 +226,36 @@ def _artifact_verification_block(references: list[dict[str, Any]]) -> dict[str, 
         ),
         (
             f"Marked {unverified_remote} remote-only reference(s) "
-            "unverified_remote_reference — the cache upload may have failed "
-            "(bazelbuild/bazel#23250); NLFR does not probe remote CAS in v1."
+            "unverified_remote_reference — no CAS probe was supplied, so the cache "
+            "upload may have failed and the bytes are not proven to exist "
+            "(bazelbuild/bazel#23250)."
         ),
     ]
+    # Remote-verification claims (issue #81 part A) are appended ONLY when an injected
+    # CAS probe actually produced a remote_* verdict; with no probe (the default) the
+    # claim list above is unchanged, so the packet never implies CAS was checked.
+    if remote_verified:
+        claims.append(
+            f"Independently verified {remote_verified} remote reference(s) against "
+            "the CAS: the blob was read and its recomputed SHA-256 matched the "
+            "BEP-declared digest."
+        )
+    if remote_present:
+        claims.append(
+            f"Recorded {remote_present} remote reference(s) the CAS reports present "
+            "but whose bytes were not hash-checked; presence noted, digest neither "
+            "confirmed nor contradicted."
+        )
+    if remote_mismatch:
+        claims.append(
+            f"Downgraded {remote_mismatch} remote reference(s) whose CAS-recomputed "
+            "digest contradicted the BEP-declared digest."
+        )
+    if remote_missing:
+        claims.append(
+            f"Downgraded {remote_missing} remote reference(s) the CAS confirms are "
+            "ABSENT — the cache upload failed (bazelbuild/bazel#23250)."
+        )
     block = {
         **_block(
             "artifact_verification",

@@ -63,8 +63,11 @@ class ArtifactReferenceEvidence(TruthLabels):
     NLFR does not trust the build tool's self-reports: for every artifact BEP
     references it recomputes the local SHA-256 (when the bytes are on disk) and
     compares it against the BEP-declared digest. Remote-only references
-    (``bytestream://`` and other CAS URIs) can never be locally verified and are
-    labeled ``unverified_remote_reference`` per bazelbuild/bazel#23250.
+    (``bytestream://`` and other CAS URIs) cannot be verified locally: with no CAS
+    probe they are labeled ``unverified_remote_reference`` per bazelbuild/bazel#23250.
+    When an optional CAS probe is injected (issue #81 part A), a remote reference
+    instead earns an honest ``remote_verified`` / ``remote_present`` /
+    ``remote_mismatch`` / ``remote_missing`` label from the probe's verdict.
     """
 
     reference_key: str = ""
@@ -79,9 +82,13 @@ class ArtifactReferenceEvidence(TruthLabels):
     # declared digest, or a declared digest NLFR cannot prove is SHA-256).
     digest_verified: bool | None = None
     # One of local_verified | local_present | local_mismatch | missing |
-    # unverified_remote_reference. ``local_present`` means the bytes are on disk but
-    # the declared digest was not cross-checked because it is not a recomputable
-    # SHA-256 (a non-default --digest_function or a non-64-hex digest).
+    # unverified_remote_reference | remote_verified | remote_present |
+    # remote_mismatch | remote_missing. ``local_present`` means the bytes are on
+    # disk but the declared digest was not cross-checked because it is not a
+    # recomputable SHA-256 (a non-default --digest_function or a non-64-hex digest).
+    # The remote_* values are only produced when an optional CAS probe is injected
+    # (issue #81 part A); with no probe a remote reference stays
+    # unverified_remote_reference.
     presence: str = "missing"
     verification_note: str | None = None
     target_label: str | None = None

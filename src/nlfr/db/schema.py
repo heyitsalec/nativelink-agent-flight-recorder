@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from sqlite3 import Connection
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 CORE_TABLES = (
     "runs",
@@ -210,6 +210,22 @@ _PRESENCE_CHECK_V3 = (
     "'unverified_remote_reference')"
 )
 
+# v4 adds the honest remote-verification vocabulary (issue #81 part A): a remote
+# reference checked against the CAS earns remote_verified (bytes read and recomputed
+# SHA-256 matched), remote_present (present but not hash-checked), remote_mismatch
+# (read but recomputed digest contradicts declared), or remote_missing (CAS confirms
+# the blob ABSENT — the bazelbuild/bazel#23250 failure mode). These are ONLY written
+# when an optional CAS probe is injected; with no probe a remote reference stays
+# unverified_remote_reference. Like v3, SQLite cannot ALTER a CHECK, so v4 widens it
+# by rebuilding the table. NEVER edit _PRESENCE_CHECK_V3 or its migration in place —
+# a DB already stamped v3 would keep the narrow CHECK forever.
+_PRESENCE_CHECK_V4 = (
+    "presence IS NULL OR presence IN "
+    "('local_verified','local_present','local_mismatch','missing',"
+    "'unverified_remote_reference',"
+    "'remote_verified','remote_present','remote_mismatch','remote_missing')"
+)
+
 
 def _artifact_references_columns(presence_check: str) -> str:
     """Column definitions for ``artifact_references``, parameterized by presence CHECK.
@@ -238,8 +254,10 @@ def _artifact_references_columns(presence_check: str) -> str:
 """
 
 
-# Non-key columns copied during the v3 rebuild, in a stable explicit order (never
-# ``SELECT *``, which would silently mis-map if the column order ever changes).
+# Columns copied during the v3 AND v4 table rebuilds, in a stable explicit order
+# (never ``SELECT *``, which would silently mis-map if the column order ever
+# changes). The rebuilds differ only in the presence CHECK; the column set is
+# identical, so both share this list.
 _ARTIFACT_REFERENCE_COPY_COLUMNS = (
     "id, stable_key, run_id, target_id, reference_key, name, uri, local_path, "
     "declared_digest, declared_size_bytes, computed_digest, digest_verified, "
@@ -271,6 +289,27 @@ FROM artifact_references;
 
 DROP TABLE artifact_references;
 ALTER TABLE artifact_references_v3_rebuild RENAME TO artifact_references;
+
+CREATE INDEX IF NOT EXISTS idx_artifact_references_run_id ON artifact_references(run_id);
+"""
+
+# v4: widen the presence CHECK again (adds the remote_* vocabulary) by the same
+# leaf-table rebuild the v3 precedent uses. The copy column set is unchanged, so the
+# rows carry across byte-for-byte; only the CHECK widens. The leading DROP ... IF
+# EXISTS clears any temp table left by a prior interrupted run.
+_WIDEN_ARTIFACT_REFERENCES_PRESENCE_V4 = f"""
+DROP TABLE IF EXISTS artifact_references_v4_rebuild;
+
+CREATE TABLE artifact_references_v4_rebuild (
+{_artifact_references_columns(_PRESENCE_CHECK_V4)}
+);
+
+INSERT INTO artifact_references_v4_rebuild ({_ARTIFACT_REFERENCE_COPY_COLUMNS})
+SELECT {_ARTIFACT_REFERENCE_COPY_COLUMNS}
+FROM artifact_references;
+
+DROP TABLE artifact_references;
+ALTER TABLE artifact_references_v4_rebuild RENAME TO artifact_references;
 
 CREATE INDEX IF NOT EXISTS idx_artifact_references_run_id ON artifact_references(run_id);
 """
@@ -308,6 +347,7 @@ MIGRATIONS = (
     Migration(version=1, sql=_CREATE_CORE_SCHEMA),
     Migration(version=2, sql=_CREATE_ARTIFACT_REFERENCES),
     Migration(version=3, sql=_WIDEN_ARTIFACT_REFERENCES_PRESENCE),
+    Migration(version=4, sql=_WIDEN_ARTIFACT_REFERENCES_PRESENCE_V4),
 )
 
 

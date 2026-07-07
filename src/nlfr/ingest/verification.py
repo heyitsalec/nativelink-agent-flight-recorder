@@ -12,8 +12,18 @@ This module verifies what it can and explicitly labels what it cannot:
   compared against the BEP-declared digest; a mismatch or a missing file
   downgrades the truth label and records an explicit note;
 * remote-only references are never promoted to ``collectable_v1`` / ``high``
-  presence claims — they are marked ``unverified_remote_reference`` citing the
-  upstream bug.
+  presence claims — with no probe they are marked ``unverified_remote_reference``
+  citing the upstream bug.
+
+Remote verification is an INJECTABLE seam (GitHub issue #81, part A). ``_verify``
+and ``build_reference`` accept an optional ``cas_probe`` callable; with no probe
+(the default, and the only path any shipped caller uses today) a remote reference
+keeps the historical ``unverified_remote_reference`` downgrade unchanged. When a
+probe IS supplied, its result is mapped to honest remote-verification labels that
+mirror the local_* symmetry (``remote_verified`` / ``remote_present`` /
+``remote_mismatch`` / ``remote_missing``). The actual REAPI/gRPC probe backend —
+an optional dependency extra plus vendored protos — is a documented follow-up
+(#81 part B); NLFR ships NO probe and NO new runtime dependency in part A.
 """
 
 from __future__ import annotations
@@ -24,7 +34,7 @@ import hashlib
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 from urllib.parse import unquote, urlsplit
 
 from nlfr.ingest.models import ArtifactReferenceEvidence
@@ -45,6 +55,16 @@ PRESENCE_LOCAL_MISMATCH = "local_mismatch"
 PRESENCE_LOCAL_PRESENT = "local_present"
 PRESENCE_MISSING = "missing"
 PRESENCE_UNVERIFIED_REMOTE = "unverified_remote_reference"
+
+# Remote-verification presence markers (issue #81 part A), mirroring the local_*
+# symmetry. These are ONLY ever produced when an optional CAS probe is injected
+# into verification; with no probe (the default and the only path any shipped
+# caller uses today) a remote reference stays PRESENCE_UNVERIFIED_REMOTE — today's
+# exact behavior. Only remote_verified keeps a collectable_v1 / high claim.
+PRESENCE_REMOTE_VERIFIED = "remote_verified"
+PRESENCE_REMOTE_PRESENT = "remote_present"
+PRESENCE_REMOTE_MISMATCH = "remote_mismatch"
+PRESENCE_REMOTE_MISSING = "remote_missing"
 
 # NLFR only recomputes SHA-256 in v1. Bazel's File.digest is the hex of the
 # CONFIGURED --digest_function; a build that runs a non-default function (common
@@ -84,6 +104,32 @@ class DigestFunctionInfo:
 
 
 DIGEST_FUNCTION_UNKNOWN = DigestFunctionInfo(name=None, options_available=False)
+
+
+@dataclass(frozen=True)
+class ProbeResult:
+    """Outcome of an injected CAS probe for one remote reference (issue #81).
+
+    ``present`` is whether the content-addressable store reports the blob exists.
+    ``computed_digest`` is the SHA-256 the probe recomputed from the CAS bytes (hex,
+    no algorithm prefix) or ``None`` when the probe confirmed presence WITHOUT
+    reading/hashing the bytes (e.g. a ``FindMissingBlobs`` existence check). A probe
+    that cannot reach a verdict returns ``None`` (not a ``ProbeResult``), and NLFR
+    then falls back to ``unverified_remote_reference`` rather than fabricating one.
+    """
+
+    present: bool
+    computed_digest: str | None = None
+
+
+# An injectable CAS probe: given the remote URI and the BEP-declared digest/size,
+# it returns a ``ProbeResult``, or ``None`` when it cannot reach a verdict
+# (unreachable endpoint, transient error, unsupported URI). An ordinary "blob not
+# found" is ``ProbeResult(present=False)``, NOT an exception; a raised exception is
+# caught by the verifier and treated exactly like ``None`` — honest fallback, never
+# a fabricated claim. NLFR ships NO probe in part A: every current caller defaults
+# ``cas_probe`` to ``None``. The gRPC/REAPI backend is #81 part B.
+CasProbe = Callable[[str, "str | None", "int | None"], "ProbeResult | None"]
 
 
 def detect_digest_function(events: Iterable[dict[str, Any]]) -> DigestFunctionInfo:
@@ -183,6 +229,7 @@ def build_reference(
     artifact_base: Path | None,
     redaction_state: str = "safe",
     digest_function: DigestFunctionInfo = DIGEST_FUNCTION_UNKNOWN,
+    cas_probe: CasProbe | None = None,
 ) -> ArtifactReferenceEvidence | None:
     """Verify a single BEP file payload and return an evidence record.
 
@@ -191,6 +238,12 @@ def build_reference(
     revealed about the build's configured digest function; NLFR only recomputes
     SHA-256, so a declared digest it cannot prove is SHA-256 is recorded as
     present-but-unchecked rather than mismatch-downgraded.
+
+    ``cas_probe`` is an OPTIONAL injectable CAS probe (issue #81 part A). With no
+    probe (the default) a remote reference keeps the historical
+    ``unverified_remote_reference`` downgrade; when supplied, its verdict maps to
+    the honest remote-verification labels. Local, symlink, and inline references
+    never touch the probe — their bytes are already reachable.
     """
 
     name = _string_or_none(file_payload.get("name"))
@@ -215,7 +268,13 @@ def build_reference(
         )
     else:
         verification = _verify(
-            uri, declared_digest, artifact_base, source_kind, digest_function
+            uri,
+            declared_digest,
+            declared_size,
+            artifact_base,
+            source_kind,
+            digest_function,
+            cas_probe,
         )
     (
         presence,
@@ -250,9 +309,11 @@ def build_reference(
 def _verify(
     uri: str | None,
     declared_digest: str | None,
+    declared_size: int | None,
     artifact_base: Path | None,
     source_kind: str,
     digest_function: DigestFunctionInfo,
+    cas_probe: CasProbe | None = None,
 ) -> tuple[str, bool | None, str | None, str | None, str, str, str]:
     """Return the verification tuple for one reference.
 
@@ -263,22 +324,12 @@ def _verify(
     local_path = _local_path(uri, artifact_base)
 
     if local_path is None:
-        # No resolvable local path: either a remote CAS URI or a bare reference
-        # we cannot open. Either way, presence is unverifiable locally.
-        note = (
-            "BEP references this artifact at a remote/opaque URI; the cache upload "
-            "may have failed and the bytes are not proven to exist "
-            f"({BAZEL_UPLOAD_BUG_REF}). NLFR does not claim local presence and does "
-            "not verify remote CAS in v1."
-        )
-        return (
-            PRESENCE_UNVERIFIED_REMOTE,
-            None,
-            None,
-            None,
-            note,
-            _downgraded_source_kind(source_kind),
-            "low",
+        # No resolvable local path: either a remote CAS URI or a bare reference we
+        # cannot open. Presence is unverifiable locally; hand it to the remote
+        # verifier, which either folds in an injected probe's verdict or (the
+        # default) returns the historical unverified_remote_reference downgrade.
+        return _verify_remote(
+            uri, declared_digest, declared_size, source_kind, digest_function, cas_probe
         )
 
     if not local_path.exists() or not local_path.is_file():
@@ -398,6 +449,210 @@ def _verify(
         False,
         computed_digest,
         str(local_path),
+        note,
+        _downgraded_source_kind(source_kind),
+        "low",
+    )
+
+
+def _verify_remote(
+    uri: str | None,
+    declared_digest: str | None,
+    declared_size: int | None,
+    source_kind: str,
+    digest_function: DigestFunctionInfo,
+    cas_probe: CasProbe | None,
+) -> tuple[str, bool | None, str | None, str | None, str, str, str]:
+    """Verify (or honestly decline to verify) a remote/opaque reference.
+
+    With NO probe supplied — the default, and the only path any shipped caller uses
+    today — this returns the exact historical ``unverified_remote_reference``
+    downgrade: NLFR does not claim local presence and does not probe remote CAS.
+    When a probe IS injected and the URI is probeable, its verdict maps to the
+    honest remote labels:
+
+    * present + recomputed SHA-256 matches declared  -> ``remote_verified`` (high,
+      the only remote tier that keeps a collectable_v1 claim);
+    * present + recomputed SHA-256 contradicts declared -> ``remote_mismatch`` (low,
+      downgraded);
+    * present + no recomputable-SHA-256 cross-check -> ``remote_present`` (medium);
+    * CAS confirms the blob ABSENT -> ``remote_missing`` (low, downgraded — the
+      actual bazelbuild/bazel#23250 failure mode);
+    * probe raised, returned ``None``, or returned a malformed / wrong-typed result
+      -> ``unverified_remote_reference`` (never a fabricated verdict, never a crash).
+    """
+
+    if cas_probe is None or uri is None:
+        return _unverified_remote_reference(source_kind)
+
+    try:
+        probe = cas_probe(uri, declared_digest, declared_size)
+    except Exception:
+        # A probe signals "blob not found" as ProbeResult(present=False); a raised
+        # exception is an INCONCLUSIVE probe, never a fabricated absence/presence.
+        return _unverified_remote_reference(source_kind, probe_attempted=True)
+
+    if probe is None:
+        return _unverified_remote_reference(source_kind, probe_attempted=True)
+
+    # A probe is INJECTED code: validate the shape of what it handed back BEFORE
+    # consuming it. A malformed result (not a ProbeResult, a non-bool ``present``, a
+    # non-str ``computed_digest``) — or an object whose attribute access itself
+    # raises — is INCONCLUSIVE, treated exactly like a None return. We never coerce
+    # (``str(123456)`` would fabricate a digest to compare) and never crash ingest: a
+    # bad probe can only ever weaken a claim to unverified_remote_reference.
+    try:
+        malformation = _probe_malformation(probe)
+    except Exception:
+        malformation = "attribute access raised"
+    if malformation is not None:
+        return _unverified_remote_reference(source_kind, malformation=malformation)
+
+    if not probe.present:
+        # The actual bazel#23250 failure mode: the BEP referenced the blob but the
+        # CAS confirms it is ABSENT. Strongest downgrade — presence is contradicted.
+        note = (
+            "CAS probe reports the BEP-referenced blob is ABSENT from the remote "
+            f"store; the cache upload likely FAILED ({BAZEL_UPLOAD_BUG_REF}). "
+            "Presence is contradicted and the reference is downgraded."
+        )
+        return (
+            PRESENCE_REMOTE_MISSING,
+            None,
+            None,
+            None,
+            note,
+            _downgraded_source_kind(source_kind),
+            "low",
+        )
+
+    computed = probe.computed_digest
+    if computed is not None and declared_digest is not None:
+        declared_prefix, declared_hex = _split_digest_prefix(declared_digest)
+        non_sha256_function = (
+            digest_function.options_available
+            and digest_function.name is not None
+            and digest_function.name != _SHA256_NAME
+        )
+        recomputable_sha256 = (
+            not non_sha256_function
+            and declared_prefix in (None, _SHA256_NAME)
+            and _is_sha256_hex(declared_hex)
+        )
+        if recomputable_sha256:
+            if _normalize_digest(computed) == declared_hex:
+                note = (
+                    "CAS probe read the blob; its recomputed SHA-256 matches the "
+                    "BEP-declared digest. Remote presence is independently verified."
+                )
+                return (
+                    PRESENCE_REMOTE_VERIFIED,
+                    True,
+                    computed,
+                    None,
+                    note,
+                    source_kind,
+                    "high",
+                )
+            note = (
+                "CAS probe read the blob, but its recomputed SHA-256 does NOT match "
+                "the BEP-declared digest; the remote bytes contradict the build "
+                "tool's self-report. Presence downgraded."
+            )
+            return (
+                PRESENCE_REMOTE_MISMATCH,
+                False,
+                computed,
+                None,
+                note,
+                _downgraded_source_kind(source_kind),
+                "low",
+            )
+
+    # Present, but no recomputable-SHA-256 cross-check was possible: the probe did
+    # not hash the bytes, or the BEP declared no digest / a non-SHA-256 digest.
+    note = (
+        "CAS probe reports the BEP-referenced blob is present, but its digest was "
+        "not cross-checked as a recomputable SHA-256; presence is recorded, the "
+        "digest is neither confirmed nor contradicted."
+    )
+    return (
+        PRESENCE_REMOTE_PRESENT,
+        None,
+        computed,
+        None,
+        note,
+        source_kind,
+        "medium",
+    )
+
+
+def _probe_malformation(probe: Any) -> str | None:
+    """Describe why ``probe`` is not a well-formed ``ProbeResult``, or ``None`` if it is.
+
+    A probe is injected, untrusted code. Its return must be a ``ProbeResult`` whose
+    ``present`` is a real ``bool`` and whose ``computed_digest`` is ``str`` or
+    ``None``. Anything else is malformed and must be treated as inconclusive rather
+    than consumed: a non-str ``computed_digest`` would crash the SHA-256 compare, and
+    a bool-like ``int`` ``present`` would fabricate a presence verdict. ``present`` is
+    checked with ``isinstance(x, bool)`` precisely so ``1``/``0`` (``int``) and
+    ``"yes"`` (``str``) are rejected, not silently accepted as truthy. Attribute
+    access may itself raise for a hostile ``ProbeResult`` subclass, so callers wrap
+    this in ``try/except``.
+    """
+
+    if not isinstance(probe, ProbeResult):
+        return f"not a ProbeResult ({type(probe).__name__})"
+    if not isinstance(probe.present, bool):
+        return f"present: {type(probe.present).__name__}"
+    computed = probe.computed_digest
+    if computed is not None and not isinstance(computed, str):
+        return f"computed_digest: {type(computed).__name__}"
+    return None
+
+
+def _unverified_remote_reference(
+    source_kind: str,
+    *,
+    probe_attempted: bool = False,
+    malformation: str | None = None,
+) -> tuple[str, bool | None, str | None, str | None, str, str, str]:
+    """The historical remote downgrade tuple (no-probe default / inconclusive probe).
+
+    The no-probe note is byte-for-byte the text NLFR has always emitted, so every
+    existing caller and test sees the exact current behavior. ``probe_attempted``
+    swaps in a note that records a probe was tried but reached no verdict.
+    ``malformation`` names a wrong-typed / malformed probe result that was treated as
+    inconclusive rather than consumed.
+    """
+
+    if malformation is not None:
+        note = (
+            "BEP references this artifact at a remote/opaque URI and the injected CAS "
+            f"probe returned a malformed result ({malformation}); treated as "
+            "inconclusive rather than consumed. The cache upload may have failed and "
+            f"the bytes are not proven to exist ({BAZEL_UPLOAD_BUG_REF}). NLFR does "
+            "not fabricate a presence claim."
+        )
+    elif probe_attempted:
+        note = (
+            "BEP references this artifact at a remote/opaque URI and the injected CAS "
+            "probe returned no verdict (unreachable, errored, or unsupported); the "
+            "cache upload may have failed and the bytes are not proven to exist "
+            f"({BAZEL_UPLOAD_BUG_REF}). NLFR does not fabricate a presence claim."
+        )
+    else:
+        note = (
+            "BEP references this artifact at a remote/opaque URI; the cache upload "
+            "may have failed and the bytes are not proven to exist "
+            f"({BAZEL_UPLOAD_BUG_REF}). NLFR does not claim local presence and does "
+            "not verify remote CAS in v1."
+        )
+    return (
+        PRESENCE_UNVERIFIED_REMOTE,
+        None,
+        None,
+        None,
         note,
         _downgraded_source_kind(source_kind),
         "low",
