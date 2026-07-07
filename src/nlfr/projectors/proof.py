@@ -116,6 +116,7 @@ def _artifact_verification_summary(references: list[dict[str, Any]]) -> dict[str
     counts = {
         "total": len(references),
         "verified_count": 0,
+        "present_unverified": 0,
         "mismatched": 0,
         "missing": 0,
         "unverified_remote": 0,
@@ -124,6 +125,8 @@ def _artifact_verification_summary(references: list[dict[str, Any]]) -> dict[str
         presence = reference.get("presence")
         if presence == "local_verified":
             counts["verified_count"] += 1
+        elif presence == "local_present":
+            counts["present_unverified"] += 1
         elif presence == "local_mismatch":
             counts["mismatched"] += 1
         elif presence == "missing":
@@ -142,6 +145,7 @@ def _artifact_verification_block(references: list[dict[str, Any]]) -> dict[str, 
 
     summary_counts = _artifact_verification_summary(references)
     verified = summary_counts["verified_count"]
+    present_unverified = summary_counts["present_unverified"]
     mismatched = summary_counts["mismatched"]
     missing = summary_counts["missing"]
     unverified_remote = summary_counts["unverified_remote"]
@@ -153,6 +157,12 @@ def _artifact_verification_block(references: list[dict[str, Any]]) -> dict[str, 
     )
     claims = [
         f"Recomputed and matched local SHA-256 for {verified} artifact reference(s).",
+        (
+            f"Recorded {present_unverified} locally present file(s) whose digest was "
+            "NOT cross-checked because it is not a recomputable SHA-256 (non-default "
+            "--digest_function or non-64-hex digest); presence noted, digest neither "
+            "confirmed nor contradicted."
+        ),
         (
             f"Downgraded {mismatched} reference(s) whose recomputed digest contradicted "
             "the BEP-declared digest."

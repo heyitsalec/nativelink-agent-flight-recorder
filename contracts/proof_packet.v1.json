@@ -54,6 +54,7 @@
       "properties": {
         "total": { "type": "integer" },
         "verified_count": { "type": "integer", "description": "Local files whose recomputed SHA-256 matched the BEP-declared digest." },
+        "present_unverified": { "type": "integer", "description": "Local files present on disk whose declared digest was NOT cross-checked because it is not a recomputable SHA-256 (non-default --digest_function or a non-64-hex digest); presence recorded, digest neither confirmed nor contradicted." },
         "mismatched": { "type": "integer", "description": "Local files whose recomputed digest contradicted the BEP-declared digest (truth-label downgraded)." },
         "missing": { "type": "integer", "description": "BEP-declared local files absent on disk (presence not claimed)." },
         "unverified_remote": { "type": "integer", "description": "Remote-only references (bytestream:// and other CAS URIs) that cannot be locally verified; see bazelbuild/bazel#23250." }
@@ -66,10 +67,10 @@
         "reference_key": { "type": "string" },
         "name": { "type": ["string", "null"] },
         "uri": { "type": ["string", "null"] },
-        "declared_digest": { "type": ["string", "null"], "description": "SHA-256 as declared by the BEP." },
-        "computed_digest": { "type": ["string", "null"], "description": "SHA-256 recomputed by NLFR from local bytes; null when not locally readable." },
-        "digest_verified": { "type": ["boolean", "null"], "description": "true when recomputed matched declared, false on mismatch, null when no local comparison was possible." },
-        "presence": { "enum": ["local_verified", "local_mismatch", "missing", "unverified_remote_reference"] },
+        "declared_digest": { "type": ["string", "null"], "description": "Digest as declared by the BEP (hex of the build's configured --digest_function; SHA-256 by default)." },
+        "computed_digest": { "type": ["string", "null"], "description": "SHA-256 recomputed by NLFR from local bytes; null when not locally readable or when the declared digest is not a recomputable SHA-256." },
+        "digest_verified": { "type": ["boolean", "null"], "description": "true when recomputed matched declared, false on mismatch, null when no local comparison was possible (missing, remote, no declared digest, or a non-SHA-256 declared digest)." },
+        "presence": { "enum": ["local_verified", "local_present", "local_mismatch", "missing", "unverified_remote_reference"], "description": "local_present marks bytes on disk whose declared digest was not cross-checked because it is not a recomputable SHA-256." },
         "verification_note": { "type": ["string", "null"] },
         "source_kind": { "enum": ["collectable_v1", "derived_v1", "simulated_v1", "future", "unknown"] },
         "confidence": { "enum": ["high", "medium", "low", "unknown"] }

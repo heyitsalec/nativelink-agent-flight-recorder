@@ -15,7 +15,12 @@ from nlfr.ingest.models import (
     FailureEvidence,
     TargetEvidence,
 )
-from nlfr.ingest.verification import build_reference, iter_bep_file_references
+from nlfr.ingest.verification import (
+    DigestFunctionInfo,
+    build_reference,
+    detect_digest_function,
+    iter_bep_file_references,
+)
 
 
 def parse_bazel_bep(
@@ -46,7 +51,13 @@ def parse_bazel_bep(
     failures: dict[str, FailureEvidence] = {}
     artifact_references: dict[str, ArtifactReferenceEvidence] = {}
 
-    for index, event in enumerate(_load_json_events(evidence_path), start=1):
+    events = _load_json_events(evidence_path)
+    # Resolve the build's digest function once up front (from the started event's
+    # optionsDescription / optionsParsed command line) so per-file verification can
+    # skip comparison when the declared digest is not a recomputable SHA-256.
+    digest_function = detect_digest_function(events)
+
+    for index, event in enumerate(events, start=1):
         event_id = event.get("id", {})
         label = _bep_label(event_id, event)
 
@@ -59,6 +70,7 @@ def parse_bazel_bep(
                 source_kind=source_kind,
                 evidence_refs=evidence_refs,
                 artifact_base=resolved_base,
+                digest_function=digest_function,
             )
 
         if label and "configured" in event:
@@ -171,6 +183,7 @@ def _collect_artifact_references(
     source_kind: str,
     evidence_refs: list[str],
     artifact_base: Path,
+    digest_function: DigestFunctionInfo,
 ) -> None:
     for offset, file_payload in enumerate(iter_bep_file_references(event)):
         reference = build_reference(
@@ -180,6 +193,7 @@ def _collect_artifact_references(
             source_kind=source_kind,
             evidence_refs=evidence_refs,
             artifact_base=artifact_base,
+            digest_function=digest_function,
         )
         if reference is None:
             continue

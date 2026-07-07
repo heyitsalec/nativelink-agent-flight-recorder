@@ -75,10 +75,13 @@ class ArtifactReferenceEvidence(TruthLabels):
     declared_size_bytes: int | None = None
     computed_digest: str | None = None
     # True when recomputed SHA-256 matched the BEP-declared digest, False on
-    # mismatch, None when no local comparison was possible (missing/remote or no
-    # declared digest to compare against).
+    # mismatch, None when no local comparison was possible (missing/remote, no
+    # declared digest, or a declared digest NLFR cannot prove is SHA-256).
     digest_verified: bool | None = None
-    # One of local_verified | local_mismatch | missing | unverified_remote_reference.
+    # One of local_verified | local_present | local_mismatch | missing |
+    # unverified_remote_reference. ``local_present`` means the bytes are on disk but
+    # the declared digest was not cross-checked because it is not a recomputable
+    # SHA-256 (a non-default --digest_function or a non-64-hex digest).
     presence: str = "missing"
     verification_note: str | None = None
     target_label: str | None = None

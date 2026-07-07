@@ -6,7 +6,7 @@ import pytest
 from nlfr.artifacts import ArtifactExistsError, read_manifest, write_artifact
 from nlfr.db import connect, initialize
 from nlfr.db.ingest import upsert_artifact, upsert_run
-from nlfr.db.schema import CORE_TABLES
+from nlfr.db.schema import CORE_TABLES, MIGRATIONS, SCHEMA_VERSION, migrate
 
 
 def table_names(conn):
@@ -178,3 +178,75 @@ def test_write_artifact_records_manifest_and_refuses_overwrite(tmp_path):
 
     assert (artifact_root / "logs" / "stdout.txt").read_bytes() == payload
     assert read_manifest(artifact_root) == manifest
+
+
+def _user_version(conn):
+    return conn.execute("PRAGMA user_version").fetchone()[0]
+
+
+def test_v1_database_upgrades_to_v2_without_losing_rows(tmp_path):
+    """A populated pre-PR (v1) database upgrades cleanly to the artifact-ref v2.
+
+    Builds a real v1 spine (core schema only, user_version=1, no
+    artifact_references), populates it, then reopens under current (v2) code and
+    asserts the upgrade preserves existing rows and is idempotent on a second
+    reopen.
+    """
+
+    db_path = tmp_path / "nlfr.sqlite"
+
+    # Build a genuine v1 database: apply only the first migration (the pre-PR core
+    # schema) and stamp user_version=1, exactly as pre-PR code left it.
+    v1_migration = next(m for m in MIGRATIONS if m.version == 1)
+    conn = connect(db_path)
+    with conn:
+        conn.executescript(v1_migration.sql)
+        conn.execute("PRAGMA user_version = 1")
+    assert _user_version(conn) == 1
+    assert "artifact_references" not in table_names(conn)
+
+    # Populate the v1 database with a run row that must survive the migration.
+    run_id = upsert_run(
+        conn,
+        stable_key="legacy-run:cache-only",
+        run_group="legacy",
+        scenario="legacy-run",
+        mode="cache-only",
+        status="completed",
+        source_kind="collectable_v1",
+        confidence="high",
+        evidence_refs=["run:legacy"],
+        redaction_state="safe",
+    )
+    conn.close()
+
+    # Reopen under current code: migrate() must lift v1 -> v2.
+    conn = connect(db_path)
+    migrate(conn)
+    assert _user_version(conn) == SCHEMA_VERSION == 2
+    assert "artifact_references" in table_names(conn)
+
+    # The pre-existing row is intact and unchanged.
+    row = conn.execute(
+        "SELECT id, run_group, status FROM runs WHERE stable_key = ?",
+        ("legacy-run:cache-only",),
+    ).fetchone()
+    assert row["id"] == run_id
+    assert row["run_group"] == "legacy"
+    assert row["status"] == "completed"
+
+    # The widened presence CHECK accepts the new local_present value.
+    with conn:
+        conn.execute(
+            "INSERT INTO artifact_references (id, stable_key, run_id, reference_key, presence) "
+            "VALUES (?, ?, ?, ?, ?)",
+            ("ar-1", "legacy-run:artifact_reference:a", run_id, "legacy:artifact:a", "local_present"),
+        )
+    conn.close()
+
+    # A second reopen is idempotent: still v2, rows preserved, no error.
+    conn = connect(db_path)
+    initialize(conn)
+    assert _user_version(conn) == 2
+    assert conn.execute("SELECT COUNT(*) AS c FROM runs").fetchone()["c"] == 1
+    assert conn.execute("SELECT COUNT(*) AS c FROM artifact_references").fetchone()["c"] == 1

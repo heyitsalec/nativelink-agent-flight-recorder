@@ -192,7 +192,8 @@ CREATE INDEX IF NOT EXISTS idx_proof_blocks_run_id ON proof_blocks(run_id);
 
 _PRESENCE_CHECK = (
     "presence IS NULL OR presence IN "
-    "('local_verified','local_mismatch','missing','unverified_remote_reference')"
+    "('local_verified','local_present','local_mismatch','missing',"
+    "'unverified_remote_reference')"
 )
 
 _CREATE_ARTIFACT_REFERENCES = f"""

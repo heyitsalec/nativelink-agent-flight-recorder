@@ -21,6 +21,8 @@ from nlfr.ingest.bazel import parse_bazel_bep
 from nlfr.ingest.sqlite import ingest_evidence_bundle
 from nlfr.projectors import export_proof_packet
 
+FIXTURE_ROOT = Path(__file__).resolve().parents[0] / "fixtures" / "bazel"
+
 
 def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
@@ -154,6 +156,7 @@ def test_proof_packet_surfaces_artifact_verification_summary(tmp_path: Path) -> 
     assert summary == {
         "total": 4,
         "verified_count": 1,
+        "present_unverified": 0,
         "mismatched": 1,
         "missing": 1,
         "unverified_remote": 1,
@@ -184,3 +187,185 @@ def test_verification_can_be_disabled(tmp_path: Path) -> None:
     bep_path, _ = _write_bep(tmp_path)
     bundle = parse_bazel_bep(bep_path, verify_artifacts=False)
     assert bundle.artifact_references == []
+
+
+def test_output_group_names_are_not_fabricated_as_artifacts() -> None:
+    """Regression: a TargetComplete.output_group is {name, fileSets, inlineFiles}.
+
+    The group ``name`` ("default", "_validation") is NOT a filename; the real files
+    arrive via ``fileSets`` ids that resolve to separately-emitted namedSetOfFiles
+    events. The pre-fix parser treated every OutputGroup dict as a File (it has a
+    ``name`` key), fabricating one bogus artifact row per output group on every real
+    build. Only the actual files (from namedSetOfFiles + OutputGroup.inlineFiles)
+    may appear.
+    """
+
+    bundle = parse_bazel_bep(
+        FIXTURE_ROOT / "bep-output-group.jsonl",
+        source_kind="collectable_v1",
+        evidence_ref="fixture:bep-output-group.jsonl",
+    )
+    names = {ref.name for ref in bundle.artifact_references}
+
+    # Only the real files are referenced: the two namedSetOfFiles members plus the
+    # inline file embedded in the _validation output group.
+    assert names == {"app.bin", "validation.out", "inline.stamp"}
+
+    # ZERO rows named after (or keyed on) an output group name.
+    assert "default" not in names
+    assert "_validation" not in names
+    for ref in bundle.artifact_references:
+        assert "default" not in ref.reference_key
+        assert "_validation" not in ref.reference_key
+        # None of the collected payloads is an OutputGroup (would carry a fileSets ref).
+        assert ref.uri and ref.uri.startswith("bytestream://")
+        assert ref.presence == "unverified_remote_reference"
+
+
+def test_non_sha256_digest_function_skips_comparison_without_downgrade(tmp_path: Path) -> None:
+    """A --digest_function=blake3 build declares digests NLFR cannot recompute.
+
+    Comparing a recomputed SHA-256 against a BLAKE3 digest would fabricate an
+    unconditional mismatch and wrongly downgrade honest evidence. The file is
+    present, so presence is recorded as ``local_present`` with digest_verified=None
+    and the truth label is NOT downgraded.
+    """
+
+    payload = b"blake3-configured build output\n"
+    artifact = tmp_path / "out.bin"
+    artifact.write_bytes(payload)
+
+    events = [
+        {
+            "id": {"started": {}},
+            "started": {
+                "command": "build",
+                "optionsDescription": "--digest_function=BLAKE3 --remote_cache=grpc://cache:443",
+            },
+        },
+        {
+            "id": {"namedSetOfFiles": {"id": "0"}},
+            "namedSetOfFiles": {
+                "files": [
+                    {
+                        # A real BLAKE3 digest is 64 hex chars too, but it is NOT the
+                        # SHA-256 of the bytes; comparing would falsely mismatch.
+                        "name": "out.bin",
+                        "uri": artifact.as_uri(),
+                        "digest": "abcd" * 16,
+                        "length": str(len(payload)),
+                    }
+                ]
+            },
+        },
+    ]
+    bep_path = tmp_path / "blake3.bep.json"
+    bep_path.write_text("\n".join(json.dumps(event) for event in events) + "\n")
+
+    bundle = parse_bazel_bep(bep_path, source_kind="collectable_v1")
+    (ref,) = bundle.artifact_references
+    assert ref.presence == "local_present"
+    assert ref.digest_verified is None
+    assert ref.computed_digest is None
+    # NOT downgraded: honest presence claim is preserved, not forced to derived_v1/low.
+    assert ref.source_kind == "collectable_v1"
+    assert ref.confidence == "medium"
+    assert "BLAKE3" in (ref.verification_note or "")
+
+
+def test_non_64_hex_declared_digest_skips_comparison(tmp_path: Path) -> None:
+    """Defensive: a SHA-1 (40 hex) declared digest cannot be a SHA-256 comparison.
+
+    Even with no --digest_function in the BEP, a declared digest that is not 64 hex
+    chars is not recomputable as SHA-256, so the comparison is skipped rather than
+    fabricating a mismatch.
+    """
+
+    payload = b"sha1-shaped digest declared\n"
+    artifact = tmp_path / "legacy.bin"
+    artifact.write_bytes(payload)
+
+    events = [
+        {"id": {"started": {}}, "started": {"command": "build"}},
+        {
+            "id": {"namedSetOfFiles": {"id": "0"}},
+            "namedSetOfFiles": {
+                "files": [
+                    {
+                        "name": "legacy.bin",
+                        "uri": artifact.as_uri(),
+                        "digest": "0" * 40,  # SHA-1 length, not SHA-256
+                        "length": str(len(payload)),
+                    }
+                ]
+            },
+        },
+    ]
+    bep_path = tmp_path / "sha1.bep.json"
+    bep_path.write_text("\n".join(json.dumps(event) for event in events) + "\n")
+
+    bundle = parse_bazel_bep(bep_path, source_kind="collectable_v1")
+    (ref,) = bundle.artifact_references
+    assert ref.presence == "local_present"
+    assert ref.digest_verified is None
+    assert ref.source_kind == "collectable_v1"
+    assert ref.confidence == "medium"
+    assert "not a recomputable SHA-256" in (ref.verification_note or "")
+
+
+def test_default_sha256_build_still_verifies_and_mismatches(tmp_path: Path) -> None:
+    """The default (no --digest_function override) path is unchanged.
+
+    A 64-hex SHA-256 digest is compared as before: a match verifies at high
+    confidence, a wrong digest downgrades to local_mismatch.
+    """
+
+    good = b"real sha256 output\n"
+    good_path = tmp_path / "good.bin"
+    good_path.write_bytes(good)
+
+    bad_path = tmp_path / "bad.bin"
+    bad_path.write_bytes(b"the bytes on disk\n")
+
+    events = [
+        # optionsDescription present but names no --digest_function => default SHA-256.
+        {
+            "id": {"started": {}},
+            "started": {"command": "build", "optionsDescription": "--config=ci"},
+        },
+        {
+            "id": {"namedSetOfFiles": {"id": "0"}},
+            "namedSetOfFiles": {
+                "files": [
+                    {
+                        "name": "good.bin",
+                        "uri": good_path.as_uri(),
+                        "digest": _sha256(good),
+                        "length": str(len(good)),
+                    },
+                    {
+                        "name": "bad.bin",
+                        "uri": bad_path.as_uri(),
+                        "digest": "0" * 64,
+                        "length": "18",
+                    },
+                ]
+            },
+        },
+    ]
+    bep_path = tmp_path / "default.bep.json"
+    bep_path.write_text("\n".join(json.dumps(event) for event in events) + "\n")
+
+    bundle = parse_bazel_bep(bep_path, source_kind="collectable_v1")
+    refs = {ref.name: ref for ref in bundle.artifact_references}
+
+    assert refs["good.bin"].presence == "local_verified"
+    assert refs["good.bin"].digest_verified is True
+    assert refs["good.bin"].confidence == "high"
+
+    assert refs["bad.bin"].presence == "local_mismatch"
+    assert refs["bad.bin"].digest_verified is False
+    assert refs["bad.bin"].source_kind == "derived_v1"
+    assert refs["bad.bin"].confidence == "low"
+    # optionsDescription was visible and named no override, so no uncertainty caveat.
+    assert "did not expose" not in (refs["bad.bin"].verification_note or "")
