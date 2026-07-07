@@ -24,6 +24,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from nlfr.artifacts import ArtifactManifestEntry, write_artifact
+from nlfr.config import BAZEL_MARKERS as _BAZEL_MARKERS
 from nlfr.db import connect, initialize
 from nlfr.db.ingest import (
     upsert_artifact,
@@ -38,7 +39,6 @@ from nlfr.projectors import export_action_graph, export_proof_packet
 from nlfr.projectors.common import write_or_print
 from nlfr.runners import ProcessResult, ProcessRunner
 
-_BAZEL_MARKERS = ("MODULE.bazel", "WORKSPACE.bazel", "WORKSPACE")
 _BEP_FLAG = "--build_event_json_file"
 _BEP_ARTIFACT_KEY = "bazel-bep.json"
 

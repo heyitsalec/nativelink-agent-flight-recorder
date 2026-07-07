@@ -93,7 +93,7 @@ The hosted canvas and two-act demo run from the cloned repo:
 git clone https://github.com/heyitsalec/nativelink-agent-flight-recorder.git
 cd nativelink-agent-flight-recorder
 uv sync
-uv run pytest -q                  # expected: 175 passed, 3 skipped
+uv run pytest -q                  # expected: 228 passed, 3 skipped
 npm --prefix apps/canvas install
 npm --prefix apps/canvas run dev  # http://127.0.0.1:5173/
 ```
