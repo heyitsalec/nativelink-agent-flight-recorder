@@ -478,8 +478,8 @@ def _verify_remote(
     * present + no recomputable-SHA-256 cross-check -> ``remote_present`` (medium);
     * CAS confirms the blob ABSENT -> ``remote_missing`` (low, downgraded — the
       actual bazelbuild/bazel#23250 failure mode);
-    * probe raised or returned ``None`` -> ``unverified_remote_reference`` (never a
-      fabricated verdict).
+    * probe raised, returned ``None``, or returned a malformed / wrong-typed result
+      -> ``unverified_remote_reference`` (never a fabricated verdict, never a crash).
     """
 
     if cas_probe is None or uri is None:
@@ -494,6 +494,19 @@ def _verify_remote(
 
     if probe is None:
         return _unverified_remote_reference(source_kind, probe_attempted=True)
+
+    # A probe is INJECTED code: validate the shape of what it handed back BEFORE
+    # consuming it. A malformed result (not a ProbeResult, a non-bool ``present``, a
+    # non-str ``computed_digest``) — or an object whose attribute access itself
+    # raises — is INCONCLUSIVE, treated exactly like a None return. We never coerce
+    # (``str(123456)`` would fabricate a digest to compare) and never crash ingest: a
+    # bad probe can only ever weaken a claim to unverified_remote_reference.
+    try:
+        malformation = _probe_malformation(probe)
+    except Exception:
+        malformation = "attribute access raised"
+    if malformation is not None:
+        return _unverified_remote_reference(source_kind, malformation=malformation)
 
     if not probe.present:
         # The actual bazel#23250 failure mode: the BEP referenced the blob but the
@@ -574,19 +587,54 @@ def _verify_remote(
     )
 
 
+def _probe_malformation(probe: Any) -> str | None:
+    """Describe why ``probe`` is not a well-formed ``ProbeResult``, or ``None`` if it is.
+
+    A probe is injected, untrusted code. Its return must be a ``ProbeResult`` whose
+    ``present`` is a real ``bool`` and whose ``computed_digest`` is ``str`` or
+    ``None``. Anything else is malformed and must be treated as inconclusive rather
+    than consumed: a non-str ``computed_digest`` would crash the SHA-256 compare, and
+    a bool-like ``int`` ``present`` would fabricate a presence verdict. ``present`` is
+    checked with ``isinstance(x, bool)`` precisely so ``1``/``0`` (``int``) and
+    ``"yes"`` (``str``) are rejected, not silently accepted as truthy. Attribute
+    access may itself raise for a hostile ``ProbeResult`` subclass, so callers wrap
+    this in ``try/except``.
+    """
+
+    if not isinstance(probe, ProbeResult):
+        return f"not a ProbeResult ({type(probe).__name__})"
+    if not isinstance(probe.present, bool):
+        return f"present: {type(probe.present).__name__}"
+    computed = probe.computed_digest
+    if computed is not None and not isinstance(computed, str):
+        return f"computed_digest: {type(computed).__name__}"
+    return None
+
+
 def _unverified_remote_reference(
     source_kind: str,
     *,
     probe_attempted: bool = False,
+    malformation: str | None = None,
 ) -> tuple[str, bool | None, str | None, str | None, str, str, str]:
     """The historical remote downgrade tuple (no-probe default / inconclusive probe).
 
     The no-probe note is byte-for-byte the text NLFR has always emitted, so every
     existing caller and test sees the exact current behavior. ``probe_attempted``
     swaps in a note that records a probe was tried but reached no verdict.
+    ``malformation`` names a wrong-typed / malformed probe result that was treated as
+    inconclusive rather than consumed.
     """
 
-    if probe_attempted:
+    if malformation is not None:
+        note = (
+            "BEP references this artifact at a remote/opaque URI and the injected CAS "
+            f"probe returned a malformed result ({malformation}); treated as "
+            "inconclusive rather than consumed. The cache upload may have failed and "
+            f"the bytes are not proven to exist ({BAZEL_UPLOAD_BUG_REF}). NLFR does "
+            "not fabricate a presence claim."
+        )
+    elif probe_attempted:
         note = (
             "BEP references this artifact at a remote/opaque URI and the injected CAS "
             "probe returned no verdict (unreachable, errored, or unsupported); the "

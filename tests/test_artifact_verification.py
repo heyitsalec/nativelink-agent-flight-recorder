@@ -788,3 +788,106 @@ def test_proof_summary_counts_remote_verification_tiers(tmp_path: Path) -> None:
     joined = " ".join(block["claims"])
     assert "Independently verified 1 remote reference" in joined
     assert "Downgraded 1 remote reference(s) the CAS confirms are ABSENT" in joined
+
+
+# --------------------------------------------------------------------------- #
+# Malformed / hostile probe results (issue #81 part A — adversarial hardening)
+#
+# A cas_probe is INJECTED, untrusted code. ProbeResult carries type hints but no
+# runtime enforcement, so a probe can hand back a wrong-typed result (int digest,
+# non-bool present), a non-ProbeResult object (tuple/dict), or an object whose
+# attribute access raises. Every such case must be treated EXACTLY like a
+# probe-returned-None: unverified_remote_reference with an honest note naming the
+# malformation — never an uncaught exception, never a stronger label, never a
+# silently coerced digest compare. These use FAKE probes (no network, no dep).
+# --------------------------------------------------------------------------- #
+
+
+def _assert_inconclusive_malformed(ref, *, field_marker: str) -> None:
+    """Every malformed-probe outcome degrades to the exact unverified state."""
+
+    assert ref is not None
+    assert ref.presence == "unverified_remote_reference"
+    assert ref.digest_verified is None
+    assert ref.computed_digest is None
+    assert ref.source_kind == "derived_v1"  # never promoted off a malformed result
+    assert ref.confidence == "low"
+    note = ref.verification_note or ""
+    assert "malformed" in note
+    assert "inconclusive" in note
+    assert field_marker in note
+    assert "bazelbuild/bazel#23250" in note
+
+
+def test_cas_probe_int_computed_digest_is_inconclusive_not_a_crash() -> None:
+    """computed_digest as int -> unverified (would otherwise crash _normalize_digest)."""
+
+    def probe(uri, declared_digest, declared_size):
+        return ProbeResult(present=True, computed_digest=123456)  # type: ignore[arg-type]
+
+    ref = _build_remote_reference(probe)
+    _assert_inconclusive_malformed(ref, field_marker="computed_digest: int")
+
+
+def test_cas_probe_non_bool_present_is_inconclusive() -> None:
+    """present as a bool-like int or a string is malformed -> unverified.
+
+    isinstance(x, bool) rejects 1/0 (int) and "yes" (str); NLFR must not accept a
+    truthy non-bool as a real presence verdict.
+    """
+
+    def int_present(uri, declared_digest, declared_size):
+        return ProbeResult(present=1, computed_digest=None)  # type: ignore[arg-type]
+
+    _assert_inconclusive_malformed(
+        _build_remote_reference(int_present), field_marker="present: int"
+    )
+
+    def str_present(uri, declared_digest, declared_size):
+        return ProbeResult(present="yes", computed_digest=None)  # type: ignore[arg-type]
+
+    _assert_inconclusive_malformed(
+        _build_remote_reference(str_present), field_marker="present: str"
+    )
+
+
+def test_cas_probe_non_proberesult_return_is_inconclusive() -> None:
+    """A plain tuple or dict (not a ProbeResult) is malformed -> unverified."""
+
+    def tuple_probe(uri, declared_digest, declared_size):
+        return (True, _REMOTE_DECLARED_DIGEST)  # type: ignore[return-value]
+
+    _assert_inconclusive_malformed(
+        _build_remote_reference(tuple_probe), field_marker="not a ProbeResult (tuple)"
+    )
+
+    def dict_probe(uri, declared_digest, declared_size):
+        return {"present": True, "computed_digest": _REMOTE_DECLARED_DIGEST}  # type: ignore[return-value]
+
+    _assert_inconclusive_malformed(
+        _build_remote_reference(dict_probe), field_marker="not a ProbeResult (dict)"
+    )
+
+
+def test_cas_probe_attribute_access_that_raises_is_inconclusive() -> None:
+    """A ProbeResult subclass whose attribute access RAISES -> unverified, never a crash.
+
+    Constructed via object.__new__ to bypass the frozen-dataclass __init__ (a
+    read-only property would otherwise reject the field assignment). isinstance()
+    passes, so validation actually reads the throwing attribute — proving the
+    consumption path, not just the call, is wrapped.
+    """
+
+    class _ThrowingProbe(ProbeResult):
+        @property
+        def present(self):  # type: ignore[override]
+            raise RuntimeError("hostile probe: attribute access blows up")
+
+    throwing = object.__new__(_ThrowingProbe)
+
+    def probe(uri, declared_digest, declared_size):
+        return throwing
+
+    _assert_inconclusive_malformed(
+        _build_remote_reference(probe), field_marker="attribute access raised"
+    )
