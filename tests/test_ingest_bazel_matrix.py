@@ -36,7 +36,15 @@ from pathlib import Path
 
 import pytest
 
-from nlfr.ingest.bazel import extract_bep_tool_version, parse_bazel_bep
+from nlfr.ingest.bazel import (
+    TESTED_BAZEL_MAJORS,
+    TESTED_BAZEL_VERSIONS,
+    extract_bep_tool_version,
+    out_of_range_bazel_warning,
+    parse_bazel_bep,
+    parse_bazel_execution_log,
+    parse_bazel_profile,
+)
 from nlfr.projectors import export_proof_packet
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -448,3 +456,171 @@ def _run_nlfr(*args: str) -> subprocess.CompletedProcess[str]:
         capture_output=True,
         check=False,
     )
+
+
+# --------------------------------------------------------------------------- #
+# The tested-anchor constant is the SINGLE source of truth (src/nlfr/ingest/
+# bazel.py). The matrix fixture directories must mirror it exactly, so a fixture
+# added/removed without updating the constant (or vice versa) fails loudly.
+# --------------------------------------------------------------------------- #
+
+
+def test_matrix_anchor_constant_matches_fixtures() -> None:
+    fixture_versions = sorted(
+        p.name for p in MATRIX_ROOT.iterdir() if p.is_dir()
+    )
+    assert fixture_versions == sorted(TESTED_BAZEL_VERSIONS)
+    assert sorted(MATRIX_VERSIONS) == sorted(TESTED_BAZEL_VERSIONS)
+    # The advertised majors match the anchor versions' majors.
+    assert sorted(TESTED_BAZEL_MAJORS) == sorted(
+        {int(v.split(".")[0]) for v in TESTED_BAZEL_VERSIONS}
+    )
+
+
+# --------------------------------------------------------------------------- #
+# Execution-log matrix (SpawnExec JSON). spawn.proto's SpawnExec message is
+# byte-identical across 7.4.1..9.0.0 (the only spawn.proto diffs are in
+# ExecLogEntry, the COMPACT-log format NLFR does not parse), so the two exec-log
+# fixtures are byte-identical and MUST parse to identical normalized cache
+# evidence. See tests/fixtures/bazel/matrix/README.md for the SpawnExec source.
+# --------------------------------------------------------------------------- #
+
+
+def _exec_log(version: str) -> Path:
+    return MATRIX_ROOT / version / "build.exec-log.jsonl"
+
+
+def _profile(version: str) -> Path:
+    return MATRIX_ROOT / version / "build.profile.json"
+
+
+def _normalized_cache_events(bundle) -> list[tuple]:
+    return sorted(
+        (e.event_kind, e.hit, e.target_label, e.digest, e.source_kind, e.confidence)
+        for e in bundle.cache_events
+    )
+
+
+def test_exec_log_fixtures_are_byte_identical_across_versions() -> None:
+    # SpawnExec is byte-stable 7.4.1..9.0.0; the fixtures encode that as identity.
+    # If a future Bazel changes the SpawnExec JSON shape, regenerate and this
+    # tripwire earns a real drift row (mirrors the BEP byte-stable assertions).
+    seven = _exec_log("7.4.1").read_bytes()
+    nine = _exec_log("9.0.0").read_bytes()
+    assert seven == nine, "SpawnExec JSON drifted across the matrix — update the doc"
+
+
+@pytest.mark.parametrize("version", MATRIX_VERSIONS)
+def test_exec_log_matrix_parses_cache_evidence(version: str) -> None:
+    bundle = parse_bazel_execution_log(
+        _exec_log(version), source_kind="collectable_v1", evidence_ref="matrix:exec-log"
+    )
+    by_label = {e.target_label: e for e in bundle.cache_events}
+    # The remote-cache-hit test spawn: collectable_v1/high, digest cross-recorded.
+    hit = by_label["//app:widget_test"]
+    assert hit.event_kind == "remote_cache_hit"
+    assert hit.hit is True
+    assert hit.source_kind == "collectable_v1" and hit.confidence == "high"
+    assert hit.digest and hit.digest.endswith("/196")  # Digest{hash, sizeBytes} form
+    # The locally-run (non-cached) compile spawn: an honest cache_miss.
+    miss = by_label["//app:widget"]
+    assert miss.event_kind == "cache_miss"
+    assert miss.hit is False
+
+
+def test_exec_log_matrix_versions_parse_to_identical_normalized_ingest() -> None:
+    normalized = {
+        v: _normalized_cache_events(
+            parse_bazel_execution_log(_exec_log(v), evidence_ref="matrix:exec-log")
+        )
+        for v in MATRIX_VERSIONS
+    }
+    baseline = normalized[MATRIX_VERSIONS[0]]
+    for v in MATRIX_VERSIONS[1:]:
+        assert normalized[v] == baseline, f"exec-log ingest drift {MATRIX_VERSIONS[0]}->{v}"
+
+
+# --------------------------------------------------------------------------- #
+# Profile matrix (JSON trace). The profile writer (Profiler.java TaskData.
+# writeTraceData) emits action events with args {target, mnemonic} at 7.4.1; at
+# 9.0.0 it adds an OPTIONAL args.configuration (verified against the Java at both
+# tags). That is the ONE profile drift in the NLFR-consumed surface, and NLFR
+# ignores it — so normalized ingest is identical. Real profile action events are
+# named by their action description (never "cache hit") and carry NO digest, so
+# NLFR yields action_cache_observed (derived_v1/low); it never FABRICATES a
+# remote_cache_hit from a real profile.
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.parametrize("version", MATRIX_VERSIONS)
+def test_profile_matrix_parses_action_evidence(version: str) -> None:
+    bundle = parse_bazel_profile(_profile(version), evidence_ref="matrix:profile")
+    labels = {e.target_label for e in bundle.cache_events}
+    assert labels == {"//app:widget_test", "//app:widget"}
+    # A real profile names events by description, not "cache hit" — NLFR records
+    # action_cache_observed (derived_v1/low), never a fabricated remote hit.
+    for e in bundle.cache_events:
+        assert e.event_kind == "action_cache_observed"
+        assert e.hit is None
+        assert e.source_kind == "derived_v1" and e.confidence == "low"
+
+
+def test_profile_matrix_versions_parse_to_identical_normalized_ingest() -> None:
+    normalized = {
+        v: _normalized_cache_events(
+            parse_bazel_profile(_profile(v), evidence_ref="matrix:profile")
+        )
+        for v in MATRIX_VERSIONS
+    }
+    baseline = normalized[MATRIX_VERSIONS[0]]
+    for v in MATRIX_VERSIONS[1:]:
+        assert normalized[v] == baseline, f"profile ingest drift {MATRIX_VERSIONS[0]}->{v}"
+
+
+def test_profile_configuration_is_the_only_9x_drift() -> None:
+    # The one genuine profile drift: 9.0.0 adds args.configuration to action
+    # events (Profiler.java @ 9.0.0 sets it; @ 7.4.1 it is absent). NLFR ignores
+    # it, so ingest is unchanged — pinned here so a future args change is caught.
+    def _action_args(version: str) -> list[dict]:
+        payload = json.loads(_profile(version).read_text())
+        return [
+            e["args"]
+            for e in payload["traceEvents"]
+            if e.get("cat") == "action processing" and "args" in e
+        ]
+
+    args_74 = _action_args("7.4.1")
+    args_90 = _action_args("9.0.0")
+    assert all("configuration" not in a for a in args_74)
+    assert all("configuration" in a for a in args_90)
+    # Aside from configuration, the action args (target, mnemonic) are identical.
+    strip = lambda args: [{k: v for k, v in a.items() if k != "configuration"} for a in args]
+    assert strip(args_74) == strip(args_90)
+
+
+# --------------------------------------------------------------------------- #
+# Out-of-range Bazel version warning (non-blocking "untested version" signal).
+# The pure helper is exercised here; doctor/record wiring lives in their tests.
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.parametrize("version", TESTED_BAZEL_VERSIONS)
+def test_tested_anchor_versions_emit_no_out_of_range_warning(version: str) -> None:
+    assert out_of_range_bazel_warning(version) is None
+
+
+@pytest.mark.parametrize("version", ["6.5.0", "8.0.0", "10.1.2", "8.0.0-pre.20240101.1"])
+def test_out_of_range_majors_emit_a_warning(version: str) -> None:
+    warning = out_of_range_bazel_warning(version)
+    assert warning is not None
+    assert version.split("-")[0] in warning
+    assert "tested version anchors" in warning
+    for anchor in TESTED_BAZEL_VERSIONS:
+        assert anchor in warning
+
+
+@pytest.mark.parametrize("version", [None, "", "not-a-version", "dev"])
+def test_unknown_version_stays_silent_never_fabricates_out_of_range(version) -> None:
+    # Unknown/unparseable is NOT out-of-range: NLFR never invents an "untested"
+    # claim from a version it could not read.
+    assert out_of_range_bazel_warning(version) is None

@@ -1,15 +1,17 @@
-# Bazel BEP version-matrix fixtures
+# Bazel version-matrix fixtures (BEP + exec-log + profile)
 
-These fixtures pin NLFR's Build Event Protocol parsers across the **Bazel 7.x LTS
-line** and the **current 9.x line**. Production A/V fleets run version *ranges*
-(adoption blocker #6), and BEP schema drift across majors was previously
-untested: the parsers were exercised against a single pinned-Bazel fixture set.
+These fixtures pin NLFR's three Bazel evidence parsers — **BEP**
+(`build.bep.jsonl`), **execution log** (`build.exec-log.jsonl`), and **profile**
+(`build.profile.json`) — across the **Bazel 7.x LTS line** and the **current 9.x
+line**. Production A/V fleets run version *ranges* (adoption blocker #6), and
+schema drift across majors was previously untested: the parsers were exercised
+against a single pinned-Bazel fixture set (issue #85 broadened this beyond BEP).
 
 Each subdirectory holds the **same logical build** — a passing `//app:widget_test`
-`py_test` — emitted in that Bazel version's BEP shape. Parametrized tests
-(`tests/test_ingest_bazel_matrix.py`) assert **identical normalized ingest**
-where semantics are equivalent, and **explicit, documented differences** where
-they are not.
+`py_test` — emitted in that Bazel version's BEP / exec-log / profile shape.
+Parametrized tests (`tests/test_ingest_bazel_matrix.py`) assert **identical
+normalized ingest** where semantics are equivalent, and **explicit, documented
+differences** where they are not.
 
 ## Provenance tiers (never blurred)
 
@@ -138,4 +140,59 @@ with `bazelisk` on `PATH`. The hook runs Bazel in the repo's real workspace
 **not** at the repo root, which is not a Bazel workspace. Absent the env gate and
 `bazelisk`, the live hook is **skipped** and these proto-derived fixtures are the
 tested coverage — see the honest range statement in
-`docs/wiki/reference/bep-version-matrix.md`.
+`docs/wiki/reference/bazel-version-matrix.md`.
+
+## Execution-log fixtures (`build.exec-log.jsonl`) — tier (b)
+
+`--execution_log_json_file` emits a stream of `SpawnExec` JSON objects
+(`src/main/protobuf/spawn.proto`). NLFR parses this JSON form (**not** the compact
+`--execution_log_compact_file`).
+
+| Fixture | Bazel tag | Source (verbatim) |
+| --- | --- | --- |
+| `matrix/<v>/build.exec-log.jsonl` | `7.4.1`, `9.0.0` | `spawn.proto` `SpawnExec` message at each tag |
+
+**Cross-version result: byte-identical.** The `SpawnExec` message is **unchanged**
+between 7.4.1 and 9.0.0 — verified by diffing `spawn.proto` at both tags. The
+*only* `spawn.proto` diffs at these tags are inside `ExecLogEntry` (the compact
+log's wrapper: an added `Invocation.id`, a `reserved` on `Spawn`, a removed
+`RunfilesTree.legacy_external_runfiles`) — a format NLFR does not parse. So the
+two exec-log fixtures are **byte-identical**, and
+`test_exec_log_fixtures_are_byte_identical_across_versions` pins that. Fields NLFR
+reads (proto3 JSON camelCase): `targetLabel` (18), `mnemonic` (10), `runner` (12),
+`cacheHit` (13), `listedOutputs` (5), and `digest` (19) as a
+`Digest{hash, sizeBytes, hashFunctionName}` object. The fixtures encode one
+`remote cache hit` spawn (`cacheHit:true` → `remote_cache_hit`) and one
+locally-run spawn (`runner:"linux-sandbox"`, `cacheHit:false` → `cache_miss`).
+
+## Profile fixtures (`build.profile.json`) — tier (b)
+
+`--profile` emits a Chrome-trace JSON document. The action-event shape is set by
+`Profiler.java` `TaskData.writeTraceData`
+(`src/main/java/com/google/devtools/build/lib/profiler/Profiler.java`), read at
+both tags.
+
+| Fixture | Bazel tag | Source (verbatim) |
+| --- | --- | --- |
+| `matrix/<v>/build.profile.json` | `7.4.1`, `9.0.0` | `Profiler.java` `TaskData.writeTraceData` at each tag |
+
+What the writer emits for an action event, verified at both tags: `cat`
+(`"action processing"`), `name` (the action *description* — e.g. "Testing
+//app:widget_test", **never** "cache hit"), `ph`, `ts`, `dur`, `pid`, `out`, and
+`args`. The label is `args.target` (**not** `args.label`), and the mnemonic is
+`args.mnemonic`. There is **no digest** in a profile action event.
+
+**The one genuine profile drift:** 9.0.0 adds an optional `args.configuration`
+(`writeTraceData` at 9.0.0 sets it when the action has a configuration; 7.4.1 does
+not). NLFR ignores it, so normalized ingest is identical —
+`test_profile_configuration_is_the_only_9x_drift` pins that it is the *only*
+change.
+
+> **Why the profile is low-confidence (an honest boundary, not a bug):** because
+> real profile action events are named by description (never "cache hit") and
+> carry no digest, `parse_bazel_profile` records `action_cache_observed`
+> (`derived_v1`/`low`) — it never fabricates a `remote_cache_hit`. The existing
+> hand-authored `tests/fixtures/bazel/profile.json` (tier a) uses a synthetic
+> `name:"remote cache hit"` and an `args.label`; that shows the parser's tolerant
+> superset, but is **not** what real Bazel emits. These matrix fixtures are
+> faithful to the real writer output.

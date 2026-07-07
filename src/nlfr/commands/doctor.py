@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
+import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -13,6 +14,12 @@ from nlfr.config import (
     doc_hint,
     is_within_source_checkout,
     nativelink_config_from_toml,
+)
+from nlfr.ingest.bazel import (
+    TESTED_BAZEL_VERSIONS,
+    bazel_major,
+    bazel_release_from_version_output,
+    out_of_range_bazel_warning,
 )
 
 
@@ -55,6 +62,68 @@ class Check:
     name: str
     ok: bool
     detail: str
+
+
+@dataclass(frozen=True)
+class BazelVersionInfo:
+    """The local Bazel version doctor observed, and whether it is a tested anchor.
+
+    ``detected`` is the release string parsed from ``bazel version`` (``None`` when
+    Bazel is absent or reports no release label — a source/dev build). ``warning``
+    is a NON-BLOCKING "untested version" message when the major is outside NLFR's
+    tested anchors, or ``None`` (unknown or in-range). The warning never changes
+    doctor's exit code — it is advisory only (GitHub issue #85).
+    """
+
+    detected: str | None
+    major: int | None
+    in_tested_range: bool
+    warning: str | None
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "detected": self.detected,
+            "major": self.major,
+            "tested_versions": list(TESTED_BAZEL_VERSIONS),
+            "in_tested_range": self.in_tested_range,
+            "warning": self.warning,
+        }
+
+
+def detect_bazel_version(bazel_path: str | None) -> str | None:
+    """Return the local Bazel release string via ``bazel version``, or ``None``.
+
+    ``None`` when Bazel is absent, the subprocess fails/times out, or the output
+    carries no ``Build label`` — an honestly *unknown* version, never a guess. This
+    is the only place doctor shells out; it is best-effort and never raises.
+    """
+
+    if bazel_path is None:
+        return None
+    try:
+        completed = subprocess.run(
+            [bazel_path, "version"],
+            capture_output=True,
+            text=True,
+            timeout=20,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return bazel_release_from_version_output(completed.stdout)
+
+
+def bazel_version_info(bazel_path: str | None) -> BazelVersionInfo:
+    """Assemble the version/anchor/warning triple doctor reports."""
+
+    detected = detect_bazel_version(bazel_path)
+    warning = out_of_range_bazel_warning(detected)
+    return BazelVersionInfo(
+        detected=detected,
+        major=bazel_major(detected),
+        in_tested_range=detected is not None and warning is None,
+        warning=warning,
+    )
 
 
 def find_any(names: tuple[str, ...]) -> str | None:
@@ -128,6 +197,7 @@ def emit_text(
     mode: str,
     checks: list[Check],
     nativelink_config_checked: str | None = None,
+    bazel_version: BazelVersionInfo | None = None,
 ) -> None:
     """Print human-readable doctor results to stdout and stderr."""
 
@@ -137,6 +207,14 @@ def emit_text(
     for check in checks:
         status = "ok" if check.ok else "missing"
         print(f"[{status}] {check.name}: {check.detail}")
+    if bazel_version is not None and bazel_version.detected is not None:
+        range_note = "tested anchor" if bazel_version.in_tested_range else "UNTESTED anchor"
+        print(f"[info] bazel version: {bazel_version.detected} ({range_note})")
+
+    # The out-of-range version signal is a NON-BLOCKING warning: it goes to stderr
+    # like an advisory, but never joins ``missing`` and never changes the exit code.
+    if bazel_version is not None and bazel_version.warning is not None:
+        print(f"[warn] {bazel_version.warning}", file=sys.stderr)
 
     missing = [check.name for check in checks if not check.ok]
     if missing:
@@ -159,11 +237,15 @@ def emit_json(
     mode: str,
     checks: list[Check],
     nativelink_config_checked: str | None = None,
+    bazel_version: BazelVersionInfo | None = None,
 ) -> None:
     """Print machine-readable doctor results as JSON."""
 
     payload = {
         "mode": mode,
+        # ``ok`` is computed from the required checks ONLY. The bazel_version
+        # warning below is advisory and deliberately excluded, so an untested
+        # Bazel version never flips ``ok`` false (GitHub issue #85).
         "ok": all(check.ok for check in checks),
         "nativelink_config_checked": nativelink_config_checked,
         "checks": [
@@ -174,6 +256,7 @@ def emit_json(
             }
             for check in checks
         ],
+        "bazel_version": (bazel_version or bazel_version_info(None)).as_dict(),
     }
     print(json.dumps(payload, indent=2, sort_keys=True))
 
@@ -185,10 +268,13 @@ def run(args: argparse.Namespace) -> int:
         resolve_local_exec_config(args) if args.mode == "local-exec" else None
     )
     checks = tool_checks(args.mode, config_checked)
+    version_info = bazel_version_info(find_any(("bazel", "bazelisk")))
     if args.json:
-        emit_json(args.mode, checks, config_checked)
+        emit_json(args.mode, checks, config_checked, version_info)
     else:
-        emit_text(args.mode, checks, config_checked)
+        emit_text(args.mode, checks, config_checked, version_info)
+    # The out-of-range version warning is advisory: the exit code reflects the
+    # required tool checks only, never the Bazel-version anchor status.
     return 0 if all(check.ok for check in checks) else 1
 
 

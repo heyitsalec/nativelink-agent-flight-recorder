@@ -80,6 +80,10 @@ These work against any Bazel repo, no NativeLink deployment:
   (live validation env-gated, pending a host with that CLI).
 - **`nlfr db upgrade` / `nlfr db gc`** — schema migration and
   operator-consented evidence retention ([CLI](wiki/reference/cli.md#db-upgrade)).
+- **Bazel version matrix** — BEP, exec-log, and profile parsers are pinned across
+  Bazel 7.4.1 / 9.0.0 with populator-verified fixtures, and `nlfr doctor` /
+  `nlfr record` emit a non-blocking warning on untested Bazel versions
+  ([version matrix](wiki/reference/bazel-version-matrix.md)).
 
 ## What is explicitly unproven
 

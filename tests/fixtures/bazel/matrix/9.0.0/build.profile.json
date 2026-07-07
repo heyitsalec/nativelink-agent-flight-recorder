@@ -1,0 +1,16 @@
+{
+  "otherData": {
+    "bazel_version": "9.0.0",
+    "build_id": "00000000-0000-0000-0000-0000000009000",
+    "output_base": "/home/ci/.cache/bazel/_bazel_ci/abcdef",
+    "date": "Mon Jan 06 00:00:00 UTC 2026",
+    "profile_start_ts": 1736121600000
+  },
+  "traceEvents": [
+    {"name": "thread_name", "ph": "M", "pid": 1, "tid": 0, "args": {"name": "Main Thread"}},
+    {"name": "process_name", "ph": "M", "pid": 1, "tid": 0, "args": {"name": "bazel"}},
+    {"cat": "build phase marker", "name": "Launch Blaze", "ph": "i", "ts": 0, "pid": 1, "tid": 0},
+    {"cat": "action processing", "name": "Testing //app:widget_test", "ph": "X", "ts": 101000, "dur": 4200, "pid": 1, "tid": 21, "out": "bazel-out/k8-fastbuild/testlogs/app/widget_test/test.log", "args": {"target": "//app:widget_test", "mnemonic": "TestRunner", "configuration": "a1b2c3d4e5f6"}},
+    {"cat": "action processing", "name": "Compiling app/widget.py", "ph": "X", "ts": 60000, "dur": 1800, "pid": 1, "tid": 22, "out": "bazel-out/k8-fastbuild/bin/app/widget.pyc", "args": {"target": "//app:widget", "mnemonic": "PyCompile", "configuration": "a1b2c3d4e5f6"}}
+  ]
+}

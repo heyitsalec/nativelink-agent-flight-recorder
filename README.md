@@ -37,6 +37,7 @@ safety-critical) who has to show *what actually ran* when an agent wrote the cod
 | **Contract-enforced projections** | Projection JSON shape is CI-gated against committed JSON contracts ([contracts](docs/wiki/reference/contracts/README.md)). |
 | **Verified agent receipts** | `receipt_verified_v1` receipts — model, session, token usage, prompt/response SHA-256; raw prompt structurally absent. Claude is live-proven in the committed two-act run; the Gemini parser is fixture-tested (live validation env-gated). |
 | **`nlfr db upgrade` / `db gc`** | Schema migration and operator-consented evidence retention ([CLI reference](docs/wiki/reference/cli.md#db-upgrade)). |
+| **Bazel version matrix** | BEP + exec-log + profile parsers pinned across Bazel 7.4.1 / 9.0.0 with populator-verified fixtures; `doctor`/`record` warn (non-blocking) on untested versions ([version matrix](docs/wiki/reference/bazel-version-matrix.md)). |
 
 The recorder is a stdlib-only Python package with **zero runtime dependencies**.
 Full install matrix (git, local wheel, PyPI-when-published):
