@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nativelink-agent-flight-recorder.local/contracts/compare_projection.v1.json",
+  "title": "NLFR Compare Projection v1",
+  "description": "Delta projection across two run groups (M9). Every value is derived_v1: computed from proof packet summaries and recorded SQLite run rows, never from live scheduler or fleet APIs. The root and every dimension carry the four truth-label fields. Produced by src/nlfr/projectors/compare.py (build_compare_projection / export_compare_projection).",
+  "type": "object",
+  "allOf": [{ "$ref": "#/$defs/truth" }],
+  "required": [
+    "schema_version",
+    "projection_kind",
+    "generated_at",
+    "left_run_group",
+    "right_run_group",
+    "summary",
+    "dimensions"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "projection_kind": { "const": "compare" },
+    "generated_at": { "type": "string" },
+    "left_run_group": { "type": "string" },
+    "right_run_group": { "type": "string" },
+    "summary": {
+      "type": "object",
+      "description": "Dimension and count rollup. Additive rollup fields are allowed.",
+      "properties": {
+        "dimensions": { "type": "integer", "description": "Number of compare dimensions (always 5)." },
+        "left_runs": { "type": "integer" },
+        "right_runs": { "type": "integer" },
+        "left_artifacts": { "type": "integer" },
+        "right_artifacts": { "type": "integer" }
+      }
+    },
+    "dimensions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/dimension" }
+    }
+  },
+  "$defs": {
+    "truth": {
+      "type": "object",
+      "required": ["source_kind", "confidence", "evidence_refs", "redaction_state"],
+      "properties": {
+        "source_kind": {
+          "enum": ["collectable_v1", "derived_v1", "simulated_v1", "future", "unknown"]
+        },
+        "confidence": { "enum": ["high", "medium", "low", "unknown"] },
+        "evidence_refs": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "redaction_state": { "enum": ["safe", "redacted", "blocked", "unknown"] }
+      }
+    },
+    "dimension": {
+      "allOf": [
+        { "$ref": "#/$defs/truth" },
+        {
+          "type": "object",
+          "required": ["id", "title", "summary", "left", "right", "delta", "claims"],
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "One of: run_counts, cache_metrics, worker_identity, agent_provenance, status_deltas."
+            },
+            "title": { "type": "string" },
+            "summary": { "type": "string" },
+            "left": {
+              "type": "object",
+              "description": "Left-side values for this dimension (shape varies by dimension id)."
+            },
+            "right": {
+              "type": "object",
+              "description": "Right-side values for this dimension (shape varies by dimension id)."
+            },
+            "delta": {
+              "type": "object",
+              "description": "Computed right-minus-left deltas (shape varies by dimension id)."
+            },
+            "claims": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -23,7 +23,7 @@ Projectors that emit projection JSON live under
 | [Artifact manifest v1](artifact-manifest-v1.md) | `1` | — | [`artifact_manifest.v1.json`](../../../../contracts/artifact_manifest.v1.json) | [`artifacts.py`](../../../../src/nlfr/artifacts.py) |
 | [Proof packet v1](proof-packet-v1.md) | `1` | `proof_packet` | [`proof_packet.v1.json`](../../../../contracts/proof_packet.v1.json) | [`proof.py`](../../../../src/nlfr/projectors/proof.py) |
 | [Canvas projection v1](canvas-projection-v1.md) | `1` | `action_graph` | [`canvas_projection.v1.json`](../../../../contracts/canvas_projection.v1.json) | [`graph.py`](../../../../src/nlfr/projectors/graph.py) |
-| [Compare projection v1](compare-projection-v1.md) | `1` | `compare` | *(implementation contract)* | [`compare.py`](../../../../src/nlfr/projectors/compare.py) |
+| [Compare projection v1](compare-projection-v1.md) | `1` | `compare` | [`compare_projection.v1.json`](../../../../contracts/compare_projection.v1.json) | [`compare.py`](../../../../src/nlfr/projectors/compare.py) |
 
 ## Truth labels on every claim
 
