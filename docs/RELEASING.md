@@ -35,10 +35,18 @@ nothing is pushed to PyPI.
 3. **Create the `pypi` GitHub environment** in this repo's
    *Settings → Environments* (optionally add release protection rules /
    required reviewers).
-4. **Enable the job.** Set repo variable `PYPI_PUBLISH_ENABLED=true`
-   (*Settings → Secrets and variables → Actions → Variables*). The
-   `pypi-publish` job is guarded by `if: vars.PYPI_PUBLISH_ENABLED == 'true'`
-   and stays skipped until this is set.
+4. **Enable the job.** Set a **repository** variable `PYPI_PUBLISH_ENABLED=true`
+   (*Settings → Secrets and variables → Actions → Variables → Repository
+   variables*). The `pypi-publish` job is guarded by
+   `if: vars.PYPI_PUBLISH_ENABLED == 'true'` and stays skipped until this is set.
+
+   > **It must be a repository (or organization) variable, not an environment
+   > variable.** A job-level `if:` is evaluated before the job enters its
+   > `environment:`, so an env-scoped variable is invisible to the gate and the
+   > publish silently skips. On v0.2.1's first tag the variable was set on the
+   > `pypi` environment; the build and GitHub release succeeded while the publish
+   > was skipped (issue #91). If a publish skips unexpectedly, check the
+   > variable's scope first.
 
 No API token or password is stored anywhere: authentication is short-lived
 OIDC (`permissions: id-token: write`), which is why the trusted-publisher
