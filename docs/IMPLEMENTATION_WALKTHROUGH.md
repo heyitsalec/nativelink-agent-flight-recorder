@@ -37,7 +37,7 @@ It delegates to `nlfr.cli.main`.
 Builds the top-level `argparse` parser:
 
 - Program name: `nlfr`.
-- Version: `nlfr 0.1.0`.
+- Version: matches `pyproject.toml` (see `nlfr --version`).
 - Requires a subcommand.
 - Calls `register_commands(subparsers)`.
 - Dispatches to the selected command handler.

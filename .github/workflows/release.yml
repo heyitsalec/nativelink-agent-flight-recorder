@@ -40,7 +40,10 @@ jobs:
           uvx --from "$wheel" nlfr --help
           uvx --from "$wheel" nlfr --version
           # Honest diagnostic path must not crash from a site-packages install.
-          uvx --from "$wheel" nlfr doctor --mode cache-only --json || true
+          # Expected on a bare runner: nonzero exit WITH valid JSON diagnostics;
+          # a traceback/crash produces non-JSON output and fails the step.
+          uvx --from "$wheel" nlfr doctor --mode cache-only --json > doctor-smoke.json || true
+          python3 -c "import json; json.load(open('doctor-smoke.json'))"
 
       - name: Upload dist artifacts
         uses: actions/upload-artifact@v4
@@ -65,17 +68,19 @@ jobs:
       - name: Create GitHub release with dist artifacts attached
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          gh release create "${{ github.ref_name }}" \
-            --repo "${{ github.repository }}" \
-            --title "${{ github.ref_name }}" \
+          gh release create "$RELEASE_TAG" \
+            --repo "$RELEASE_REPO" \
+            --title "$RELEASE_TAG" \
             --generate-notes \
             dist/*
 
   pypi-publish:
     name: Publish to PyPI (trusted publishing)
-    needs: build
+    needs: [build, github-release]
     # Inert until the owner opts in — see the header comment and
     # docs/RELEASING.md. Set repo variable PYPI_PUBLISH_ENABLED=true to enable.
     if: ${{ vars.PYPI_PUBLISH_ENABLED == 'true' }}
