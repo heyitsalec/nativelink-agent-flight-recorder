@@ -36,9 +36,9 @@ There are three modes, and each per-path entry records which one applied via
 
 | Mode | When | `changed_basis` | What it attests |
 |------|------|-----------------|-----------------|
-| **(a) git baseline** | Workspace is a git repo **and** the change path is tracked. The adapter captures the pre-edit bytes from `git show HEAD:<path>` into the sidecar. | `git_baseline` | `changed = baseline_sha256 != after_sha256`. Honest claim: *"differs from HEAD."* **Works edit-first** — this is the recommended documented flow. |
-| **(b) recorder window** | Not git-tracked, but the edit happens **inside** `--command`. | `recorder_window` | `changed = before_sha256 != after_sha256`. The recorder samples the file at process start and end, so it observes the edit directly. |
-| **(c) unobservable** | Not git-tracked **and** the file is already at its final state when recording begins (edit happened before the invocation). | `recorder_window` | `changed=false` with an explicit note **and a stderr warning** — the recorder cannot attest whether the agent changed the file. Recorded honestly, never silently. |
+| **(a) git baseline** | The change path is **tracked in a git workspace**. The adapter captures the pre-edit bytes from `git show <ref>:<path>` into the sidecar. **Takes priority for every tracked path** — even when the edit happens inside `--command`. | `git_baseline` | `changed = baseline_sha256 != after_sha256`. Honest claim: *"differs from the baseline ref."* **Works edit-first** — this is the recommended documented flow. |
+| **(b) recorder window** | The change path is **untracked, or the workspace is not a git repo**, and the edit happens **inside** `--command`. | `recorder_window` | `changed = before_sha256 != after_sha256`. The recorder samples the file at process start and end, so it observes the edit directly. |
+| **(c) unobservable** | **Untracked or non-git** path **and** the file is already at its final state when recording begins (edit happened before the invocation). | `recorder_window` | `changed=false` with an explicit note **and a stderr warning** — the recorder cannot attest whether the agent changed the file. Recorded honestly, never silently. |
 
 Why this matters: the documented flow below **edits first, then records** (the
 `--command` is validation only). Without a baseline, `before == after` on every
@@ -48,11 +48,28 @@ evidence**: the git object store still holds the committed pre-edit bytes, so a
 skeptic can recompute `git show <commit>:<path> | sha256sum` and match it against
 the recorded `baseline_sha256`. The baseline is labeled explicitly
 (`baseline_source: {kind: git_head, commit, ref}`) and never conflated with the
-recorder's own before/after window.
+recorder's own before/after window. Note that **`recorder_window` is the fallback
+for untracked or non-git paths only** — a tracked path always uses mode (a), even
+for edits made inside `--command`.
 
-Honesty ceiling: mode (a) attests **"differs from HEAD"** — the honest claim when
-the operator edited before invoking. It does **not** prove the named model
-authored the edit (that requires a receipt; see [Provenance ladder](#provenance-ladder)).
+Baselines are **re-verified, not trusted**: the sidecar is a public interface, so
+`nlfr run` recomputes `git show <commit>:<path>` in the workspace and hashes it
+before honoring any supplied `git_baseline`. A forged/stale `baseline_sha256`, or
+a commit/object that cannot be resolved in this workspace, is **refused** — that
+path falls back to `recorder_window` with an explicit note and a stderr warning,
+recorded honestly rather than hard-failed.
+
+Commit-before-record: if the edit was **committed before recording began**, the
+default `HEAD` baseline already equals the final state (`baseline == after`), so
+the change is not attestable against `HEAD`. Rather than emit a silent
+`changed=false`, the recorder flags it — a per-path note naming the commit and a
+stderr warning pointing at **`--baseline-ref`**. Pass the true pre-edit ref
+(`--baseline-ref HEAD~1` or a commit sha) to capture the pre-edit blob and attest
+the committed change.
+
+Honesty ceiling: mode (a) attests **"differs from the baseline ref"** — the honest
+claim when the operator edited before invoking. It does **not** prove the named
+model authored the edit (that requires a receipt; see [Provenance ladder](#provenance-ladder)).
 
 ## Live E2E runbook
 
@@ -224,6 +241,7 @@ Blocker shape matches other proof scripts (`status`, `reason`, truth labels,
 | `--model` | yes | Model label (e.g. `composer-2.5`, `claude-4.6-sonnet`) |
 | `--prompt-file` | yes | Local prompt text; hashed at record time, never exported |
 | `--command` | no | Shell command for validation leg (default: `true`) |
+| `--baseline-ref` | no | Git ref holding the **pre-edit** state (default: `HEAD`). Use `HEAD~1` or a commit sha when the edit was **committed** before recording — otherwise `HEAD` equals the final state and the change is not attestable (see [Observation modes](#observation-modes--what-changed-is-derived-against)) |
 | `--dry-run` | no | Emit sidecar JSON + planned `nlfr` command only |
 | `--output-dir` | no | Default: `data/agent-change-proof` |
 | `--workspace` | no | Default: repo root |

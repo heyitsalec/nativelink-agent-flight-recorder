@@ -81,8 +81,24 @@ per-path entry in the change block records `changed_basis`:
 
 | `changed_basis` | When | `changed` derived from | Note |
 |-----------------|------|------------------------|------|
-| `git_baseline` | Git-tracked path; adapter captured the pre-edit bytes from `git show HEAD:<path>` | `baseline_sha256 != after_sha256` | Verifiable evidence (git object store); `baseline_source` carries `{kind: git_head, commit, ref}` and the commit-pinned ref is added to `evidence_refs`. Attests **"differs from HEAD"** — works even when the edit landed *before* recording. |
-| `recorder_window` | No git baseline | `before_sha256 != after_sha256` | The recorder's own before/after sample. Observes an edit made **inside** `--command`. |
+| `git_baseline` | Tracked path in a git workspace; the adapter captured the pre-edit bytes from `git show <ref>:<path>`. **Takes priority for every tracked path** — including edits made inside `--command`. | `baseline_sha256 != after_sha256` | Verifiable evidence (git object store); `baseline_source` carries `{kind: git_head, commit, ref}` and the commit-pinned ref is added to `evidence_refs`. Attests **"differs from the baseline ref"** — works even when the edit landed *before* recording. |
+| `recorder_window` | **Untracked or non-git path** (no baseline available), or a supplied baseline that was refused (see below). | `before_sha256 != after_sha256` | The recorder's own before/after sample — only observes an edit made **inside** `--command`. |
+
+**Sidecar baselines are re-verified, not trusted.** `--provenance-sidecar` is a
+public interface, so every supplied `git_baseline` is re-checked against the
+workspace git object store at record time (`git show <commit>:<path>` recomputed
+and hashed here). A forged or stale `baseline_sha256`, or a baseline whose
+commit/object cannot be resolved in this workspace, is **refused**: that path
+falls back to `recorder_window` with an explicit note (`sidecar git_baseline did
+not match …` or `baseline unverifiable in this workspace`) **and a stderr
+warning**. The conflict is recorded honestly; the run is never hard-failed.
+
+**Commit-before-record is flagged, not silently passed.** Under `git_baseline`,
+when the baseline **equals** `after` the recorder cannot distinguish a genuine
+no-op from a change already **committed before recording began** (HEAD moved past
+the edit). It records `changed=false` with an explicit note naming the commit
+**and a stderr warning** pointing at `--baseline-ref` — pass the true pre-edit ref
+(e.g. `HEAD~1` or a commit sha) to attest a committed change.
 
 When there is **no** git baseline and `before == after` (both non-null), the file
 was already at its final state when recording began: the change is **not

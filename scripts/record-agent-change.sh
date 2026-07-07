@@ -13,6 +13,7 @@ CHANGE_PATH=""
 MODEL=""
 PROMPT_FILE=""
 COMMAND="true"
+BASELINE_REF="HEAD"
 DRY_RUN=false
 
 usage() {
@@ -27,6 +28,10 @@ Options:
   --model LABEL        Model label for provenance (required)
   --prompt-file FILE   Prompt text file; hashed locally, never exported (required)
   --command CMD        Validation command for generic run (default: true)
+  --baseline-ref REF   Git ref holding the PRE-EDIT state (default: HEAD). Use a
+                       pre-edit ref (e.g. HEAD~1 or a commit sha) when the edit
+                       was already COMMITTED before recording — otherwise HEAD
+                       equals the final state and the change is not attestable.
   --output-dir DIR     NLFR output directory (default: data/agent-change-proof)
   --workspace DIR      Workspace root (default: repo root)
   --scenario ID        Scenario label (default: agent-change)
@@ -52,6 +57,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --command)
       COMMAND="$2"
+      shift 2
+      ;;
+    --baseline-ref)
+      BASELINE_REF="$2"
       shift 2
       ;;
     --output-dir)
@@ -114,14 +123,14 @@ cleanup() {
 }
 trap cleanup EXIT
 
-python3 - <<'PY' "$SIDECAR" "$MODEL" "$PROMPT_SHA256" "$WORKSPACE" "$CHANGE_PATH"
+python3 - <<'PY' "$SIDECAR" "$MODEL" "$PROMPT_SHA256" "$WORKSPACE" "$CHANGE_PATH" "$BASELINE_REF"
 import hashlib
 import json
 import subprocess
 import sys
 from pathlib import Path
 
-sidecar_path, model, prompt_sha256, workspace, change_path = sys.argv[1:6]
+sidecar_path, model, prompt_sha256, workspace, change_path, baseline_ref = sys.argv[1:7]
 
 
 def _git(*args, text=False):
@@ -138,20 +147,30 @@ def git_baseline():
 
     The documented adapter workflow edits the file FIRST, then records — so the
     recorder's own before/after window sees no change (before == after). Git,
-    however, still holds the committed pre-edit bytes: `git show HEAD:<path>`.
+    however, still holds the committed pre-edit bytes: `git show <ref>:<path>`.
     That is verifiable EVIDENCE (a skeptic reruns it and matches the hash), not
-    an operator assertion. Returns a baseline entry or None when git cannot
-    attest (not a repo, unborn HEAD, or an untracked path).
+    an operator assertion.
+
+    ``baseline_ref`` (default HEAD, override via --baseline-ref) names the ref
+    that holds the PRE-EDIT state. For the edit-first working-tree flow HEAD is
+    correct. But if the edit was already COMMITTED before recording, HEAD now
+    equals the final state, so the operator must pass a true pre-edit ref
+    (HEAD~1 or a commit sha) — otherwise baseline == after and the change is not
+    attestable. The ref is resolved to a concrete commit sha so the recorded
+    evidence stays pinned even as branches move.
+
+    Returns a baseline entry or None when git cannot attest (not a repo, the ref
+    does not resolve, or an untracked path).
     """
 
     try:
         probe = _git("rev-parse", "--is-inside-work-tree", text=True)
         if probe.returncode != 0 or probe.stdout.strip() != "true":
             return None
-        head = _git("rev-parse", "HEAD", text=True)
-        if head.returncode != 0:
-            return None  # unborn HEAD / no commits — nothing to baseline against
-        commit = head.stdout.strip()
+        resolved = _git("rev-parse", "--verify", f"{baseline_ref}^{{commit}}", text=True)
+        if resolved.returncode != 0:
+            return None  # ref does not resolve (unborn HEAD, bad ref) — no baseline
+        commit = resolved.stdout.strip()
         toplevel = _git("rev-parse", "--show-toplevel", text=True)
         if toplevel.returncode != 0:
             return None
@@ -161,15 +180,17 @@ def git_baseline():
             repo_rel = abs_path.relative_to(repo_root).as_posix()
         except ValueError:
             return None  # change path escapes the repo tree
-        ref = f"git:HEAD:{repo_rel}"
+        # source.ref carries the symbolic ref the operator named; source.commit is
+        # the resolved sha the recorder re-verifies and pins as evidence.
+        ref = f"git:{baseline_ref}:{repo_rel}"
         source = {"kind": "git_head", "commit": commit, "ref": ref}
-        show = _git("show", f"HEAD:{repo_rel}")  # bytes at HEAD
+        show = _git("show", f"{commit}:{repo_rel}")  # bytes at the pre-edit ref
         if show.returncode == 0:
             return {
                 "baseline_sha256": hashlib.sha256(show.stdout).hexdigest(),
                 "source": source,
             }
-        # Absent at HEAD: attestable only if git tracks it (staged-new). Untracked
+        # Absent at the ref: attestable only if git tracks it (staged-new). Untracked
         # files get no baseline — git cannot attest their pre-edit state.
         tracked = _git("ls-files", "--error-unmatch", "--", repo_rel)
         if tracked.returncode == 0:

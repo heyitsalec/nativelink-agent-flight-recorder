@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 import sqlite3
@@ -23,6 +24,102 @@ def run_nlfr(*args: str) -> subprocess.CompletedProcess[str]:
         capture_output=True,
         check=False,
     )
+
+
+def _git(repo: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["git", "-C", str(repo), *args],
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+
+
+def _init_git_repo(repo: Path) -> None:
+    repo.mkdir(parents=True, exist_ok=True)
+    _git(repo, "init", "-q")
+    _git(repo, "config", "user.email", "test@example.com")
+    _git(repo, "config", "user.name", "Test")
+
+
+def _commit_file(repo: Path, rel: str, contents: str, message: str) -> tuple[str, str]:
+    """Write+commit ``contents`` at ``rel`` and return (commit_sha, baseline_sha256).
+
+    ``baseline_sha256`` is recomputed from the committed git object so it matches
+    exactly what the recorder re-verifies via ``git show <commit>:<rel>``.
+    """
+
+    (repo / rel).write_text(contents, encoding="utf-8")
+    _git(repo, "add", rel)
+    _git(repo, "commit", "-qm", message)
+    commit = _git(repo, "rev-parse", "HEAD").stdout.strip()
+    shown = subprocess.run(
+        ["git", "-C", str(repo), "show", f"{commit}:{rel}"],
+        capture_output=True,
+        check=True,
+    ).stdout
+    return commit, hashlib.sha256(shown).hexdigest()
+
+
+def _git_baseline_block(
+    change_path: str,
+    commit: str,
+    baseline_sha: str | None,
+    *,
+    ref_label: str = "HEAD",
+) -> dict:
+    return {
+        change_path: {
+            "baseline_sha256": baseline_sha,
+            "source": {
+                "kind": "git_head",
+                "commit": commit,
+                "ref": f"git:{ref_label}:{change_path}",
+            },
+        }
+    }
+
+
+def _invoke_generic(
+    workspace: Path,
+    output_dir: Path,
+    *,
+    change_path: str,
+    command: str,
+    sidecar: Path,
+) -> tuple[subprocess.CompletedProcess[str], dict]:
+    """Run generic mode against a PRE-BUILT workspace + sidecar (e.g. a git repo).
+
+    R2 re-verifies sidecar git baselines against the workspace git object store,
+    so baseline-mode tests must use a real repo whose objects the recorder can
+    check — synthetic baselines in a non-git tmp dir now (correctly) fall back.
+    """
+
+    result = run_nlfr(
+        "run",
+        "--mode",
+        "generic",
+        "--scenario",
+        "patch-derive-probe",
+        "--run-group",
+        "patch-derive",
+        "--workspace",
+        str(workspace),
+        "--output-dir",
+        str(output_dir),
+        "--change-path",
+        change_path,
+        "--provenance-sidecar",
+        str(sidecar),
+        "--command",
+        command,
+        "--json",
+    )
+    payload = json.loads(result.stdout)
+    provenance = json.loads(
+        (Path(payload["artifact_root"]) / "agent-provenance.json").read_text()
+    )
+    return result, provenance
 
 
 def test_generic_run_records_passing_command(tmp_path: Path) -> None:
@@ -157,23 +254,21 @@ def _run_generic_with_change(
     change_path: str,
     command: str,
     seed: dict[str, str] | None = None,
-    git_baseline: dict | None = None,
 ) -> tuple[subprocess.CompletedProcess[str], dict, Path]:
     """Run generic mode with an agent sidecar and return (result, provenance, out).
 
     ``seed`` maps workspace-relative paths to initial contents written before the
     run, so before/after hashes can be exercised across identical / edited /
-    appeared / deleted / never-observed states. ``git_baseline`` injects the
-    optional sidecar block the adapter captures from ``git show HEAD:<path>``, so
-    the observation-mode derivation (changed against the baseline, not the
-    recorder's own window) can be exercised without a real repo here.
+    appeared / deleted / never-observed states. This helper builds a NON-git
+    workspace, so it exercises only the recorder-window path; git-baseline modes
+    now require a real repo the recorder can re-verify (see ``_invoke_generic``).
     """
 
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     for rel, contents in (seed or {}).items():
         (workspace / rel).write_text(contents, encoding="utf-8")
-    sidecar = _write_sidecar(tmp_path / "sidecar.json", git_baseline=git_baseline)
+    sidecar = _write_sidecar(tmp_path / "sidecar.json")
     output_dir = tmp_path / "out"
 
     result = run_nlfr(
@@ -231,32 +326,32 @@ def test_patch_applied_false_on_identical_hash(tmp_path: Path) -> None:
 
 
 def test_git_baseline_backs_changed_for_edit_first(tmp_path: Path) -> None:
-    """THE observation-mode fix at the recorder level.
+    """THE observation-mode fix at the recorder level — VERIFIED against real git.
 
     Edit-first: the file is already at its final state when recording begins, so
-    the recorder's own before == after (command is validation-only). A git
-    baseline in the sidecar carries the PRE-EDIT HEAD bytes, so ``changed`` is
-    derived against the baseline and comes out true — evidence-backed, not the
-    silent always-false the naive before/after derivation produced.
+    the recorder's own before == after (command is validation-only). The sidecar
+    git baseline carries the PRE-EDIT commit bytes; R2 re-verifies it against the
+    workspace git object store, and ``changed`` is derived against the (verified)
+    baseline and comes out true — evidence-backed, not the silent always-false the
+    naive before/after derivation produced.
     """
 
-    commit = "1" * 40
-    baseline_sha = "0" * 64  # pre-edit HEAD bytes, distinct from the final state
-    result, provenance, _ = _run_generic_with_change(
-        tmp_path,
+    workspace = tmp_path / "repo"
+    _init_git_repo(workspace)
+    commit, baseline_sha = _commit_file(workspace, "edit.txt", "pre-edit\n", "baseline")
+    # EDIT FIRST — the working tree now differs from the committed baseline.
+    (workspace / "edit.txt").write_text("final state\n", encoding="utf-8")
+    sidecar = _write_sidecar(
+        tmp_path / "sidecar.json",
+        git_baseline=_git_baseline_block("edit.txt", commit, baseline_sha),
+    )
+
+    result, provenance = _invoke_generic(
+        workspace,
+        tmp_path / "out",
         change_path="edit.txt",
         command="true",  # validation only — does NOT touch the file
-        seed={"edit.txt": "final state\n"},
-        git_baseline={
-            "edit.txt": {
-                "baseline_sha256": baseline_sha,
-                "source": {
-                    "kind": "git_head",
-                    "commit": commit,
-                    "ref": "git:HEAD:edit.txt",
-                },
-            }
-        },
+        sidecar=sidecar,
     )
 
     assert result.returncode == 0, result.stderr
@@ -264,8 +359,8 @@ def test_git_baseline_backs_changed_for_edit_first(tmp_path: Path) -> None:
     entry = change["paths"]["edit.txt"]
     # Recorder's own window saw no change (edit-first) ...
     assert entry["before_sha256"] == entry["after_sha256"]
-    # ... but the git baseline differs from after, so changed is TRUE, derived
-    # against the baseline and labeled as such.
+    # ... but the verified git baseline differs from after, so changed is TRUE,
+    # derived against the baseline and labeled as such.
     assert entry["baseline_sha256"] == baseline_sha
     assert entry["baseline_source"]["kind"] == "git_head"
     assert entry["baseline_source"]["commit"] == commit
@@ -274,31 +369,45 @@ def test_git_baseline_backs_changed_for_edit_first(tmp_path: Path) -> None:
     assert change["patch_applied"] is True
     # A skeptic gets a commit-pinned, verifiable evidence ref.
     assert f"git:{commit}:edit.txt" in provenance["evidence_refs"]
-    # No unobservable warning when the baseline made the change observable.
+    # No unobservable / refusal warning when the baseline made the change observable.
     assert "cannot attest" not in result.stderr
+    assert "IGNORED" not in result.stderr
+    # Independent skeptic cross-check: the git object bytes hash to baseline_sha256.
+    shown = subprocess.run(
+        ["git", "-C", str(workspace), "show", f"{commit}:edit.txt"],
+        capture_output=True,
+        check=True,
+    ).stdout
+    assert hashlib.sha256(shown).hexdigest() == entry["baseline_sha256"]
 
 
 def test_git_baseline_null_records_appeared(tmp_path: Path) -> None:
-    """A null git baseline means absent at HEAD: a present ``after`` is appeared."""
+    """A null git baseline means absent at the ref: a present ``after`` is appeared.
 
+    R2 verifies the null by confirming the object is genuinely absent at that
+    commit (``git show <commit>:created.txt`` fails) — a forged null over an
+    object that DOES exist would be refused.
+    """
+
+    workspace = tmp_path / "repo"
+    _init_git_repo(workspace)
+    # A committed file makes HEAD born; created.txt is absent at that commit.
+    commit, _ = _commit_file(workspace, "seed.txt", "seed\n", "seed")
+    sidecar = _write_sidecar(
+        tmp_path / "sidecar.json",
+        git_baseline=_git_baseline_block("created.txt", commit, None),
+    )
     command = (
         f"{sys.executable} -c "
         "\"from pathlib import Path; Path('created.txt').write_text('new\\\\n')\""
     )
-    result, provenance, _ = _run_generic_with_change(
-        tmp_path,
+
+    result, provenance = _invoke_generic(
+        workspace,
+        tmp_path / "out",
         change_path="created.txt",
         command=command,
-        git_baseline={
-            "created.txt": {
-                "baseline_sha256": None,
-                "source": {
-                    "kind": "git_head",
-                    "commit": "2" * 40,
-                    "ref": "git:HEAD:created.txt",
-                },
-            }
-        },
+        sidecar=sidecar,
     )
 
     assert result.returncode == 0, result.stderr
@@ -310,32 +419,33 @@ def test_git_baseline_null_records_appeared(tmp_path: Path) -> None:
     assert provenance["change"]["patch_applied"] is True
 
 
-def test_git_baseline_matching_after_is_no_change(tmp_path: Path) -> None:
-    """Baseline == after: the file matches HEAD, an evidence-backed changed=false.
+def test_git_baseline_matching_after_warns_commit_before_record(tmp_path: Path) -> None:
+    """R1: baseline == after under ``git_baseline`` is AMBIGUOUS, never silent.
 
-    This must be a quiet, honest false (the file genuinely equals HEAD), NOT the
-    loud unobservable warning — that warning is only for the no-baseline case.
+    When the pre-edit ref (default HEAD) already contains the final bytes —
+    exactly what happens if the edit was COMMITTED before recording began — the
+    recorder cannot tell a genuine no-op from a committed-then-recorded change.
+    The old behavior emitted a silent ``changed=false`` under the strongest
+    label. It must now emit a per-path note naming the commit AND a stderr
+    warning pointing at ``--baseline-ref`` (replaces the silence-codifying test).
     """
 
-    import hashlib
+    content = "committed state\n"
+    workspace = tmp_path / "repo"
+    _init_git_repo(workspace)
+    # HEAD already holds the (possibly agent-committed) final bytes.
+    commit, baseline_sha = _commit_file(workspace, "same.txt", content, "committed edit")
+    sidecar = _write_sidecar(
+        tmp_path / "sidecar.json",
+        git_baseline=_git_baseline_block("same.txt", commit, baseline_sha),
+    )
 
-    content = "identical to head\n"
-    baseline_sha = hashlib.sha256(content.encode()).hexdigest()
-    result, provenance, _ = _run_generic_with_change(
-        tmp_path,
+    result, provenance = _invoke_generic(
+        workspace,
+        tmp_path / "out",
         change_path="same.txt",
         command="true",
-        seed={"same.txt": content},
-        git_baseline={
-            "same.txt": {
-                "baseline_sha256": baseline_sha,
-                "source": {
-                    "kind": "git_head",
-                    "commit": "3" * 40,
-                    "ref": "git:HEAD:same.txt",
-                },
-            }
-        },
+        sidecar=sidecar,
     )
 
     assert result.returncode == 0, result.stderr
@@ -343,7 +453,95 @@ def test_git_baseline_matching_after_is_no_change(tmp_path: Path) -> None:
     assert entry["changed"] is False
     assert entry["changed_basis"] == "git_baseline"
     assert provenance["change"]["patch_applied"] is False
-    assert "cannot attest" not in result.stderr
+    # The ambiguity is recorded, not swallowed: note names the commit + escape hatch.
+    assert entry["note"].startswith("file matches HEAD")
+    assert commit in entry["note"]
+    assert "--baseline-ref" in entry["note"]
+    # And it is LOUD on stderr, naming the path and the fix.
+    assert "same.txt" in result.stderr
+    assert "--baseline-ref" in result.stderr
+    assert "committed before recording" in result.stderr
+
+
+def test_forged_sidecar_baseline_is_refused_and_falls_back(tmp_path: Path) -> None:
+    """R2 (reviewer's exact probe): a forged git_baseline is not trusted verbatim.
+
+    The sidecar's ``baseline_sha256`` does NOT match the git object at the
+    referenced commit. The old code accepted it and reported
+    ``changed_basis=git_baseline`` — exactly-as-asserted evidence wearing a
+    verified label. It must now be refused: fall back to recorder-window
+    semantics with a per-path note + loud stderr warning, and never pin the
+    forged commit as evidence. The run is recorded honestly, not hard-failed.
+    """
+
+    workspace = tmp_path / "repo"
+    _init_git_repo(workspace)
+    commit, real_sha = _commit_file(workspace, "edit.txt", "pre-edit\n", "baseline")
+    forged_sha = "d" * 64
+    assert forged_sha != real_sha
+    # EDIT FIRST so the recorder's own window sees no change (before == after).
+    (workspace / "edit.txt").write_text("final state\n", encoding="utf-8")
+    sidecar = _write_sidecar(
+        tmp_path / "sidecar.json",
+        git_baseline=_git_baseline_block("edit.txt", commit, forged_sha),
+    )
+
+    result, provenance = _invoke_generic(
+        workspace,
+        tmp_path / "out",
+        change_path="edit.txt",
+        command="true",
+        sidecar=sidecar,
+    )
+
+    assert result.returncode == 0, result.stderr
+    change = provenance["change"]
+    entry = change["paths"]["edit.txt"]
+    # Refused: basis fell back to the recorder's own window.
+    assert entry["changed_basis"] == "recorder_window"
+    assert "did not match" in entry["note"]
+    assert commit in entry["note"]
+    # before == after in-window and the forged baseline is gone -> honest false.
+    assert entry["changed"] is False
+    assert change["patch_applied"] is False
+    # The forged commit must NOT be pinned as verifiable evidence.
+    assert f"git:{commit}:edit.txt" not in provenance["evidence_refs"]
+    # Loud, path-named warning.
+    assert "edit.txt" in result.stderr
+    assert "IGNORED" in result.stderr
+
+
+def test_unverifiable_sidecar_baseline_falls_back(tmp_path: Path) -> None:
+    """R2: a sidecar baseline unverifiable in this workspace falls back honestly.
+
+    Non-git workspace (the commit/object cannot be resolved here). The supplied
+    baseline is refused with an explicit note + stderr warning; the change is
+    derived from the recorder's own window instead of trusting the assertion.
+    """
+
+    workspace = tmp_path / "workspace"  # NOT a git repo
+    workspace.mkdir()
+    (workspace / "edit.txt").write_text("final state\n", encoding="utf-8")
+    sidecar = _write_sidecar(
+        tmp_path / "sidecar.json",
+        git_baseline=_git_baseline_block("edit.txt", "a" * 40, "b" * 64),
+    )
+
+    result, provenance = _invoke_generic(
+        workspace,
+        tmp_path / "out",
+        change_path="edit.txt",
+        command="true",
+        sidecar=sidecar,
+    )
+
+    assert result.returncode == 0, result.stderr
+    entry = provenance["change"]["paths"]["edit.txt"]
+    assert entry["changed_basis"] == "recorder_window"
+    assert entry["note"] == "baseline unverifiable in this workspace"
+    assert f"git:{'a' * 40}:edit.txt" not in provenance["evidence_refs"]
+    assert "edit.txt" in result.stderr
+    assert "IGNORED" in result.stderr
 
 
 def test_patch_applied_true_on_edited_file(tmp_path: Path) -> None:
