@@ -484,6 +484,74 @@ def test_scrub_local_paths_is_idempotent():
     assert count == 0
 
 
+def test_redaction_is_idempotent_over_every_detector():
+    """A second redaction pass over already-redacted text must be a NO-OP.
+
+    Regression for the export-then-re-check flow (PR #103's PR-comment exporter):
+    the exporter self-redacts, then an independent ``nlfr redact --check`` re-gates
+    the output before it is posted. That only works if redaction is idempotent.
+    It was not: the ``[REDACTED:url_credentials]`` placeholder sits between ``://``
+    and ``@`` and carries a ``:``, so it RE-matched the url_credentials detector —
+    the second ``--check`` reported a fresh finding and the feature refused to
+    post. The placeholder guard in ``_resolve_spans`` makes EVERY detector
+    idempotent; this seeds one blob with all of them and proves the second pass
+    finds nothing new and is byte-stable.
+    """
+
+    cfg = RedactionConfig(enable_hostname=True)  # every tier on, incl. hostname
+    seed = "\n".join(
+        [
+            "/Users/alice/proj/workspace",
+            "/private/tmp/ci-7f3a/run/bep.json",
+            "postgres://user:s3cr3tpass@db.example.com:5432/app",
+            f"key {FAKE_AWS_ACCESS_KEY_ID} used",
+            f"aws_secret_access_key={FAKE_AWS_SECRET}",
+            FAKE_GH_TOKEN,
+            FAKE_GITHUB_PAT,
+            FAKE_GITLAB_PAT,
+            FAKE_SLACK_TOKEN,
+            FAKE_JWT,
+            FAKE_PEM,
+            "Authorization: Bearer EXAMPLEFAKEBEARER1234567890",
+            "alice@example.com",
+            "203.0.113.42",
+            "api.internal.example.com",
+        ]
+    )
+
+    first = redact_text(seed, cfg)
+    assert first.findings, "seed must trip detectors on the first pass"
+    assert "[REDACTED:url_credentials]" in first.payload
+
+    # Re-running the SAME check over the redacted text finds nothing and does not
+    # change a byte — the contract the export-then-re-check gate relies on.
+    second = redact_text(first.payload, cfg)
+    assert second.findings == [], [f.detector for f in second.findings]
+    assert second.payload == first.payload
+
+    # A third pass stays stable too (guards against a two-step fixed point).
+    third = redact_text(second.payload, cfg)
+    assert third.findings == []
+    assert third.payload == first.payload
+
+
+def test_url_credentials_placeholder_does_not_re_match():
+    """The exact MAJOR-1 regression: a credentialed URL re-checks clean.
+
+    ``scheme://user:pass@host`` -> ``scheme://[REDACTED:url_credentials]@host``;
+    a second ``--check`` over that output used to report a fresh url_credentials
+    finding (the placeholder's ``:`` between ``://`` and ``@``). It must not.
+    """
+
+    # Default config: hostname detector is off, so the host survives; only the
+    # user:pass userinfo is scrubbed.
+    redacted = redact_text("postgres://user:s3cr3tpass@db.example.com/app").payload
+    assert redacted == "postgres://[REDACTED:url_credentials]@db.example.com/app"
+    # A second check over the redacted text (the export-then-re-check gate) is clean.
+    recheck = redact_text(redacted)
+    assert recheck.findings == [], [f.detector for f in recheck.findings]
+
+
 def test_scrub_local_paths_roots_catches_single_segment_root_without_corruption():
     out, count = scrub_local_paths("/data", roots=["/data"])
     assert out == "[REDACTED:abs_path]/data"

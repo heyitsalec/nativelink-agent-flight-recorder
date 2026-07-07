@@ -100,6 +100,18 @@ _HOME_REPLACEMENT = "${HOME}"
 #: (``/a/b/c/bazel-bep.json`` -> ``[REDACTED:abs_path]/bazel-bep.json``).
 _ABS_PATH_PLACEHOLDER = "[REDACTED:abs_path]"
 
+#: Matches an already-written ``[REDACTED:<detector>]`` placeholder. Redaction
+#: MUST be idempotent: a second pass over already-redacted text has to be a
+#: no-op, or the documented "self-redact at export, then re-gate with an
+#: independent ``nlfr redact --check``" flow fails on its own output. The failure
+#: is real: ``[REDACTED:url_credentials]`` carries a ``:`` and, sitting between
+#: ``://`` and ``@`` after a ``scheme://user:pass@host`` scrub, RE-matches the
+#: ``url_credentials`` detector — so a second ``--check`` reports a fresh finding
+#: even though the secret is already gone. Rather than special-case one detector,
+#: :func:`_resolve_spans` drops ANY candidate span that overlaps a placeholder,
+#: which makes every detector idempotent against the placeholders it writes.
+_PLACEHOLDER_RE = re.compile(r"\[REDACTED:[^\[\]]*\]")
+
 Span = tuple  # (start: int, end: int)
 Finder = Callable[[str, Optional[str]], Iterable[Span]]
 
@@ -589,11 +601,19 @@ class RedactionResult:
 # ---------------------------------------------------------------------------
 
 
+def _overlaps_any(start: int, end: int, spans: list[Span]) -> bool:
+    """True when ``[start, end)`` overlaps any span in ``spans`` (half-open)."""
+
+    return any(start < span_end and span_start < end for span_start, span_end in spans)
+
+
 def _resolve_spans(value: str, key: str | None, config: RedactionConfig):
     """Collect enabled-detector spans and greedily pick non-overlapping ones.
 
     Deterministic: sort by (start, longest-first, registry-order); earliest
-    wins, longest breaks ties, registry order is the final tie-break.
+    wins, longest breaks ties, registry order is the final tie-break. Candidates
+    overlapping an already-written ``[REDACTED:...]`` placeholder are dropped so
+    redaction is idempotent (a re-run over redacted text finds nothing new).
     """
 
     candidates = []
@@ -603,6 +623,17 @@ def _resolve_spans(value: str, key: str | None, config: RedactionConfig):
         for start, end in detector.find(value, key):
             if end > start:
                 candidates.append((start, end, idx, detector))
+
+    # Idempotency guard: never re-detect inside a placeholder we already wrote,
+    # so a second pass over redacted text is a no-op (see _PLACEHOLDER_RE). This
+    # is what keeps the export-then-re-check flow from failing on its own output.
+    placeholders = [match.span() for match in _PLACEHOLDER_RE.finditer(value)]
+    if placeholders:
+        candidates = [
+            candidate
+            for candidate in candidates
+            if not _overlaps_any(candidate[0], candidate[1], placeholders)
+        ]
 
     candidates.sort(key=lambda c: (c[0], -(c[1] - c[0]), c[2]))
     chosen: list[tuple[int, int, Detector]] = []
