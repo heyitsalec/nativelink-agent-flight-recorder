@@ -40,6 +40,46 @@ PYTHONPATH=src uv run python -m nlfr compare index \
   --json
 ```
 
+## Browse ALL your recorded runs (`--db-root`)
+
+Because `nlfr record` writes **one database per run group**
+(`data/nlfr-record/<run-group>/nlfr.sqlite`), a single `--db` only ever sees one
+group. To browse every group you recorded, point `--db-root` at the parent
+directory instead. Pass **exactly one** of `--db` / `--db-root` — neither, or
+both, is a hard error (exit 2).
+
+```bash
+PYTHONPATH=src uv run python -m nlfr compare index \
+  --db-root data/nlfr-record \
+  --json
+
+PYTHONPATH=src uv run python -m nlfr compare history \
+  --db-root data/nlfr-record \
+  --output apps/canvas/public/projections/run-history.json
+```
+
+**Discovery rule.** `--db-root DIR` matches `<DIR>/<run-group>/nlfr.sqlite`
+**exactly one directory level down** — the `nlfr record` layout and nothing else.
+It never recurses into arbitrary trees, and any subdirectory without an
+`nlfr.sqlite` is ignored. The directory name becomes `discovered_group`.
+
+**It is a LISTING, not a merge.** Entries are keyed by `(database, run_group)`
+and never combined, because stable run ids are only unique *within* one database
+and can collide across independent ones. Each entry gains a `database` field
+(scrubbed at the sharing boundary — an absolute path collapses to
+`[REDACTED:abs_path]/nlfr.sqlite`, so the group is read from `discovered_group`).
+
+**It is honest about what it could not read.** A zero-byte or old-schema database
+is listed with `readable: false` and a `reason` (old-schema entries carry the
+`nlfr db upgrade` guidance in `detail`) — never silently skipped and never given
+fabricated counts. A listing that contains such problems is still a successful
+listing (exit 0); a `--db-root` with **zero readable databases** exits 2.
+
+**For a cross-database comparison, don't reach for history** — chain
+`compare export --left-db X --right-db Y` from the listing (see
+[export and compare run groups](export-and-compare-run-groups.md)). `--db-root`
+history summarizes each source separately and never builds cross-database deltas.
+
 ## Export multi-run history projection
 
 History is richest when one database holds several groups (multiple runs
