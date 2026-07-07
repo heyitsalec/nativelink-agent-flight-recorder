@@ -16,6 +16,7 @@ entry; this index is the Diátaxis hub. Deep pages live under
 | Run real Nix proof on an independent host (~30+ min) | [Tutorial: first Nix proof](wiki/tutorial/first-nix-proof.md) |
 | Export projections or compare run groups (M9) | [How-to: export and compare](wiki/how-to/export-and-compare-run-groups.md) |
 | Run the tier1 live Bazel demo | [How-to: tier1 live Bazel](wiki/how-to/run-tier1-live-bazel-demo.md) |
+| Wire NLFR into CI (GitHub Actions / Buildkite / Jenkins) with the redact-gate baked in | [How-to: CI integration](wiki/how-to/ci-integration.md) |
 | Look up CLI flags or truth-label fields | [Reference: CLI](wiki/reference/cli.md) · [Truth labels](wiki/reference/truth-labels.md) |
 | Review the security posture for procurement | [Security policy](../SECURITY.md) · [Threat model](SECURITY_MODEL.md) |
 | Install and run offline on an air-gapped host | [How-to: air-gapped install](wiki/how-to/air-gapped-install.md) |
@@ -41,6 +42,7 @@ Guided paths that assume little context. Goal: one honest win end-to-end.
 Solve a specific problem when you already know the goal.
 
 - [Record your own Bazel build](wiki/how-to/record-your-own-build.md) — `nlfr record` one-command capture in any Bazel repo
+- [CI integration (redact-gate baked in)](wiki/how-to/ci-integration.md) — drop-in GitHub Action / Buildkite plugin / Jenkins snippet; never uploads evidence that hasn't passed the redact gate
 - [Export and compare run groups](wiki/how-to/export-and-compare-run-groups.md) — M9 compare lens
 - [Export an in-toto attestation](wiki/how-to/export-in-toto-attestation.md) — unsigned, DSSE-ready Statement over recorded artifacts (issue #26)
 - [Manage the evidence store](wiki/reference/cli.md#db-upgrade) — `nlfr db upgrade` (schema migration) and [`nlfr db gc`](wiki/reference/cli.md#db-gc) (operator-consented retention)
