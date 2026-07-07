@@ -282,6 +282,28 @@ class Migration:
     sql: str
 
 
+def atomic_migration_script(migration: Migration) -> str:
+    """One migration as a single explicit transaction, version stamp included.
+
+    ``executescript()`` provides no atomicity across its statements, and a
+    surrounding connection context manager cannot roll back work the script
+    already committed — an interruption mid-way through the v3 table rebuild
+    (between ``DROP TABLE artifact_references`` and the rename) would
+    otherwise lose the table permanently, with the replay destroying the
+    copied rows in the temp table. ``BEGIN IMMEDIATE`` plus stamping
+    ``user_version`` inside the same transaction makes each migration
+    all-or-nothing: either the schema change AND its version stamp land
+    together, or neither does.
+    """
+
+    return (
+        "BEGIN IMMEDIATE;\n"
+        f"{migration.sql}\n"
+        f"PRAGMA user_version = {migration.version};\n"
+        "COMMIT;"
+    )
+
+
 MIGRATIONS = (
     Migration(version=1, sql=_CREATE_CORE_SCHEMA),
     Migration(version=2, sql=_CREATE_ARTIFACT_REFERENCES),
@@ -302,9 +324,9 @@ def migrate(conn: Connection) -> None:
     for migration in MIGRATIONS:
         if current_version >= migration.version:
             continue
-        with conn:
-            conn.executescript(migration.sql)
-            conn.execute(f"PRAGMA user_version = {migration.version}")
+        # The script manages its own transaction (see atomic_migration_script);
+        # executescript() alone is NOT atomic across statements.
+        conn.executescript(atomic_migration_script(migration))
         current_version = migration.version
 
 

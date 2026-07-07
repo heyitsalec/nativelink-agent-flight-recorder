@@ -185,11 +185,13 @@ def _user_version(conn):
     return conn.execute("PRAGMA user_version").fetchone()[0]
 
 
-# The artifact_references table exactly as commit 4406a0a first shipped it in
-# schema version 2 — the NARROW presence CHECK, before v3 widened it with
-# 'local_present'. Embedded verbatim (not fetched from git) so the regression is
-# reproducible from the test alone: a DB stamped user_version=2 against this exact
-# CHECK is what an early feat/artifact-verify checkout left on disk.
+# The artifact_references table as commit 4406a0a first shipped it in schema
+# version 2 — reproducing the NARROW presence CHECK that predates v3's
+# 'local_present'. Embedded here (not fetched from git) so the regression is
+# reproducible from the test alone. NOTE: only the presence/digest_verified
+# CHECK clauses under test are reproduced faithfully; 4406a0a's unrelated
+# source_kind/confidence/redaction_state CHECK clauses are deliberately elided —
+# they play no role in this regression.
 OLD_NARROW_V2_ARTIFACT_REFERENCES = """
 CREATE TABLE IF NOT EXISTS artifact_references (
     id TEXT PRIMARY KEY,
@@ -383,3 +385,131 @@ def test_old_narrow_v2_database_migrates_to_v3_and_accepts_local_present(tmp_pat
     assert _user_version(conn) == SCHEMA_VERSION == 3
     assert conn.execute("SELECT COUNT(*) AS c FROM artifact_references").fetchone()["c"] == 2
     assert "artifact_references_v3_rebuild" not in table_names(conn)
+
+
+def test_migration_scripts_are_wrapped_in_single_transactions():
+    """Every migration runs as one explicit transaction, version stamp included.
+
+    ``executescript()`` is NOT atomic across statements; without the wrap, an
+    interruption mid-way through the v3 table rebuild (after ``DROP TABLE
+    artifact_references``, before the rename) loses the table permanently and
+    the replay destroys the copied rows in the temp table.
+    """
+
+    from nlfr.db.schema import atomic_migration_script
+
+    for migration in MIGRATIONS:
+        script = atomic_migration_script(migration)
+        assert script.lstrip().startswith("BEGIN IMMEDIATE;")
+        assert script.rstrip().endswith("COMMIT;")
+        assert f"PRAGMA user_version = {migration.version};" in script
+
+
+def test_v3_rebuild_is_atomic_under_mid_script_failure(tmp_path):
+    """Fault injection: a failure after the destructive DROP rolls back fully.
+
+    Emulates an interruption late in the v3 rebuild by injecting a failing
+    statement just before COMMIT. All-or-nothing means the original table, its
+    rows, and the version stamp must all be untouched — and the real migration
+    must still complete cleanly afterwards.
+    """
+
+    from nlfr.db.schema import atomic_migration_script
+
+    db_path = tmp_path / "nlfr.sqlite"
+    v1_migration = next(m for m in MIGRATIONS if m.version == 1)
+    conn = connect(db_path)
+    with conn:
+        conn.executescript(v1_migration.sql)
+        conn.executescript(OLD_NARROW_V2_ARTIFACT_REFERENCES)
+        conn.execute("PRAGMA user_version = 2")
+    run_id = upsert_run(
+        conn,
+        stable_key="legacy-run:atomicity",
+        run_group="legacy",
+        status="completed",
+        source_kind="collectable_v1",
+        confidence="high",
+        evidence_refs=["run:legacy"],
+        redaction_state="safe",
+    )
+    with conn:
+        conn.execute(
+            "INSERT INTO artifact_references (id, stable_key, run_id, reference_key, name, presence) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            ("ar-atomic", "legacy:artifact_reference:atomic", run_id, "legacy:artifact:atomic", "a.txt", "missing"),
+        )
+
+    v3_migration = next(m for m in MIGRATIONS if m.version == 3)
+    script = atomic_migration_script(v3_migration)
+    broken = script.replace("COMMIT;", "INSERT INTO nlfr_no_such_table VALUES (1);\nCOMMIT;")
+    assert broken != script
+    with pytest.raises(sqlite3.OperationalError):
+        conn.executescript(broken)
+    conn.rollback()
+
+    # All-or-nothing: the canonical table, its row, and the stamp are untouched.
+    assert "artifact_references" in table_names(conn)
+    assert conn.execute("SELECT COUNT(*) AS c FROM artifact_references").fetchone()["c"] == 1
+    assert _user_version(conn) == 2
+
+    # The real migration still lifts the DB cleanly after the failed attempt.
+    migrate(conn)
+    assert _user_version(conn) == SCHEMA_VERSION == 3
+    assert conn.execute("SELECT COUNT(*) AS c FROM artifact_references").fetchone()["c"] == 1
+
+
+def test_copy_column_list_matches_live_table_schema(tmp_path):
+    """The hand-maintained v3 copy-column list cannot drift from the real DDL."""
+
+    from nlfr.db.schema import _ARTIFACT_REFERENCE_COPY_COLUMNS
+
+    conn = connect(tmp_path / "nlfr.sqlite")
+    initialize(conn)
+    live = [row["name"] for row in conn.execute("PRAGMA table_info(artifact_references)")]
+    copy_columns = [column.strip() for column in _ARTIFACT_REFERENCE_COPY_COLUMNS.split(",")]
+    assert copy_columns == live
+
+
+def test_v3_replay_after_lost_stamp_is_lossless(tmp_path):
+    """Replaying the v3 rebuild on an already-widened table loses nothing.
+
+    Defensive: with the stamp inside the migration transaction this state
+    should be unreachable, but a replay must still be harmless.
+    """
+
+    db_path = tmp_path / "nlfr.sqlite"
+    conn = connect(db_path)
+    initialize(conn)
+    run_id = upsert_run(
+        conn,
+        stable_key="replay-run",
+        run_group="replay",
+        status="completed",
+        source_kind="collectable_v1",
+        confidence="high",
+        evidence_refs=["run:replay"],
+        redaction_state="safe",
+    )
+    upsert_artifact_reference(
+        conn,
+        stable_key="replay:artifact_reference:present",
+        run_id=run_id,
+        reference_key="replay:artifact:present",
+        presence="local_present",
+        source_kind="collectable_v1",
+        confidence="medium",
+        evidence_refs=["ref:present"],
+        redaction_state="safe",
+    )
+    conn.execute("PRAGMA user_version = 2")
+    conn.close()
+
+    conn = connect(db_path)
+    initialize(conn)
+    assert _user_version(conn) == SCHEMA_VERSION == 3
+    row = conn.execute(
+        "SELECT presence FROM artifact_references WHERE stable_key = ?",
+        ("replay:artifact_reference:present",),
+    ).fetchone()
+    assert row["presence"] == "local_present"
