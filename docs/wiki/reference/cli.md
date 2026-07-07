@@ -119,6 +119,16 @@ python3 -m nlfr ingest --bep path/to/bazel.bep.json --run-key my-run:cache-only
 | `--bep` / `--execution-log` / `--profile` | — | Explicit evidence files |
 | `--source-kind` | `collectable_v1` | `collectable_v1` or `simulated_v1` |
 
+Run keys are stable and idempotent: re-ingesting the same `--run-key` under the
+**same** run group updates nothing (safe to repeat). Reusing a run key that already
+belongs to a **different** run group is a hard error (exit 2) — that would silently
+merge the new evidence into the first group — so pick a distinct `--run-key`, or
+ingest under the group the key already belongs to.
+
+When the BEP records a `started` event, ingest carries its real build start time as
+the run's `started_at` (evidence-derived, never the wall-clock ingest time). Evidence
+with no observable start stays age-unknown, which `db gc` never auto-deletes (below).
+
 Proof scripts call ingest internally; operators rarely need this directly.
 
 ## graph export
@@ -198,8 +208,18 @@ Choose exactly one selection mode (combining them is an exit-2 usage error):
 
 Safety rails:
 
+- **Unknown age is never auto-deleted.** The recency modes (`--keep-last` /
+  `--keep-days`) rank only run groups with a known start time. A group whose runs
+  have no recorded `started_at` (age unknown) is excluded from both the keep and
+  the delete set and reported separately — *"N group(s) with unknown age — not
+  auto-selected; delete explicitly with `--run-group`"* — in the plan, `--json`,
+  and `gc-report.json`. This prevents a freshly-ingested, un-timestamped group
+  from being ranked "oldest" and deleted ahead of a genuinely ancient one. To
+  delete an age-unknown group, name it explicitly with `--run-group`.
 - **Empty-store guard.** Deleting the last remaining run group (leaving an empty
-  evidence database) is refused unless you add `--allow-empty`.
+  evidence database) is refused unless you add `--allow-empty`. Age-unknown groups
+  still populate the store, so a delete that leaves only unknown-age groups is not
+  "emptying" it and is allowed.
 - **Out-of-tree guard.** If a group references evidence via an absolute path
   outside the evidence root, the whole group is refused (partial deletion is
   worse) and nothing is deleted.

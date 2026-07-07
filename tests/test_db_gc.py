@@ -111,6 +111,62 @@ def _seed_group(
         conn.close()
 
 
+def _seed_null_age_group(evidence_root: Path, run_group: str) -> str:
+    """Seed a run group whose one run has NO started_at (age-unknown).
+
+    This is exactly what ``nlfr ingest`` records when the evidence carries no
+    observable start time (no BEP ``started`` event) — the input the reviewer's C1
+    repro exercises. Writes the DB row plus an on-disk run dir so gc's run.json
+    discovery is realistic and the "left untouched" assertions are meaningful.
+    Returns the run id.
+    """
+
+    db_path = evidence_root / "nlfr.sqlite"
+    conn = initialize(connect(db_path))
+    try:
+        run_key = f"{run_group}:ingest:null-age"
+        run_id = stable_id("run", run_key)
+        artifact_root = evidence_root / "runs" / run_id / "artifacts"
+        artifact_root.mkdir(parents=True, exist_ok=True)
+        payload = f"stdout for {run_group}\n".encode("utf-8")
+        (artifact_root / "stdout.txt").write_bytes(payload)
+        (artifact_root / "run.json").write_text(
+            json.dumps(
+                {
+                    "run_id": run_id,
+                    "run_key": run_key,
+                    "run_group": run_group,
+                    "artifact_root": str(artifact_root),
+                },
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        (artifact_root / "artifact_manifest.json").write_text(
+            json.dumps({"schema_version": 1, "artifacts": []}) + "\n",
+            encoding="utf-8",
+        )
+        upsert_run(
+            conn,
+            stable_key=run_key,
+            run_group=run_group,
+            scenario="ingest",
+            mode="cache-only",
+            status="ingested",
+            # started_at intentionally omitted: age-unknown, exactly as ingest
+            # records evidence that carries no observable start time.
+            source_kind="collectable_v1",
+            confidence="high",
+            evidence_refs=[f"run:{run_id}"],
+            redaction_state="safe",
+        )
+    finally:
+        conn.close()
+    return run_id
+
+
 def _seed_three_groups(evidence_root: Path) -> dict[str, datetime]:
     """Seed old/mid/new groups with well-separated timestamps; return their stamps."""
 
@@ -442,3 +498,122 @@ def test_unknown_run_group_exit_2_lists_available(tmp_path, capsys) -> None:
     assert "ghost" in err
     assert "old" in err and "mid" in err and "new" in err
     assert _run_groups(tmp_path) == {"old", "mid", "new"}
+
+
+# ------------------------------------------------ unknown age (C1 doctrine)
+
+
+def test_keep_last_never_deletes_unknown_age_group(tmp_path, capsys) -> None:
+    """The reviewer's C1 repro: an age-unknown group is never auto-deleted.
+
+    record-ancient (400d) + record-recent (1m) + a NULL-age ingest group; with
+    ``--keep-last 2 --apply`` the two age-known groups fill the keep slots and the
+    NULL-age group is left untouched — NOT ranked as "oldest" and deleted first,
+    as the pre-fix code did (silent, exit 0). The plan reports it instead.
+    """
+
+    now = datetime.now(UTC)
+    _seed_group(tmp_path, "record-ancient", started_at=now - timedelta(days=400))
+    _seed_group(tmp_path, "record-recent", started_at=now - timedelta(minutes=1))
+    _seed_null_age_group(tmp_path, "ingest-null")
+
+    before_ids = _run_ids(tmp_path)
+    before_dirs = sorted(p.name for p in (tmp_path / "runs").iterdir())
+
+    code = _gc(
+        "--db", str(tmp_path / "nlfr.sqlite"),
+        "--keep-last", "2",
+        "--apply",
+        "--json",
+    )
+
+    assert code == 0
+    report = json.loads(capsys.readouterr().out)
+    # Nothing deleted: the two age-known groups fill --keep-last 2, and the
+    # age-unknown group is never a deletion candidate.
+    assert report["deleted_groups"] == []
+    assert {e["run_group"] for e in report["kept_groups"]} == {
+        "record-ancient",
+        "record-recent",
+    }
+    assert {e["run_group"] for e in report["unknown_age_groups"]} == {"ingest-null"}
+    # The whole store survives: rows AND on-disk dirs untouched.
+    assert _run_groups(tmp_path) == {"record-ancient", "record-recent", "ingest-null"}
+    assert _run_ids(tmp_path) == before_ids
+    assert sorted(p.name for p in (tmp_path / "runs").iterdir()) == before_dirs
+    # No deletion happened, so no durable gc-report is written.
+    assert not (tmp_path / "gc-report.json").exists()
+
+
+def test_keep_last_plan_note_names_unknown_age_group(tmp_path, capsys) -> None:
+    now = datetime.now(UTC)
+    _seed_group(tmp_path, "record-ancient", started_at=now - timedelta(days=400))
+    _seed_group(tmp_path, "record-recent", started_at=now - timedelta(minutes=1))
+    _seed_null_age_group(tmp_path, "ingest-null")
+
+    code = _gc("--db", str(tmp_path / "nlfr.sqlite"), "--keep-last", "2")
+
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "1 group(s) with unknown age — not auto-selected" in out
+    assert "delete explicitly with --run-group" in out
+    assert "ingest-null" in out
+
+
+def test_keep_last_deletes_age_known_and_records_unknown_in_gc_report(
+    tmp_path, capsys
+) -> None:
+    """Age-known groups still garbage-collect while unknown-age is reported, not deleted."""
+
+    now = datetime.now(UTC)
+    _seed_group(tmp_path, "old", started_at=now - timedelta(days=100))
+    _seed_group(tmp_path, "mid", started_at=now - timedelta(days=10))
+    _seed_group(tmp_path, "new", started_at=now - timedelta(days=1))
+    _seed_null_age_group(tmp_path, "ingest-null")
+
+    code = _gc(
+        "--db", str(tmp_path / "nlfr.sqlite"),
+        "--keep-last", "1",
+        "--apply",
+        "--json",
+    )
+
+    assert code == 0
+    report = json.loads(capsys.readouterr().out)
+    # Only age-known groups are ranked: keep the newest, delete the two older.
+    assert {e["run_group"] for e in report["deleted_groups"]} == {"old", "mid"}
+    assert {e["run_group"] for e in report["kept_groups"]} == {"new"}
+    assert {e["run_group"] for e in report["unknown_age_groups"]} == {"ingest-null"}
+    # The age-unknown group survives untouched despite --apply.
+    assert _run_groups(tmp_path) == {"new", "ingest-null"}
+    # The durable record carries the unknown-age note too.
+    document = json.loads((tmp_path / "gc-report.json").read_text())
+    event = document["gc_events"][0]
+    assert {e["run_group"] for e in event["unknown_age_groups"]} == {"ingest-null"}
+
+
+def test_keep_days_never_deletes_unknown_age_group(tmp_path, capsys) -> None:
+    """keep-days regression pin: a NULL-age group can't be judged old, so it stays.
+
+    Also pins the empty-store guard: deleting every age-known group while an
+    age-unknown group remains does NOT trip the "would empty the store" refusal —
+    the store is not empty, the unknown-age group is still there.
+    """
+
+    now = datetime.now(UTC)
+    _seed_group(tmp_path, "ancient", started_at=now - timedelta(days=365))
+    _seed_null_age_group(tmp_path, "ingest-null")
+
+    code = _gc(
+        "--db", str(tmp_path / "nlfr.sqlite"),
+        "--keep-days", "30",
+        "--apply",
+        "--json",
+    )
+
+    assert code == 0
+    report = json.loads(capsys.readouterr().out)
+    assert {e["run_group"] for e in report["deleted_groups"]} == {"ancient"}
+    assert {e["run_group"] for e in report["unknown_age_groups"]} == {"ingest-null"}
+    # The age-unknown group remains; the store was not emptied.
+    assert _run_groups(tmp_path) == {"ingest-null"}

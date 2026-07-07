@@ -428,6 +428,145 @@ def test_ingest_command_rejects_run_metadata_without_bazel_evidence(tmp_path) ->
     assert "no Bazel evidence files found" in result.stderr
 
 
+def test_ingest_refuses_cross_group_run_key_reuse(tmp_path) -> None:
+    """C2: reusing a run key across run groups is refused (exit 2), nothing merged.
+
+    ``runs.stable_key`` is UNIQUE and upsert is INSERT OR IGNORE, so re-ingesting
+    the same key under a different group would silently attach the new evidence to
+    the ORIGINAL group. Ingest must instead refuse with an honest conflict and
+    leave the store untouched.
+    """
+
+    database_path = tmp_path / "nlfr.sqlite"
+
+    first = _run_nlfr(
+        "ingest",
+        "--database", str(database_path),
+        "--run-key", "SHARED",
+        "--run-group", "groupA",
+        "--bep", str(FIXTURE_ROOT / "bep.jsonl"),
+        "--source-kind", "simulated_v1",
+        "--json",
+    )
+    assert first.returncode == 0, first.stderr
+
+    with sqlite3.connect(database_path) as conn:
+        conn.row_factory = sqlite3.Row
+        before_runs = conn.execute("SELECT COUNT(*) AS c FROM runs").fetchone()["c"]
+        before_targets = conn.execute("SELECT COUNT(*) AS c FROM targets").fetchone()["c"]
+
+    # Same key, DIFFERENT group -> honest conflict, exit 2, nothing ingested.
+    second = _run_nlfr(
+        "ingest",
+        "--database", str(database_path),
+        "--run-key", "SHARED",
+        "--run-group", "groupB",
+        "--bep", str(FIXTURE_ROOT / "bep.jsonl"),
+        "--source-kind", "simulated_v1",
+        "--json",
+    )
+
+    assert second.returncode == 2
+    assert "already belongs to run group 'groupA'" in second.stderr
+    assert "groupB" in second.stderr
+    assert "SHARED" in second.stderr
+
+    with sqlite3.connect(database_path) as conn:
+        conn.row_factory = sqlite3.Row
+        after_runs = conn.execute("SELECT COUNT(*) AS c FROM runs").fetchone()["c"]
+        after_targets = conn.execute("SELECT COUNT(*) AS c FROM targets").fetchone()["c"]
+        run = conn.execute(
+            "SELECT run_group FROM runs WHERE stable_key = 'SHARED'"
+        ).fetchone()
+
+    # Nothing merged: row counts unchanged and the original group is intact.
+    assert after_runs == before_runs
+    assert after_targets == before_targets
+    assert run["run_group"] == "groupA"
+
+
+def test_ingest_same_group_run_key_reuse_is_idempotent(tmp_path) -> None:
+    """Re-ingesting the same key under the SAME group stays idempotent (exit 0)."""
+
+    database_path = tmp_path / "nlfr.sqlite"
+    args = (
+        "ingest",
+        "--database", str(database_path),
+        "--run-key", "SHARED",
+        "--run-group", "groupA",
+        "--bep", str(FIXTURE_ROOT / "bep.jsonl"),
+        "--source-kind", "simulated_v1",
+        "--json",
+    )
+
+    first = _run_nlfr(*args)
+    assert first.returncode == 0, first.stderr
+    second = _run_nlfr(*args)
+    assert second.returncode == 0, second.stderr
+
+    with sqlite3.connect(database_path) as conn:
+        conn.row_factory = sqlite3.Row
+        runs = conn.execute("SELECT COUNT(*) AS c FROM runs").fetchone()["c"]
+        targets = conn.execute("SELECT COUNT(*) AS c FROM targets").fetchone()["c"]
+
+    # Idempotent: one run, evidence not duplicated.
+    assert runs == 1
+    assert targets == 2
+    assert json.loads(first.stdout)["run_id"] == json.loads(second.stdout)["run_id"]
+
+
+def test_ingest_derives_started_at_from_bep_started_event(tmp_path) -> None:
+    """(b): ingest carries the BEP 'started' event's REAL timestamp as started_at."""
+
+    from datetime import UTC, datetime
+
+    database_path = tmp_path / "nlfr.sqlite"
+    result = _run_nlfr(
+        "ingest",
+        "--database", str(database_path),
+        "--run-key", "bep-started:cache-only",
+        "--run-group", "started-evidence",
+        "--bep", str(FIXTURE_ROOT / "bep.jsonl"),
+        "--source-kind", "simulated_v1",
+        "--json",
+    )
+    assert result.returncode == 0, result.stderr
+
+    with sqlite3.connect(database_path) as conn:
+        conn.row_factory = sqlite3.Row
+        run = conn.execute("SELECT started_at FROM runs").fetchone()
+
+    # bep.jsonl's started event carries startTimeMillis=1710000000000.
+    expected = (
+        datetime.fromtimestamp(1710000000, UTC)
+        .isoformat(timespec="microseconds")
+        .replace("+00:00", "Z")
+    )
+    assert run["started_at"] == expected
+
+
+def test_ingest_without_bep_started_leaves_started_at_null(tmp_path) -> None:
+    """Absent an observable start time, started_at stays NULL — never fabricated."""
+
+    database_path = tmp_path / "nlfr.sqlite"
+    result = _run_nlfr(
+        "ingest",
+        "--database", str(database_path),
+        "--run-key", "no-started:cache-only",
+        "--run-group", "no-start-evidence",
+        "--execution-log", str(FIXTURE_ROOT / "execution-log.json"),
+        "--source-kind", "simulated_v1",
+        "--json",
+    )
+    assert result.returncode == 0, result.stderr
+
+    with sqlite3.connect(database_path) as conn:
+        conn.row_factory = sqlite3.Row
+        run = conn.execute("SELECT started_at FROM runs").fetchone()
+
+    assert run["started_at"] is None
+
+
 def _run_nlfr(*args: str) -> subprocess.CompletedProcess[str]:
     env = {"PYTHONPATH": str(ROOT / "src")}
     return subprocess.run(

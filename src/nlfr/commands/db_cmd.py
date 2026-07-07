@@ -219,8 +219,10 @@ def _load_group_index(conn: sqlite3.Connection) -> list[dict[str, Any]]:
 
     Each record carries the group's run ids, run count, and first/last
     ``started_at``. Ordering matches the retention index used elsewhere: newest
-    ``last_started_at`` first (groups with no timestamp sort last, treated as
-    oldest), ties broken by run-group name ascending. A ``NULL`` run_group is a
+    ``last_started_at`` first, ties broken by run-group name ascending. Groups
+    with no parseable timestamp sort LAST but are NOT treated as "oldest" for
+    deletion — the selectors route them to a separate unknown-age bucket that is
+    never auto-selected (see :func:`_select_groups`). A ``NULL`` run_group is a
     legitimate group keyed by ``None``.
     """
 
@@ -460,39 +462,63 @@ def _validate_selection(args: argparse.Namespace) -> Optional[str]:
 
 def _select_groups(
     args: argparse.Namespace, groups: list[dict[str, Any]]
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]], Optional[str], Optional[str]]:
-    """Split ``groups`` into (keep, delete) for the chosen selection mode.
+) -> tuple[
+    list[dict[str, Any]],
+    list[dict[str, Any]],
+    list[dict[str, Any]],
+    Optional[str],
+    Optional[str],
+]:
+    """Split ``groups`` into (keep, delete, unknown) for the chosen selection mode.
 
-    Returns ``(keep, delete, usage_error, nothing_reason)``. ``usage_error`` is a
-    hard exit-2 message (e.g. ``--run-group`` names an absent group);
-    ``nothing_reason`` explains an empty delete set (a clean exit-0 no-op).
+    Returns ``(keep, delete, unknown, usage_error, nothing_reason)``. ``unknown``
+    holds groups whose age cannot be known (no parseable ``started_at`` on any
+    run). The retention doctrine is that UNKNOWN AGE IS NEVER AUTO-SELECTABLE FOR
+    DELETION: the recency modes (``--keep-last`` / ``--keep-days``) rank only
+    groups with a known timestamp and route the rest to ``unknown`` — never to
+    ``delete``, and never silently folded into ``keep`` either. Deleting an
+    age-unknown group is possible only by naming it explicitly with
+    ``--run-group``. ``usage_error`` is a hard exit-2 message (e.g. ``--run-group``
+    names an absent group); ``nothing_reason`` explains an empty delete set (a
+    clean exit-0 no-op).
     """
 
     if args.keep_last is not None:
-        keep = groups[: args.keep_last]
-        delete = groups[args.keep_last :]
+        # Rank ONLY age-known groups (already newest-first from _load_group_index);
+        # age-unknown groups are excluded from both keep and delete and reported.
+        rankable = [g for g in groups if g["last_started_at"] is not None]
+        unknown = [g for g in groups if g["last_started_at"] is None]
+        keep = rankable[: args.keep_last]
+        delete = rankable[args.keep_last :]
         reason = None
         if not delete:
             reason = (
-                f"--keep-last {args.keep_last} keeps all {len(groups)} run group(s)"
+                f"--keep-last {args.keep_last} keeps all {len(rankable)} "
+                "age-known run group(s)"
             )
-        return keep, delete, None, reason
+        return keep, delete, unknown, None, reason
 
     if args.keep_days is not None:
         cutoff = datetime.now(UTC) - timedelta(days=args.keep_days)
-        keep, delete = [], []
+        keep, delete, unknown = [], [], []
         for group in groups:
             started = _parse_timestamp(group["last_started_at"])
-            if started is not None and started < cutoff:
+            if started is None:
+                # Age unknown: cannot be judged old enough to delete — never
+                # auto-selected, reported separately (not silently "kept").
+                unknown.append(group)
+            elif started < cutoff:
                 delete.append(group)
             else:
                 keep.append(group)
         reason = None
         if not delete:
             reason = f"no run group's newest run is older than {args.keep_days} day(s)"
-        return keep, delete, None, reason
+        return keep, delete, unknown, None, reason
 
-    # --run-group (repeatable): delete exactly the named groups.
+    # --run-group (repeatable): delete exactly the named groups. Explicit naming
+    # is a deliberate operator act, so an age-unknown group named here IS deletable
+    # (the unknown-age doctrine only guards *auto*-selection, not explicit intent).
     names = list(dict.fromkeys(args.run_group))  # de-dupe, preserve order
     by_name = {g["run_group"]: g for g in groups}
     missing = [name for name in names if name not in by_name]
@@ -504,11 +530,11 @@ def _select_groups(
             + f" in this database. Present run groups: {available}. "
             "List them any time with `nlfr compare index --db <db>`."
         )
-        return groups, [], usage, None
+        return groups, [], [], usage, None
     delete = [by_name[name] for name in names]
     delete_keys = {g["run_group"] for g in delete}
     keep = [g for g in groups if g["run_group"] not in delete_keys]
-    return keep, delete, None, None
+    return keep, delete, [], None, None
 
 
 def _selection_descriptor(args: argparse.Namespace) -> dict[str, Any]:
@@ -579,6 +605,18 @@ def _emit(report: dict[str, Any], as_json: bool) -> None:
         span = _format_span(None, entry["last_started_at"])
         print(f"  - {_group_label(entry['run_group'])} ({entry['run_count']} run(s), {span})")
 
+    unknown = report.get("unknown_age_groups") or []
+    if unknown:
+        print(
+            f"\n{len(unknown)} group(s) with unknown age — not auto-selected; "
+            "delete explicitly with --run-group:"
+        )
+        for entry in unknown:
+            print(
+                f"  - {_group_label(entry['run_group'])} "
+                f"({entry['run_count']} run(s), no timestamp)"
+            )
+
     vacuum = report.get("vacuum")
     if applied and vacuum and vacuum.get("ran"):
         print(
@@ -639,7 +677,9 @@ def db_gc(args: argparse.Namespace) -> int:
 
         groups = _load_group_index(conn)
         discovered = _discover_run_dirs(evidence_root)
-        keep, delete, selection_error, nothing_reason = _select_groups(args, groups)
+        keep, delete, unknown, selection_error, nothing_reason = _select_groups(
+            args, groups
+        )
 
         if selection_error is not None:
             print(selection_error, file=sys.stderr)
@@ -663,7 +703,9 @@ def db_gc(args: argparse.Namespace) -> int:
 
         # Refuse to empty the store (delete the last remaining group) unless the
         # operator explicitly opts in — an empty evidence DB is a foot-gun.
-        if delete and not keep and not args.allow_empty:
+        # Age-unknown groups are never deleted, so they still populate the store:
+        # only refuse when NOTHING (neither kept nor unknown) would remain.
+        if delete and not keep and not unknown and not args.allow_empty:
             print(
                 "nlfr db gc: this would delete the LAST remaining run group and "
                 "leave an empty evidence database — refusing.\n"
@@ -713,6 +755,7 @@ def db_gc(args: argparse.Namespace) -> int:
         evidence_root=str(evidence_root),
         deleted_entries=deleted_entries,
         kept_groups=keep,
+        unknown_groups=unknown,
         nothing_reason=nothing_reason,
         vacuum_info=vacuum_info,
     )
@@ -733,6 +776,7 @@ def _build_report(
     evidence_root: str,
     deleted_entries: list[dict[str, Any]],
     kept_groups: list[dict[str, Any]],
+    unknown_groups: list[dict[str, Any]],
     nothing_reason: Optional[str],
     vacuum_info: Optional[dict[str, Any]],
 ) -> dict[str, Any]:
@@ -751,6 +795,14 @@ def _build_report(
             "last_started_at": group["last_started_at"],
         }
         for group in kept_groups
+    ]
+    unknown = [
+        {
+            "run_group": group["run_group"],
+            "run_count": group["run_count"],
+            "last_started_at": group["last_started_at"],
+        }
+        for group in unknown_groups
     ]
     evidence_refs = [
         f"run_group:{_group_label(entry['run_group'])}" for entry in deleted_entries
@@ -773,6 +825,7 @@ def _build_report(
         "nothing_reason": nothing_reason,
         "deleted_groups": deleted_entries,
         "kept_groups": kept,
+        "unknown_age_groups": unknown,
         "totals": {
             "groups": len(deleted_entries),
             "runs": total_runs,

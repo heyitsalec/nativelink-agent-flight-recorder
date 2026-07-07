@@ -10,6 +10,7 @@ from pathlib import Path
 from nlfr.db import connect, initialize
 from nlfr.db.ingest import upsert_proof_block, upsert_run
 from nlfr.ingest.bazel import (
+    extract_bep_started_at,
     parse_bazel_bep,
     parse_bazel_execution_log,
     parse_bazel_profile,
@@ -64,10 +65,34 @@ def run(args: argparse.Namespace) -> int:
         or _metadata_string(run_metadata, "run_key")
         or _default_run_key(args.path)
     )
+    run_group = (
+        args.run_group or _metadata_string(run_metadata, "run_group") or "ingest"
+    )
+
+    # Cross-group key-reuse guard: runs.stable_key is UNIQUE and upsert is
+    # INSERT OR IGNORE, so re-ingesting a key that already belongs to a DIFFERENT
+    # run group would silently merge this evidence under the first group (and a
+    # later `db gc` of that group would then delete it irreversibly). Refuse the
+    # collision honestly instead. Same-group re-ingest stays idempotent.
+    conflict = _run_group_conflict(conn, run_stable_key, run_group)
+    if conflict is not None:
+        conn.close()
+        print(conflict, file=sys.stderr)
+        return 2
+
+    # Carry a REAL start time when the evidence records one: the BEP 'started'
+    # event timestamp. Absent that, started_at stays None (age-unknown) — never
+    # fabricated from ingest wall-clock. `db gc` never auto-deletes an age-unknown
+    # group, so an honest NULL here is the safe default.
+    started_at = (
+        extract_bep_started_at(evidence_files["bep"])
+        if evidence_files["bep"] is not None
+        else None
+    )
     run_id = upsert_run(
         conn,
         stable_key=run_stable_key,
-        run_group=args.run_group or _metadata_string(run_metadata, "run_group") or "ingest",
+        run_group=run_group,
         scenario=(
             args.scenario
             or _metadata_string(run_metadata, "scenario")
@@ -75,6 +100,7 @@ def run(args: argparse.Namespace) -> int:
         ),
         mode=args.mode or _metadata_string(run_metadata, "mode") or "cache-only",
         status="ingested",
+        started_at=started_at,
         source_kind=args.source_kind,
         confidence="high",
         evidence_refs=_bundle_evidence_refs(bundle),
@@ -129,6 +155,42 @@ def run(args: argparse.Namespace) -> int:
         print(f"ingested {sum(counts.values())} evidence records into {args.database}")
         print(f"run: {run_stable_key}")
     return 0
+
+
+def _run_group_conflict(conn, run_stable_key: str, run_group: str | None) -> str | None:
+    """Return an honest conflict message if ``run_stable_key`` is already used elsewhere.
+
+    ``runs.stable_key`` is UNIQUE, so a key can identify exactly one run. If a row
+    with this key already exists under a DIFFERENT run group, re-ingesting would
+    (via INSERT OR IGNORE) silently attach the new evidence to the ORIGINAL group
+    rather than the requested one — cross-group misattribution. Returns ``None``
+    when the key is new or already in the same group (idempotent re-ingest).
+    """
+
+    existing = conn.execute(
+        "SELECT run_group FROM runs WHERE stable_key = ?", (run_stable_key,)
+    ).fetchone()
+    if existing is None:
+        return None
+    existing_group = existing["run_group"]
+    if existing_group == run_group:
+        return None
+    return (
+        f"nlfr ingest: run key '{run_stable_key}' already belongs to run group "
+        f"'{_group_display(existing_group)}' — refusing to re-ingest it under run "
+        f"group '{_group_display(run_group)}'.\n"
+        "Reusing an existing run key across groups would silently merge this "
+        f"evidence into '{_group_display(existing_group)}' (a later `nlfr db gc` of "
+        "that group could then delete it irreversibly). Nothing was ingested.\n"
+        "Use a distinct --run-key for this evidence, or re-ingest under "
+        f"--run-group {_group_display(existing_group)}."
+    )
+
+
+def _group_display(run_group: str | None) -> str:
+    """Render a run group for messages (``None`` shows as ``(unnamed)``)."""
+
+    return run_group if run_group else "(unnamed)"
 
 
 def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
