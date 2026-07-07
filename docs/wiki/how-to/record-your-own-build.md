@@ -69,13 +69,17 @@ and ingests from that path instead of injecting a second one.
 The recorder records **raw** evidence locally — an invocation's real `cwd` and
 the injected `--build_event_json_file=<absolute path>` land in the SQLite spine
 verbatim, which is correct: local evidence should be faithful. The **projection**
-is the sharing boundary. `nlfr graph export` and `nlfr runway export` scrub local
-absolute paths (home dirs *and* `/private/tmp`-style paths) to a
-basename-preserving placeholder — `/Users/you/repo/workspace` becomes
-`[REDACTED:abs_path]/workspace` — and any node that had to be scrubbed is
-relabelled `redaction_state: redacted` rather than claiming `safe`. The recorded
-SQLite row keeps its raw, record-time value; scrubbing happens only when the
-shared projection is built.
+is the sharing boundary. `nlfr graph export`, `nlfr runway export`, and
+`nlfr proof export` (JSON *and* `--format in-toto`) scrub local absolute paths
+(home dirs *and* `/private/tmp`-style paths) to a basename-preserving
+placeholder — `/Users/you/repo/workspace` becomes `[REDACTED:abs_path]/workspace`,
+and a BEP artifact reference's `file:///…/out.txt` becomes
+`file://[REDACTED:abs_path]/out.txt` — and any node or block that had to be
+scrubbed is relabelled `redaction_state: redacted` rather than claiming `safe`.
+Digest, presence, and verification fields are left untouched, so a skeptic still
+verifies each reference by digest + presence. The recorded SQLite row keeps its
+raw, record-time value; scrubbing happens only when the shared projection is
+built.
 
 Belt-and-suspenders: before you attach **any** projection to a PR or dashboard,
 gate it with `nlfr redact` (defense-in-depth pattern matching for credentials +
