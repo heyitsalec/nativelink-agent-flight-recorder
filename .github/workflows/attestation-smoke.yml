@@ -6,9 +6,12 @@ name: Attestation smoke (cosign round-trip)
 # with cosign `attest-blob --statement` (an OFFLINE, ephemeral key -- never
 # keyless/OIDC, never a real key), verify it (signature-only + full-claims), and
 # assert the decoded DSSE payload is NLFR's Statement byte-for-byte. Nothing else
-# in CI exercises this path, so a future cosign whose interface drifts from the
-# doc's tested v3.1.1 line could silently break the documented flow for users.
-# This job turns that documented property into a continuously-checked one.
+# in CI exercises this path, so a change to NLFR's Statement output -- or to the
+# pinned cosign line the doc documents -- could silently break the documented
+# flow for users. This job turns that documented property into a
+# continuously-checked one: the round-trip is re-proven against the doc's pinned
+# cosign (v3.1.1) on every relevant change, and a cosign bump is re-proven HERE
+# (in the PR that bumps the pin + doc) before it reaches users.
 #
 # NON-BLOCKING by design (continue-on-error on the sole job): a cosign-side hiccup
 # or interface change must not flip main red -- but it MUST stay visible. The job
@@ -21,9 +24,10 @@ name: Attestation smoke (cosign round-trip)
 #     this flow (the projector, the how-to doc, the predicate contract, this
 #     workflow, and its two helper scripts). A PR touching in_toto.py or the doc
 #     gets the round-trip checked before merge; unrelated PRs skip it (no noise).
-#   * workflow_dispatch -- on-demand re-check after a cosign bump.
-#   * schedule (weekly) -- periodic drift detection so a NEW cosign release that
-#     breaks `--statement` surfaces here even when no relevant file changed.
+#   * workflow_dispatch -- on-demand re-check (e.g. after bumping the cosign pin).
+#   * schedule (weekly) -- re-proves the pinned round-trip even when no relevant
+#     file changed, catching drift in the installer action, the GitHub runner
+#     image, or the uv/Python toolchain that the per-change triggers would miss.
 on:
   push:
     branches: [main]
@@ -46,8 +50,8 @@ on:
       - "scripts/dsse_compare.py"
   workflow_dispatch:
   schedule:
-    # Weekly drift probe: catches a new cosign release breaking `--statement`
-    # even on weeks no relevant file changed. Offset from nlfr-proof.yml's cron.
+    # Weekly re-proof of the pinned round-trip (installer/runner/toolchain drift)
+    # on weeks no relevant file changed. Offset from nlfr-proof.yml's cron.
     - cron: "31 6 * * 1"
 
 concurrency:
@@ -78,12 +82,16 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install cosign
-        # Intentionally NOT pinned to an exact cosign patch. We track the
-        # installer's default (latest-in-v3) cosign so a future release whose
-        # `--statement` / bundle interface drifts from the doc's tested v3.1.1
-        # line surfaces HERE (red, non-blocking) instead of silently in users'
-        # hands. The exact version that ran is recorded in the next step.
+        # Pin cosign to the doc's tested v3.1.1 line. This is load-bearing, NOT
+        # cosmetic: `attest-blob --statement` only exists on cosign v3.x, and the
+        # installer's OWN default is an older v2.x (which lacks the flag) -- the
+        # action tag and the installed cosign version are independent. Bump this
+        # pin in lockstep with the cosign version the how-to doc documents; a bump
+        # PR re-runs this smoke and proves the new line before users hit it. The
+        # exact version that ran is recorded in the next step.
         uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: "v3.1.1"
 
       - name: "Record cosign version (proven-by-hand baseline: v3.1.1)"
         run: |
