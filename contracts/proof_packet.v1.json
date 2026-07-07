@@ -60,14 +60,18 @@
     },
     "artifact_verification_metrics": {
       "type": "object",
-      "description": "Rollup of independent artifact-integrity verification. Emitted in summary.artifact_verification and as the 'artifact_verification' block's metrics.",
+      "description": "Rollup of independent artifact-integrity verification. Emitted in summary.artifact_verification and as the 'artifact_verification' block's metrics. As of issue #81 part A the rollup also carries the remote_* counts below; they are 0 unless an optional CAS probe was injected (with no probe every remote reference lands in 'unverified_remote').",
       "properties": {
         "total": { "type": "integer" },
         "verified_count": { "type": "integer", "description": "Local files whose recomputed SHA-256 matched the BEP-declared digest." },
         "present_unverified": { "type": "integer", "description": "Local artifacts present but whose digest was NOT cross-checked: a file whose declared digest is not a recomputable SHA-256 (non-default --digest_function or a non-64-hex digest), a symlink output whose target exists on disk (symlinks declare no digest), or inline bytes with a non-SHA-256 declared digest. Presence recorded, digest neither confirmed nor contradicted." },
         "mismatched": { "type": "integer", "description": "Local files whose recomputed digest contradicted the BEP-declared digest (truth-label downgraded)." },
         "missing": { "type": "integer", "description": "BEP-declared local files absent on disk (presence not claimed)." },
-        "unverified_remote": { "type": "integer", "description": "Remote-only references (bytestream:// and other CAS URIs) that cannot be locally verified; see bazelbuild/bazel#23250." }
+        "unverified_remote": { "type": "integer", "description": "Remote-only references (bytestream:// and other CAS URIs) not verified against the CAS — the no-probe default; see bazelbuild/bazel#23250." },
+        "remote_verified": { "type": "integer", "description": "Remote references an injected CAS probe read and whose recomputed SHA-256 matched the BEP-declared digest (issue #81 part A). The only remote tier that keeps a collectable_v1/high claim." },
+        "remote_present": { "type": "integer", "description": "Remote references the CAS reports present but whose bytes were not hash-checked (probe read no digest, or the declared digest is not a recomputable SHA-256). Presence recorded, digest neither confirmed nor contradicted." },
+        "remote_mismatch": { "type": "integer", "description": "Remote references the CAS probe read but whose recomputed digest contradicted the BEP-declared digest (truth-label downgraded)." },
+        "remote_missing": { "type": "integer", "description": "Remote references the CAS confirms are ABSENT — the actual bazelbuild/bazel#23250 upload-failure mode (truth-label downgraded)." }
       }
     },
     "artifact_reference": {
@@ -80,7 +84,7 @@
         "declared_digest": { "type": ["string", "null"], "description": "Digest as declared by the BEP (hex of the build's configured --digest_function; SHA-256 by default)." },
         "computed_digest": { "type": ["string", "null"], "description": "SHA-256 recomputed by NLFR from local bytes; null when not locally readable or when the declared digest is not a recomputable SHA-256." },
         "digest_verified": { "type": ["boolean", "null"], "description": "true when recomputed matched declared, false on mismatch, null when no local comparison was possible (missing, remote, no declared digest, or a non-SHA-256 declared digest)." },
-        "presence": { "enum": ["local_verified", "local_present", "local_mismatch", "missing", "unverified_remote_reference"], "description": "local_present marks an artifact that is present but whose digest was not cross-checked: a file with a non-recomputable-SHA-256 declared digest, a symlink output whose target exists on disk (no declared digest), or inline bytes with a non-SHA-256 declared digest." },
+        "presence": { "enum": ["local_verified", "local_present", "local_mismatch", "missing", "unverified_remote_reference", "remote_verified", "remote_present", "remote_mismatch", "remote_missing"], "description": "local_present marks an artifact that is present but whose digest was not cross-checked: a file with a non-recomputable-SHA-256 declared digest, a symlink output whose target exists on disk (no declared digest), or inline bytes with a non-SHA-256 declared digest. The remote_* values (issue #81 part A) come from an injected CAS probe: remote_verified (bytes read, recomputed SHA-256 matched declared), remote_present (present, not hash-checked), remote_mismatch (read, digest contradicts declared), remote_missing (CAS confirms the blob ABSENT — bazelbuild/bazel#23250). With no probe a remote reference stays unverified_remote_reference." },
         "verification_note": { "type": ["string", "null"] },
         "source_kind": { "enum": ["collectable_v1", "derived_v1", "simulated_v1", "future", "unknown"] },
         "confidence": { "enum": ["high", "medium", "low", "unknown"] }

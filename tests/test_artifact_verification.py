@@ -20,7 +20,7 @@ from nlfr.db import connect, initialize
 from nlfr.db.ingest import upsert_run
 from nlfr.ingest.bazel import parse_bazel_bep
 from nlfr.ingest.sqlite import ingest_evidence_bundle
-from nlfr.ingest.verification import iter_bep_file_references
+from nlfr.ingest.verification import ProbeResult, build_reference, iter_bep_file_references
 from nlfr.projectors import export_proof_packet
 
 FIXTURE_ROOT = Path(__file__).resolve().parents[0] / "fixtures" / "bazel"
@@ -162,6 +162,11 @@ def test_proof_packet_surfaces_artifact_verification_summary(tmp_path: Path) -> 
         "mismatched": 1,
         "missing": 1,
         "unverified_remote": 1,
+        # Remote-verification tiers stay 0 with no CAS probe injected (issue #81 A).
+        "remote_verified": 0,
+        "remote_present": 0,
+        "remote_mismatch": 0,
+        "remote_missing": 0,
     }
 
     # Dedicated proof block with the same metrics and an honest, cited claim.
@@ -515,3 +520,271 @@ def test_output_group_still_rejected_alongside_symlink_signal_keys() -> None:
     }
     # No inlineFiles on either group -> zero Files harvested, no group name leaks in.
     assert iter_bep_file_references(event) == []
+
+
+# --------------------------------------------------------------------------- #
+# Injectable CAS probe seam (GitHub issue #81, part A)
+#
+# NLFR does not implement a gRPC/REAPI probe here (that is #81 part B, an optional
+# dependency extra). Part A lands the label VOCABULARY and the injectable SEAM: a
+# plain Python callable is passed in, its verdict is mapped to honest remote_*
+# labels, and — crucially — with NO probe the historical
+# ``unverified_remote_reference`` behavior is byte-for-byte unchanged. These tests
+# use FAKE probes (no network, no dependency) to exercise every mapping.
+# --------------------------------------------------------------------------- #
+
+_REMOTE_URI = "bytestream://remote.buildbuddy.io/blobs/deadbeefdeadbeef/1024"
+_REMOTE_DECLARED_DIGEST = _sha256(b"the true remote blob bytes\n")  # a real 64-hex SHA-256
+
+
+def _build_remote_reference(cas_probe, *, declared_digest=_REMOTE_DECLARED_DIGEST):
+    """Build ONE remote (bytestream://) reference through the injectable seam."""
+
+    payload = {
+        "name": "remote.bin",
+        "uri": _REMOTE_URI,
+        "digest": declared_digest,
+        "length": "1024",
+    }
+    return build_reference(
+        payload,
+        label="//pkg:remote",
+        index=0,
+        source_kind="collectable_v1",
+        evidence_refs=["run:probe-demo"],
+        artifact_base=None,
+        cas_probe=cas_probe,
+    )
+
+
+def test_cas_probe_present_and_matching_digest_verifies_remote() -> None:
+    """present + recomputed SHA-256 matches declared -> remote_verified (high)."""
+
+    def probe(uri, declared_digest, declared_size):
+        return ProbeResult(present=True, computed_digest=_REMOTE_DECLARED_DIGEST)
+
+    ref = _build_remote_reference(probe)
+    assert ref.presence == "remote_verified"
+    assert ref.digest_verified is True
+    assert ref.computed_digest == _REMOTE_DECLARED_DIGEST
+    # remote_verified is the ONLY remote tier that keeps a collectable_v1/high claim.
+    assert ref.source_kind == "collectable_v1"
+    assert ref.confidence == "high"
+    assert "matches" in (ref.verification_note or "")
+
+
+def test_cas_probe_present_but_wrong_digest_downgrades_to_remote_mismatch() -> None:
+    """present + recomputed SHA-256 contradicts declared -> remote_mismatch (low)."""
+
+    def probe(uri, declared_digest, declared_size):
+        # The CAS bytes hash to something other than the BEP-declared digest.
+        return ProbeResult(present=True, computed_digest=_sha256(b"different remote bytes\n"))
+
+    ref = _build_remote_reference(probe)
+    assert ref.presence == "remote_mismatch"
+    assert ref.digest_verified is False
+    assert ref.computed_digest == _sha256(b"different remote bytes\n")
+    assert ref.source_kind == "derived_v1"  # never collectable on contradiction
+    assert ref.confidence == "low"
+    assert "does NOT match" in (ref.verification_note or "")
+
+
+def test_cas_probe_present_without_crosscheck_records_remote_present() -> None:
+    """present but nothing to hash-check -> remote_present (medium), digest unproven.
+
+    Covers both no-cross-check shapes: the probe confirmed presence without hashing
+    the bytes (computed_digest is None), and a present blob whose BEP declared no
+    digest to compare against.
+    """
+
+    def existence_only_probe(uri, declared_digest, declared_size):
+        return ProbeResult(present=True, computed_digest=None)
+
+    ref = _build_remote_reference(existence_only_probe)
+    assert ref.presence == "remote_present"
+    assert ref.digest_verified is None
+    assert ref.source_kind == "collectable_v1"  # honestly present, not downgraded
+    assert ref.confidence == "medium"
+
+    # No declared digest to cross-check against -> also remote_present, even though
+    # the probe DID hash the bytes.
+    def hashing_probe(uri, declared_digest, declared_size):
+        return ProbeResult(present=True, computed_digest=_sha256(b"whatever\n"))
+
+    ref_no_declared = _build_remote_reference(hashing_probe, declared_digest=None)
+    assert ref_no_declared.presence == "remote_present"
+    assert ref_no_declared.digest_verified is None
+    assert ref_no_declared.confidence == "medium"
+
+
+def test_cas_probe_absent_marks_remote_missing() -> None:
+    """CAS confirms the blob ABSENT -> remote_missing (low) — the bazel#23250 mode."""
+
+    def probe(uri, declared_digest, declared_size):
+        return ProbeResult(present=False)
+
+    ref = _build_remote_reference(probe)
+    assert ref.presence == "remote_missing"
+    assert ref.digest_verified is None
+    assert ref.computed_digest is None
+    assert ref.source_kind == "derived_v1"
+    assert ref.confidence == "low"
+    assert "bazelbuild/bazel#23250" in (ref.verification_note or "")
+    assert "ABSENT" in (ref.verification_note or "")
+
+
+def test_no_cas_probe_keeps_exact_unverified_remote_default() -> None:
+    """With NO probe (the default) the historical downgrade is byte-for-byte unchanged."""
+
+    ref = _build_remote_reference(None)
+    assert ref.presence == "unverified_remote_reference"
+    assert ref.digest_verified is None
+    assert ref.computed_digest is None
+    assert ref.source_kind == "derived_v1"
+    assert ref.confidence == "low"
+    note = ref.verification_note or ""
+    assert "bazelbuild/bazel#23250" in note
+    assert "does not verify remote CAS in v1" in note
+
+
+def test_cas_probe_inconclusive_falls_back_to_unverified_remote() -> None:
+    """A probe that returns None OR raises never fabricates a verdict -> unverified."""
+
+    ref_none = _build_remote_reference(lambda uri, digest, size: None)
+    assert ref_none.presence == "unverified_remote_reference"
+    assert ref_none.source_kind == "derived_v1"
+    assert ref_none.confidence == "low"
+    assert "no verdict" in (ref_none.verification_note or "")
+
+    def boom(uri, declared_digest, declared_size):
+        raise RuntimeError("CAS endpoint unreachable")
+
+    ref_raise = _build_remote_reference(boom)
+    assert ref_raise.presence == "unverified_remote_reference"
+    assert ref_raise.source_kind == "derived_v1"
+    assert "no verdict" in (ref_raise.verification_note or "")
+
+
+def test_cas_probe_is_threaded_through_parse_bazel_bep(tmp_path: Path) -> None:
+    """The probe reaches remote references through parse_bazel_bep, never local ones.
+
+    Proves the seam is wired end-to-end (parser -> build_reference -> _verify) and
+    that local files are still verified locally without ever touching the probe.
+    """
+
+    good_bytes = b"local verified bytes\n"
+    good_path = tmp_path / "good.txt"
+    good_path.write_bytes(good_bytes)
+    good_digest = _sha256(good_bytes)
+
+    files = [
+        {"name": "good.txt", "uri": good_path.as_uri(), "digest": good_digest, "length": str(len(good_bytes))},
+        {"name": "remote.bin", "uri": _REMOTE_URI, "digest": _REMOTE_DECLARED_DIGEST, "length": "1024"},
+    ]
+    events = [
+        {"id": {"started": {}}, "started": {"command": "build"}},
+        {"id": {"namedSetOfFiles": {"id": "0"}}, "namedSetOfFiles": {"files": files}},
+    ]
+    bep_path = tmp_path / "bazel.bep.json"
+    bep_path.write_text("\n".join(json.dumps(event) for event in events) + "\n")
+
+    calls: list[tuple] = []
+
+    def probe(uri, declared_digest, declared_size):
+        calls.append((uri, declared_digest, declared_size))
+        return ProbeResult(present=True, computed_digest=declared_digest)
+
+    bundle = parse_bazel_bep(bep_path, source_kind="collectable_v1", cas_probe=probe)
+    refs = {ref.name: ref for ref in bundle.artifact_references}
+
+    # The local file is verified locally; the probe is NOT invoked for it.
+    assert refs["good.txt"].presence == "local_verified"
+    assert refs["good.txt"].digest_verified is True
+
+    # The remote reference is verified via the injected probe.
+    assert refs["remote.bin"].presence == "remote_verified"
+    assert refs["remote.bin"].digest_verified is True
+    assert refs["remote.bin"].confidence == "high"
+
+    # The probe saw ONLY the remote reference, with its declared digest and size.
+    assert calls == [(_REMOTE_URI, _REMOTE_DECLARED_DIGEST, 1024)]
+
+
+def test_parse_bazel_bep_without_probe_is_unchanged(tmp_path: Path) -> None:
+    """Default parse (no cas_probe) still labels remote refs unverified_remote_reference."""
+
+    bep_path, _ = _write_bep(tmp_path)
+    bundle = parse_bazel_bep(bep_path, source_kind="collectable_v1")  # no cas_probe
+    refs = {ref.name: ref for ref in bundle.artifact_references}
+    assert refs["remote.bin"].presence == "unverified_remote_reference"
+    assert refs["remote.bin"].source_kind == "derived_v1"
+
+
+def test_proof_summary_counts_remote_verification_tiers(tmp_path: Path) -> None:
+    """The proof packet rolls up all four probe-derived remote tiers (issue #81 A).
+
+    Ingests four remote references — one per verdict — through a fake probe, then
+    asserts the ``artifact_verification`` summary/metrics count each remote tier and
+    the block surfaces the honest remote claims.
+    """
+
+    files = [
+        {"name": "rv.bin", "uri": "bytestream://cas/blobs/rv/1", "digest": _sha256(b"verified remote\n"), "length": "1"},
+        {"name": "rp.bin", "uri": "bytestream://cas/blobs/rp/1", "digest": _sha256(b"present remote\n"), "length": "1"},
+        {"name": "rm.bin", "uri": "bytestream://cas/blobs/rm/1", "digest": _sha256(b"declared digest\n"), "length": "1"},
+        {"name": "rx.bin", "uri": "bytestream://cas/blobs/rx/1", "digest": _sha256(b"absent remote\n"), "length": "1"},
+    ]
+    events = [
+        {"id": {"started": {}}, "started": {"command": "build"}},
+        {"id": {"namedSetOfFiles": {"id": "0"}}, "namedSetOfFiles": {"files": files}},
+    ]
+    bep_path = tmp_path / "remote.bep.json"
+    bep_path.write_text("\n".join(json.dumps(event) for event in events) + "\n")
+
+    def probe(uri, declared_digest, declared_size):
+        if uri.endswith("/rv/1"):
+            return ProbeResult(present=True, computed_digest=declared_digest)  # verified
+        if uri.endswith("/rp/1"):
+            return ProbeResult(present=True, computed_digest=None)  # present, unchecked
+        if uri.endswith("/rm/1"):
+            return ProbeResult(present=True, computed_digest=_sha256(b"actual bytes differ\n"))  # mismatch
+        return ProbeResult(present=False)  # missing
+
+    conn = initialize(connect(tmp_path / "nlfr.sqlite"))
+    run_id = upsert_run(
+        conn,
+        stable_key="remote-demo:cache-only:2026-07-06T00:00:00.000000Z",
+        run_group="remote-demo",
+        scenario="remote-verify",
+        mode="cache-only",
+        status="ingested",
+        source_kind="collectable_v1",
+        confidence="high",
+        evidence_refs=["run:remote-demo"],
+        redaction_state="safe",
+    )
+    bundle = parse_bazel_bep(bep_path, source_kind="collectable_v1", cas_probe=probe)
+    counts = ingest_evidence_bundle(
+        conn,
+        run_id=run_id,
+        run_stable_key="remote-demo:cache-only:2026-07-06T00:00:00.000000Z",
+        bundle=bundle,
+    )
+    assert counts["artifact_references"] == 4
+
+    proof = export_proof_packet(conn, run_group="remote-demo")
+    summary = proof["summary"]["artifact_verification"]
+    assert summary["total"] == 4
+    assert summary["remote_verified"] == 1
+    assert summary["remote_present"] == 1
+    assert summary["remote_mismatch"] == 1
+    assert summary["remote_missing"] == 1
+    # The local_* rollups are untouched (no local references in this run).
+    assert summary["verified_count"] == 0
+    assert summary["unverified_remote"] == 0
+
+    block = next(item for item in proof["blocks"] if item["id"] == "artifact_verification")
+    assert block["metrics"] == summary
+    joined = " ".join(block["claims"])
+    assert "Independently verified 1 remote reference" in joined
+    assert "Downgraded 1 remote reference(s) the CAS confirms are ABSENT" in joined

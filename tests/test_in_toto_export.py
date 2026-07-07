@@ -299,6 +299,11 @@ def test_predicate_carries_truth_labels_and_verification_summary(tmp_path: Path)
         "mismatched": 1,
         "missing": 1,
         "unverified_remote": 1,
+        # Remote-verification tiers stay 0 with no CAS probe injected (issue #81 A).
+        "remote_verified": 0,
+        "remote_present": 0,
+        "remote_mismatch": 0,
+        "remote_missing": 0,
     }
     presence = {ref["name"]: ref["presence"] for ref in verification["references"]}
     assert presence["good.txt"] == "local_verified"
