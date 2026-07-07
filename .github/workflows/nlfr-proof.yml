@@ -5,6 +5,10 @@ on:
     branches: [main, codex/**, fix/**]
   pull_request:
   workflow_dispatch:
+  schedule:
+    # Weekly full-proof run; keeps the non-blocking LRE probes exercised
+    # without burning ~50 runner-minutes on every push/PR.
+    - cron: "17 6 * * 1"
 
 concurrency:
   group: nlfr-proof-${{ github.ref }}
@@ -48,9 +52,9 @@ jobs:
 
       - name: Canvas dogfood record + build + truth guard
         run: |
-          ./scripts/record-canvas-build.sh
           npm ci --prefix apps/canvas
-          npm --prefix apps/canvas run build
+          (cd apps/canvas && npx playwright install --with-deps chromium)
+          ./scripts/record-canvas-build.sh
           npm --prefix apps/canvas run test:truth
 
       - name: Upload record-proof artifacts
@@ -130,6 +134,10 @@ jobs:
     # Non-blocking: the LRE overlay is version-blocked (see
     # demo/bazel-monorepo/MODULE.lre.bazel) and Magic Nix Cache throttles on
     # cold public runners. Tracked in docs/dags/future-fleet-claims.md.
+    # Schedule/dispatch only: has never passed on hosted runners (FlakeHub
+    # auth + cache throttling) and gates nothing, so it stays off the
+    # per-push hot path while remaining an honest, exercised blocker probe.
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
     continue-on-error: true
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -201,6 +209,8 @@ jobs:
     name: LRE cold/warm cache parity proof
     # Non-blocking: same LRE overlay blocker + cold-runner cache throttling as
     # lre-proof-probe. Local Nix runs remain the canonical LRE evidence path.
+    # Schedule/dispatch only for the same reason as lre-proof-probe.
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
     continue-on-error: true
     runs-on: ubuntu-latest
     timeout-minutes: 60
