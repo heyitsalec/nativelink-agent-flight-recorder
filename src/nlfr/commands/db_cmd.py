@@ -11,6 +11,7 @@ how the operator consents.
 from __future__ import annotations
 
 import argparse
+import sqlite3
 import sys
 
 from nlfr.db import SCHEMA_VERSION, connect, database_defect, migrate
@@ -58,7 +59,18 @@ def db_upgrade(args: argparse.Namespace) -> int:
         print(_refuse_path_message(str(args.db), defect), file=sys.stderr)
         return 2
 
-    conn = connect(args.db)
+    try:
+        conn = connect(args.db)
+    except sqlite3.OperationalError as exc:
+        # Upgrading writes; an unwritable directory must be a clean refusal,
+        # not a traceback (the evidence stays untouched either way).
+        print(
+            f"nlfr: cannot upgrade the database at '{args.db}': {exc}.\n"
+            "The database (or its directory) is not writable — restore write "
+            "permission, or copy the file somewhere writable and upgrade the copy.",
+            file=sys.stderr,
+        )
+        return 2
     try:
         before = conn.execute("PRAGMA user_version").fetchone()[0]
         if before > SCHEMA_VERSION:

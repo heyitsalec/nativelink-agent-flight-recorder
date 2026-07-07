@@ -151,3 +151,18 @@ def test_normal_writable_dir_read_still_works(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr
     payload = json.loads(result.stdout)
     assert payload["schema_version"] >= 1
+
+
+def test_db_upgrade_in_readonly_dir_refuses_cleanly(protected_wal_db: Path) -> None:
+    """`nlfr db upgrade` against an unwritable directory: clean exit 2, no traceback.
+
+    Upgrading writes, so it legitimately cannot proceed here — but the refusal
+    must match the rest of the read-path UX (actionable message), never a raw
+    sqlite3.OperationalError traceback. The evidence stays untouched either way.
+    """
+
+    result = run_nlfr("db", "upgrade", "--db", str(protected_wal_db))
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "cannot upgrade the database" in result.stderr
+    assert "not writable" in result.stderr
+    assert "Traceback" not in result.stderr
