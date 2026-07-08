@@ -36,12 +36,9 @@ function regionStyle(region: RegionSlot, spec: ViewSpec, collapsed: boolean): CS
   if (region === "rail" && !collapsed && spec.layout.regions.rail.width_px) {
     base.width = spec.layout.regions.rail.width_px;
   }
-  if (region === "header") {
-    base.display = "flex";
-    base.flexWrap = "wrap";
-    base.alignItems = "center";
-    base.gap = "0.5rem";
-  }
+  // The header region is a full-bleed block; the .topbar bar owns its own
+  // flex layout (P3 shell). The tool rail floats out of the header via
+  // position:fixed, and the zoom-controls slot is hidden by CSS.
   return base;
 }
 
