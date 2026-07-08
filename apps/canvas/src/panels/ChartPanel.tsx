@@ -32,6 +32,9 @@ import { boolProp, parseListProp, stringProp } from "./shared/props";
 import { useOptionalZoomControllerRef } from "./shared/ZoomContext";
 import { ThemeToggle } from "./shared/ThemeToggle";
 import { ViewTemplateSelector } from "./shared/ViewTemplateSelector";
+import { TruthLegend } from "./shared/truth";
+import { confidenceMeta, SOURCE_KIND_META } from "./shared/truth/copy";
+import { GLYPH_VIEWBOX, glyphShapeElements } from "./shared/truth/glyphShapes";
 
 const MODE_ICONS: Record<ViewModeId, React.ReactNode> = {
   graph: <GitBranch size={18} />,
@@ -369,6 +372,63 @@ function workerStatusLabel(node: PositionedNode): string | null {
   return null;
 }
 
+/** SVG source glyph for a graph node — same shape language as the HTML
+ *  <SourceGlyph>, so source_kind is encoded by SHAPE on the canvas too, never
+ *  by border colour alone (truth invariant #2). */
+function NodeSourceGlyph({ kind, size, x }: { kind: SourceKind; size: number; x: number }) {
+  const meta = SOURCE_KIND_META[kind] ?? SOURCE_KIND_META.unknown;
+  const scale = size / GLYPH_VIEWBOX;
+  return (
+    <g
+      className={`node-source-glyph truth--${meta.tone}`}
+      transform={`translate(${x - size / 2}, ${-size / 2}) scale(${scale})`}
+      aria-hidden="true"
+    >
+      {glyphShapeElements(meta.shape)}
+    </g>
+  );
+}
+
+/** SVG confidence meter — neutral 3-bar, matches the HTML <ConfidenceMeter>. */
+function NodeConfidenceMeter({ confidence, x }: { confidence: string; x: number }) {
+  const meta = confidenceMeta(confidence);
+  const heights = [3, 5, 7];
+  const barWidth = 2.6;
+  const gap = 1.4;
+  const maxHeight = heights[heights.length - 1];
+  return (
+    <g className="node-confidence-meter" transform={`translate(${x}, ${-maxHeight / 2})`} aria-hidden="true">
+      {heights.map((height, index) => (
+        <rect
+          key={index}
+          className={index < meta.filled ? "confidence-bar--filled" : "confidence-bar--empty"}
+          x={index * (barWidth + gap)}
+          y={maxHeight - height}
+          width={barWidth}
+          height={height}
+          rx={1}
+        />
+      ))}
+      {meta.showUnknown && (
+        <text className="node-confidence-unknown" x={heights.length * (barWidth + gap) + 1} y={maxHeight}>
+          ?
+        </text>
+      )}
+    </g>
+  );
+}
+
+/** Source glyph + confidence meter, centred as one meta row under a node. */
+function NodeTruthMeta({ node, y }: { node: PositionedNode; y: number }) {
+  return (
+    <g className="node-truth-meta" transform={`translate(0, ${y})`}>
+      <title>{`${SOURCE_KIND_META[node.source_kind]?.tooltip ?? node.source_kind} · ${confidenceMeta(node.confidence).tooltip}`}</title>
+      <NodeSourceGlyph kind={node.source_kind} size={8} x={-9} />
+      <NodeConfidenceMeter confidence={node.confidence} x={-2} />
+    </g>
+  );
+}
+
 function NodeProvenanceBadge({ badge, y }: { badge: ProvenanceBadge; y: number }) {
   const width = badge.label.length * 5.6 + (badge.live ? 30 : 18);
   return (
@@ -458,37 +518,14 @@ function GraphNode({
         </text>
       )}
       {agentBadge && <NodeProvenanceBadge badge={agentBadge} y={node.radius + 19} />}
-      <text className="node-confidence" textAnchor="middle" y={confidenceY}>
-        {node.confidence}
-      </text>
+      <NodeTruthMeta node={node} y={confidenceY} />
     </g>
   );
 }
 
 export function TruthLegendPanel(instance: ComponentInstance) {
   const items = parseListProp(instance.props?.items) as SourceKind[];
-  const catalog: { kind: SourceKind; label: string; hint: string }[] = [
-    { kind: "collectable_v1", label: "collectable_v1", hint: "recorded from real tools" },
-    { kind: "derived_v1", label: "derived_v1", hint: "computed from artifacts" },
-    { kind: "simulated_v1", label: "simulated_v1", hint: "deterministic fixture" },
-    { kind: "future", label: "future", hint: "claim not yet collected" },
-  ];
-  const visible = items.length ? catalog.filter((item) => items.includes(item.kind)) : catalog;
-
-  return (
-    <aside className="truth-legend" aria-label="truth label legend">
-      <span className="truth-legend-title">Truth labels</span>
-      <ul>
-        {visible.map((item) => (
-          <li key={item.kind} data-source-kind={item.kind}>
-            <span className={`truth-dot ${item.kind}`} />
-            <span className="truth-legend-label">{item.label}</span>
-            <span className="truth-legend-hint">{item.hint}</span>
-          </li>
-        ))}
-      </ul>
-    </aside>
-  );
+  return <TruthLegend items={items.length ? items : undefined} />;
 }
 
 export function ProofConstellationPanel(instance: ComponentInstance) {

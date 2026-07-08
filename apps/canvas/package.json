@@ -12,6 +12,7 @@
     "capture:heroes": "node scripts/capture-demo-tour.mjs && node scripts/capture-evidence-loop.mjs",
     "diff": "node scripts/diff-screenshots.mjs",
     "test:truth": "node scripts/truth-guard.mjs",
+    "test:unit": "node --test scripts/*.test.mjs",
     "preview": "vite preview --host 127.0.0.1 --port 5174"
   },
   "dependencies": {
