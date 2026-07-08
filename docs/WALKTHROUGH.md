@@ -58,95 +58,143 @@ If projections fail to load, the canvas shows a **fixture fallback banner**
 (`usingFixtureFallback` in `App.tsx`) and uses committed demo fixtures — honest
 `simulated_v1`, not fake live proof.
 
-**Screenshots below** (`docs/images/canvas-*.png`) are **fixture-backed**
-`simulated_v1` captures for teaching the UI surface. They intentionally show the
-agent-loop graph shape. When you open preview, expect **canvas-dev** labels on
-the banner — not the purple simulated nodes in the screenshots.
+**Screenshots below** (`docs/images/canvas-*.png`) are captured from the
+committed **canvas-dev** `collectable_v1` dogfood projection — the real record of
+NLFR building its own canvas (`record-canvas-build.sh`). What you see here is what
+preview loads by default; the banner reads
+`canvas-dev run group — collectable_v1 projection · 70 nodes`. These are the
+redesigned (v2) canvas, so every truth label is a grayscale-safe **shape + hue**
+glyph, not a color-only dot.
 
 ## The current app in pictures
 
-These screenshots are fixture-backed `simulated_v1` canvas renders. They are
-useful for understanding the current app surface, not for claiming live
-NativeLink execution or the committed canvas-dev default. The real proof
-summaries live in [`proof-samples/`](proof-samples/), and the real scripts write
-under ignored `data/`.
+These screenshots render the committed `canvas-dev` `collectable_v1` projection —
+real recorded build evidence, not invented backend state. The redesigned canvas is
+an instrument panel: a density Action Graph, four rail lenses over it, a
+grayscale-safe truth legend, a composer + command palette, first-class dark mode,
+and a first-class mobile layout. The real proof summaries live in
+[`proof-samples/`](proof-samples/), and the real scripts write under ignored
+`data/`.
 
 ### Action Graph
 
-![Action Graph canvas rendered from fixture-backed projection JSON](images/canvas-desktop.png)
+![Action Graph canvas rendered from the canvas-dev collectable_v1 projection](images/canvas-desktop.png)
 
-This is the main canvas. The walkthrough image renders fixture
-`action-graph.json` shape. The committed default is `canvas-dev` under
-`apps/canvas/public/projections/`. The graph shows the evidence chain:
+This is the main canvas. Nodes are **cards** laid out by a deterministic density
+model, grouped by run: the first `canvas-build` run is expanded into its recorded
+invocations (`npm --prefix …`, `uv run pytest …`) and artifacts (`run.json`,
+`outputs/…`), while the six later runs collapse into cluster cards
+(`2 invocations · 6 artifacts`) so nothing is hidden and nothing is invented. The
+honest readout (bottom-right) states the partition exactly —
+`fit · 89% · 70 total · 11 cards · 59 in 9 clusters`. The evidence chain reads
+left to right:
 
-`agent -> change -> run -> target -> action -> cache_event`
+`change → run → invocation → artifact`
 
-The bottom-left legend explains the truth labels. Purple nodes are simulated
-fixture evidence in the no-Nix demo. Green is reserved for collectable evidence
-from real tool output.
+The **TRUTH LEGEND** (bottom-left) is the key to the whole surface. Truth is
+encoded by **shape + hue**, so it survives grayscale and color-blindness — the
+shape is the guarantee, the hue is a convenience:
+
+- **● Recorded** — filled circle, `collectable_v1`: captured from real tool output.
+- **◆ Computed** — diamond, `derived_v1`: computed from recorded artifacts.
+- **▲ Simulated** — triangle, `simulated_v1`: a deterministic fixture.
+- **○ Not yet collected** — dashed hollow circle, `future`: a claim not yet collected.
+
+Below the glyphs the legend names the three secondary encodings a node can carry:
+a **confidence** meter (bar height, never source-hued), a **redaction** lock chip
+(surfaces real `[REDACTED:…]` paths, never a bare token), and a **provenance** trio
+for agent receipts. Press `⌘L` to toggle the legend. In the `canvas-dev` dogfood
+every node is `collectable_v1`, so the default graph is all filled-circle Recorded
+evidence; simulated/future glyphs appear in the fixture views
+(e.g. `?view=two-act-spark`).
 
 ### Agent-loop focus
 
-![Agent-loop focus rendered from fixture projection JSON](images/canvas-agent-loop.png)
+![Agent-loop focus rendered from the canvas-dev projection](images/canvas-agent-loop.png)
 
-Typing `agent loop` in the operator input isolates the deterministic
-bounded-agent patch provenance: the agent node, the change node, and their
-relationship to the validation run.
+The operator bar at the bottom drives focus and jumps. Type `agent loop` (or open
+the **⌘K command palette** and pick it) to isolate agent and change provenance on
+the graph without leaving the projection. The bar labels itself honestly —
+`local filter · not evidence` — because focusing is a view operation, never a new
+claim.
 
-Important honesty point: this is not a live LLM call. The scenario carries a
+Important honesty point: this is not a live LLM call. An agent scenario carries a
 `model` label and `prompt_sha256`, but the raw prompt is never stored and no
 tokens are spent. Contrast with M8 `record-agent-change.sh` and tier1-live-bazel
 samples (`collectable_v1` agent leg).
 
 ### Proof Packet
 
-![Proof Packet view rendered from fixture projection JSON](images/canvas-proof.png)
+![Proof Packet drawer rendered from the canvas-dev proof projection](images/canvas-proof.png)
 
-The Proof Packet is the "what can we actually claim?" view. It summarizes scope,
-invocations, cache evidence, validation surface, artifacts, stored proof blocks,
-and unsupported claims.
+The Proof Packet lens answers "what can we actually claim?" It opens as a drawer
+with a block index and a rollup that counts blocks by source kind
+(`3 recorded · 4 not yet collected · 0 computed · 0 simulated`), so an
+un-collected claim is stated as such, never quietly dropped. Each block — Proof
+Scope, Invocation Results, Cache Evidence, Cache Economics, Remote Execution
+Boundary, Validation Surface, Artifact Chain — carries its own glyph, confidence,
+evidence refs, and any unsupported claims (`5 unsupported` on the remote block).
+**Export JSON** downloads the packet verbatim. Future blocks read `no claim`
+rather than a fabricated value.
 
 ### Remote Boundary
 
-![Remote Boundary view showing gated worker claims](images/canvas-remote-boundary.png)
+![Remote Boundary lens showing gated worker claims](images/canvas-remote-boundary.png)
 
-The Remote Boundary lens is intentionally conservative. It can show when a
-recorded Bazel invocation was configured with remote execution or when a proof
-script observed worker endpoints. **Worker identity** is **conditional** (M7):
-promoted to `collectable_v1` when admin stdout is attached pre-ingest and the
-M7 regex matches — see `worker-evidence-proof.sh`. Scheduler assignment, queue
-time, action placement, and load distribution stay unsupported without direct
-evidence.
+The Remote Boundary lens is intentionally conservative. It states what was
+observed and encodes every count and flag as a neutral, dashed "not observed" —
+never red, never a fabricated fleet metric. It can show when a recorded Bazel
+invocation was configured with remote execution or when a proof script observed
+worker endpoints. **Worker identity** is **conditional** (M7): promoted to
+`collectable_v1` when admin stdout is attached pre-ingest and the M7 regex
+matches — see `worker-evidence-proof.sh`. Scheduler assignment, queue time,
+action placement, and load distribution stay unsupported without direct evidence.
 
 ### Failure focus
 
-![Failure focus view rendered from fixture projection JSON](images/canvas-failure-focus.png)
+![Failure focus view rendered from the canvas-dev projection](images/canvas-failure-focus.png)
 
-Typing `failures` isolates failure nodes and opens the evidence inspector. The
-point is not to hide failed validation; the point is to make failed proof
-inspectable and labeled.
+Type `failures` (or use the ⌘K palette) to isolate failure nodes and open the
+evidence inspector. The point is not to hide failed validation; it is to make
+failed proof inspectable and labeled. Red is rationed to genuine recorded
+failures only — the `canvas-dev` dogfood records `0 failures`, so this focus
+honestly reports `0 of 70 nodes match` rather than inventing one.
 
 ### Mobile shape
 
-![Mobile canvas screenshot](images/canvas-mobile.png)
+![Mobile canvas — the 390-wide responsive layout](images/canvas-mobile.png)
 
-The canvas is sparse and responsive enough for inspection, but mobile is not the
-primary MVP surface.
+Mobile is now a **first-class 390-wide layout**, not an afterthought. The vertical
+tool rail becomes a horizontal **lens chip row** (Graph / Runway / Proof / Remote /
+Compare); zoom floats top-right; the truth legend and operator command move into a
+bottom **sheet** whose "Commands" pill opens the full-screen ⌘K palette. The graph
+anchors on real populated cards at a legible, pannable zoom with ≥44px touch
+targets, and the honest count readout stays on screen. It is the same recorded
+projection and the same grayscale-safe truth labels — nothing is dropped to fit
+the small screen.
 
-### Operator flow video
+### Composer and command palette
 
 <video controls src="images/canvas-operator-flow.webm" width="900"></video>
 
-If your Markdown renderer does not play WebM inline, open
+The operator surface is two complementary things: the always-present operator
+command input (type `proof`, `failures`, `agent loop`, `reset`, …) and the **⌘K
+command palette** for the same commands by fuzzy search. The **Composer** button
+in the header opens a drawer to recompose the view — pick a template, toggle
+panels, bind run groups — and export the resulting view-spec JSON, labeled "never
+evidence" because composing a view is not a claim. If your Markdown renderer does
+not play WebM inline, open
 [`images/canvas-operator-flow.webm`](images/canvas-operator-flow.webm).
 
-To regenerate these assets from a running canvas dev/preview server:
+To regenerate these assets from a running canvas preview server:
 
 ```bash
-npm --prefix apps/canvas run dev -- --host 127.0.0.1
+npm --prefix apps/canvas run build
+npm --prefix apps/canvas run preview -- --host 127.0.0.1   # 127.0.0.1:5174
 CANVAS_URL=http://127.0.0.1:5174/ npm --prefix apps/canvas run capture
 cp output/playwright/canvas-*.png docs/images/
 cp output/playwright/canvas-operator-flow.webm docs/images/
+npm --prefix apps/canvas run capture:tour                  # docs/media/nlfr-canvas-tour.gif
 ```
 
 The committed files in `docs/images/` are the walkthrough copies. Fresh captures
@@ -412,13 +460,14 @@ It fetches:
 
 Then it renders:
 
-- Action Graph nodes and edges.
+- Action Graph nodes and edges (density model, grouped by run).
 - Proof Packet drawer.
 - Remote Boundary lens.
 - Compare Runs lens (M9).
-- Validation Runway overlay.
-- Operator command input.
-- Truth-label legend.
+- Validation Runway lens.
+- Operator command input and the ⌘K command palette.
+- Composer drawer (view-spec recompose + export).
+- Truth-label legend (grayscale-safe shape + hue glyphs).
 
 The layout is deterministic (`layout.ts`) and the types are explicit
 (`types.ts`).

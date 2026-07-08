@@ -20,8 +20,9 @@ NLFR is a local-first black-box recorder for agent validation loops:
 1. Agent or scenario changes a repo.
 2. Bazel validates through NativeLink cache or remote execution.
 3. NLFR captures immutable artifacts, ingests SQLite, exports truth-labeled JSON.
-4. A sparse canvas renders Action Graph, Proof Packet, and Remote Boundary only
-   from recorded projections.
+4. A redesigned canvas renders five lenses — Action Graph, Validation Runway,
+   Proof Packet, Remote Boundary, and Compare Runs — only from recorded
+   projections, with grayscale-safe shape+hue truth labels.
 
 ## What is proven today (Nix, tag `v0.2.0-mvp`)
 

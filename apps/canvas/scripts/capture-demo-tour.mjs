@@ -66,13 +66,16 @@ try {
     await capture.hold(page, 2.0);
 
     await page.getByLabel("Proof Packet").click();
-    await page.locator('[data-testid="proof-drawer"]').waitFor({ state: "visible" });
+    // The proof drawer is a fixed overlay since the P6 lens redesign; its
+    // [data-testid="proof-drawer"] grid-slot WRAPPER is now a zero-size
+    // pass-through, so wait on / focus the visible `.proof-drawer` content.
+    await page.locator(".proof-drawer").first().waitFor({ state: "visible" });
     await capture.setCaption(
       page,
       "Proof Packet",
       "Proof claims stay explicit: source kind, confidence, evidence refs, and redaction state on every node.",
     );
-    await capture.focus(page, '[data-testid="proof-drawer"]');
+    await capture.focus(page, ".proof-drawer");
     await capture.hold(page, 2.0);
 
     await page.getByLabel("Compare Runs").click();
