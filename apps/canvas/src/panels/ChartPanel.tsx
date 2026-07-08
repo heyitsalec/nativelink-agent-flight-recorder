@@ -611,7 +611,7 @@ function GraphCard({
             <span className="gcard-meta">
               <SourceGlyph kind={node.source_kind} size={8} />
               <ConfidenceMeter confidence={node.confidence} size="sm" />
-              <span className="gcard-kindline">{card.metaLine}</span>
+              <span className="gcard-kindline" title={card.metaLine || undefined}>{card.metaLine}</span>
               {card.statusDisplay !== null && (
                 <StatusGlyph status={card.statusDisplay} showLabel={false} />
               )}

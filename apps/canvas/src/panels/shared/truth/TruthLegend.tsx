@@ -1,3 +1,4 @@
+import { Lock } from "lucide-react";
 import type { SourceKind } from "../../../types";
 import { SOURCE_KIND_META } from "./copy";
 import { SourceGlyph } from "./SourceGlyph";
@@ -49,7 +50,7 @@ export function TruthLegend({ items }: { items?: SourceKind[] }) {
           className="truth-legend-encoding"
           title="redaction_state: safe · redacted (lock chip) · blocked · unknown"
         >
-          <span className="truth-legend-lock" aria-hidden="true" />
+          <Lock className="truth-legend-lock" size={13} aria-hidden="true" />
           <span className="truth-legend-encoding-label">Redaction</span>
         </span>
         <span

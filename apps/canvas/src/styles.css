@@ -1156,13 +1156,11 @@ select:focus-visible {
 }
 
 /* Miniature redaction lock chip in the legend bottom row. */
+/* The lucide Lock glyph the redaction encoding advertises (P5 fix F2, board
+   1b) — reuses RedactionChip's lock so the legend teaches the same mark. */
 .truth-legend-lock {
-  width: 13px;
-  height: 13px;
-  border: 1px solid var(--border-control);
-  border-radius: 3px;
-  background-color: var(--row-bg);
-  background-image: var(--redaction-hatch);
+  flex: none;
+  color: var(--text-muted);
 }
 
 .truth-legend-provenance-trio {
@@ -2747,7 +2745,12 @@ select:focus-visible {
   position: fixed;
   top: 112px;
   right: 16px;
-  bottom: 16px;
+  /* Clear the operator command bar (.grid-region-operator, z-index:6) anchored
+     to the viewport bottom — at bottom:16px the drawer overlapped it and the
+     shared z-index let the operator swallow clicks on the drawer's lower reach
+     (the collapsible "show N more" evidence button became unclickable, P5 fix
+     M3). Raising the bottom to a full operator-bar clearance restores it. */
+  bottom: 96px;
   left: auto;
   width: min(560px, calc(100vw - 96px));
   height: auto;
@@ -2852,6 +2855,15 @@ select:focus-visible {
   border: 1px dashed color-mix(in srgb, var(--truth-future) 45%, transparent);
   background: color-mix(in srgb, var(--truth-future) 10%, transparent);
   color: var(--truth-future);
+}
+
+/* Only rendered when the packet carries an out-of-enum source_kind
+   (rollup.unknown > 0) — the honest slate catch-all, never fabricated (P5 fix
+   m10). Dotted to echo the unknown source glyph. */
+.proof-rollup-pill--unknown {
+  border: 1px dotted var(--border-control);
+  background: var(--elev2-bg);
+  color: var(--text-muted);
 }
 
 .proof-rollup-plain {
@@ -3090,8 +3102,10 @@ select:focus-visible {
   gap: 4px;
 }
 
+/* Footnote UNDER the per-leg rows (P5 fix m8): the caption qualifies the rows
+   above it, so it trails them rather than leading. */
 .proof-legs-caption {
-  margin-bottom: 2px;
+  margin-top: 2px;
   font-size: 11px;
   color: var(--text-hint);
 }

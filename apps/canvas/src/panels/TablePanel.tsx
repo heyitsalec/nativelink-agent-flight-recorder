@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ChevronRight, Copy, Download, GitCompare, Maximize2, Network, ReceiptText, X } from "lucide-react";
 import {
+  blockIndexMeta,
+  blocksBelow,
   formatMetricValue,
+  isRedactedValue,
   labelKind,
   payloadRecord,
   proofRollup,
+  redactedValueForBlock,
   type RemoteLensModel,
   unsupportedClaimsFromPayload,
 } from "../pageModel";
@@ -233,33 +237,11 @@ function middleTruncate(value: string, head = 20, tail = 12): string {
   return `${value.slice(0, head)}…${value.slice(-tail)}`;
 }
 
-function isRedactedValue(value: string): boolean {
-  return value.includes("[REDACTED:") || value.includes("[REDACTED]");
-}
-
 /** Metric key → display label. The packet uses a generic "unknown" key for an
  *  untyped count; name it honestly rather than printing "unknown 14". */
 function metricLabel(key: string, blockId: string): string {
   if (key === "unknown") return blockId === "invocations" ? "commands" : "count";
   return labelKind(key);
-}
-
-type BlockIndexMeta = { tone: "count" | "muted" | "unsupported"; text: string };
-
-/** Right-hand meta for a block-index row — a real count, "no claim" for future
- *  blocks (they assert nothing), or the unsupported-claims tally. */
-function blockIndexMeta(block: ProofBlock): BlockIndexMeta {
-  const unsupported = unsupportedClaimsFromPayload(block.payload);
-  if (unsupported.length > 0) return { tone: "unsupported", text: `${unsupported.length} unsupported` };
-  if (block.source_kind === "future") return { tone: "muted", text: "no claim" };
-  const metrics = block.metrics ?? {};
-  if (block.id === "invocations" && typeof metrics.unknown === "number") {
-    return { tone: "count", text: `${metrics.unknown} cmds` };
-  }
-  if (typeof metrics.artifacts === "number") return { tone: "count", text: `${metrics.artifacts} artifacts` };
-  const refs = block.evidence_refs.length;
-  if (refs > 0) return { tone: "count", text: `${refs} ref${refs === 1 ? "" : "s"}` };
-  return { tone: "muted", text: "recorded" };
 }
 
 /** Split a claim so a standalone "not" renders bold (negative claims). */
@@ -289,21 +271,6 @@ function cacheLegs(payload: unknown): CacheLeg[] | null {
   });
 }
 
-/** A real [REDACTED:...] string a redacted block can surface in its header
- *  chip, if a top-level payload field carries one — else undefined so the chip
- *  shows the honest "redacted" state without inventing a value. Redacted
- *  evidence *refs* keep their own slot in the refs list (EvidenceRefRow), so
- *  they are intentionally not pulled up here. */
-function redactedValueForBlock(block: ProofBlock): string | undefined {
-  const record = payloadRecord(block.payload);
-  if (record) {
-    for (const value of Object.values(record)) {
-      if (typeof value === "string" && isRedactedValue(value)) return value;
-    }
-  }
-  return undefined;
-}
-
 function exportPacketJson(packet: ProofPacket) {
   const blob = new Blob([JSON.stringify(packet, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -324,6 +291,10 @@ export function ProofDrawerPanel(_instance: ComponentInstance) {
   const [activeId, setActiveId] = useState<string | null>(blocks[0]?.id ?? null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const cardRefs = useRef<Map<string, HTMLElement>>(new Map());
+  // While a TOC click is scrolling the cards, the spy is suppressed so the
+  // clicked block stays authoritative; released once scrolling goes idle.
+  const jumpLockRef = useRef(false);
+  const idleTimerRef = useRef<number | null>(null);
 
   const registerCard = (id: string) => (el: HTMLElement | null) => {
     if (el) cardRefs.current.set(id, el);
@@ -332,25 +303,72 @@ export function ProofDrawerPanel(_instance: ComponentInstance) {
 
   const jumpTo = (id: string) => {
     setActiveId(id);
+    // Suppress the scrollspy for the duration of this programmatic scroll
+    // (redesign P5 fix M2). Without the lock, the spy flips the active block to
+    // whatever card is momentarily under the top line mid-animation; the newly
+    // active card's evidence refs auto-expand, the layout churns, and that
+    // churn stalls the smooth scroll BEFORE it reaches the target — so clicking
+    // the last row left an earlier card active (and its "N more blocks" pill
+    // showing) permanently. Keeping the clicked block active lets the scroll
+    // land cleanly.
+    jumpLockRef.current = true;
     cardRefs.current.get(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  // Highlight the top-most visible card in the block index as the user scrolls.
+  // Block-index scrollspy driven by scroll POSITION rather than an
+  // IntersectionObserver (redesign P5 fix M2): the last card can never reach
+  // the top of a scroll container that runs out of content beneath it, so an
+  // "is it near the top?" observer would leave an earlier row wrongly pinned
+  // and the footer pill claiming "1 more block" while you are already on the
+  // last one. Instead we resolve the active block from where the container is
+  // actually scrolled — and, crucially, snap to the LAST block whenever the
+  // container is scrolled to its bottom.
   useEffect(() => {
     const root = scrollRef.current;
-    if (!root || cardRefs.current.size === 0) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-        const top = visible[0]?.target.getAttribute("data-block-id");
-        if (top) setActiveId(top);
-      },
-      { root, rootMargin: "0px 0px -55% 0px", threshold: 0 },
-    );
-    cardRefs.current.forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
+    if (!root) return;
+    const resolveActive = () => {
+      const cards = blocks
+        .map((block) => ({ id: block.id, el: cardRefs.current.get(block.id) }))
+        .filter((entry): entry is { id: string; el: HTMLElement } => Boolean(entry.el));
+      if (cards.length === 0) return;
+      // Non-overflowing container: everything is visible at once, so there is
+      // nothing to spy — leave whatever a click set as active.
+      const overflowing = root.scrollHeight > root.clientHeight + 4;
+      if (!overflowing) return;
+      // Scrolled to the bottom → the last card is the one being read, even
+      // though it may sit below the top line.
+      if (root.scrollTop + root.clientHeight >= root.scrollHeight - 4) {
+        setActiveId(cards[cards.length - 1].id);
+        return;
+      }
+      // Otherwise: the last card whose top has crossed a line a little below
+      // the container top (matching scrollIntoView block:"start" landings).
+      const line = root.getBoundingClientRect().top + root.clientHeight * 0.28;
+      let current = cards[0].id;
+      for (const card of cards) {
+        if (card.el.getBoundingClientRect().top <= line) current = card.id;
+        else break;
+      }
+      setActiveId(current);
+    };
+    const onScroll = () => {
+      // Any scroll (programmatic or user) that then goes quiet for 150ms is
+      // "settled" — release the jump lock so genuine user scrolling drives the
+      // spy again.
+      if (idleTimerRef.current !== null) window.clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = window.setTimeout(() => {
+        jumpLockRef.current = false;
+        idleTimerRef.current = null;
+      }, 150);
+      if (jumpLockRef.current) return;
+      resolveActive();
+    };
+    root.addEventListener("scroll", onScroll, { passive: true });
+    resolveActive();
+    return () => {
+      root.removeEventListener("scroll", onScroll);
+      if (idleTimerRef.current !== null) window.clearTimeout(idleTimerRef.current);
+    };
   }, [blocks]);
 
   const summaryValue = (key: string): string => {
@@ -360,8 +378,11 @@ export function ProofDrawerPanel(_instance: ComponentInstance) {
       : "0";
   };
 
-  const activeIndex = blocks.findIndex((block) => block.id === activeId);
-  const remaining = activeIndex >= 0 ? blocks.slice(activeIndex + 1) : [];
+  // Real recorded run count from the packet summary — surfaced as the second
+  // stat cell on the Invocation Results card (redesign P5 fix M4).
+  const runsCount = typeof packet.summary.runs === "number" ? packet.summary.runs : undefined;
+
+  const remaining = blocksBelow(blocks, activeId);
 
   return (
     <aside className="proof-drawer proof-drawer--flagship" aria-label="proof packet">
@@ -396,6 +417,12 @@ export function ProofDrawerPanel(_instance: ComponentInstance) {
             <SourceGlyph kind="future" size={9} title={null} />
             {rollup.notCollected} not yet collected
           </span>
+          {rollup.unknown > 0 && (
+            <span className="proof-rollup-pill proof-rollup-pill--unknown">
+              <SourceGlyph kind="unknown" size={9} title={null} />
+              {rollup.unknown} unknown
+            </span>
+          )}
           <span className="proof-rollup-plain">
             {rollup.computed} computed · {rollup.simulated} simulated
           </span>
@@ -446,6 +473,7 @@ export function ProofDrawerPanel(_instance: ComponentInstance) {
             block={block}
             active={block.id === activeId}
             registerRef={registerCard(block.id)}
+            runs={runsCount}
           />
         ))}
         {remaining.length > 0 && (
@@ -464,31 +492,76 @@ export function ProofDrawerPanel(_instance: ComponentInstance) {
 export function ProofBlockCardPanel(instance: ComponentInstance) {
   const { bindings } = useViewContext();
   const blockId = stringProp(instance.props, "block_id");
-  const block = bindings.proofPacket.blocks.find((entry) => entry.id === blockId);
+  const packet = bindings.proofPacket;
+  const block = packet.blocks.find((entry) => entry.id === blockId);
   if (!block) return null;
-  return <ProofBlockCard block={block} active registerRef={() => {}} />;
+  const runs = typeof packet.summary.runs === "number" ? packet.summary.runs : undefined;
+  return <ProofBlockCard block={block} active registerRef={() => {}} runs={runs} />;
+}
+
+/** Board order for the Validation Surface stat cells (redesign P5 fix m9). */
+const VALIDATION_CELL_ORDER = ["targets", "actions", "failures"];
+
+function validationRank(key: string): number {
+  const index = VALIDATION_CELL_ORDER.indexOf(key);
+  return index === -1 ? VALIDATION_CELL_ORDER.length : index;
+}
+
+/**
+ * Board-accurate stat cells for a proof block (redesign P5 fixes M4/m6/m7/m9).
+ * Drops the redundant generic legs count the per-leg list already renders (m6)
+ * and the generic "unknown"→count cell that only makes sense for invocations
+ * (m7); orders the validation surface targets/actions/failures (m9); and
+ * appends the REAL recorded `runs` count to the invocation card (M4).
+ */
+function proofMetricCells(block: ProofBlock, runs?: number): [string, ProofMetricValue][] {
+  let cells = Object.entries(block.metrics ?? {}).filter(([key]) => {
+    if (block.id === "cache_economics" && key === "legs") return false; // m6
+    if (key === "unknown" && block.id !== "invocations") return false; // m7
+    return true;
+  });
+  if (block.id === "validation") {
+    cells = [...cells].sort(([a], [b]) => validationRank(a) - validationRank(b)); // m9
+  }
+  if (block.id === "invocations" && typeof runs === "number") {
+    cells = [...cells, ["runs", runs]]; // M4
+  }
+  return cells;
 }
 
 function ProofBlockCard({
   block,
   active,
   registerRef,
+  runs,
 }: {
   block: ProofBlock;
   active: boolean;
   registerRef: (el: HTMLElement | null) => void;
+  runs?: number;
 }) {
   const future = block.source_kind === "future";
-  const metrics = Object.entries(block.metrics ?? {});
+  const metricCells = proofMetricCells(block, runs);
   const unsupported = unsupportedClaimsFromPayload(block.payload);
   const legs = block.id === "cache_economics" ? cacheLegs(block.payload) : null;
   const claims = block.claims ?? [];
   const redactedValue = block.redaction_state === "redacted" ? redactedValueForBlock(block) : undefined;
 
+  // Dedupe the source-kind class against the asserting/future class — for a
+  // future block both resolve to "proof-card--future" (redesign P5 fix m11).
+  const kindClass = `proof-card--${block.source_kind}`;
+  const assertClass = future ? "proof-card--future" : "proof-card--asserting";
+  const cardClass = [
+    "proof-card",
+    assertClass,
+    ...(kindClass === assertClass ? [] : [kindClass]),
+    ...(active ? ["active"] : []),
+  ].join(" ");
+
   return (
     <section
       ref={registerRef}
-      className={`proof-card ${future ? "proof-card--future" : "proof-card--asserting"} proof-card--${block.source_kind}${active ? " active" : ""}`}
+      className={cardClass}
       data-block-id={block.id}
       data-testid={`proof-card-${block.id}`}
     >
@@ -504,9 +577,9 @@ function ProofBlockCard({
         {block.summary}
       </p>
       {future && claims.length === 0 && <span className="proof-noclaim">no claim recorded</span>}
-      {metrics.length > 0 && (
+      {metricCells.length > 0 && (
         <div className="proof-metrics" aria-label={`${block.title} metrics`}>
-          {metrics.map(([key, value]) => (
+          {metricCells.map(([key, value]) => (
             <div key={key} className="proof-metric-cell">
               <strong>{formatMetricValue(value)}</strong>
               <span>{metricLabel(key, block.id)}</span>
@@ -516,7 +589,6 @@ function ProofBlockCard({
       )}
       {legs && legs.length > 0 && (
         <div className="proof-legs" aria-label="cache economics per leg">
-          <span className="proof-legs-caption">hits / misses per leg — none recorded</span>
           {legs.map((leg, index) => (
             <div key={leg.runId || index} className="proof-leg-row">
               <span className="proof-leg-index">#{index + 1}</span>
@@ -527,6 +599,7 @@ function ProofBlockCard({
               </span>
             </div>
           ))}
+          <span className="proof-legs-caption">hits / misses per leg — none recorded</span>
         </div>
       )}
       {claims.length > 0 && (
