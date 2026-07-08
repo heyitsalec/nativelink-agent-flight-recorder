@@ -31,6 +31,7 @@ import {
   highlightedIds,
   labelKind,
   remoteLensModel,
+  runwayArtifactColumns,
   runwayLanes,
   type RunwayLane,
 } from "../pageModel";
@@ -105,25 +106,44 @@ export function ProjectionNoticePanel(_instance: ComponentInstance) {
   const dominant = mix.dominant;
   const isFallback = projectionNotice?.tone === "fallback";
   const compareToned = route.mode === "compare";
+  // When the compare lens is active AND a compare projection is bound, the
+  // banner states the REAL compare projection (board 1i): "left ↔ right —
+  // derived_v1 compare projection · N dimensions" with the derived diamond —
+  // not the underlying graph's collectable descriptor (redesign P6 fix m7).
+  const compareProjection = compareToned ? bindings.compareProjection : null;
 
   const tone = isFallback ? "fallback" : compareToned ? "derived" : SOURCE_KIND_META[dominant].tone;
   const descriptor = isFallback
     ? projectionNotice?.message
     : `${SOURCE_KIND_META[dominant].enum} projection`;
+  const glyphKind = isFallback ? "simulated_v1" : compareProjection ? "derived_v1" : dominant;
 
   return (
     <div className={`context-banner context-banner--${tone}`} data-testid="context-banner" role="status">
       <div className="context-banner-lead">
-        <SourceGlyph kind={isFallback ? "simulated_v1" : dominant} size={9} />
-        <span className="context-banner-text">
-          <strong>{projection.run_group}</strong> run group — {descriptor}
-          {!isFallback && (
-            <>
-              {" · "}
-              <span className="context-banner-count">{mix.total} nodes</span>
-            </>
-          )}
-        </span>
+        <SourceGlyph kind={glyphKind} size={9} />
+        {compareProjection ? (
+          <span className="context-banner-text">
+            <strong>
+              {compareProjection.left_run_group} ↔ {compareProjection.right_run_group}
+            </strong>
+            {" — derived_v1 compare projection · "}
+            <span className="context-banner-count">
+              {compareProjection.dimensions.length} dimension
+              {compareProjection.dimensions.length === 1 ? "" : "s"}
+            </span>
+          </span>
+        ) : (
+          <span className="context-banner-text">
+            <strong>{projection.run_group}</strong> run group — {descriptor}
+            {!isFallback && (
+              <>
+                {" · "}
+                <span className="context-banner-count">{mix.total} nodes</span>
+              </>
+            )}
+          </span>
+        )}
       </div>
       <div className="context-banner-mix">
         <span className="context-banner-mix-caption">evidence mix</span>
@@ -251,13 +271,17 @@ function centerTransform(svg: SVGSVGElement): ZoomTransform {
   return zoomIdentity.translate(box.width / 2, box.height / 2).scale(scale);
 }
 
-/** Padding kept between the fitted graph and the svg edge, in px. */
-const FIT_PADDING_PX = 48;
-/** Never zoom in past this when fitting — matches the old default framing. */
-const MAX_FIT_SCALE = 0.95;
+/** Padding kept between the fitted graph and the svg edge, in px. Trimmed
+ *  (was 48) so the full-width scene fills more of the viewport at fit
+ *  (redesign P6 fix M2). */
+const FIT_PADDING_PX = 24;
+/** Fit may zoom to a legible near-100% — board 1c lands at "fit · 100%".
+ *  (was 0.95; the fit is now width-bound rather than height-bottlenecked so
+ *  this cap is what lets the default graph read full, redesign P6 fix M2.) */
+const MAX_FIT_SCALE = 1.0;
 /** Provenance badges + card shadows render past the card boxes; keep them
- *  on-screen when fitting. */
-const SCENE_FIT_MARGIN = 44;
+ *  on-screen when fitting (agent badge extends ~32px below its card). */
+const SCENE_FIT_MARGIN = 34;
 /** Below this zoom, card meta rows hide and labels condense (LOD). */
 const LOD_ZOOM_THRESHOLD = 0.6;
 
@@ -811,6 +835,12 @@ export function ValidationRunwayPanel(_instance: ComponentInstance) {
   const { bindings, route, routeActions } = useViewContext();
   const projection = bindings.actionGraph;
   const lanes = useMemo(() => runwayLanes(projection.nodes), [projection.nodes]);
+  // Per-run artifact counts for the artifacts lane's count pills (board 1j),
+  // resolved through the real recorded run→invocation→artifact edges/refs.
+  const artifactColumns = useMemo(
+    () => runwayArtifactColumns(projection.nodes, projection.edges),
+    [projection.nodes, projection.edges],
+  );
   const [scale, setScale] = useState<"sequence" | "time">("sequence");
 
   const summary = projection.summary;
@@ -885,6 +915,34 @@ export function ValidationRunwayPanel(_instance: ComponentInstance) {
                   <div className="runway-lane-empty">
                     <SourceGlyph kind="future" size={11} title={null} />
                     <span>{lane.emptyMessage}</span>
+                  </div>
+                ) : lane.kind === "artifact" ? (
+                  // Per-run count pills aligned to the run columns (board 1j),
+                  // not a flat filename list — a file icon + the run's real
+                  // artifact count. An honest remainder pill covers any
+                  // artifact that resolves to no run (redesign P6 fix M3).
+                  <div className="runway-artifact-cols">
+                    {artifactColumns.columns.map((col) => (
+                      <span
+                        key={col.runId}
+                        className="runway-artifact-pill"
+                        title={`${col.count} artifact${col.count === 1 ? "" : "s"} recorded under run ${col.label}`}
+                      >
+                        <FileText size={12} aria-hidden="true" />
+                        <span className="runway-artifact-run">{col.label}</span>
+                        <span className="runway-artifact-count">{col.count}</span>
+                      </span>
+                    ))}
+                    {artifactColumns.unattributed > 0 && (
+                      <span
+                        className="runway-artifact-pill runway-artifact-pill--loose"
+                        title="artifacts not attributable to a specific run in this projection"
+                      >
+                        <FileText size={12} aria-hidden="true" />
+                        <span className="runway-artifact-run">·</span>
+                        <span className="runway-artifact-count">{artifactColumns.unattributed}</span>
+                      </span>
+                    )}
                   </div>
                 ) : (
                   <>

@@ -119,12 +119,21 @@ export const EXPAND_CHANGES_KEY = "kind:change";
 /** Changes collapse into one stacked-halo cluster card at or above this. */
 const CHANGE_CLUSTER_MIN = 4;
 
-const COL_PITCH = 300;
+/** Horizontal depth-column pitch. Widened (was 300) so the agent→change→run→
+ *  invocation→artifact flow spreads across the full-width svg instead of
+ *  leaving large blank side padding around a narrow centered blob — the flow
+ *  now consumes the width the P6 full-width graph freed up (redesign P6 M2). */
+const COL_PITCH = 400;
 const CARD_H = 54;
 const CAPSULE_H = 32;
-const V_GAP = 18;
-/** Collapsed run pitch = CARD_H + BAND_GAP = 95px (board 1c). */
-const BAND_GAP = 41;
+const V_GAP = 14;
+/** Collapsed run pitch = CARD_H + BAND_GAP. Tightened (was 41→95px) so the
+ *  default 7-run scene is no longer HEIGHT-bottlenecked below the width fit:
+ *  the fit used to cap at ~67% purely because the tall run column dominated
+ *  spanY while the full-width svg left spanX slack, leaving the graph small
+ *  with large blank side padding. A tighter pitch lets the fit rise toward
+ *  ~100% and the flow fill the viewport (redesign P6 fix M2). */
+const BAND_GAP = 18;
 
 function cardWidth(kind: string): number {
   if (kind === "invocation") return 190;

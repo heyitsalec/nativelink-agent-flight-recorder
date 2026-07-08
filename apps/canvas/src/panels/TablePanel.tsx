@@ -12,7 +12,6 @@ import {
   Globe,
   Lock,
   Play,
-  ReceiptText,
   Server,
   Target,
   Terminal,
@@ -44,7 +43,6 @@ import {
 import type {
   CompareDimension,
   CompareProjection,
-  Confidence,
   PositionedNode,
   ProofBlock,
   ProofMetricValue,
@@ -140,40 +138,38 @@ function CopyHash({ label, value }: { label: string; value: string }) {
   );
 }
 
+/** Board 1g §2.3 hash rows, in order: prompt_sha256 then response_sha256 only
+ *  (the receipt_sha256 row and reordering were the P6 M4 drift). */
+const RECEIPT_HASH_ORDER = ["prompt sha256", "response sha256"];
+
 /**
- * Agent receipt pane (board 1g §3). Provenance badge + server-resolved model +
- * prompt/response sha256 (mono, middle-truncated, copyable) + the honest
- * raw-prompt lock: the prompt is NEVER exported — only its hash is retained.
+ * Agent receipt pane (board 1g §2.3). A SINGLE header (overline + the P2
+ * `receipt_verified` ProvenanceBadge) + server-resolved model + prompt_sha256
+ * then response_sha256 (mono, middle-truncated, copyable) + the honest raw-
+ * prompt lock (the prompt is NEVER exported — only its hash is retained). No
+ * duplicated heading, hint sentence, token-count pills, or receipt_sha256 row
+ * (redesign P6 fix M4).
  */
 function ReceiptDetailPane({ receipt }: { receipt: AgentReceiptModel }) {
+  const specHashes = RECEIPT_HASH_ORDER.map((label) =>
+    receipt.hashes.find((hash) => hash.label === label),
+  ).filter((hash): hash is (typeof receipt.hashes)[number] => Boolean(hash));
+
   return (
     <section className="receipt-pane inspector-section" aria-label="agent receipt" data-testid="receipt-detail-pane">
-      <span className="inspector-overline">AGENT RECEIPT</span>
-      <div className="receipt-pane-heading">
-        <ReceiptText size={15} aria-hidden="true" />
-        <span>Agent receipt</span>
+      <div className="receipt-head-row">
+        <span className="inspector-overline">AGENT RECEIPT</span>
         <ProvenanceChip badge={receipt.badge} />
       </div>
-      <p className="receipt-pane-hint">{receipt.badge.hint}</p>
       {receipt.model && (
         <div className="receipt-model">
           <span className="receipt-model-value">{receipt.model}</span>
           <span className="receipt-model-note">server-resolved</span>
         </div>
       )}
-      {receipt.usage.length > 0 && (
-        <div className="receipt-usage" aria-label="receipt token usage">
-          {receipt.usage.map((entry) => (
-            <span key={entry.label}>
-              <strong>{entry.value}</strong>
-              {entry.label}
-            </span>
-          ))}
-        </div>
-      )}
-      {receipt.hashes.length > 0 && (
+      {specHashes.length > 0 && (
         <div className="receipt-hashes" aria-label="receipt hashes">
-          {receipt.hashes.map((hash) => (
+          {specHashes.map((hash) => (
             <CopyHash key={hash.label} label={hash.label} value={hash.value} />
           ))}
         </div>
@@ -924,9 +920,12 @@ export function RemoteBoundaryLensPanel(_instance: ComponentInstance) {
           </div>
         ))}
         {view.flagCells.map((cell) => (
-          <div key={cell.key} className="remote-cell remote-cell--flag">
+          <div key={cell.key} className={`remote-cell remote-cell--flag${cell.observed ? " remote-cell--observed" : ""}`}>
             <span className="remote-cell-flag">
-              <SourceGlyph kind="future" size={11} title={null} />
+              {/* Reflect the REAL observed state: a boundary that WAS observed
+                  earns the collectable glyph, not a hardcoded future one that
+                  under-claims recorded evidence (redesign P6 fix m9). */}
+              <SourceGlyph kind={cell.observed ? "collectable_v1" : "future"} size={11} title={null} />
               {cell.value}
             </span>
             <span className="remote-cell-label">{cell.label}</span>
@@ -945,24 +944,9 @@ export function RemoteBoundaryLensPanel(_instance: ComponentInstance) {
         </div>
       )}
 
-      {view.boundaries.length > 0 && (
-        <div className="remote-boundaries">
-          {view.boundaries.map((boundary) => (
-            <div key={boundary.title} className="remote-boundary-row">
-              <SourceGlyph kind={boundary.sourceKind} size={11} />
-              <div className="remote-boundary-text">
-                <span className="remote-boundary-kind">{labelKind(boundary.kind)}</span>
-                <h3 className="remote-boundary-title">{boundary.title}</h3>
-                <p className="remote-boundary-summary">{boundary.summary}</p>
-              </div>
-              <span className="truth-value remote-boundary-conf">
-                <ConfidenceMeter confidence={boundary.confidence as Confidence} />
-                {boundary.confidence}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* The per-boundary "derived summary" rows (own header + confidence badge)
+          were an unspec'd near-duplicate of the lead statement — not in board
+          1h / DESIGN-SYSTEM §5. Removed (redesign P6 fix M6). */}
 
       {view.unsupportedClaims.length > 0 && (
         <div className="remote-unsupported">
@@ -1224,7 +1208,6 @@ function AgentProvenanceCard({
       </header>
       <AgentProvenanceCompare dimension={dimension} leftRunGroup={leftRunGroup} rightRunGroup={rightRunGroup} />
       <p className="compare-card-caption">{dimension.summary}</p>
-      <EvidenceRefs refs={dimension.evidence_refs} defaultOpen={false} />
     </section>
   );
 }
@@ -1246,8 +1229,12 @@ function CompareDimensionView({
   }
 
   const headline = compareHeadline(dimension);
-  const sourceMeta = SOURCE_KIND_META[dimension.source_kind] ?? SOURCE_KIND_META.unknown;
 
+  // Board 1i dimension cards stop at the caption: diamond + title + meter
+  // (header), left / delta / right (values), then the caption. The extra
+  // truth-badge row (which also carried a value-less RedactionChip — the m10
+  // bare-"[REDACTED]" risk) and the collapsible evidence refs are dropped
+  // (redesign P6 fixes m8 + m10).
   return (
     <section className="compare-card compare-card--dimension">
       <header className="compare-card-head">
@@ -1269,18 +1256,6 @@ function CompareDimensionView({
         </div>
       </div>
       <p className="compare-card-caption">{headline.caption}</p>
-      <div className="compare-card-truth">
-        <span className="truth-value">
-          <SourceGlyph kind={dimension.source_kind} size={11} />
-          <span>{sourceMeta.label}</span>
-        </span>
-        <span className="truth-value">
-          <ConfidenceMeter confidence={dimension.confidence} />
-          <span>{dimension.confidence}</span>
-        </span>
-        <RedactionChip state={dimension.redaction_state} />
-      </div>
-      <EvidenceRefs refs={dimension.evidence_refs} defaultOpen={false} />
     </section>
   );
 }

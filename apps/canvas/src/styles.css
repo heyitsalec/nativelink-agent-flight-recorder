@@ -1099,12 +1099,14 @@ select:focus-visible {
   background: var(--n1);
 }
 
+/* Field captions are lowercase + muted (board 1g), visually DISTINCT from the
+ * uppercase-tracked section overlines — never bold ALL-CAPS (redesign P6 M5). */
 .inspector-truth-caption {
   font-size: 11px;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-weight: 400;
+  color: var(--text-hint);
+  text-transform: none;
+  letter-spacing: normal;
 }
 
 /* Recorded-run key/value rows (§5). */
@@ -1559,6 +1561,44 @@ select:focus-visible {
 .runway-lane-overflow {
   font: 600 11px/1 var(--font-mono);
   color: var(--truth-collectable);
+}
+
+/* Artifacts lane = per-run count pills aligned to the run columns (board 1j):
+ * a file icon + the run's real artifact count, one pill per run — not a flat
+ * filename list (redesign P6 M3). */
+.runway-artifact-cols {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.runway-artifact-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border: 1px solid color-mix(in srgb, var(--truth-collectable) 45%, transparent);
+  border-radius: var(--radius-chip);
+  background: var(--elev1-bg);
+  color: var(--truth-collectable);
+}
+
+.runway-artifact-pill--loose {
+  border-style: dashed;
+  border-color: var(--border-control);
+  color: var(--text-hint);
+}
+
+.runway-artifact-run {
+  font: 500 10.5px/1 var(--font-mono);
+  color: var(--text-hint);
+}
+
+.runway-artifact-count {
+  font: 600 12px/1 var(--font-mono);
+  color: inherit;
 }
 
 /* An empty lane STATES its emptiness — never blank (board 1j). */
@@ -2116,47 +2156,28 @@ select:focus-visible {
   background: var(--row-bg);
 }
 
-.receipt-pane-heading {
+/* Single receipt header row: overline (left) + receipt_verified badge (right),
+ * board 1g §2.3 (redesign P6 M4). */
+.receipt-head-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-muted);
+  margin-bottom: 8px;
 }
 
-.receipt-pane-heading .provenance-chip {
-  margin-left: auto;
+/* The receipt badge reads "● verified …" like board 1g — NOT the drifted
+ * "●● VERIFIED RECEIPT". Scoped to the receipt so the shared graph-node /
+ * compare provenance chips are untouched: drop the ALL-CAPS and the second
+ * (pulsing live) dot so a single source glyph reads next to the label
+ * (redesign P6 fix M4). */
+.receipt-head-row .provenance-chip {
+  text-transform: none;
+  letter-spacing: normal;
 }
 
-.receipt-pane-hint {
-  margin: 8px 0 0;
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.receipt-grid {
-  margin-top: 10px;
-}
-
-.receipt-grid dd {
-  overflow-wrap: anywhere;
-}
-
-.receipt-usage {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 14px;
-  margin-top: 10px;
-  font-size: 11px;
-  color: var(--text-body);
-}
-
-.receipt-usage strong {
-  margin-right: 4px;
-  color: var(--ink);
+.receipt-head-row .provenance-chip .provenance-live-dot {
+  display: none;
 }
 
 .receipt-hashes {
@@ -3118,30 +3139,6 @@ select:focus-visible {
   color: var(--text-hint);
 }
 
-.receipt-usage {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.receipt-usage span {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 9px;
-  border: 1px solid var(--hairline);
-  border-radius: 8px;
-  background: var(--n1);
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.receipt-usage strong {
-  color: var(--ink);
-  font-size: 12px;
-  font-weight: 600;
-}
-
 /* The raw prompt is never exported — only its hash is retained (hatched lock). */
 .receipt-rawlock {
   display: inline-flex;
@@ -3256,12 +3253,13 @@ select:focus-visible {
   color: var(--text-muted);
 }
 
+/* Metric captions: lowercase muted, distinct from overlines (redesign P6 M5). */
 .remote-cell-label {
   font-size: 11px;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+  font-weight: 400;
+  color: var(--text-hint);
+  text-transform: none;
+  letter-spacing: normal;
 }
 
 .remote-earn {
@@ -3288,53 +3286,8 @@ select:focus-visible {
   color: var(--text-body);
 }
 
-/* Per-boundary rows shape-encode source_kind with the glyph (P2 carry-forward). */
-.remote-boundaries {
-  display: grid;
-  gap: 2px;
-  border-top: 1px solid var(--hairline);
-}
-
-.remote-boundary-row {
-  display: grid;
-  grid-template-columns: 13px minmax(0, 1fr) auto;
-  gap: 6px 12px;
-  padding: 12px 0;
-  border-top: 1px solid var(--hairline);
-}
-
-.remote-boundary-row:first-child {
-  border-top: 0;
-}
-
-.remote-boundary-kind {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.remote-boundary-title {
-  margin: 2px 0 0;
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.2;
-  color: var(--ink);
-}
-
-.remote-boundary-summary {
-  margin: 6px 0 0;
-  font-size: 12px;
-  line-height: 1.45;
-  color: var(--text-body);
-}
-
-.remote-boundary-conf {
-  align-self: start;
-  font-size: 11px;
-  color: var(--text-muted);
-}
+/* (The per-boundary "derived summary" rows were removed as an unspec'd
+ *  near-duplicate — redesign P6 M6. Their CSS is retired with them.) */
 
 .remote-unsupported {
   display: flex;
@@ -3521,12 +3474,13 @@ select:focus-visible {
   align-items: flex-end;
 }
 
+/* Run-group labels: lowercase muted, distinct from overlines (redesign P6 M5). */
 .compare-val-tag {
-  font-size: 10.5px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 400;
   color: var(--text-hint);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+  text-transform: none;
+  letter-spacing: normal;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3568,16 +3522,8 @@ select:focus-visible {
   color: var(--text-muted);
 }
 
-.compare-card-truth {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-  padding-top: 10px;
-  border-top: 1px solid var(--hairline);
-  font-size: 11.5px;
-  color: var(--text-body);
-}
+/* (.compare-card-truth removed — dimension cards stop at the caption per board
+ *  1i; redesign P6 m8.) */
 
 /* Provenance side-empty restyle (P6): glyph + honest "stated, not padded". */
 .provenance-side--empty .provenance-side-empty {

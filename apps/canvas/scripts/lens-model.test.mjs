@@ -23,6 +23,7 @@ import {
   compareHeadline,
   redactedPayloadFields,
   remoteBoundaryView,
+  runwayArtifactColumns,
   runwayLanes,
 } from "../src/pageModel.ts";
 
@@ -68,6 +69,46 @@ test("empty lanes state their emptiness honestly — never blank", () => {
   assert.equal(failures.empty, true);
   // Failures lane names the recorded command count rather than leaving a gap.
   assert.equal(failures.emptyMessage, "no failures recorded — 14 of 14 commands completed");
+});
+
+/* ── runwayArtifactColumns ───────────────────────────────────────────── */
+
+test("runwayArtifactColumns returns one pill per run, summing to the artifact total", () => {
+  const cols = runwayArtifactColumns(graph.nodes, graph.edges);
+  // 7 runs → 7 per-run pills, labeled #1..#7 in run order.
+  assert.equal(cols.columns.length, 7);
+  assert.deepEqual(
+    cols.columns.map((col) => col.label),
+    ["#1", "#2", "#3", "#4", "#5", "#6", "#7"],
+  );
+  // action-graph.json records 6 artifacts under each of the 7 runs (42 total).
+  for (const col of cols.columns) assert.equal(col.count, 6);
+  // Honest partition: per-run counts + the unattributed remainder === total.
+  const summed = cols.columns.reduce((sum, col) => sum + col.count, 0);
+  assert.equal(summed + cols.unattributed, cols.total);
+  assert.equal(cols.total, 42);
+  assert.equal(cols.unattributed, 0);
+});
+
+test("runwayArtifactColumns counts artifacts with no run as an honest remainder", () => {
+  // Two runs, one orphan artifact with no edge/ref path to a run.
+  const nodes = [
+    { id: "r1", kind: "run", source_kind: "collectable_v1", evidence_refs: [] },
+    { id: "r2", kind: "run", source_kind: "collectable_v1", evidence_refs: [] },
+    { id: "inv1", kind: "invocation", source_kind: "collectable_v1", evidence_refs: [] },
+    { id: "a1", kind: "artifact", source_kind: "collectable_v1", evidence_refs: ["invocation:inv1"] },
+    { id: "a2", kind: "artifact", source_kind: "collectable_v1", evidence_refs: [] },
+  ];
+  const edges = [
+    { from: "r1", to: "inv1" },
+    { from: "inv1", to: "a1" },
+  ];
+  const cols = runwayArtifactColumns(nodes, edges);
+  assert.equal(cols.columns.length, 2);
+  assert.equal(cols.columns[0].count, 1); // a1 → inv1 → r1
+  assert.equal(cols.columns[1].count, 0);
+  assert.equal(cols.unattributed, 1); // a2 resolves to no run
+  assert.equal(cols.total, 2);
 });
 
 /* ── remoteBoundaryView ──────────────────────────────────────────────── */

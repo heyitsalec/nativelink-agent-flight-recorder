@@ -203,9 +203,13 @@ export const DEFAULT_VIEW_SPEC: ViewSpec = {
       component_kind: "evidence_inspector",
       region: "rail",
       projection_binding: "binding.action_graph",
+      // Graph mode only. The Validation Runway carries its own selection/timeline
+      // display; letting the 420px inspector overlay also fire in runway mode put
+      // it on top of the runway's close button + right ~30% (both fixed overlays,
+      // inspector z6 > runway z5), intercepting real clicks (redesign P6 fix M1).
       visible_when: {
-        mode: ["graph", "runway"],
-        mode_not: ["proof", "remote", "compare"],
+        mode: ["graph"],
+        mode_not: ["runway", "proof", "remote", "compare"],
         selected_node: true,
       },
       data_testid: "evidence-inspector",

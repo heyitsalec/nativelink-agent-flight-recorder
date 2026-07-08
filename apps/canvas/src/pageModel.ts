@@ -466,6 +466,72 @@ function runwayEmptyMessage(kind: RunwayLaneKind, invocationCount: number): stri
   }
 }
 
+/**
+ * Per-run artifact columns for the runway artifacts lane (board 1j: "artifacts:
+ * per-column count pills (file icon + mono '6')"). Each run gets one pill whose
+ * count is the number of artifacts that resolve up to that run through the REAL
+ * recorded edges (run → invocation → artifact) plus each artifact's recorded
+ * `invocation:` evidence ref — never invented. Artifacts that resolve to no run
+ * are surfaced as an honest `unattributed` remainder so the pills always sum to
+ * the lane's total (nothing silently dropped).
+ */
+export type RunwayArtifactColumn = { runId: string; label: string; count: number };
+
+export type RunwayArtifactColumns = {
+  columns: RunwayArtifactColumn[];
+  unattributed: number;
+  total: number;
+};
+
+export function runwayArtifactColumns(
+  nodes: ReadonlyArray<ProjectionNode>,
+  edges: ReadonlyArray<{ from: string; to: string }>,
+): RunwayArtifactColumns {
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  // Parent map from real edges (first edge into a node wins), then let each
+  // artifact prefer its recorded `invocation:` ref (mirrors buildGraphScene).
+  const parentOf = new Map<string, string>();
+  for (const edge of edges) {
+    if (!byId.has(edge.from) || !byId.has(edge.to)) continue;
+    if (!parentOf.has(edge.to)) parentOf.set(edge.to, edge.from);
+  }
+  for (const node of nodes) {
+    if (node.kind !== "artifact") continue;
+    for (const ref of node.evidence_refs ?? []) {
+      const match = /^invocation:(.+)$/.exec(ref);
+      if (match && byId.has(match[1])) parentOf.set(node.id, match[1]);
+    }
+  }
+  const runOf = (id: string): string | null => {
+    let cursor: string | undefined = id;
+    let hops = 0;
+    while (cursor && hops < 32) {
+      const parent = parentOf.get(cursor);
+      if (!parent) return null;
+      if (byId.get(parent)?.kind === "run") return parent;
+      cursor = parent;
+      hops += 1;
+    }
+    return null;
+  };
+
+  const runs = nodes.filter((node) => node.kind === "run");
+  const counts = new Map<string, number>(runs.map((run) => [run.id, 0]));
+  const artifacts = nodes.filter((node) => node.kind === "artifact");
+  let unattributed = 0;
+  for (const artifact of artifacts) {
+    const run = runOf(artifact.id);
+    if (run !== null && counts.has(run)) counts.set(run, (counts.get(run) ?? 0) + 1);
+    else unattributed += 1;
+  }
+  const columns: RunwayArtifactColumn[] = runs.map((run, index) => ({
+    runId: run.id,
+    label: `#${index + 1}`,
+    count: counts.get(run.id) ?? 0,
+  }));
+  return { columns, unattributed, total: artifacts.length };
+}
+
 export function runwayLanes(nodes: ReadonlyArray<ProjectionNode>): RunwayLane[] {
   const byKind = new Map<string, ProjectionNode[]>();
   for (const node of nodes) {
