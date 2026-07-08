@@ -8,8 +8,9 @@ import { ConfidenceMeter } from "./ConfidenceMeter";
  * The truth legend (DESIGN-SYSTEM.md board 1b): teaches ALL FOUR truth labels
  * in one place — the four source_kinds (glyph + human label + faint
  * descriptor, tooltip carries the raw enum) plus a bottom row that names the
- * confidence meter, the redaction lock, and the provenance ●◆▲ trio. `⌘L`
- * keycap advertises the toggle.
+ * confidence meter, the redaction lock, and the provenance ●◆▲ trio. Visibility
+ * is controlled by the `show_truth_legend` panel toggle in the composer drawer
+ * (no keyboard shortcut is wired).
  */
 const LEGEND_SOURCE_ORDER: SourceKind[] = [
   "collectable_v1",
@@ -26,7 +27,6 @@ export function TruthLegend({ items }: { items?: SourceKind[] }) {
     <aside className="truth-legend" aria-label="truth label legend">
       <div className="truth-legend-header">
         <span className="truth-legend-title">Truth legend</span>
-        <kbd className="truth-legend-key" aria-hidden="true">⌘L</kbd>
       </div>
       <ul className="truth-legend-sources">
         {kinds.map((kind) => {

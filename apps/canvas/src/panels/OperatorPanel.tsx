@@ -27,6 +27,7 @@ import type { ComponentInstance } from "../view/types";
 import { useViewContext, type ViewContextValue } from "../view/ViewContext";
 import { useOptionalZoomControllerRef } from "./shared/ZoomContext";
 import { stringProp } from "./shared/props";
+import { SOURCE_KIND_META } from "./shared/truth/copy";
 
 const NON_EVIDENTIARY_TOOLTIP =
   "Operator commands filter and navigate the loaded projection only. They are never persisted or exported as evidence.";
@@ -35,6 +36,35 @@ const PALETTE_FOOTER =
   "Commands filter and navigate the loaded projection only — never persisted, never exported as evidence.";
 
 type ZoomRef = ReturnType<typeof useOptionalZoomControllerRef>;
+
+/**
+ * Honest, data-driven note for the "agent loop" focus. The agent focus
+ * highlights agent + change nodes (see highlightedIds); this note reflects the
+ * REAL `source_kind` of the nodes actually loaded, so it can never mislabel —
+ * e.g. it must not call recorded (`collectable_v1`) change evidence "simulated".
+ * When no agent node is present it says so instead of implying one exists.
+ */
+function agentLoopNote(nodes: ViewContextValue["graph"]["nodes"]): string {
+  const agents = nodes.filter((node) => node.kind === "agent");
+  const changes = nodes.filter((node) => node.kind === "change");
+  const focused = [...agents, ...changes];
+  if (focused.length === 0) {
+    return "Agent loop isolates agent and change provenance — none recorded in this projection.";
+  }
+  const kinds = new Set(focused.map((node) => node.source_kind));
+  const kindWord =
+    kinds.size === 1
+      ? SOURCE_KIND_META[[...kinds][0]]?.label.toLowerCase() ?? "labeled"
+      : "mixed-source";
+  const counts = [
+    agents.length ? `${agents.length} agent` : null,
+    changes.length ? `${changes.length} change` : null,
+  ]
+    .filter(Boolean)
+    .join(" + ");
+  const noAgent = agents.length === 0 ? "; no agent node in this projection" : "";
+  return `Agent loop isolates ${counts} — ${kindWord} evidence${noAgent}.`;
+}
 
 type CommandDeps = {
   graph: ViewContextValue["graph"];
@@ -89,9 +119,7 @@ export function executeOperatorCommand(raw: string, deps: CommandDeps): void {
     routeActions.setFocus("agent");
     const firstAgent = graph.nodes.find((node) => node.kind === "agent");
     routeActions.setSelectedId(firstAgent?.id ?? null);
-    routeActions.setOperatorNote(
-      "Agent loop is isolated: agent and change evidence stays simulated until collected.",
-    );
+    routeActions.setOperatorNote(agentLoopNote(graph.nodes));
   } else if (value.includes("compare") || value.includes("diff")) {
     routeActions.setMode("compare");
     routeActions.setFocus("derived");

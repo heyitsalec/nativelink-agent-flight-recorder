@@ -103,10 +103,11 @@ shape is the guarantee, the hue is a convenience:
 Below the glyphs the legend names the three secondary encodings a node can carry:
 a **confidence** meter (bar height, never source-hued), a **redaction** lock chip
 (surfaces real `[REDACTED:…]` paths, never a bare token), and a **provenance** trio
-for agent receipts. Press `⌘L` to toggle the legend. In the `canvas-dev` dogfood
-every node is `collectable_v1`, so the default graph is all filled-circle Recorded
-evidence; simulated/future glyphs appear in the fixture views
-(e.g. `?view=two-act-spark`).
+for agent receipts. The legend's visibility is a panel toggle — open the
+**Composer** drawer and toggle the truth-legend panel (`show_truth_legend`) to
+hide or show it. In the `canvas-dev` dogfood every node is `collectable_v1`, so the
+default graph is all filled-circle Recorded evidence; simulated/future glyphs appear
+in the fixture views (e.g. `?view=two-act-spark`).
 
 ### Agent-loop focus
 
