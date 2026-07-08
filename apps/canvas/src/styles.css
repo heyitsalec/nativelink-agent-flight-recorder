@@ -915,10 +915,10 @@ select:focus-visible {
 }
 
 /* Level-of-detail below ~60% zoom: meta rows hide, labels condense; capsules
-   stay labeled (their counts ARE the honesty). */
+   stay labeled (their counts ARE the honesty). The agent provenance badge is
+   a truth label, NOT decorative meta — it never hides with LOD. */
 .graph-canvas.lod-compact .gcard-meta,
-.graph-canvas.lod-compact .gcard-suffix,
-.graph-canvas.lod-compact .gcard-badge {
+.graph-canvas.lod-compact .gcard-suffix {
   display: none;
 }
 
@@ -941,6 +941,7 @@ select:focus-visible {
   background: var(--elev2-bg);
   color: var(--text-muted);
   font-size: 11px;
+  backdrop-filter: var(--elev2-blur);
 }
 
 .graph-grouping-pill strong {
@@ -961,6 +962,7 @@ select:focus-visible {
   background: var(--elev2-bg);
   color: var(--text-hint);
   font: 500 11px/1.4 var(--font-mono);
+  backdrop-filter: var(--elev2-blur);
   pointer-events: none;
 }
 
