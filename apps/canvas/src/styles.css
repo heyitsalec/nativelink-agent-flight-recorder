@@ -1506,12 +1506,32 @@ select:focus-visible {
   color: var(--ink);
 }
 
+/* All runway lanes share ONE 7-column grid (board 1j) so run chips, invocation
+ * chips and the artifacts lane's per-run count pills line up vertically by run
+ * column. Flex-wrap drifted item #n apart per lane (run chip #2 vs artifact pill
+ * #2 measured 101px off); a shared grid pins every lane's column n to the same x
+ * (redesign P6 fix M3-residual). Fewer-than-7 lanes leave trailing columns empty
+ * (still aligned); >7 wrap identically row over row. */
 .runway-lane-track {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 6px;
   align-items: center;
+  justify-items: start;
   min-width: 0;
+}
+
+/* Cap a chip to its own run column so a long command label truncates (label has
+ * ellipsis) instead of overflowing into the next run's column and breaking the
+ * shared-grid alignment. */
+.runway-lane-track > .runway-chip {
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* An empty lane's single statement spans the whole track, not just column 1. */
+.runway-lane-track > .runway-lane-empty {
+  grid-column: 1 / -1;
 }
 
 .runway-chip {
@@ -1565,13 +1585,12 @@ select:focus-visible {
 
 /* Artifacts lane = per-run count pills aligned to the run columns (board 1j):
  * a file icon + the run's real artifact count, one pill per run — not a flat
- * filename list (redesign P6 M3). */
+ * filename list (redesign P6 M3). `display: contents` hoists the pills out of
+ * this wrapper so they become direct items of the parent `.runway-lane-track`
+ * grid — pill #n then lands in the SAME run column as run chip #n / invocation
+ * chip #n (the M3-residual alignment fix), no separate grid to keep in sync. */
 .runway-artifact-cols {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  min-width: 0;
+  display: contents;
 }
 
 .runway-artifact-pill {
@@ -2193,12 +2212,15 @@ select:focus-visible {
   align-items: center;
 }
 
+/* Field-label caption, same lowercase/muted treatment as the inspector truth-
+ * grid captions (M5) — it sits in the same receipt panel and read bold-uppercase
+ * "PROMPT SHA256" right below the now-lowercase truth captions (P6 M5-residual). */
 .receipt-hash-label {
   font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--text-muted);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text-hint);
 }
 
 .receipt-hash code {

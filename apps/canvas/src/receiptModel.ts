@@ -1,4 +1,5 @@
 import { payloadRecord, stringValue } from "./pageModel";
+import { PROVENANCE_META } from "./panels/shared/truth/copy";
 
 /**
  * Verifiable agent receipt rendering model.
@@ -63,10 +64,14 @@ export function provenanceBadge(
   if (!isProvenanceClass(provenanceClass)) return null;
   const receiptVerified = record.receipt_verified === true;
 
+  // Badge label is the P2 ProvenanceBadge copy (PROVENANCE_META) — ONE source
+  // for "verified"/"stub"/"asserted" across the graph-node badge, compare cards
+  // and this receipt pane; the receipt pane read a divergent "verified receipt"
+  // constant vs board 1g's P2 copy before (redesign P6 fix M4-residual).
   if (provenanceClass === "receipt_verified_v1") {
     return {
       provenanceClass,
-      label: "verified receipt",
+      label: PROVENANCE_META[provenanceClass].label,
       tone: "verified",
       live: receiptVerified,
       hint: "live CLI receipt — hashes recomputable from recorded evidence",
@@ -75,7 +80,7 @@ export function provenanceBadge(
   if (provenanceClass === "stub_receipt_v1") {
     return {
       provenanceClass,
-      label: "stub receipt",
+      label: PROVENANCE_META[provenanceClass].label,
       tone: "stub",
       live: false,
       hint: "deterministic stub CLI — mechanics proof, not a live model",
@@ -83,7 +88,7 @@ export function provenanceBadge(
   }
   return {
     provenanceClass,
-    label: "operator asserted",
+    label: PROVENANCE_META[provenanceClass].label,
     tone: "asserted",
     live: false,
     hint: "no CLI receipt recorded — provenance asserted by the operator",

@@ -97,7 +97,8 @@
       "projection_binding": "binding.action_graph",
       "props": { "close_on_mode_change": true },
       "visible_when": {
-        "mode": ["graph", "runway"],
+        "mode": ["graph"],
+        "mode_not": ["runway", "proof", "remote", "compare"],
         "selected_node": true
       },
       "data_testid": "evidence-inspector"
