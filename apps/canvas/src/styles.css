@@ -1360,8 +1360,17 @@ select:focus-visible {
   gap: 3px;
 }
 
-@media (max-width: 760px) {
-  .truth-legend {
+@media (max-width: 720px) {
+  /* Only the FLOATING graph legend hides on mobile — it relocates into the P8
+     mobile bottom sheet (which renders its own <TruthLegend/>), so the legend
+     stays reachable on mobile per board 1m (do NOT hide it outright). Scope to
+     the primary region so the sheet's legend copy is unaffected.
+     Breakpoint is 720 (NOT 760) so it hides EXACTLY where the mobile sheet that
+     re-hosts the legend appears — at 721-760 the floating legend stayed on the
+     graph and the sheet was absent, so a 760 hide left the legend unreachable
+     in that band (M-breakpoint fix). 720 is the single mobile-IA breakpoint
+     (shell collapse, chip row, sheet, graph fit all key off 720). */
+  .grid-region-primary .truth-legend {
     display: none;
   }
 }
@@ -4526,4 +4535,401 @@ select:focus-visible {
 /* Operator ⌘K keycap is a real button in P7 (opens the palette). */
 .operator-key {
   cursor: pointer;
+}
+
+/* ============================================================================
+   Mobile 390w responsive IA (redesign P8, board 1m). ADDITIVE @media ONLY — the
+   desktop layout (and the truth-guard, which runs at 1440px) is untouched. The
+   vertical tool rail splits into a horizontal lens CHIP ROW + a floating zoom
+   cluster; the operator bar + floating legend give way to a bottom SHEET that
+   keeps the truth legend reachable and opens the palette full-screen. Same real
+   data + truth labels everywhere; the graph is pannable at a legible zoom and
+   never silently hides nodes (the honest count readout stays on screen).
+   ========================================================================= */
+
+/* Desktop defaults for the P8 markup: the two tool-rail groups vanish from
+   layout (display:contents) so the buttons flow in the vertical rail EXACTLY as
+   before (no desktop regression). The lens label + mobile sheet are mobile-only. */
+.tool-rail-zoom,
+.tool-rail-lenses {
+  display: contents;
+}
+
+.rail-lens-label {
+  display: none;
+}
+
+.mobile-sheet {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  /* --- Compact banner (~30px, truncating) --- */
+  .context-banner {
+    height: 30px;
+    padding: 0 12px;
+    gap: 10px;
+  }
+
+  /* --- ~52px header: logo + "NLFR" + picker + composer(icon) + theme. The
+     picker is width-bounded so a long template title can never push the header
+     past 390px (the overflow bug board 1m's compact header fixes). --- */
+  .topbar {
+    height: 52px;
+    gap: 8px;
+    padding: 0 12px;
+  }
+  .wordmark-sub {
+    display: none;
+  }
+  .view-template-label {
+    display: none;
+  }
+  .view-template-select {
+    height: 32px;
+    max-width: 132px;
+    padding: 0 8px;
+  }
+  .view-template-select select {
+    max-width: 100%;
+  }
+  .composer-open-button {
+    padding: 7px;
+  }
+  .composer-open-button span {
+    display: none;
+  }
+
+  /* --- Lens switcher → horizontal chip row under the header --- */
+  .tool-rail {
+    display: contents;
+  }
+  .rail-break {
+    display: none;
+  }
+  .tool-rail-lenses {
+    display: flex;
+    position: fixed;
+    z-index: 7;
+    top: 88px;
+    left: 0;
+    right: 0;
+    gap: 6px;
+    align-items: center;
+    padding: 0 12px 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tool-rail-lenses::-webkit-scrollbar {
+    display: none;
+  }
+  /* Board 1m chip row: all five chips fit 390w without scroll because only the
+     ACTIVE chip carries its icon (a solid ink pill); the inactive chips are
+     label-only outline pills. Full mode.label stays on aria-label/title, so the
+     accessible name and the capture/truth-guard selectors are unchanged. */
+  .tool-rail-lenses .icon-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    width: auto;
+    height: 36px;
+    padding: 0 10px;
+    flex: 0 0 auto;
+    border: 1px solid var(--border-control);
+    border-radius: 999px;
+    background: var(--elev2-bg);
+    color: var(--text-body);
+    font-size: 11.5px;
+    font-weight: 500;
+  }
+  .tool-rail-lenses .icon-button.active {
+    background: var(--n9);
+    border-color: var(--n9);
+    color: var(--n0);
+    font-weight: 600;
+  }
+  /* Icon only on the active chip — this is what lets all five fit at 390w. */
+  .tool-rail-lenses .icon-button:not(.active) svg {
+    display: none;
+  }
+  .rail-lens-label {
+    display: inline;
+    white-space: nowrap;
+  }
+
+  /* --- Zoom buttons float top-right (~34px), stacked --- */
+  .tool-rail-zoom {
+    display: flex;
+    position: fixed;
+    z-index: 7;
+    top: 138px;
+    right: 10px;
+    flex-direction: column;
+    gap: 4px;
+    padding: 4px;
+    border: var(--elev1-border);
+    border-radius: 12px;
+    background: var(--elev2-bg);
+    backdrop-filter: var(--elev2-blur);
+    box-shadow: var(--elev2-shadow);
+  }
+  .tool-rail-zoom .icon-button {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+  }
+
+  /* --- Graph: hide the decorative grouping pill; keep the honesty-critical
+     count readout visible ABOVE the collapsed bottom sheet (never under it). --- */
+  .graph-grouping-pill {
+    display: none;
+  }
+  .graph-count-readout {
+    right: 10px;
+    /* Clear the collapsed bottom sheet (~117px tall). 108 sat ~9px under it
+       (m-readout fix); 126 leaves a small gap above the sheet's top edge. */
+    bottom: 126px;
+  }
+
+  /* --- Lens overlays clear the header + chip row (top) and the sheet (bottom).
+     Proof drawer self-positions (position:absolute); on mobile its containing
+     block is the full-viewport pass-through rail overlay, so top/bottom are
+     viewport coords. Inspector/Remote/Compare are NOT positioned themselves —
+     they fill their .grid-slot-* wrapper — so their geometry lives on the
+     wrapper rule below (S1 fix). --- */
+  .proof-drawer {
+    top: 176px;
+    left: 10px;
+    right: 10px;
+    bottom: 126px;
+    width: auto;
+    max-height: none;
+  }
+
+  /* S1: on mobile the rail is a pass-through overlay (GridShell) — the lens
+     wrappers get no desktop geometry, which previously left the lens crammed
+     inside the old bottom-sheet box (bottom:72, max-height:45vh) whose visible
+     bottom the mobile sheet covered by ~45px (dead + click-dead). Position each
+     lens' WRAPPER as a fixed panel that clears the chip row (top) and the mobile
+     sheet (bottom); the lens content (flex:1; width:100%) then fills it and
+     scrolls internally. :not(:empty) keeps a null inspector (default graph view,
+     no selection) from laying a dead overlay over the graph. */
+  .grid-rail-bottom-sheet > .grid-slot-evidence_inspector:not(:empty),
+  .grid-rail-bottom-sheet > .grid-slot-remote_boundary_lens:not(:empty),
+  .grid-rail-bottom-sheet > .grid-slot-compare_lens:not(:empty) {
+    position: fixed;
+    top: 176px;
+    left: 10px;
+    right: 10px;
+    bottom: 126px;
+    display: flex;
+    pointer-events: auto;
+  }
+
+  /* The pass-through overlay disables pointer events for descendants; re-enable
+     them on the self-positioning proof panels (mirrors the desktop
+     .grid-region-rail .proof-drawer rule). */
+  .grid-rail-bottom-sheet .proof-drawer,
+  .grid-rail-bottom-sheet .proof-card {
+    pointer-events: auto;
+  }
+
+  /* The floating zoom cluster is redundant while a lens/runway overlay covers
+     the graph, and its top-right stack would otherwise sit over the lens close
+     button (z:7 over the lens z:6). Hide it whenever an overlay is up; it
+     returns in the plain graph view where panning/zooming is what's wanted. */
+  .app-shell:has(.grid-rail-bottom-sheet) .tool-rail-zoom,
+  .app-shell:has(.runway-panel) .tool-rail-zoom {
+    display: none;
+  }
+
+  .grid-region-primary .runway-panel {
+    top: 176px;
+    left: 10px;
+    right: 10px;
+    bottom: 126px;
+  }
+
+  /* m-runway (pre-existing P6/#109 defect, exposed on mobile): the desktop
+     `.runway-lane-track` is a fixed 7-column `minmax(0,1fr)` grid (so run /
+     invocation / artifact columns align vertically on the wide desktop lens).
+     At the ~370px mobile lens width each of 7 columns collapses to ~20px —
+     half the 44px tap target — and the chip's label/clock overlap into garbled
+     digits. Mobile-only override: reflow the track into a horizontally
+     scrollable flex row so each chip keeps a legible, ≥44px-wide footprint and
+     its label ellipsizes honestly instead of crushing (nothing removed — the
+     source-kind glyph, label, clock and status glyph all stay). The
+     `.runway-artifact-cols` pills (display:contents → direct track items) and
+     the empty-lane statement reflow with it. Desktop keeps the 7-col grid. */
+  .runway-lane-track {
+    display: flex;
+    grid-template-columns: none;
+    flex-wrap: nowrap;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .runway-lane-track::-webkit-scrollbar {
+    display: none;
+  }
+  .runway-lane-track > .runway-chip,
+  .runway-artifact-pill {
+    flex: 0 0 auto;
+    min-width: 128px;
+    max-width: 200px;
+  }
+  /* The empty-lane statement (grid-column:1/-1 on desktop) fills the flex row. */
+  .runway-lane-track > .runway-lane-empty {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  /* --- Hide the desktop operator bar; the bottom sheet's "Commands" pill owns
+     the palette entry on mobile. The palette/composer/system-state overlays are
+     portaled to <body>, so hiding this region never hides them. --- */
+  .grid-region-operator {
+    display: none;
+  }
+
+  /* --- Re-anchor the focus pill + resting hint so they clear the 52px header,
+     the chip row, the floating zoom, and the bottom sheet (P7 handoff). --- */
+  /* Anchored below the chip row on the left; the honest "N of M nodes match"
+     count STAYS (an empty match must still say so — the graph never silently
+     hides evidence). Bounded width keeps it clear of the floating zoom. */
+  .focus-pill {
+    top: 140px;
+    left: 10px;
+    right: auto;
+    transform: none;
+    max-width: calc(100vw - 64px);
+  }
+  .resting-hint {
+    bottom: 150px;
+    max-width: calc(100vw - 24px);
+  }
+
+  /* --- Bottom sheet (E3, top-radius 18, grab handle) --- */
+  .mobile-sheet {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: fixed;
+    z-index: 45;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    max-height: 80vh;
+    overflow-y: auto;
+    padding: 8px 14px 14px;
+    border-top: var(--elev3-border);
+    border-radius: 18px 18px 0 0;
+    background: var(--elev3-bg);
+    backdrop-filter: var(--elev3-blur);
+    box-shadow: 0 -18px 50px rgba(13, 32, 38, 0.22);
+  }
+  .mobile-sheet-grab {
+    width: 40px;
+    height: 4px;
+    margin: 0 auto 2px;
+    border-radius: 999px;
+    background: var(--border-control);
+  }
+  .mobile-sheet-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .mobile-sheet-legend-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    min-height: 40px;
+    padding: 4px 6px;
+    border: 0;
+    background: transparent;
+    color: var(--ink);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .mobile-sheet-glyphs {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .mobile-sheet-chevron {
+    color: var(--text-muted);
+    transition: transform 150ms ease;
+  }
+  .mobile-sheet--expanded .mobile-sheet-chevron {
+    transform: rotate(180deg);
+  }
+  .mobile-sheet-commands {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 40px;
+    padding: 0 16px;
+    flex: 0 0 auto;
+    border: 1px solid var(--ink);
+    border-radius: 999px;
+    background: var(--ink);
+    color: var(--bg-app);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .mobile-sheet-summary {
+    margin: 0;
+    font: 500 11.5px/1.4 var(--font-mono);
+    color: var(--text-muted);
+  }
+  .mobile-sheet-legend {
+    padding-top: 2px;
+  }
+  /* The sheet's legend renders as a normal in-flow block, full-width inside the
+     sheet — NOT the floating absolute panel it is on the graph. */
+  .mobile-sheet .truth-legend {
+    position: static;
+    left: auto;
+    bottom: auto;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    backdrop-filter: none;
+    box-shadow: none;
+  }
+}
+
+/* --- Palette full-screen + composer full-width bottom sheet on mobile (P7
+   handoff for P8). Both are portaled with desktop geometry by default. --- */
+@media (max-width: 760px) {
+  .palette-scrim {
+    padding: 0;
+    align-items: stretch;
+  }
+  .palette-modal {
+    width: 100vw;
+    max-width: 100vw;
+    height: 100vh;
+    max-height: 100vh;
+    border: 0;
+    border-radius: 0;
+  }
+  .palette-results {
+    flex: 1;
+  }
+
+  .composer-drawer {
+    top: auto;
+    right: 0;
+    left: 0;
+    bottom: 0;
+    width: 100vw;
+    max-width: 100vw;
+    max-height: 88vh;
+    border-radius: 18px 18px 0 0;
+  }
 }

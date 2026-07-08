@@ -14,6 +14,7 @@ import {
   Search,
 } from "lucide-react";
 import { ComposerDrawer } from "./ComposerDrawer";
+import { MobileBottomSheet } from "./shared/MobileBottomSheet";
 import { SystemStates } from "./shared/SystemStates";
 import {
   filterPaletteCommands,
@@ -338,6 +339,7 @@ export function OperatorCommandBarPanel(instance: ComponentInstance) {
       ? createPortal(
           <>
             <SystemStates />
+            <MobileBottomSheet />
             <ComposerDrawer
               open={overlay.composerOpen}
               onClose={overlayActions.closeComposer}
