@@ -3,13 +3,14 @@ import { select, zoom, zoomIdentity, type ZoomTransform } from "d3";
 import {
   Bot,
   Braces,
+  Columns2,
   FileCheck2,
   Focus,
-  GitBranch,
-  GitCompare,
+  Globe,
+  Maximize2,
   Network,
   Route,
-  RotateCcw,
+  Rows3,
   ShieldCheck,
   Sparkles,
   ZoomIn,
@@ -18,6 +19,7 @@ import {
 import {
   capVisibleGraphNodes,
   DEFAULT_MAX_VISIBLE_GRAPH_NODES,
+  evidenceMix,
   highlightedIds,
   labelKind,
   remoteLensModel,
@@ -32,31 +34,91 @@ import { boolProp, parseListProp, stringProp } from "./shared/props";
 import { useOptionalZoomControllerRef } from "./shared/ZoomContext";
 import { ThemeToggle } from "./shared/ThemeToggle";
 import { ViewTemplateSelector } from "./shared/ViewTemplateSelector";
-import { TruthLegend } from "./shared/truth";
+import { Wordmark } from "./shared/Wordmark";
+import { SourceGlyph, TruthLegend } from "./shared/truth";
 import { confidenceMeta, SOURCE_KIND_META } from "./shared/truth/copy";
 import { GLYPH_VIEWBOX, glyphShapeElements } from "./shared/truth/glyphShapes";
 
+// Lens icons per board 1c: graph=network, runway=rows, proof=file-check,
+// remote=globe, compare=columns.
 const MODE_ICONS: Record<ViewModeId, React.ReactNode> = {
-  graph: <GitBranch size={18} />,
-  runway: <Route size={18} />,
+  graph: <Network size={18} />,
+  runway: <Rows3 size={18} />,
   proof: <FileCheck2 size={18} />,
-  remote: <Network size={18} />,
-  compare: <GitCompare size={18} />,
+  remote: <Globe size={18} />,
+  compare: <Columns2 size={18} />,
 };
 
-export function ProjectionNoticePanel(_instance: ComponentInstance) {
-  const { projectionNotice } = useViewContext();
-  if (!projectionNotice) return null;
+/** Evidence-mix stacked bar — segments sized to the real node source_kind
+ *  distribution of the loaded projection (board 1c). Real counts only. */
+function EvidenceMixBar({ projection }: { projection: ReturnType<typeof useViewContext>["bindings"]["actionGraph"] }) {
+  const mix = useMemo(() => evidenceMix(projection), [projection]);
   return (
-    <p
-      className={`projection-notice projection-notice-${projectionNotice.tone}`}
-      role="status"
+    <span
+      className="evidence-mix"
+      role="img"
+      aria-label={`evidence mix: ${mix.segments.map((s) => `${s.count} ${s.kind}`).join(", ")}`}
+      title={mix.segments.map((s) => `${s.kind}: ${s.count} of ${mix.total}`).join(" · ")}
     >
-      {projectionNotice.message}
-    </p>
+      {mix.segments.map((seg) => (
+        <span
+          key={seg.kind}
+          className={`evidence-mix-seg truth--${SOURCE_KIND_META[seg.kind].tone}`}
+          data-source-kind={seg.kind}
+          style={{ flexGrow: seg.count }}
+        />
+      ))}
+    </span>
   );
 }
 
+/**
+ * Context banner (board 1c): persistent 36px strip. Left = source glyph + run
+ * group + projection descriptor + node count; right = evidence-mix bar. Tone
+ * follows the evidence mix; the compare lens re-tones it derived. A fixture
+ * fallback re-tones to the honest fallback state.
+ */
+export function ProjectionNoticePanel(_instance: ComponentInstance) {
+  const { bindings, projectionNotice, route } = useViewContext();
+  const projection = bindings.actionGraph;
+  const mix = useMemo(() => evidenceMix(projection), [projection]);
+  const dominant = mix.dominant;
+  const isFallback = projectionNotice?.tone === "fallback";
+  const compareToned = route.mode === "compare";
+
+  const tone = isFallback ? "fallback" : compareToned ? "derived" : SOURCE_KIND_META[dominant].tone;
+  const descriptor = isFallback
+    ? projectionNotice?.message
+    : `${SOURCE_KIND_META[dominant].enum} projection`;
+
+  return (
+    <div className={`context-banner context-banner--${tone}`} data-testid="context-banner" role="status">
+      <div className="context-banner-lead">
+        <SourceGlyph kind={isFallback ? "simulated_v1" : dominant} size={9} />
+        <span className="context-banner-text">
+          <strong>{projection.run_group}</strong> run group — {descriptor}
+          {!isFallback && (
+            <>
+              {" · "}
+              <span className="context-banner-count">{mix.total} nodes</span>
+            </>
+          )}
+        </span>
+      </div>
+      <div className="context-banner-mix">
+        <span className="context-banner-mix-caption">evidence mix</span>
+        <EvidenceMixBar projection={projection} />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Header (board 1c): ~60px E2 bar. Wordmark · view picker · spacer ·
+ * run-summary strip (real projection totals) · honest remote pill · theme
+ * toggle. The remote pill reflects the real remote state and stays calm slate
+ * (dashed), never red.
+ */
 export function TopbarSummaryPanel(instance: ComponentInstance) {
   const { bindings } = useViewContext();
   const projection = bindings.actionGraph;
@@ -65,33 +127,78 @@ export function TopbarSummaryPanel(instance: ComponentInstance) {
     () => remoteLensModel(projection, bindings.proofPacket),
     [projection, bindings.proofPacket],
   );
+  const summary = projection.summary;
+  const runs = Number(summary.runs ?? 0);
+  const nodes = Number(summary.nodes ?? projection.nodes.length);
+  const cacheEvents = Number(summary.cache_events ?? 0);
+  const failures = Number(summary.failures ?? 0);
+  // Observed only when the proof packet recorded real remote invocations —
+  // never inferred from prose. Default projection has none → "not observed".
+  const remoteInvocations = remoteLens.metrics.find((m) => m.label === "remote invocations")?.value ?? "0";
+  const remoteObserved = remoteInvocations !== "0" && remoteInvocations !== "n/a";
+
+  const stats: { value: number; label: string }[] = [
+    { value: runs, label: runs === 1 ? "run" : "runs" },
+    { value: nodes, label: "nodes" },
+    { value: cacheEvents, label: cacheEvents === 1 ? "cache event" : "cache events" },
+    { value: failures, label: failures === 1 ? "failure" : "failures" },
+  ];
 
   return (
     <header className="topbar">
-      <div className="brand-mark">
-        <Network size={18} />
-        <span>NativeLink Agent Flight Recorder</span>
-      </div>
+      <Wordmark />
       <ViewTemplateSelector />
+      <span className="topbar-spacer" />
       <div className="run-strip" aria-label="projection summary">
-        <span>{String(projection.summary.runs ?? 0)} run</span>
-        <span>{String(projection.summary.nodes ?? projection.nodes.length)} nodes</span>
-        <span>{String(projection.summary.cache_events ?? 0)} cache events</span>
-        <span>{String(projection.summary.failures ?? 0)} failures</span>
-        {showRemote && <span>{remoteLens.modeLabel}</span>}
+        {stats.map((stat, index) => (
+          <span key={stat.label} className="run-stat">
+            {index > 0 && <span className="run-stat-sep" aria-hidden="true" />}
+            <span className="run-stat-value">{stat.value}</span>
+            <span className="run-stat-label">{stat.label}</span>
+          </span>
+        ))}
       </div>
+      {showRemote && (
+        <span
+          className={`remote-pill${remoteObserved ? " remote-pill--observed" : ""}`}
+          title={remoteLens.modeLabel}
+          data-remote-observed={remoteObserved}
+        >
+          <SourceGlyph kind={remoteObserved ? "collectable_v1" : "future"} size={9} title={null} />
+          <span>remote execution — {remoteObserved ? "observed" : "not observed"}</span>
+        </span>
+      )}
       <ThemeToggle />
     </header>
   );
 }
 
+/**
+ * Left tool rail (board 1c): floating 44px E2 panel. Zoom-in/out/fit, a
+ * divider, then the five lens buttons. Active lens = solid ink chip. Keeps the
+ * mode-switch behaviour + aria-labels the truth-guard/captures depend on; the
+ * fit button retains aria-label "Reset view" (capture selector).
+ */
 export function ModeRailPanel(instance: ComponentInstance) {
   const { spec, route, routeActions } = useViewContext();
+  const zoomRef = useOptionalZoomControllerRef();
   const modeIds = parseListProp(instance.props?.modes) as ViewModeId[];
   const modes = spec.modes.filter((entry) => modeIds.length === 0 || modeIds.includes(entry.mode_id));
 
+  const applyZoom = (next: "in" | "out" | "reset") => {
+    const ctrl = zoomRef?.current;
+    if (!ctrl) return;
+    if (next === "in") ctrl.zoomIn();
+    else if (next === "out") ctrl.zoomOut();
+    else ctrl.reset();
+  };
+
   return (
-    <div className="mode-rail" aria-label="canvas tools">
+    <nav className="tool-rail" aria-label="canvas tools">
+      <IconButton label="Zoom in" icon={<ZoomIn size={18} />} onClick={() => applyZoom("in")} />
+      <IconButton label="Zoom out" icon={<ZoomOut size={18} />} onClick={() => applyZoom("out")} />
+      <IconButton label="Reset view" icon={<Maximize2 size={18} />} onClick={() => applyZoom("reset")} />
+      <span className="rail-break" />
       {modes.map((mode) => (
         <IconButton
           key={mode.mode_id}
@@ -105,35 +212,17 @@ export function ModeRailPanel(instance: ComponentInstance) {
           }}
         />
       ))}
-    </div>
+    </nav>
   );
 }
 
+/**
+ * Zoom controls consolidated into the tool rail (ModeRailPanel) in P3. Kept as
+ * an inert slot so the view-spec instance still resolves; renders nothing.
+ */
 export function ZoomControlsPanel(instance: ComponentInstance) {
-  const zoomRef = useOptionalZoomControllerRef();
-
-  const applyZoom = (next: "in" | "out" | "reset") => {
-    const ctrl = zoomRef?.current;
-    if (!ctrl) return;
-    if (next === "in") ctrl.zoomIn();
-    else if (next === "out") ctrl.zoomOut();
-    else ctrl.reset();
-  };
-
   void stringProp(instance.props, "target_instance_id");
-
-  return (
-    <>
-      <span className="rail-break" />
-      <IconButton label="Zoom in" icon={<ZoomIn size={18} />} onClick={() => applyZoom("in")} />
-      <IconButton label="Zoom out" icon={<ZoomOut size={18} />} onClick={() => applyZoom("out")} />
-      <IconButton
-        label="Reset view"
-        icon={<RotateCcw size={18} />}
-        onClick={() => applyZoom("reset")}
-      />
-    </>
-  );
+  return null;
 }
 
 function centerTransform(svg: SVGSVGElement): ZoomTransform {

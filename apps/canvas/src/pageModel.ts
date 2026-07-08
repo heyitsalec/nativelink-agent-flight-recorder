@@ -5,8 +5,53 @@ import type {
   ProofBlock,
   ProofMetricValue,
   ProofPacket,
+  SourceKind,
 } from "./types";
 import type { ProjectionNotice, ViewSpec } from "./view/types";
+
+/**
+ * Evidence-mix over the loaded projection's real node source_kind
+ * distribution (redesign P3 context banner). No invented numbers — every
+ * segment is a real node count. Ordered so the strongest evidence
+ * (collectable) leads and future/unknown (slate) trails.
+ */
+export type EvidenceMixSegment = {
+  kind: SourceKind;
+  count: number;
+  fraction: number;
+};
+
+const EVIDENCE_MIX_ORDER: SourceKind[] = [
+  "collectable_v1",
+  "derived_v1",
+  "simulated_v1",
+  "future",
+  "unknown",
+];
+
+export function evidenceMix(projection: ActionGraphProjection): {
+  total: number;
+  dominant: SourceKind;
+  segments: EvidenceMixSegment[];
+} {
+  const counts = new Map<SourceKind, number>();
+  for (const node of projection.nodes) {
+    const kind = (node.source_kind ?? "unknown") as SourceKind;
+    counts.set(kind, (counts.get(kind) ?? 0) + 1);
+  }
+  const total = projection.nodes.length;
+  const segments: EvidenceMixSegment[] = EVIDENCE_MIX_ORDER.filter((kind) => (counts.get(kind) ?? 0) > 0).map(
+    (kind) => {
+      const count = counts.get(kind) ?? 0;
+      return { kind, count, fraction: total > 0 ? count / total : 0 };
+    },
+  );
+  const dominant = segments.reduce<EvidenceMixSegment | null>(
+    (best, seg) => (best === null || seg.count > best.count ? seg : best),
+    null,
+  );
+  return { total, dominant: dominant?.kind ?? "unknown", segments };
+}
 
 export type RemoteLensModel = {
   modeLabel: string;

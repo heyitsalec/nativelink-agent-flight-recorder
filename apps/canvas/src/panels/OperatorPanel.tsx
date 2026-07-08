@@ -1,15 +1,22 @@
 import { useState } from "react";
-import { MessageCircle, Search } from "lucide-react";
+import { Info } from "lucide-react";
 import { ComposerDrawer } from "./ComposerDrawer";
 import type { ComponentInstance } from "../view/types";
 import { useViewContext } from "../view/ViewContext";
 import { useOptionalZoomControllerRef } from "./shared/ZoomContext";
 import { stringProp } from "./shared/props";
 
+const NON_EVIDENTIARY_TOOLTIP =
+  "Operator commands filter and navigate the loaded projection only. They are never persisted or exported as evidence.";
+
 export function OperatorCommandBarPanel(instance: ComponentInstance) {
   const { graph, bindings, route, routeActions, spec } = useViewContext();
   const zoomRef = useOptionalZoomControllerRef();
-  const placeholder = stringProp(instance.props, "placeholder", "focus cache misses");
+  const placeholder = stringProp(
+    instance.props,
+    "placeholder",
+    "Filter or jump — failures, cache, agents, proof, runway, reset",
+  );
   const [composerOpen, setComposerOpen] = useState(false);
 
   function runOperatorCommand() {
@@ -85,9 +92,9 @@ export function OperatorCommandBarPanel(instance: ComponentInstance) {
   return (
     <div className={`operator ${lensClass}`.trim()}>
       <ComposerDrawer open={composerOpen} onClose={() => setComposerOpen(false)} initialSpec={spec} />
-      <MessageCircle size={18} />
+      <kbd className="operator-key" aria-hidden="true">⌘K</kbd>
       <div className="operator-copy">
-        <span>{route.operatorNote}</span>
+        {route.operatorNote && <span className="operator-note">{route.operatorNote}</span>}
         <input
           aria-label="operator command"
           value={route.command}
@@ -98,13 +105,11 @@ export function OperatorCommandBarPanel(instance: ComponentInstance) {
           }}
         />
       </div>
-      <button
-        className="operator-run"
-        onClick={runOperatorCommand}
-        aria-label="Run operator command"
-      >
-        <Search size={17} />
-      </button>
+      <span className="operator-divider" aria-hidden="true" />
+      <span className="operator-nonevidentiary" title={NON_EVIDENTIARY_TOOLTIP}>
+        <Info size={13} aria-hidden="true" />
+        <span>local filter · not evidence</span>
+      </span>
     </div>
   );
 }

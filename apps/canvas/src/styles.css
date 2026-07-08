@@ -306,97 +306,211 @@ select:focus-visible {
   background-size: 24px 24px;
 }
 
-.fixture-fallback-banner,
-.projection-notice {
-  position: absolute;
-  z-index: 5;
-  top: 0;
-  left: 0;
-  right: 0;
-  margin: 0;
-  padding: 0.55rem 1rem;
-  font-size: 0.85rem;
+/* ============================================================================
+   Context banner (board 1c) — persistent 36px strip, tone = evidence mix.
+   ========================================================================= */
+.context-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  height: 36px;
+  padding: 0 20px;
+  font-size: 12px;
   border-bottom: 1px solid transparent;
 }
 
-.fixture-fallback-banner,
-.projection-notice-fallback {
-  background: var(--fallback-bg);
-  color: var(--fallback-text);
-  border-bottom-color: var(--fallback-border);
+.context-banner-lead {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
-.projection-notice-simulated {
-  background: var(--fallback-bg);
-  color: var(--fallback-text);
-  border-bottom-color: var(--fallback-border);
+.context-banner-text {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
-.projection-notice-mixed {
-  background: var(--truth-future-tint);
-  color: var(--text-body);
-  border-bottom-color: var(--border-control);
+.context-banner-text strong {
+  font-weight: 700;
 }
 
-.projection-notice-collectable {
+.context-banner-count {
+  font: 600 11.5px/1 var(--font-mono);
+}
+
+.context-banner-mix {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.context-banner-mix-caption {
+  font-size: 11px;
+  color: currentColor;
+  opacity: 0.72;
+}
+
+.evidence-mix {
+  display: inline-flex;
+  width: 110px;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  background: var(--meter-empty);
+  gap: 1px;
+}
+
+.evidence-mix-seg {
+  min-width: 2px;
+  background: currentColor;
+}
+
+/* Tones — the banner text colour drives the mix caption + segments fallback. */
+.context-banner--collectable {
   background: var(--truth-collectable-tint);
   color: var(--banner-text);
   border-bottom-color: color-mix(in srgb, var(--truth-collectable) 22%, transparent);
 }
 
-.topbar {
-  position: absolute;
-  z-index: 4;
-  top: 20px;
-  left: 24px;
-  right: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  pointer-events: none;
+.context-banner--derived {
+  background: var(--truth-derived-tint);
+  color: var(--truth-derived);
+  border-bottom-color: color-mix(in srgb, var(--truth-derived) 22%, transparent);
 }
 
-.brand-mark,
-.run-strip {
-  pointer-events: auto;
+.context-banner--simulated {
+  background: var(--truth-simulated-tint);
+  color: var(--truth-simulated);
+  border-bottom-color: color-mix(in srgb, var(--truth-simulated) 22%, transparent);
+}
+
+.context-banner--future,
+.context-banner--unknown {
+  background: var(--truth-future-tint);
+  color: var(--text-body);
+  border-bottom-color: var(--border-control);
+}
+
+.context-banner--fallback {
+  background: var(--fallback-bg);
+  color: var(--fallback-text);
+  border-bottom-color: var(--fallback-border);
+}
+
+/* ============================================================================
+   Header (board 1c) — ~60px E2 bar.
+   ========================================================================= */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+  height: 60px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--hairline);
+  background: var(--elev2-bg);
+  backdrop-filter: var(--elev2-blur);
+  color: var(--ink);
+}
+
+.topbar-spacer {
+  flex: 1 1 auto;
+}
+
+/* Wordmark */
+.wordmark {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  height: 40px;
-  padding: 0 14px;
-  border: var(--elev1-border);
-  background: var(--elev2-bg);
-  color: var(--ink);
-  backdrop-filter: var(--elev2-blur);
-  box-shadow: var(--elev2-shadow);
+  flex: 0 0 auto;
 }
 
-.brand-mark {
-  font-size: 13px;
+.wordmark-mark {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  background: var(--truth-collectable);
+}
+
+.wordmark-lockup {
+  display: grid;
+  line-height: 1.15;
+}
+
+.wordmark-name {
+  font-size: 13.5px;
   font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ink);
 }
 
+.wordmark-sub {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+/* Run-summary strip */
 .run-strip {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-body);
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 auto;
 }
 
-.run-strip span + span::before {
-  content: "";
-  display: inline-block;
-  width: 4px;
-  height: 4px;
-  margin-right: 10px;
+.run-stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.run-stat-sep {
+  width: 1px;
+  height: 16px;
+  margin-right: 12px;
+  align-self: center;
+  background: var(--hairline);
+}
+
+.run-stat-value {
+  font: 600 14px/1 var(--font-mono);
+  color: var(--ink);
+}
+
+.run-stat-label {
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+/* Honest remote pill — dashed, calm slate; never red. */
+.remote-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  border: 1.25px dashed var(--border-control);
   border-radius: var(--radius-pill);
-  background: var(--text-faint);
-  vertical-align: middle;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.remote-pill--observed {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--truth-collectable) 40%, transparent);
+  color: var(--truth-collectable);
 }
 
 /* Header theme toggle (boards 1c/1d): 32px bordered square, moon/sun. */
 .theme-toggle {
-  pointer-events: auto;
   display: grid;
   flex: 0 0 auto;
   width: 32px;
@@ -405,8 +519,7 @@ select:focus-visible {
   padding: 0;
   border: 1px solid var(--border-control);
   border-radius: 8px;
-  background: var(--elev2-bg);
-  backdrop-filter: var(--elev2-blur);
+  background: transparent;
   color: var(--text-muted);
   cursor: pointer;
   transition: background 150ms ease, color 150ms ease;
@@ -417,16 +530,22 @@ select:focus-visible {
   color: var(--ink);
 }
 
-.mode-rail {
-  position: absolute;
+/* ============================================================================
+   Left tool rail (board 1c) — floating 44px E2 panel: zoom + divider + lenses.
+   ========================================================================= */
+.tool-rail {
+  position: fixed;
   z-index: 5;
-  top: 88px;
-  left: 24px;
+  top: 116px;
+  left: 16px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 8px;
+  align-items: center;
+  gap: 4px;
+  width: 44px;
+  padding: 6px;
   border: var(--elev1-border);
+  border-radius: 12px;
   background: var(--elev2-bg);
   backdrop-filter: var(--elev2-blur);
   box-shadow: var(--elev2-shadow);
@@ -437,6 +556,12 @@ select:focus-visible {
   height: 1px;
   margin: 4px auto;
   background: var(--hairline);
+}
+
+.tool-rail .icon-button {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
 }
 
 .icon-button {
@@ -1593,20 +1718,34 @@ select:focus-visible {
   margin-top: 14px;
 }
 
+/* View picker (board 1c): bordered control — overline "VIEW" + name + chevron. */
 .view-template-select {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  font-size: 0.75rem;
-  color: var(--text-muted);
+  gap: 8px;
+  flex: 0 0 auto;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--border-control);
+  border-radius: 8px;
+  background: var(--elev1-bg);
+}
+
+.view-template-label {
+  font: 600 11px/1.2 var(--font-ui);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
 }
 
 .view-template-select select {
-  background: var(--elev1-bg);
+  border: 0;
+  outline: 0;
+  background: transparent;
   color: var(--ink);
-  border: 1px solid var(--border-control);
-  border-radius: var(--radius-control);
-  padding: 0.2rem 0.4rem;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .composer-drawer {
@@ -1659,38 +1798,51 @@ select:focus-visible {
   color: var(--text-muted);
 }
 
+/* ============================================================================
+   Operator command bar (board 1c) — bottom-centre E3 pill. Its resting
+   appearance + the non-evidentiary affordance; the ⌘K palette modal is P7.
+   ========================================================================= */
 .operator {
   position: absolute;
   z-index: 6;
   left: 50%;
   bottom: 24px;
   display: grid;
-  grid-template-columns: 24px minmax(0, 380px) 36px;
-  gap: 10px;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 12px;
   align-items: center;
-  width: min(520px, calc(100vw - 40px));
-  padding: 10px;
+  width: min(660px, calc(100vw - 40px));
+  padding: 8px 12px;
   transform: translateX(-50%);
   border: var(--elev3-border);
+  border-radius: var(--radius-pill);
   background: var(--elev3-bg);
   backdrop-filter: var(--elev3-blur);
   box-shadow: var(--elev3-shadow);
 }
 
-.operator > svg {
-  justify-self: center;
-  color: var(--truth-collectable);
+.operator-key {
+  display: inline-grid;
+  place-items: center;
+  min-width: 34px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--border-control);
+  border-radius: 8px;
+  background: var(--row-bg);
+  color: var(--text-muted);
+  font: 600 12px/1 var(--font-mono);
 }
 
 .operator-copy {
   display: grid;
-  gap: 4px;
+  gap: 2px;
   min-width: 0;
 }
 
-.operator-copy span {
+.operator-note {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -1703,87 +1855,75 @@ select:focus-visible {
   outline: 0;
   background: transparent;
   color: var(--ink);
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .operator input::placeholder {
   color: var(--text-hint);
 }
 
-.operator-run {
-  display: grid;
-  width: 36px;
-  height: 36px;
-  place-items: center;
-  border: 0;
-  background: var(--n9);
-  color: var(--n0);
-  cursor: pointer;
+.operator-divider {
+  width: 1px;
+  height: 22px;
+  background: var(--hairline);
 }
 
+.operator-nonevidentiary {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  color: var(--text-faint);
+  font-size: 10.5px;
+  white-space: nowrap;
+  cursor: help;
+}
+
+.operator-nonevidentiary svg {
+  flex: 0 0 auto;
+}
+
+/* Lens accent — a hairline inset in the active lens hue. */
 .operator--lens-proof {
   border-color: color-mix(in srgb, var(--lens-proof-accent) 28%, transparent);
-  box-shadow:
-    var(--elev3-shadow),
-    inset 0 2px 0 var(--lens-proof-accent);
-}
-
-.operator--lens-proof > svg {
-  color: var(--lens-proof-accent);
+  box-shadow: var(--elev3-shadow), inset 0 2px 0 var(--lens-proof-accent);
 }
 
 .operator--lens-remote {
   border-color: color-mix(in srgb, var(--lens-remote-accent) 28%, transparent);
-  box-shadow:
-    var(--elev3-shadow),
-    inset 0 2px 0 var(--lens-remote-accent);
-}
-
-.operator--lens-remote > svg {
-  color: var(--lens-remote-accent);
+  box-shadow: var(--elev3-shadow), inset 0 2px 0 var(--lens-remote-accent);
 }
 
 .operator--lens-compare {
   border-color: color-mix(in srgb, var(--lens-compare-accent) 28%, transparent);
-  box-shadow:
-    var(--elev3-shadow),
-    inset 0 2px 0 var(--lens-compare-accent);
-}
-
-.operator--lens-compare > svg {
-  color: var(--lens-compare-accent);
+  box-shadow: var(--elev3-shadow), inset 0 2px 0 var(--lens-compare-accent);
 }
 
 .operator--lens-runway {
   border-color: color-mix(in srgb, var(--lens-runway-accent) 28%, transparent);
-  box-shadow:
-    var(--elev3-shadow),
-    inset 0 2px 0 var(--lens-runway-accent);
-}
-
-.operator--lens-runway > svg {
-  color: var(--lens-runway-accent);
+  box-shadow: var(--elev3-shadow), inset 0 2px 0 var(--lens-runway-accent);
 }
 
 @media (max-width: 760px) {
   .topbar {
-    top: 12px;
-    left: 12px;
-    right: 12px;
-    align-items: flex-start;
+    gap: 12px;
+    padding: 0 12px;
   }
 
-  .brand-mark {
-    width: min(280px, calc(100vw - 96px));
-  }
-
-  .run-strip {
+  /* Board 1m keeps the wordmark + view picker + theme toggle; the run strip
+     and remote pill move into the mobile summary sheet (full mobile board is
+     a later phase). */
+  .run-strip,
+  .remote-pill {
     display: none;
   }
 
-  .mode-rail {
-    top: 70px;
+  .tool-rail {
+    top: 104px;
     left: 12px;
   }
 
@@ -1836,11 +1976,15 @@ select:focus-visible {
   .operator {
     bottom: 12px;
     width: calc(100vw - 24px);
-    grid-template-columns: 22px minmax(0, 1fr) 34px;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 10px;
   }
 
-  .operator-copy span {
-    white-space: normal;
+  /* The non-evidentiary affordance folds away on narrow widths; its tooltip
+     text stays reachable via the ⌘K palette footer (P7). */
+  .operator-divider,
+  .operator-nonevidentiary {
+    display: none;
   }
 }
 
@@ -1858,33 +2002,18 @@ select:focus-visible {
   z-index: 5;
 }
 
-.grid-region-notice .projection-notice {
-  position: relative;
-  top: auto;
-  left: auto;
-  right: auto;
-}
-
 .grid-region-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 16px 24px 8px;
+  position: relative;
   z-index: 4;
 }
 
-.grid-region-header .topbar {
-  position: static;
-  flex: 1 1 100%;
-  pointer-events: auto;
+.grid-region-header .grid-slot {
+  min-width: 0;
 }
 
-.grid-region-header .mode-rail {
-  position: static;
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: center;
+/* The zoom-controls slot is inert (consolidated into the tool rail). */
+.grid-region-header .grid-slot-zoom_controls {
+  display: none;
 }
 
 .grid-region-primary {
@@ -1957,7 +2086,7 @@ select:focus-visible {
 .grid-region-operator .operator {
   position: static;
   transform: none;
-  width: min(520px, 100%);
+  width: min(660px, 100%);
 }
 
 .grid-slot {
@@ -1965,14 +2094,6 @@ select:focus-visible {
 }
 
 @media (max-width: 720px) {
-  .grid-region-header {
-    padding: 12px 12px 8px;
-  }
-
-  .grid-region-header .mode-rail {
-    flex-direction: column;
-  }
-
   .grid-region-primary .truth-legend {
     left: 12px;
     bottom: 12px;
