@@ -2,31 +2,48 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { select, zoom, zoomIdentity, type ZoomTransform } from "d3";
 import {
   Bot,
+  Box,
   Braces,
+  ChevronDown,
+  ChevronRight,
   Columns2,
+  Database,
   FileCheck2,
+  FileText,
   Focus,
+  GitCommitVertical,
   Globe,
+  LayoutGrid,
   Maximize2,
   Network,
+  Play,
   Route,
   Rows3,
+  Server,
   ShieldCheck,
   Sparkles,
+  Target,
+  Terminal,
+  TriangleAlert,
+  Zap,
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
 import {
-  capVisibleGraphNodes,
-  DEFAULT_MAX_VISIBLE_GRAPH_NODES,
   evidenceMix,
   highlightedIds,
   labelKind,
   remoteLensModel,
   sortRunwayNodes,
 } from "../pageModel";
-import { provenanceBadge, type ProvenanceBadge } from "../receiptModel";
-import type { PositionedNode, SourceKind } from "../types";
+import {
+  buildGraphScene,
+  type GraphSceneCard,
+  type GraphSceneCluster,
+  type GraphSceneEdge,
+} from "../layout";
+import { provenanceBadge } from "../receiptModel";
+import type { ProjectionNode, SourceKind } from "../types";
 import type { ComponentInstance, ViewModeId } from "../view/types";
 import { useViewContext } from "../view/ViewContext";
 import { IconButton } from "./shared/IconButton";
@@ -35,9 +52,8 @@ import { useOptionalZoomControllerRef } from "./shared/ZoomContext";
 import { ThemeToggle } from "./shared/ThemeToggle";
 import { ViewTemplateSelector } from "./shared/ViewTemplateSelector";
 import { Wordmark } from "./shared/Wordmark";
-import { SourceGlyph, TruthLegend } from "./shared/truth";
-import { confidenceMeta, SOURCE_KIND_META } from "./shared/truth/copy";
-import { GLYPH_VIEWBOX, glyphShapeElements } from "./shared/truth/glyphShapes";
+import { ConfidenceMeter, ProvenanceBadge, SourceGlyph, StatusGlyph, TruthLegend } from "./shared/truth";
+import { SOURCE_KIND_META } from "./shared/truth/copy";
 
 // Lens icons per board 1c: graph=network, runway=rows, proof=file-check,
 // remote=globe, compare=columns.
@@ -241,26 +257,23 @@ function centerTransform(svg: SVGSVGElement): ZoomTransform {
 const FIT_PADDING_PX = 48;
 /** Never zoom in past this when fitting — matches the old default framing. */
 const MAX_FIT_SCALE = 0.95;
-/** Halo, kind/label text, provenance badge, and confidence text all render
- *  beyond the node body; reserve room so fitted nodes keep them on-screen. */
-const NODE_FIT_MARGIN = 64;
+/** Provenance badges + card shadows render past the card boxes; keep them
+ *  on-screen when fitting. */
+const SCENE_FIT_MARGIN = 44;
+/** Below this zoom, card meta rows hide and labels condense (LOD). */
+const LOD_ZOOM_THRESHOLD = 0.6;
 
-function fitTransform(svg: SVGSVGElement, nodes: PositionedNode[]): ZoomTransform {
+type SceneBounds = { minX: number; minY: number; maxX: number; maxY: number };
+
+function fitTransform(svg: SVGSVGElement, bounds: SceneBounds | null): ZoomTransform {
   const box = svg.getBoundingClientRect();
-  if (nodes.length === 0 || box.width <= 0 || box.height <= 0) {
+  if (!bounds || box.width <= 0 || box.height <= 0) {
     return centerTransform(svg);
   }
-  let minX = Infinity;
-  let maxX = -Infinity;
-  let minY = Infinity;
-  let maxY = -Infinity;
-  for (const node of nodes) {
-    const reach = node.radius + NODE_FIT_MARGIN;
-    minX = Math.min(minX, node.x - reach);
-    maxX = Math.max(maxX, node.x + reach);
-    minY = Math.min(minY, node.y - reach);
-    maxY = Math.max(maxY, node.y + reach);
-  }
+  const minX = bounds.minX - SCENE_FIT_MARGIN;
+  const minY = bounds.minY - SCENE_FIT_MARGIN;
+  const maxX = bounds.maxX + SCENE_FIT_MARGIN;
+  const maxY = bounds.maxY + SCENE_FIT_MARGIN;
   const spanX = Math.max(maxX - minX, 1);
   const spanY = Math.max(maxY - minY, 1);
   const scale = Math.max(
@@ -278,62 +291,96 @@ function fitTransform(svg: SVGSVGElement, nodes: PositionedNode[]): ZoomTransfor
     .scale(scale);
 }
 
+/** Curved cubic edge path flowing between column-aligned entities. */
+function edgePath(edge: GraphSceneEdge): string {
+  const dx = edge.x2 - edge.x1;
+  const bend = Math.max(Math.abs(dx) * 0.45, 24) * Math.sign(dx || 1);
+  return `M ${edge.x1} ${edge.y1} C ${edge.x1 + bend} ${edge.y1}, ${edge.x2 - bend} ${edge.y2}, ${edge.x2} ${edge.y2}`;
+}
+
 export function ActionGraphCanvasPanel(instance: ComponentInstance) {
-  const { bindings, graph, route, routeActions } = useViewContext();
+  const { bindings, route, routeActions } = useViewContext();
   const zoomRef = useOptionalZoomControllerRef();
   const svgRef = useRef<SVGSVGElement | null>(null);
   const behaviorRef = useRef<ReturnType<typeof zoom<SVGSVGElement, unknown>> | null>(null);
   const [transform, setTransform] = useState<ZoomTransform>(zoomIdentity);
+  // "fit" until the operator pans/zooms; reset returns to "fit".
+  const [viewMode, setViewMode] = useState<"fit" | "zoom">("fit");
 
   const minScale = typeof instance.props?.scale_extent_min === "number" ? instance.props.scale_extent_min : 0.55;
   const maxScale = typeof instance.props?.scale_extent_max === "number" ? instance.props.scale_extent_max : 2.35;
-  const summaryMaxVisible = bindings.actionGraph.summary.max_visible_nodes;
-  const maxVisibleNodes =
-    typeof summaryMaxVisible === "number" && Number.isFinite(summaryMaxVisible)
-      ? summaryMaxVisible
-      : DEFAULT_MAX_VISIBLE_GRAPH_NODES;
 
-  const { visible: visibleNodes, overflow } = useMemo(
-    () =>
-      capVisibleGraphNodes(
-        graph.nodes,
-        maxVisibleNodes,
-        route.selectedId ? [route.selectedId] : [],
-      ),
-    [graph.nodes, maxVisibleNodes, route.selectedId],
-  );
-  const visibleNodeIds = useMemo(
-    () => new Set(visibleNodes.map((node) => node.id)),
-    [visibleNodes],
-  );
-  const visibleEdges = useMemo(
-    () =>
-      graph.edges.filter(
-        (edge) => visibleNodeIds.has(edge.source.id) && visibleNodeIds.has(edge.target.id),
-      ),
-    [graph.edges, visibleNodeIds],
-  );
-
-  const highlighted = useMemo(
-    () => highlightedIds(visibleNodes, route.focus),
-    [visibleNodes, route.focus],
-  );
+  const projection = bindings.actionGraph;
   const selectedId = route.selectedId;
 
-  // Keep the latest visible nodes available to the zoom-init effect and the
+  // Density model (board 1c/1d): group by run, expand on demand. Default =
+  // first run expanded, later runs + change column collapsed into clusters.
+  const [expandedState, setExpandedState] = useState<ReadonlySet<string> | null>(null);
+  const defaultExpanded = useMemo(() => {
+    const firstRun = projection.nodes.find((node) => node.kind === "run");
+    return new Set<string>(firstRun ? [firstRun.id] : []);
+  }, [projection]);
+  const expanded = expandedState ?? defaultExpanded;
+
+  const scene = useMemo(
+    () => buildGraphScene(projection, { expanded, selectedId }),
+    [projection, expanded, selectedId],
+  );
+
+  const toggleExpand = (key: string | null) => {
+    if (!key) return;
+    setExpandedState((previous) => {
+      const next = new Set(previous ?? defaultExpanded);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const highlighted = useMemo(
+    () => highlightedIds(projection.nodes, route.focus),
+    [projection.nodes, route.focus],
+  );
+
+  // Selection emphasis: neighbours stay bright, everything else dims.
+  const neighborIds = useMemo(() => {
+    if (!selectedId) return null;
+    const ids = new Set<string>([selectedId]);
+    for (const edge of scene.edges) {
+      if (edge.fromId === selectedId) ids.add(edge.toId);
+      if (edge.toId === selectedId) ids.add(edge.fromId);
+    }
+    return ids;
+  }, [scene.edges, selectedId]);
+
+  const cardDimmed = (card: GraphSceneCard): boolean => {
+    if (route.focus !== "all" && !highlighted.has(card.node.id)) return true;
+    if (neighborIds && !neighborIds.has(card.node.id)) return true;
+    return false;
+  };
+  const clusterDimmed = (cluster: GraphSceneCluster): boolean => {
+    if (route.focus !== "all" && !cluster.memberIds.some((id) => highlighted.has(id))) return true;
+    if (neighborIds && !neighborIds.has(cluster.id)) return true;
+    return false;
+  };
+
+  // Keep the latest scene bounds available to the zoom-init effect and the
   // Reset handler without re-running them (and stomping user zoom) whenever
-  // selection changes which nodes are visible.
-  const visibleNodesRef = useRef<PositionedNode[]>(visibleNodes);
+  // expansion changes the layout.
+  const boundsRef = useRef<SceneBounds | null>(scene.bounds);
   useEffect(() => {
-    visibleNodesRef.current = visibleNodes;
-  }, [visibleNodes]);
+    boundsRef.current = scene.bounds;
+  }, [scene.bounds]);
 
   useEffect(() => {
     if (!svgRef.current) return;
-    const fit = fitTransform(svgRef.current, visibleNodesRef.current);
+    const fit = fitTransform(svgRef.current, boundsRef.current);
     const behavior = zoom<SVGSVGElement, unknown>()
       .scaleExtent([Math.min(minScale, fit.k), maxScale])
-      .on("zoom", (event) => setTransform(event.transform));
+      .on("zoom", (event) => {
+        setTransform(event.transform);
+        if (event.sourceEvent) setViewMode("zoom");
+      });
     behaviorRef.current = behavior;
     select(svgRef.current).call(behavior);
     select(svgRef.current).call(behavior.transform, fit);
@@ -344,16 +391,19 @@ export function ActionGraphCanvasPanel(instance: ComponentInstance) {
     zoomRef.current = {
       zoomIn: () => {
         if (!svgRef.current || !behaviorRef.current) return;
+        setViewMode("zoom");
         select(svgRef.current).transition().duration(220).call(behaviorRef.current.scaleBy, 1.18);
       },
       zoomOut: () => {
         if (!svgRef.current || !behaviorRef.current) return;
+        setViewMode("zoom");
         select(svgRef.current).transition().duration(220).call(behaviorRef.current.scaleBy, 0.84);
       },
       reset: () => {
         if (!svgRef.current || !behaviorRef.current) return;
-        const fit = fitTransform(svgRef.current, visibleNodesRef.current);
+        const fit = fitTransform(svgRef.current, boundsRef.current);
         behaviorRef.current.scaleExtent([Math.min(minScale, fit.k), maxScale]);
+        setViewMode("fit");
         select(svgRef.current)
           .transition()
           .duration(420)
@@ -366,71 +416,82 @@ export function ActionGraphCanvasPanel(instance: ComponentInstance) {
     };
   }, [zoomRef, transform, minScale, maxScale]);
 
+  const lod = transform.k < LOD_ZOOM_THRESHOLD;
+  const { totals } = scene;
+  const zoomPct = Math.round(transform.k * 100);
+  // Honesty-critical readout: the visible-vs-total count is ALWAYS shown, and
+  // collapsed nodes are counted — clustered is never "gone".
+  const readout =
+    totals.clusters > 0
+      ? `${totals.total} total · ${totals.cards} cards · ${totals.clustered} in ${totals.clusters} cluster${totals.clusters === 1 ? "" : "s"}`
+      : `${totals.total} nodes / ${totals.cards} shown`;
+
   return (
     <section className="canvas-stage" aria-label="NativeLink evidence canvas">
       <svg
         ref={svgRef}
-        className="graph-canvas"
+        className={`graph-canvas${lod ? " lod-compact" : ""}`}
         role="img"
         aria-label="Action Graph projection"
       >
-        <defs>
-          <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
-            <path className="canvas-grid-line" d="M 32 0 L 0 0 0 32" fill="none" strokeWidth="1" />
-          </pattern>
-          <marker id="arrow" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto">
-            <path className="edge-arrowhead" d="M0,0 L0,6 L8,3 z" />
-          </marker>
-        </defs>
-        <rect x="-5000" y="-5000" width="10000" height="10000" fill="url(#grid)" />
         <g transform={transform.toString()}>
           <g className="edge-layer">
-            {visibleEdges.map((edge) => {
-              const isActive =
-                selectedId === edge.source.id ||
-                selectedId === edge.target.id ||
-                highlighted.has(edge.source.id) ||
-                highlighted.has(edge.target.id);
+            {scene.edges.map((edge) => {
+              const active =
+                selectedId !== null && (edge.fromId === selectedId || edge.toId === selectedId);
               return (
-                <line
+                <path
                   key={edge.id}
-                  x1={edge.source.x}
-                  y1={edge.source.y}
-                  x2={edge.target.x}
-                  y2={edge.target.y}
-                  className={`edge ${edge.source_kind} ${isActive ? "active" : ""}`}
-                  markerEnd="url(#arrow)"
+                  d={edgePath(edge)}
+                  className={`gedge ${edge.source_kind}${edge.dashed ? " dashed" : ""}${active ? " active" : ""}`}
                 />
               );
             })}
           </g>
           <g className="node-layer">
-            {visibleNodes.map((node) => (
-              <GraphNode
-                key={node.id}
-                node={node}
-                selected={node.id === selectedId}
-                dimmed={route.focus !== "all" && !highlighted.has(node.id)}
-                onSelect={() => routeActions.setSelectedId(node.id)}
+            {scene.clusters.map((cluster) => (
+              <ClusterCapsule
+                key={cluster.id}
+                cluster={cluster}
+                dimmed={clusterDimmed(cluster)}
+                onExpand={() => toggleExpand(cluster.expandKey)}
+              />
+            ))}
+            {scene.cards.map((card) => (
+              <GraphCard
+                key={card.node.id}
+                card={card}
+                selected={card.node.id === selectedId}
+                dimmed={cardDimmed(card)}
+                onSelect={() => routeActions.setSelectedId(card.node.id)}
+                onToggle={() => toggleExpand(card.expandKey)}
               />
             ))}
           </g>
-          {overflow > 0 && (
-            <g
-              className="graph-overflow-chip"
-              data-testid="graph-overflow-chip"
-              transform="translate(360, 250)"
-              role="status"
-              aria-label={`${overflow} additional nodes hidden on canvas`}
-            >
-              <rect className="graph-overflow-chip-bg" x={-52} y={-16} width={104} height={32} rx={16} />
-              <text className="graph-overflow-chip-label" textAnchor="middle" y={5}>
-                +{overflow} more
-              </text>
-            </g>
-          )}
         </g>
       </svg>
+      <div
+        className="graph-grouping-pill"
+        title="Nodes group by run. Expand clusters on click; detail follows zoom (meta rows hide when zoomed out)."
+      >
+        <LayoutGrid size={11} aria-hidden="true" />
+        <span>
+          group <strong>by run</strong> · detail <strong>auto</strong>
+        </span>
+        <ChevronDown size={10} aria-hidden="true" />
+      </div>
+      <div
+        className="graph-count-readout"
+        data-testid="graph-count-readout"
+        role="status"
+        data-total={totals.total}
+        data-cards={totals.cards}
+        data-clustered={totals.clustered}
+        data-clusters={totals.clusters}
+        title="Every projection node is either a card or counted inside a labeled cluster — nothing is silently hidden."
+      >
+        {viewMode} · {zoomPct}% · {readout}
+      </div>
     </section>
   );
 }
@@ -441,179 +502,217 @@ function isRemoteWorkerKind(kind: string): boolean {
   return REMOTE_WORKER_KINDS.has(kind);
 }
 
-function hexagonPath(radius: number): string {
-  const points: string[] = [];
-  for (let index = 0; index < 6; index += 1) {
-    const angle = (Math.PI / 3) * index - Math.PI / 6;
-    points.push(`${Math.cos(angle) * radius},${Math.sin(angle) * radius}`);
-  }
-  return `M${points.join("L")}Z`;
-}
+/** Kinds whose labels are file paths / commands → mono label (board 1c). */
+const MONO_LABEL_KINDS = new Set(["invocation", "artifact", "change"]);
 
-function workerStatusLabel(node: PositionedNode): string | null {
-  if (node.kind === "worker") {
-    return String(node.status ?? "observed");
-  }
-  if (node.kind === "remote_execution_config") {
-    const observed = node.payload?.worker_identity_observed;
-    if (typeof observed === "boolean") {
-      return observed ? "identity observed" : "identity gated";
+/** Kind → lucide icon for the card plate (DESIGN-SYSTEM.md §1). */
+const KIND_ICONS: Record<
+  string,
+  React.ComponentType<{
+    size?: number | string;
+    className?: string;
+    "aria-hidden"?: React.AriaAttributes["aria-hidden"];
+  }>
+> = {
+  run: Play,
+  invocation: Terminal,
+  artifact: FileText,
+  agent: Bot,
+  change: GitCommitVertical,
+  target: Target,
+  action: Zap,
+  cache_event: Database,
+  failure: TriangleAlert,
+  worker: Server,
+  worker_readiness: Server,
+  remote_execution_config: Server,
+};
+
+/** Real recorded command line for invocation cards; node label otherwise. */
+function cardLabel(node: ProjectionNode): string {
+  if (node.kind === "invocation") {
+    const command = node.payload?.command;
+    if (Array.isArray(command) && command.every((part) => typeof part === "string")) {
+      return command.join(" ");
     }
-    return String(node.status ?? "configured");
   }
-  if (node.kind === "worker_readiness") {
-    return String(node.status ?? node.payload?.status ?? "readiness boundary");
-  }
-  return null;
+  return node.label;
 }
 
-/** SVG source glyph for a graph node — same shape language as the HTML
- *  <SourceGlyph>, so source_kind is encoded by SHAPE on the canvas too, never
- *  by border colour alone (truth invariant #2). */
-function NodeSourceGlyph({ kind, size, x }: { kind: SourceKind; size: number; x: number }) {
-  const meta = SOURCE_KIND_META[kind] ?? SOURCE_KIND_META.unknown;
-  const scale = size / GLYPH_VIEWBOX;
-  return (
-    <g
-      className={`node-source-glyph truth--${meta.tone}`}
-      transform={`translate(${x - size / 2}, ${-size / 2}) scale(${scale})`}
-      aria-hidden="true"
-    >
-      {glyphShapeElements(meta.shape)}
-    </g>
-  );
-}
-
-/** SVG confidence meter — neutral 3-bar, matches the HTML <ConfidenceMeter>. */
-function NodeConfidenceMeter({ confidence, x }: { confidence: string; x: number }) {
-  const meta = confidenceMeta(confidence);
-  const heights = [3, 5, 7];
-  const barWidth = 2.6;
-  const gap = 1.4;
-  const maxHeight = heights[heights.length - 1];
-  return (
-    <g className="node-confidence-meter" transform={`translate(${x}, ${-maxHeight / 2})`} aria-hidden="true">
-      {heights.map((height, index) => (
-        <rect
-          key={index}
-          className={index < meta.filled ? "confidence-bar--filled" : "confidence-bar--empty"}
-          x={index * (barWidth + gap)}
-          y={maxHeight - height}
-          width={barWidth}
-          height={height}
-          rx={1}
-        />
-      ))}
-      {meta.showUnknown && (
-        <text className="node-confidence-unknown" x={heights.length * (barWidth + gap) + 1} y={maxHeight}>
-          ?
-        </text>
-      )}
-    </g>
-  );
-}
-
-/** Source glyph + confidence meter, centred as one meta row under a node. */
-function NodeTruthMeta({ node, y }: { node: PositionedNode; y: number }) {
-  return (
-    <g className="node-truth-meta" transform={`translate(0, ${y})`}>
-      <title>{`${SOURCE_KIND_META[node.source_kind]?.tooltip ?? node.source_kind} · ${confidenceMeta(node.confidence).tooltip}`}</title>
-      <NodeSourceGlyph kind={node.source_kind} size={8} x={-9} />
-      <NodeConfidenceMeter confidence={node.confidence} x={-2} />
-    </g>
-  );
-}
-
-function NodeProvenanceBadge({ badge, y }: { badge: ProvenanceBadge; y: number }) {
-  const width = badge.label.length * 5.6 + (badge.live ? 30 : 18);
-  return (
-    <g
-      className={`node-provenance-badge provenance--${badge.tone}`}
-      data-testid="agent-provenance-badge"
-      data-provenance-class={badge.provenanceClass}
-      transform={`translate(0,${y})`}
-      aria-label={`agent provenance: ${badge.label}`}
-    >
-      <title>{badge.hint}</title>
-      <rect x={-width / 2} y={-9} width={width} height={18} rx={9} />
-      {badge.live && (
-        <circle className="provenance-live-dot" cx={-width / 2 + 10} cy={0} r={3.2} />
-      )}
-      <text textAnchor="middle" x={badge.live ? 5 : 0} y={3.4}>
-        {badge.label}
-      </text>
-    </g>
-  );
-}
-
-function GraphNode({
-  node,
+/**
+ * Graph node card (boards 1c/1d/1o): rounded radius-12 card, source-hue
+ * border, kind-icon plate on source tint (hexagon-clipped for worker/remote
+ * kinds), label + faint mono suffix, and a meta row consuming the P2 truth
+ * primitives — SourceGlyph (shape+hue) + ConfidenceMeter + mono kind/duration
+ * + StatusGlyph. Truth is never re-encoded here.
+ */
+function GraphCard({
+  card,
   selected,
   dimmed,
   onSelect,
+  onToggle,
 }: {
-  node: PositionedNode;
+  card: GraphSceneCard;
   selected: boolean;
   dimmed: boolean;
   onSelect: () => void;
+  onToggle: () => void;
 }) {
+  const node = card.node;
   const remoteWorker = isRemoteWorkerKind(node.kind);
+  const sourceMeta = SOURCE_KIND_META[node.source_kind] ?? SOURCE_KIND_META.unknown;
   const agentBadge = node.kind === "agent" ? provenanceBadge(node.payload) : null;
-  const shortLabel =
-    node.label.length > (remoteWorker ? 22 : 26)
-      ? `${node.label.slice(0, remoteWorker ? 20 : 24)}...`
-      : node.label;
-  const statusLabel = remoteWorker ? workerStatusLabel(node) : null;
-  const labelY = remoteWorker ? 13 : 15;
-  const confidenceY = node.radius + (remoteWorker ? 30 : agentBadge ? 40 : 24);
+  const Icon = KIND_ICONS[node.kind] ?? Box;
+  const compactPlate = node.kind === "invocation" || node.kind === "artifact";
+  const label = cardLabel(node);
 
   return (
     <g
-      className={`graph-node ${node.kind} ${node.source_kind} ${remoteWorker ? "remote-worker" : ""} ${selected ? "selected" : ""} ${dimmed ? "dimmed" : ""}`}
+      className={`gnode${selected ? " selected" : ""}${dimmed ? " dimmed" : ""}`}
+      style={{ transform: `translate(${card.x}px, ${card.y}px)` }}
       data-graph-node-id={node.id}
-      transform={`translate(${node.x},${node.y})`}
       onClick={(event) => {
         event.stopPropagation();
         onSelect();
       }}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSelect();
+        }
+      }}
       tabIndex={0}
       role="button"
-      aria-label={`${node.kind}: ${node.label}`}
+      aria-label={`${labelKind(node.kind)}: ${node.label}`}
     >
-      {remoteWorker ? (
-        <>
-          <path className="node-halo" d={hexagonPath(node.radius + 12)} />
-          <path className="node-body" d={hexagonPath(node.radius)} />
-          <g
-            className="node-worker-badge"
-            transform={`translate(${node.radius - 9},${-node.radius + 9})`}
-            aria-hidden="true"
+      <foreignObject
+        className="gcard-fo"
+        width={card.w}
+        height={card.h + (agentBadge ? 32 : 0)}
+      >
+        <div
+          className={`gcard truth-src--${sourceMeta.tone} gkind-${node.kind}${remoteWorker ? " gcard--worker" : ""}${card.expanded ? " gcard--open" : ""}${compactPlate ? " gcard--compact" : ""}`}
+        >
+          <span className={`gcard-plate truth--${sourceMeta.tone}`} aria-hidden="true">
+            <Icon size={compactPlate ? 13 : 14} />
+          </span>
+          <span className="gcard-body">
+            <span
+              className={`gcard-label${MONO_LABEL_KINDS.has(node.kind) ? " gcard-label--mono" : ""}`}
+              title={label}
+            >
+              <span className="gcard-label-text">{label}</span>
+              {card.suffix && <span className="gcard-suffix">{card.suffix}</span>}
+            </span>
+            <span className="gcard-meta">
+              <SourceGlyph kind={node.source_kind} size={8} />
+              <ConfidenceMeter confidence={node.confidence} size="sm" />
+              <span className="gcard-kindline">{card.metaLine}</span>
+              {card.statusDisplay !== null && (
+                <StatusGlyph status={card.statusDisplay} showLabel={false} />
+              )}
+              {card.expandable && (
+                <button
+                  type="button"
+                  className="gcard-chevron"
+                  aria-expanded={card.expanded}
+                  aria-label={card.expanded ? "collapse grouped evidence" : "expand grouped evidence"}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onToggle();
+                  }}
+                >
+                  <ChevronRight size={11} className="gcard-chevron-icon" aria-hidden="true" />
+                </button>
+              )}
+            </span>
+          </span>
+        </div>
+        {agentBadge && (
+          <span
+            className="gcard-badge"
+            data-testid="agent-provenance-badge"
+            data-provenance-class={agentBadge.provenanceClass}
+            aria-label={`agent provenance: ${agentBadge.label}`}
           >
-            <circle r={8} />
-            <text textAnchor="middle" y={3.5}>
-              {node.kind === "worker" ? "W" : "R"}
-            </text>
-          </g>
-        </>
-      ) : (
-        <>
-          <circle className="node-halo" r={node.radius + 12} />
-          <circle className="node-body" r={node.radius} />
-        </>
-      )}
-      <text className="node-kind" textAnchor="middle" y={-5}>
-        {labelKind(node.kind)}
-      </text>
-      <text className="node-label" textAnchor="middle" y={labelY}>
-        {shortLabel}
-      </text>
-      {statusLabel && (
-        <text className="node-status" textAnchor="middle" y={node.radius + 16}>
-          {statusLabel}
-        </text>
-      )}
-      {agentBadge && <NodeProvenanceBadge badge={agentBadge} y={node.radius + 19} />}
-      <NodeTruthMeta node={node} y={confidenceY} />
+            <ProvenanceBadge badge={agentBadge} />
+          </span>
+        )}
+      </foreignObject>
+    </g>
+  );
+}
+
+/**
+ * Collapsed cluster (board 1c): a dashed source-hue capsule whose label is
+ * derived from the REAL member nodes ("2 invocations · 6 artifacts"), or the
+ * stacked-halo cluster card for the collapsed change column. Collapsed is
+ * never gone — the counts keep every member discoverable, and clicking
+ * expands the group (~200ms ease-out).
+ */
+function ClusterCapsule({
+  cluster,
+  dimmed,
+  onExpand,
+}: {
+  cluster: GraphSceneCluster;
+  dimmed: boolean;
+  onExpand: () => void;
+}) {
+  const sourceMeta = SOURCE_KIND_META[cluster.sourceKind] ?? SOURCE_KIND_META.unknown;
+  const leadKind = cluster.counts[0]?.kind ?? "artifact";
+  const LeadIcon = KIND_ICONS[leadKind] ?? Box;
+  const tooltip = `${cluster.memberIds.length} collapsed nodes (${cluster.label}) · dominant source_kind: ${sourceMeta.enum} — click to expand`;
+
+  return (
+    <g
+      className={`gcluster${dimmed ? " dimmed" : ""}`}
+      style={{ transform: `translate(${cluster.x}px, ${cluster.y}px)` }}
+      data-graph-cluster-id={cluster.id}
+      data-cluster-count={cluster.memberIds.length}
+      onClick={(event) => {
+        event.stopPropagation();
+        onExpand();
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onExpand();
+        }
+      }}
+      tabIndex={0}
+      role="button"
+      aria-label={`collapsed group: ${cluster.label} — click to expand`}
+    >
+      <foreignObject className="gcard-fo" width={cluster.w} height={cluster.h}>
+        {cluster.cardStyle ? (
+          <div className={`gcard gcluster-card truth-src--${sourceMeta.tone}`} title={tooltip}>
+            <span className={`gcard-plate truth--${sourceMeta.tone}`} aria-hidden="true">
+              <LeadIcon size={14} />
+            </span>
+            <span className="gcard-body">
+              <span className="gcard-label">
+                <span className="gcard-label-text">{cluster.label}</span>
+                {cluster.sampleLabel && <span className="gcard-suffix">· {cluster.sampleLabel}</span>}
+              </span>
+              <span className="gcard-meta">
+                <SourceGlyph kind={cluster.sourceKind} size={8} />
+                <span className="gcard-kindline">
+                  {labelKind(leadKind)} ×{cluster.memberIds.length}
+                </span>
+                <ChevronDown size={11} className="gcluster-card-chevron" aria-hidden="true" />
+              </span>
+            </span>
+          </div>
+        ) : (
+          <div className={`gcapsule truth-src--${sourceMeta.tone}`} title={tooltip}>
+            <LeadIcon size={12} className="gcapsule-icon" aria-hidden="true" />
+            <span className="gcapsule-label">{cluster.label}</span>
+            <ChevronRight size={10} className="gcapsule-chevron" aria-hidden="true" />
+          </div>
+        )}
+      </foreignObject>
     </g>
   );
 }

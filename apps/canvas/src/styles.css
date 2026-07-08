@@ -108,9 +108,10 @@
   --text-mono-style: 450 12px/17px var(--font-mono);
 
   /* ── App-derived component tokens (from the same ramp; theme-aware) ── */
-  --node-halo-fill: rgba(255, 255, 255, 0.55);
-  --node-halo-stroke: rgba(13, 32, 38, 0.08);
-  --node-drop-shadow: drop-shadow(0 18px 34px rgba(13, 32, 38, 0.12));
+  --gcard-bg: rgba(255, 255, 255, 0.92);
+  --gcard-shadow: 0 6px 18px rgba(13, 32, 38, 0.10);
+  --gcapsule-bg: rgba(255, 255, 255, 0.80);
+  --gcapsule-shadow: 0 4px 12px rgba(13, 32, 38, 0.08);
   --selection-tint: rgba(12, 122, 104, 0.16);
   --selection-ring: rgba(12, 122, 104, 0.60);
 
@@ -190,9 +191,10 @@
   --elev3-border: 1px solid rgba(234, 242, 242, 0.12);
   --elev3-shadow: 0 24px 60px rgba(0, 0, 0, 0.50);
 
-  --node-halo-fill: rgba(18, 29, 32, 0.55);
-  --node-halo-stroke: rgba(234, 242, 242, 0.08);
-  --node-drop-shadow: drop-shadow(0 18px 34px rgba(0, 0, 0, 0.40));
+  --gcard-bg: rgba(18, 29, 32, 0.92);
+  --gcard-shadow: 0 6px 18px rgba(0, 0, 0, 0.40);
+  --gcapsule-bg: rgba(18, 29, 32, 0.80);
+  --gcapsule-shadow: 0 4px 12px rgba(0, 0, 0, 0.30);
   --selection-tint: rgba(62, 207, 180, 0.16);
   --selection-ring: rgba(62, 207, 180, 0.60);
 }
@@ -254,9 +256,10 @@
     --elev3-border: 1px solid rgba(234, 242, 242, 0.12);
     --elev3-shadow: 0 24px 60px rgba(0, 0, 0, 0.50);
 
-    --node-halo-fill: rgba(18, 29, 32, 0.55);
-    --node-halo-stroke: rgba(234, 242, 242, 0.08);
-    --node-drop-shadow: drop-shadow(0 18px 34px rgba(0, 0, 0, 0.40));
+    --gcard-bg: rgba(18, 29, 32, 0.92);
+    --gcard-shadow: 0 6px 18px rgba(0, 0, 0, 0.40);
+    --gcapsule-bg: rgba(18, 29, 32, 0.80);
+    --gcapsule-shadow: 0 4px 12px rgba(0, 0, 0, 0.30);
     --selection-tint: rgba(62, 207, 180, 0.16);
     --selection-ring: rgba(62, 207, 180, 0.60);
   }
@@ -602,198 +605,362 @@ select:focus-visible {
   cursor: grabbing;
 }
 
-.canvas-grid-line {
-  stroke: var(--bg-dotgrid);
-}
-
-.edge-arrowhead {
-  fill: color-mix(in srgb, var(--ink) 34%, transparent);
-}
-
-.edge {
+/* ── Action-graph edges (P4): curved cubics in source hue @ ~35-45%;
+      dashed to collapsed capsules (dashed geometry = collapsed, per the
+      future-is-always-dashed truth rule). ─────────────────────────────── */
+.gedge {
+  fill: none;
   stroke: color-mix(in srgb, var(--ink) 26%, transparent);
-  stroke-width: 1.35;
+  stroke-width: 1.5;
   stroke-linecap: round;
   transition: stroke 180ms ease, stroke-width 180ms ease, opacity 180ms ease;
 }
 
-.edge.collectable_v1 {
-  stroke: color-mix(in srgb, var(--truth-collectable) 42%, transparent);
+.gedge.collectable_v1 {
+  stroke: color-mix(in srgb, var(--truth-collectable) 40%, transparent);
 }
 
-.edge.derived_v1 {
+.gedge.derived_v1 {
   stroke: color-mix(in srgb, var(--truth-derived) 45%, transparent);
 }
 
-.edge.simulated_v1 {
+.gedge.simulated_v1 {
   stroke: color-mix(in srgb, var(--truth-simulated) 38%, transparent);
 }
 
-.edge.future {
+.gedge.future {
   stroke: color-mix(in srgb, var(--truth-future) 38%, transparent);
 }
 
-.edge.active {
-  stroke-width: 2.3;
-  opacity: 1;
+.gedge.dashed {
+  stroke-dasharray: 5 5;
 }
 
-.graph-node {
+.gedge.active {
+  stroke-width: 2.2;
+}
+
+.gedge.active.collectable_v1 {
+  stroke: color-mix(in srgb, var(--truth-collectable) 70%, transparent);
+}
+
+.gedge.active.derived_v1 {
+  stroke: color-mix(in srgb, var(--truth-derived) 70%, transparent);
+}
+
+.gedge.active.simulated_v1 {
+  stroke: color-mix(in srgb, var(--truth-simulated) 70%, transparent);
+}
+
+.gedge.active.future {
+  stroke: color-mix(in srgb, var(--truth-future) 70%, transparent);
+}
+
+/* ── Action-graph node cards + cluster capsules (P4, boards 1c/1d/1o) ── */
+.gnode,
+.gcluster {
   cursor: pointer;
   outline: none;
-  transition: opacity 180ms ease;
+  transition: transform 200ms ease-out, opacity 180ms ease;
 }
 
-.graph-node.dimmed {
-  opacity: 0.25;
+.gnode:focus-visible .gcard,
+.gcluster:focus-visible .gcapsule,
+.gcluster:focus-visible .gcard {
+  outline: 2px solid var(--selection-ring);
+  outline-offset: 2px;
 }
 
-.node-halo {
-  fill: var(--node-halo-fill);
-  stroke: var(--node-halo-stroke);
-  stroke-width: 1;
+.gnode.dimmed,
+.gcluster.dimmed {
+  opacity: 0.5;
 }
 
-.node-body {
-  fill: var(--elev1-bg);
-  stroke: var(--ink);
-  stroke-width: 1.4;
-  filter: var(--node-drop-shadow);
+/* Shadows/halos/badges intentionally paint past the foreignObject box. */
+.gcard-fo {
+  overflow: visible;
 }
 
-.graph-node.collectable_v1 .node-body {
-  stroke: var(--truth-collectable);
+.gcard {
+  --gcard-hue: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  height: 54px;
+  padding: 9px 11px;
+  background: var(--gcard-bg);
+  border: 1.5px solid var(--gcard-hue);
+  border-radius: 12px;
+  box-shadow: var(--gcard-shadow);
+  animation: gcard-in 200ms ease-out;
 }
 
-.graph-node.derived_v1 .node-body {
-  stroke: var(--truth-derived);
+.gcard--compact {
+  padding: 8px 11px;
+  border-width: 1.25px;
 }
 
-.graph-node.simulated_v1 .node-body {
-  stroke: var(--truth-simulated);
+/* source_kind hue rides one custom property; the SHAPE still comes from the
+   SourceGlyph in the meta row — hue is never the only encoding. */
+.truth-src--collectable {
+  --gcard-hue: var(--truth-collectable);
 }
 
-.graph-node.future .node-body {
-  stroke: var(--truth-future);
+.truth-src--derived {
+  --gcard-hue: var(--truth-derived);
 }
 
-.graph-node.failure .node-body {
-  fill: color-mix(in srgb, var(--failure) 5%, var(--elev1-bg));
-  stroke: var(--failure);
+.truth-src--simulated {
+  --gcard-hue: var(--truth-simulated);
 }
 
-.graph-node.cache_event .node-body {
-  fill: color-mix(in srgb, var(--truth-collectable) 5%, var(--elev1-bg));
+.truth-src--future {
+  --gcard-hue: var(--truth-future);
+  border-style: dashed; /* future/unproven is ALWAYS dashed */
 }
 
-.graph-node.remote_execution_config .node-body,
-.graph-node.worker_readiness .node-body,
-.graph-node.worker .node-body {
-  fill: color-mix(in srgb, var(--truth-future) 5%, var(--elev1-bg));
-  stroke: var(--truth-future);
-  stroke-width: 1.6;
+.truth-src--unknown {
+  --gcard-hue: var(--truth-future);
+  border-style: dotted;
 }
 
-.graph-node.worker .node-body {
-  fill: color-mix(in srgb, var(--truth-collectable) 5%, var(--elev1-bg));
-  stroke: var(--truth-collectable);
+/* Recorded failures keep their collectable source hue on the border (origin
+   stays teal); the red is rationed to the status glyph + failure plate. */
+.gcard.gkind-failure .gcard-plate {
+  color: var(--failure);
 }
 
-.graph-node.remote-worker.selected .node-halo {
-  fill: var(--selection-tint);
-  stroke: var(--selection-ring);
-  stroke-width: 2;
+.gcard--open {
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--gcard-hue) 16%, transparent),
+    var(--gcard-shadow);
 }
 
-.graph-node.remote-worker.collectable_v1 .node-body {
-  stroke: var(--truth-collectable);
+.gnode.selected .gcard {
+  border-width: 2px;
+  box-shadow:
+    0 0 0 4px var(--selection-tint),
+    var(--gcard-shadow);
 }
 
-.graph-node.remote-worker.derived_v1 .node-body {
-  stroke: var(--truth-derived);
+.gcard-plate {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: color-mix(in srgb, currentColor 10%, transparent);
 }
 
-.graph-node.remote-worker.future .node-body {
-  stroke: var(--truth-future);
-  fill: color-mix(in srgb, var(--truth-future) 3%, var(--elev1-bg));
+.gcard--compact .gcard-plate {
+  width: 26px;
+  height: 26px;
 }
 
-.node-worker-badge circle {
-  fill: var(--n9);
-  stroke: var(--elev1-bg);
-  stroke-width: 1.2;
+/* Worker / remote-execution kinds: icon plate clipped to a hexagon (1o). */
+.gcard--worker .gcard-plate {
+  border-radius: 0;
+  clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
 }
 
-/* 8px letter badge: size is coupled to the r=8 circle geometry; the badge is
-   replaced by the hexagon icon plate in the graph-density phase. */
-.node-worker-badge text {
-  font-size: 8px;
-  font-weight: 700;
-  fill: var(--n0);
-  text-transform: uppercase;
-  pointer-events: none;
+.gcard-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
-.graph-node.remote_execution_config .node-worker-badge circle {
-  fill: var(--truth-future);
-}
-
-.graph-node.worker .node-worker-badge circle {
-  fill: var(--truth-collectable);
-}
-
-.node-status {
-  font-size: 11px;
-  font-weight: 600;
-  fill: var(--truth-future);
-  text-transform: lowercase;
-}
-
-.graph-node.artifact .node-body {
-  fill: color-mix(in srgb, var(--ink) 2%, var(--elev1-bg));
-}
-
-.graph-node.agent .node-body {
-  fill: color-mix(in srgb, var(--truth-simulated) 5%, var(--elev1-bg));
-  stroke: var(--truth-simulated);
-}
-
-.graph-node.change .node-body {
-  fill: color-mix(in srgb, var(--truth-derived) 5%, var(--elev1-bg));
-  stroke: var(--truth-derived);
-}
-
-.graph-node.selected .node-halo {
-  fill: var(--selection-tint);
-  stroke: var(--selection-ring);
-  stroke-width: 2;
-}
-
-.node-kind {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  fill: var(--text-muted);
-}
-
-.node-label {
-  font-size: 12px;
-  font-weight: 700;
-  fill: var(--ink);
-}
-
-
-.graph-overflow-chip-bg {
-  fill: var(--elev2-bg);
-  stroke: var(--border-control);
-  stroke-width: 1.2;
-  filter: var(--node-drop-shadow);
-}
-
-.graph-overflow-chip-label {
+.gcard-label {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
   font-size: 12px;
   font-weight: 600;
-  fill: var(--text-body);
+  line-height: 1.15;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.gcard-label-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gcard-label--mono .gcard-label-text {
+  font: 600 11.5px/1.2 var(--font-mono);
+}
+
+.gcard-suffix {
+  flex-shrink: 0;
+  font: 500 11px/1 var(--font-mono);
+  color: var(--text-hint);
+}
+
+.gcard-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.gcard-kindline {
+  overflow: hidden;
+  font: 500 11px/1 var(--font-mono);
+  color: var(--text-hint);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gcard-meta .status-glyph {
+  flex-shrink: 0;
+}
+
+.gcard-chevron {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-hint);
+  cursor: pointer;
+}
+
+.gcard-chevron:hover {
+  background: var(--hover-wash);
+  color: var(--ink);
+}
+
+.gcard-chevron-icon {
+  transition: transform 200ms ease-out;
+}
+
+.gcard-chevron[aria-expanded="true"] .gcard-chevron-icon {
+  transform: rotate(90deg);
+}
+
+.gcard-badge {
+  display: inline-flex;
+  margin: 6px 0 0 10px;
+}
+
+/* Cluster capsule: dashed source-hue pill; label counts derive from the real
+   member nodes. Collapsed is never gone. */
+.gcapsule {
+  --gcard-hue: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 6px 12px;
+  background: var(--gcapsule-bg);
+  border: 1.25px dashed color-mix(in srgb, var(--gcard-hue) 55%, transparent);
+  border-radius: 999px;
+  box-shadow: var(--gcapsule-shadow);
+  animation: gcard-in 200ms ease-out;
+}
+
+.gcapsule-icon {
+  flex-shrink: 0;
+  color: var(--gcard-hue);
+}
+
+.gcapsule-label {
+  font: 600 11px/1 var(--font-mono);
+  color: var(--gcard-hue);
+  white-space: nowrap;
+}
+
+.gcapsule-chevron {
+  flex-shrink: 0;
+  color: var(--text-hint);
+}
+
+.gcluster:hover .gcapsule {
+  border-style: solid;
+}
+
+/* Multi-node cluster card (the collapsed change column): stacked halo. */
+.gcluster-card {
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--gcard-hue) 7%, transparent),
+    var(--gcard-shadow);
+}
+
+.gcluster-card-chevron {
+  flex-shrink: 0;
+  margin-left: auto;
+  color: var(--text-hint);
+}
+
+@keyframes gcard-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Level-of-detail below ~60% zoom: meta rows hide, labels condense; capsules
+   stay labeled (their counts ARE the honesty). */
+.graph-canvas.lod-compact .gcard-meta,
+.graph-canvas.lod-compact .gcard-suffix,
+.graph-canvas.lod-compact .gcard-badge {
+  display: none;
+}
+
+.graph-canvas.lod-compact .gcluster-card .gcard-meta {
+  display: flex; /* cluster cards keep their ×N count visible */
+}
+
+/* Top-right grouping pill: names the density model in force. */
+.graph-grouping-pill {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 1px solid var(--border-control);
+  border-radius: 999px;
+  background: var(--elev2-bg);
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.graph-grouping-pill strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* Bottom-right count readout (honesty-critical): always visible, always
+   truthful — the visible-vs-total count proves nothing is silently hidden. */
+.graph-count-readout {
+  position: absolute;
+  right: 18px;
+  bottom: 16px;
+  z-index: 4;
+  padding: 5px 10px;
+  border: 1px solid var(--border-control);
+  border-radius: 8px;
+  background: var(--elev2-bg);
+  color: var(--text-hint);
+  font: 500 11px/1.4 var(--font-mono);
   pointer-events: none;
 }
 
@@ -2107,52 +2274,8 @@ select:focus-visible {
 }
 
 /* === Agent receipt provenance (R3 demo surface) === */
-
-/* SVG badge under agent graph nodes */
-.node-provenance-badge rect {
-  fill: var(--elev2-bg);
-  stroke: var(--text-faint);
-  stroke-width: 1.1;
-}
-
-/* 9px badge text: size is coupled to the width math in ChartPanel
-   (label.length * 5.6); the badge is redesigned as a provenance pill in the
-   graph-density phase. */
-.node-provenance-badge text {
-  font-size: 9px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  fill: var(--text-muted);
-  pointer-events: none;
-}
-
-.node-provenance-badge.provenance--verified rect {
-  fill: var(--truth-collectable-tint);
-  stroke: var(--truth-collectable);
-}
-
-.node-provenance-badge.provenance--verified text {
-  fill: var(--truth-collectable);
-}
-
-.node-provenance-badge.provenance--stub rect {
-  fill: var(--truth-simulated-tint);
-  stroke: var(--truth-simulated);
-}
-
-.node-provenance-badge.provenance--stub text {
-  fill: var(--truth-simulated);
-}
-
-.node-provenance-badge.provenance--asserted rect {
-  fill: var(--truth-derived-tint);
-  stroke: var(--truth-derived);
-}
-
-.node-provenance-badge.provenance--asserted text {
-  fill: var(--truth-derived);
-}
+/* The graph-node badge is the shared HTML <ProvenanceBadge> pill since P4
+   (wrapped by .gcard-badge); only the chip styles below remain. */
 
 @keyframes provenance-live-pulse {
   0% {
@@ -2164,11 +2287,6 @@ select:focus-visible {
   100% {
     opacity: 1;
   }
-}
-
-.node-provenance-badge .provenance-live-dot {
-  fill: var(--truth-collectable);
-  animation: provenance-live-pulse 1.8s ease-in-out infinite;
 }
 
 /* HTML provenance chip (inspector + compare cards) */
@@ -2464,20 +2582,6 @@ select:focus-visible {
 .confidence-unknown {
   font: 600 11px/1 var(--font-mono);
   color: var(--text-muted);
-}
-
-/* Confidence meter drawn inside the SVG graph node. */
-.node-confidence-meter .confidence-bar--filled {
-  fill: var(--meter-filled);
-}
-
-.node-confidence-meter .confidence-bar--empty {
-  fill: var(--meter-empty);
-}
-
-.node-confidence-unknown {
-  font: 600 8px/1 var(--font-mono);
-  fill: var(--text-muted);
 }
 
 /* Truth-grid value cells: glyph/meter/chip + optional label, one line. */
