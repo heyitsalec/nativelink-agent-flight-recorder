@@ -1698,54 +1698,576 @@ select:focus-visible {
   cursor: pointer;
 }
 
+/* ============================================================================
+   Composer drawer (board 1k, redesign P7 §7) — right E3 drawer, bottom 96px to
+   clear the operator bar. Fully tokened (fixes the historical undefined-var bug
+   by construction). Portaled to <body>, so it sits above the lens overlays.
+   ========================================================================= */
 .composer-drawer {
   position: fixed;
-  right: 1rem;
-  bottom: 5rem;
-  width: min(360px, 92vw);
-  max-height: 70vh;
-  overflow: auto;
+  top: 112px;
+  right: 16px;
+  bottom: 96px;
+  width: min(500px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
   background: var(--elev3-bg);
   backdrop-filter: var(--elev3-blur);
   border: var(--elev3-border);
-  border-radius: 12px;
-  padding: 1rem;
+  border-radius: var(--radius-drawer);
   box-shadow: var(--elev3-shadow);
-  z-index: 40;
+  z-index: 50;
+  overflow: hidden;
 }
 
-.composer-drawer header {
+.composer-head {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--hairline);
 }
 
-.composer-drawer label {
+.composer-head-copy {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  margin-top: 0.75rem;
-  font-size: 0.8rem;
+  gap: 3px;
+  min-width: 0;
 }
 
-.composer-drawer input,
-.composer-drawer select {
+.composer-head-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: var(--text-title);
+  color: var(--ink);
+}
+
+.composer-head-title svg {
+  color: var(--truth-collectable);
+}
+
+.composer-head-subtitle {
+  font-size: 10.5px;
+  color: var(--text-hint);
+}
+
+.composer-close {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.composer-close:hover {
   background: var(--n1);
   color: var(--ink);
-  border: 1px solid var(--border-control);
-  border-radius: var(--radius-control);
-  padding: 0.35rem 0.5rem;
 }
 
-.composer-actions {
+.composer-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 20px;
+}
+
+.composer-section {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.composer-section:last-child {
+  border-bottom: 0;
+}
+
+.composer-section-head {
   display: flex;
-  gap: 0.5rem;
-  margin-top: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
-.composer-meta {
-  font-size: 0.75rem;
+.composer-overline {
+  margin: 0 0 10px;
+  font: var(--text-overline);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--text-muted);
+}
+
+.composer-section-head .composer-overline {
+  margin-bottom: 0;
+}
+
+/* 1 — View template listbox */
+.composer-listbox {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-chip);
+  padding: 4px;
+}
+
+.composer-template-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.composer-template-row:hover {
+  background: rgba(13, 32, 38, 0.05);
+}
+
+[data-theme="dark"] .composer-template-row:hover {
+  background: rgba(234, 242, 242, 0.06);
+}
+
+.composer-template-row--selected,
+.composer-template-row--selected:hover {
+  background: var(--truth-collectable-tint);
+}
+
+.composer-radio {
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
+  margin-top: 1px;
+  border: 1.5px solid var(--border-control);
+  border-radius: 999px;
+  background: transparent;
+}
+
+.composer-radio--on {
+  border-color: var(--truth-collectable);
+  box-shadow: inset 0 0 0 4.5px var(--truth-collectable);
+}
+
+/* Template rows are one line: name left, descriptor right (board 1k). */
+.composer-template-name {
+  flex: 0 0 auto;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.composer-template-desc {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: right;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 2 — Run group pills */
+.composer-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.composer-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-pill);
+  background: var(--elev1-bg);
+  cursor: pointer;
+}
+
+.composer-pill--active {
+  border: 1.5px solid var(--truth-collectable);
+  background: var(--truth-collectable-tint);
+}
+
+.composer-pill-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--truth-derived);
+}
+
+.composer-pill--active .composer-pill-dot {
+  background: var(--truth-collectable);
+}
+
+.composer-pill-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.composer-pill-count {
+  font: 450 11px/1 var(--font-mono);
+  color: var(--text-muted);
+}
+
+.composer-pill-note {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.composer-pill-source {
+  margin: 8px 0 0;
+  font-size: 10.5px;
+  color: var(--text-hint);
+}
+
+/* 3 — Panels + toggles */
+.composer-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+  color: var(--truth-collectable);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.composer-add select {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.composer-panels {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.composer-panel-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--row-bg);
+}
+
+.composer-panel-row--off {
+  opacity: 0.6;
+}
+
+.composer-grip {
+  flex: 0 0 auto;
+  color: var(--text-hint);
+}
+
+.composer-panel-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.composer-panel-name {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink);
+  text-transform: capitalize;
+}
+
+.composer-panel-desc {
+  font: 450 11px/1.3 var(--font-mono);
+  color: var(--text-muted);
+}
+
+.composer-toggle {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--n3);
+  cursor: pointer;
+  position: relative;
+  transition: background 150ms ease-out;
+}
+
+.composer-toggle--on {
+  background: var(--truth-collectable);
+}
+
+.composer-toggle-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: #fff;
+  transition: transform 150ms ease-out;
+}
+
+.composer-toggle--on .composer-toggle-knob {
+  transform: translateX(12px);
+}
+
+/* 4 — Validation (live) */
+.composer-validation-warn,
+.composer-validation-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-chip);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.composer-validation-warn {
+  border: 1px solid var(--fallback-border);
+  background: var(--fallback-bg);
+  color: var(--fallback-text);
+}
+
+.composer-validation-warn svg {
+  flex: 0 0 auto;
+  color: var(--fallback-text);
+}
+
+.composer-validation-error {
+  border: 1px solid color-mix(in srgb, var(--failure) 30%, transparent);
+  background: var(--failure-tint);
+  color: var(--failure);
+  margin-top: 8px;
+}
+
+.composer-validation-error svg {
+  flex: 0 0 auto;
+}
+
+.composer-validation-warn ul,
+.composer-validation-error ul {
+  margin: 0;
+  padding-left: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.composer-validation-error code {
+  font: 450 10.5px/1 var(--font-mono);
+}
+
+.composer-validation-ok {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--truth-collectable);
+}
+
+/* 5 — Live preview wireframe */
+/* 4 + 5 — Validation + Live preview side-by-side; preview is a ~170px
+   thumbnail beside the (flexible) validation column (board 1k, redesign P7 V3). */
+.composer-vp-row {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.composer-vp-row:last-child {
+  border-bottom: 0;
+}
+
+.composer-vp-row .composer-section {
+  padding: 0;
+  border-bottom: 0;
+}
+
+.composer-section--validation {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.composer-section--preview {
+  flex: 0 0 170px;
+  max-width: 170px;
+}
+
+@media (max-width: 460px) {
+  .composer-vp-row {
+    flex-direction: column;
+  }
+  .composer-section--preview {
+    flex: none;
+    max-width: none;
+  }
+}
+
+.composer-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.composer-wire {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  height: 118px;
+  padding: 6px;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-chip);
+  background: var(--n1);
+}
+
+.composer-wire > span,
+.composer-wire .wire-body {
+  border-radius: 3px;
+}
+
+.wire-notice {
+  height: 7px;
+  background: var(--truth-collectable-tint);
+  border: 1px solid color-mix(in srgb, var(--truth-collectable) 30%, transparent);
+}
+
+.wire-header {
+  height: 11px;
+  background: var(--n3);
+}
+
+.wire-body {
+  flex: 1;
+  display: flex;
+  gap: 4px;
+  min-height: 0;
+}
+
+.wire-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.wire-nodes {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: 1fr;
+  gap: 4px;
+}
+
+.wire-node {
+  border-radius: 2px;
+  background: var(--truth-collectable-tint);
+  border: 1px solid color-mix(in srgb, var(--truth-collectable) 25%, transparent);
+}
+
+.wire-empty {
+  flex: 1;
+  border-radius: 3px;
+  border: 1px dashed var(--border-control);
+}
+
+.wire-legend {
+  height: 12px;
+  background: var(--truth-derived-tint);
+  border: 1px solid color-mix(in srgb, var(--truth-derived) 25%, transparent);
+  border-radius: 3px;
+}
+
+.wire-rail {
+  width: 34%;
+  background: var(--n3);
+  border-radius: 3px;
+}
+
+.wire-operator {
+  height: 9px;
+  width: 60%;
+  align-self: center;
+  background: var(--n3);
+  border-radius: 999px;
+}
+
+.composer-preview-caption {
+  margin: 0;
+  font-size: 10.5px;
+  color: var(--text-hint);
+}
+
+/* 6 — Footer */
+.composer-footer {
+  padding: 14px 20px;
+  border-top: 1px solid var(--hairline);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.composer-footer-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.composer-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-control);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.composer-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.composer-btn--primary {
+  border: 0;
+  background: var(--ink);
+  color: var(--bg-app);
+}
+
+.composer-btn--bordered {
+  border: 1px solid var(--border-control);
+  background: transparent;
+  color: var(--ink);
+}
+
+.composer-footer-caption {
+  margin: 0;
+  font-size: 10.5px;
+  color: var(--text-hint);
 }
 
 /* ============================================================================
@@ -3620,4 +4142,388 @@ select:focus-visible {
 
 .compare-empty-composer:hover {
   text-decoration: underline;
+}
+
+/* ============================================================================
+   Header Composer button (board 1k) — pencil ink chip beside the view picker.
+   ========================================================================= */
+.view-template-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.composer-open-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border: 1px solid var(--ink);
+  border-radius: 8px;
+  background: var(--ink);
+  color: var(--bg-app);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.composer-open-button:hover {
+  opacity: 0.9;
+}
+
+.composer-open-button--active {
+  box-shadow: var(--focus-ring);
+}
+
+/* ============================================================================
+   ⌘K command palette (board 1l, redesign P7 §8) — centered modal over a scrim.
+   Portaled to <body>; sits above every lens overlay (z 60).
+   ========================================================================= */
+.palette-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 15vh 16px 16px;
+  background: rgba(13, 32, 38, 0.28);
+}
+
+.palette-modal {
+  width: min(520px, calc(100vw - 32px));
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--elev3-bg);
+  backdrop-filter: var(--elev3-blur);
+  border: var(--elev3-border);
+  border-radius: var(--radius-drawer);
+  box-shadow: var(--elev3-shadow);
+  overflow: hidden;
+}
+
+.palette-input-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.palette-search-icon {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+}
+
+.palette-input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 14px;
+  caret-color: var(--truth-collectable);
+}
+
+.palette-input::placeholder {
+  color: var(--text-hint);
+}
+
+.palette-esc {
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  border: 1px solid var(--border-control);
+  border-radius: 6px;
+  background: var(--row-bg);
+  color: var(--text-muted);
+  font: 600 10.5px/1 var(--font-mono);
+  cursor: pointer;
+}
+
+.palette-results {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.palette-group {
+  margin-bottom: 4px;
+}
+
+.palette-overline {
+  margin: 8px 8px 4px;
+  font: var(--text-overline);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.palette-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.palette-row--active {
+  background: var(--truth-collectable-tint);
+}
+
+.palette-row-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--n1);
+  color: var(--text-body);
+  flex: 0 0 auto;
+}
+
+.palette-row-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.palette-row-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.palette-mark {
+  background: var(--truth-collectable-tint);
+  color: var(--truth-collectable);
+  border-radius: 2px;
+}
+
+.palette-row-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.palette-row-enter {
+  flex: 0 0 auto;
+  color: var(--truth-collectable);
+}
+
+.palette-empty {
+  padding: 24px 16px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.palette-footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--hairline);
+  background: var(--row-bg);
+  font-size: 10.5px;
+  color: var(--text-hint);
+}
+
+.palette-footer svg {
+  flex: 0 0 auto;
+}
+
+/* ============================================================================
+   System states (board 1l, redesign P7 §9).
+   ========================================================================= */
+.app-shell--state {
+  display: grid;
+  place-items: center;
+}
+
+.system-state {
+  width: min(420px, calc(100vw - 48px));
+  padding: 18px 20px;
+  border-radius: var(--radius-card);
+  background: var(--elev1-bg);
+  border: 1px solid var(--hairline);
+}
+
+.system-state-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.system-state-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.system-state-spinner {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid var(--n3);
+  border-top-color: var(--truth-collectable);
+  animation: system-state-spin 0.8s linear infinite;
+}
+
+@keyframes system-state-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.system-state-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.skeleton-bar {
+  height: 10px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--n2), var(--n1), var(--n2));
+  background-size: 200% 100%;
+  animation: system-state-shimmer 1.4s ease-in-out infinite;
+}
+
+.skeleton-bar--wide {
+  width: 78%;
+}
+
+@keyframes system-state-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.system-state--error {
+  border: 1px solid color-mix(in srgb, var(--failure) 30%, transparent);
+  background: var(--failure-tint);
+}
+
+.system-state--error svg,
+.system-state--error .system-state-title {
+  color: var(--failure);
+}
+
+.system-state-detail {
+  margin: 10px 0 0;
+}
+
+.system-state-detail code {
+  font: 450 11.5px/1.5 var(--font-mono);
+  color: var(--failure);
+  word-break: break-word;
+}
+
+.system-state-note {
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+/* Focus applied — dismissible pill + honest match count (top-centre). */
+.focus-pill {
+  position: fixed;
+  top: 74px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 12px 5px 6px;
+  border: 1px solid var(--border-control);
+  border-radius: 999px;
+  background: var(--elev2-bg);
+  backdrop-filter: var(--elev2-blur);
+  box-shadow: var(--elev2-shadow);
+}
+
+.focus-pill-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--bg-app);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.focus-pill-label {
+  white-space: nowrap;
+}
+
+.focus-pill-count {
+  font: 450 11px/1 var(--font-mono);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* Resting / no selection — calm, pointer-through hint. Anchored just ABOVE the
+   operator bar (bottom-centre) as a compact, elevated chip so it never sits on
+   top of the graph's node cards + edges the way a dead-centre 50%/50% overlay
+   did on the real 70-node projection (redesign P7 V5). Elevated background keeps
+   it legible even where faint graph content passes behind it. */
+.resting-hint {
+  position: fixed;
+  bottom: 88px;
+  left: 50%;
+  top: auto;
+  transform: translateX(-50%);
+  z-index: 4;
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 6px 13px 6px 7px;
+  border: 1px solid var(--border-control);
+  border-radius: 999px;
+  background: var(--elev2-bg);
+  backdrop-filter: var(--elev2-blur);
+  box-shadow: var(--elev2-shadow);
+  pointer-events: none;
+}
+
+.resting-hint-plate {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--n1);
+  color: var(--text-muted);
+}
+
+.resting-hint-text {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* Operator ⌘K keycap is a real button in P7 (opens the palette). */
+.operator-key {
+  cursor: pointer;
 }
