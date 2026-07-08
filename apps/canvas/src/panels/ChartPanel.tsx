@@ -30,6 +30,7 @@ import { useViewContext } from "../view/ViewContext";
 import { IconButton } from "./shared/IconButton";
 import { boolProp, parseListProp, stringProp } from "./shared/props";
 import { useOptionalZoomControllerRef } from "./shared/ZoomContext";
+import { ThemeToggle } from "./shared/ThemeToggle";
 import { ViewTemplateSelector } from "./shared/ViewTemplateSelector";
 
 const MODE_ICONS: Record<ViewModeId, React.ReactNode> = {
@@ -76,6 +77,7 @@ export function TopbarSummaryPanel(instance: ComponentInstance) {
         <span>{String(projection.summary.failures ?? 0)} failures</span>
         {showRemote && <span>{remoteLens.modeLabel}</span>}
       </div>
+      <ThemeToggle />
     </header>
   );
 }
@@ -276,10 +278,10 @@ export function ActionGraphCanvasPanel(instance: ComponentInstance) {
       >
         <defs>
           <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
-            <path d="M 32 0 L 0 0 0 32" fill="none" stroke="rgba(15, 23, 42, 0.06)" strokeWidth="1" />
+            <path className="canvas-grid-line" d="M 32 0 L 0 0 0 32" fill="none" strokeWidth="1" />
           </pattern>
           <marker id="arrow" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto">
-            <path d="M0,0 L0,6 L8,3 z" fill="rgba(15, 23, 42, 0.34)" />
+            <path className="edge-arrowhead" d="M0,0 L0,6 L8,3 z" />
           </marker>
         </defs>
         <rect x="-5000" y="-5000" width="10000" height="10000" fill="url(#grid)" />
