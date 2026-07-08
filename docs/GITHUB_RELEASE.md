@@ -67,7 +67,7 @@ NLFR MVP tryout kit — v0.2.0-mvp
 - M8 agent adapter: hashed prompt provenance; agent-loop closure (simulated_v1 agent leg)
 - M9 multi-run compare projection (derived_v1; compare-proof.sh)
 - Tier 1 live Bazel acts 1+2 (cursor_adapter_v1; bazel_validated)
-- Truth-labeled Action Graph + Proof Packet + Compare canvas
+- Truth-labeled redesigned canvas: five lenses (Graph / Runway / Proof / Remote / Compare), shape+hue glyphs, dark mode, first-class mobile
 - Redacted proof samples: docs/proof-samples/
 - See docs/TRYOUT_PACKET.md and docs/ONE_PAGER.md
 ```

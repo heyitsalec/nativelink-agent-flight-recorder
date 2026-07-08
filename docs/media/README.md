@@ -10,7 +10,7 @@ curated, redacted terminal replay — never from live secrets or private logs.
 
 | File | Purpose | Source | Truth label |
 | --- | --- | --- | --- |
-| [nlfr-canvas-tour.gif](nlfr-canvas-tour.gif) | Action Graph → Proof Packet → Compare Runs → operator command | `npm run capture:tour` over canvas preview | Projection-driven; dogfood `collectable_v1` or fixture `simulated_v1` depending on published projections |
+| [nlfr-canvas-tour.gif](nlfr-canvas-tour.gif) | Redesigned canvas: Action Graph → Proof Packet → Compare Runs → operator command | `npm run capture:tour` over canvas preview | Projection-driven; dogfood `collectable_v1` or fixture `simulated_v1` depending on published projections |
 | [nlfr-evidence-loop.gif](nlfr-evidence-loop.gif) | Record → ingest → export → project terminal replay | `npm run capture:evidence` (curated HTML terminal) | Public-safe redacted paths; illustrates `collectable_v1` spine |
 
 Regenerate both:
@@ -23,7 +23,9 @@ npm --prefix apps/canvas run capture:heroes
 
 Still PNGs and WebM live under [`docs/images/`](../images/) (not in this
 directory). They are copied from Playwright capture output for walkthrough and
-README reference frames.
+README reference frames. All frames are the **redesigned (v2) canvas** — density
+Action Graph, grayscale-safe shape+hue truth glyphs, dark-mode-capable, with the
+first-class 390-wide mobile layout in `canvas-mobile.png`.
 
 | File | Lens |
 | --- | --- |

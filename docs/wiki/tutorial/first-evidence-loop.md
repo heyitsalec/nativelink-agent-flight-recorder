@@ -63,10 +63,10 @@ npm --prefix apps/canvas install
 npm --prefix apps/canvas run dev
 ```
 
-Load projections from `data/demo-proof/projections/` per canvas README. Switch modes
-per [design routing](../../design/routing.md): Action Graph, Proof Packet, Remote
-Boundary. The canvas does not call a live scheduler — see
-[Projection-only canvas](../explanation/projection-only-canvas.md).
+Load projections from `data/demo-proof/projections/` per canvas README. Switch lenses
+per [design routing](../../design/routing.md): Action Graph, Validation Runway, Proof
+Packet, Remote Boundary, and Compare Runs. The canvas does not call a live scheduler —
+see [Projection-only canvas](../explanation/projection-only-canvas.md).
 
 ## Step 4 — Read the proof packet
 

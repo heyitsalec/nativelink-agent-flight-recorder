@@ -38,7 +38,7 @@ unproven" list; confirm committed projections are `canvas-dev` `collectable_v1`
 |------|---------|--------|-----------|
 | 0:00–0:30 | Thesis | README north star or one slide | "When AI writes the code, NativeLink makes validating it fast; NLFR makes validating it trustworthy." |
 | 0:30–1:30 | Dual heroes | `docs/media/nlfr-canvas-tour.gif` + `nlfr-evidence-loop.gif` | "Surface vs spine. Evidence-loop GIF is a curated replay — not a live shell recording." |
-| 1:30–5:30 | Live canvas | `npm --prefix apps/canvas run preview` | Green banner: **canvas-dev collectable_v1**. Mode rail: Proof Packet → Remote Boundary → Compare Runs. Truth legend bottom-left. |
+| 1:30–5:30 | Live canvas | `npm --prefix apps/canvas run preview` | Banner: **canvas-dev collectable_v1**. Five-lens rail: Action Graph → Validation Runway → Proof Packet → Remote Boundary → Compare Runs. Truth legend bottom-left (shape+hue glyphs + confidence / redaction / provenance rows). Toggle dark mode; the ⌘K palette runs the same commands. |
 | 5:30–8:30 | Evidence spine | Terminal walkthrough (below) | Point at `source_kind` and `evidence_refs` in exported JSON. |
 | 8:30–11:30 | Real proof samples | Open `docs/proof-samples/cold-warm-summary.json`, `two-worker-summary.json`, `agent-loop-summary.json` | Cold/warm: **collectable_v1**. Two-worker: endpoints ready, **not** distributed work. Agent-loop: **mixed** labels. |
 | 11:30–13:30 | Honesty slide | ONE_PAGER unsupported claims | Worker identity **conditional** (M7 stdout); queue time, scheduler assignment, action placement, fleet ops — unproven. Compare is **`derived_v1`** via `compare export` (M9 landed). |
@@ -52,11 +52,12 @@ npm --prefix apps/canvas run preview
 # Open http://127.0.0.1:5174/
 ```
 
-1. Confirm green **canvas-dev collectable_v1** banner at top.
-2. Click **Proof Packet** — scroll unsupported claims.
-3. Click **Remote Boundary** — worker claims gated.
-4. Click **Compare Runs** (if `compare-projection.json` loaded) — **derived_v1** deltas only.
-5. Point to **truth legend** — collectable / derived / simulated / future.
+1. Confirm **canvas-dev collectable_v1** banner at top.
+2. Click **Validation Runway** — recorded run / invocation / artifact lanes; empty lanes state their emptiness.
+3. Click **Proof Packet** — block index + rollup; scroll unsupported claims.
+4. Click **Remote Boundary** — worker claims gated ("not observed", never red).
+5. Click **Compare Runs** (if `compare-projection.json` loaded) — **derived_v1** deltas only.
+6. Point to **truth legend** — shape+hue glyphs (● recorded / ◆ computed / ▲ simulated / ○ not-yet-collected) plus confidence-meter, redaction lock-chip, and provenance rows. Toggle dark mode.
 
 Default committed projection is **canvas-dev dogfood** (NLFR building its GUI),
 not the agent-loop fixture. For agent-loop shape, use proof-samples JSON or
@@ -154,7 +155,7 @@ NLFR_SKIP_BAZEL=1 ./scripts/tier1-agent-demo.sh --act 2
 `validation: bazel` in each file.
 
 Canvas: `npm --prefix apps/canvas run preview` — `?view=tier1-demo` (Compare lens) or `?view=graph-only`.
-Operator: type `composer` for view-spec export drawer.
+Composer: click the **Composer** button in the header (or open the **⌘K** palette) for the view-spec recompose + export drawer.
 
 ---
 
@@ -186,18 +187,21 @@ npm --prefix apps/canvas run dev -- --host 127.0.0.1
 Open the dev server. The committed default is **`canvas-dev` `collectable_v1`**
 (dogfood record of NLFR building its canvas). Green banner confirms the label.
 
-Drive the mode rail:
+Drive the five-lens rail:
 
-1. **Action Graph** — invocation / artifact / run nodes from generic record.
-2. **Proof Packet** — unsupported claims listed explicitly.
-3. **Remote Boundary** — gated worker claims.
-4. **Compare Runs** — derived deltas if compare JSON is present.
+1. **Action Graph** — invocation / artifact / run cards, grouped by run, from the generic record.
+2. **Validation Runway** — recorded run / invocation / artifact lanes; empty lanes state their emptiness honestly.
+3. **Proof Packet** — block index + source-kind rollup; unsupported claims listed explicitly.
+4. **Remote Boundary** — gated worker claims ("not observed", never red).
+5. **Compare Runs** — derived deltas if compare JSON is present.
 
 **Optional fixture path:** to show the agent-loop chain (`simulated_v1`), export
 fixture projections from `verify-demo.sh` output under `data/demo-proof/projections/`
 and load manually — or narrate from `docs/proof-samples/agent-loop-summary.json`.
 
-Show: the **truth-label legend**. **Point:** every node carries `source_kind`.
+Show: the **truth-label legend** — grayscale-safe shape+hue glyphs plus the
+confidence-meter, redaction lock-chip, and provenance rows. **Point:** every node
+carries `source_kind`, and the shape (not just the color) is the guarantee.
 
 > No Nix? Stop here after Tier 2 proof-samples. `docs/proof-samples/` holds
 > redacted real summaries.

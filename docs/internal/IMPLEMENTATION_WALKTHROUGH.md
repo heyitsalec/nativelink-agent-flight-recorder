@@ -543,30 +543,29 @@ This file keeps the React app honest about the projection schema.
 
 ### `apps/canvas/src/layout.ts`
 
-Computes deterministic node positions and radii. It includes anchors for key
-node kinds such as run, target, action, cache event, artifact, agent, and change.
+Computes the deterministic graph scene. `buildGraphScene` lays out node **cards**
+by a density model, grouped by run, collapsing later runs and the change column
+into cluster capsules (the redesign replaced the earlier circle/force layout; the
+older `layoutProjection` is retained but no longer drives the graph).
 
 The layout is intentionally sparse. It is not a force-directed exploratory
 dashboard.
 
 ### `apps/canvas/src/App.tsx`
 
-Main React application.
+Main React application mount. The redesign moved rendering to a view-spec-driven
+shell (`GridShell` + region panels); App.tsx composes the context and panels.
 
 Important responsibilities:
 
-- Fetch action graph projection.
-- Fetch proof projection.
-- Fall back to sample data if projections are missing.
-- Maintain canvas mode: graph, runway, proof, remote.
+- Fetch action graph and proof projections (labeled fixture fallback if missing).
+- Maintain canvas mode: graph, runway, proof, remote, **compare** (five lenses).
 - Maintain focus filter: all, cache, failures, remote, derived, agent.
-- Render graph SVG nodes and edges.
-- Render inspector drawer.
-- Render proof drawer.
-- Render remote lens.
-- Render runway overlay.
-- Render truth-label legend.
-- Interpret operator commands.
+- Render the density Action Graph (cards + cluster capsules).
+- Render the rail lenses: inspector / runway / proof drawer / remote / compare.
+- Render the composer drawer and the ⌘K command palette (P7).
+- Render the grayscale-safe truth-label legend.
+- Interpret operator commands (and the palette runs the same commands).
 
 Operator command behavior:
 
@@ -580,17 +579,19 @@ Operator command behavior:
 
 ### `apps/canvas/src/styles.css`
 
-Styles the visual language:
+Styles the visual language. Truth is encoded by **shape + hue** (grayscale-safe;
+the shape is the guarantee), not color alone, over a design-token layer with
+first-class dark mode:
 
-- Green: `collectable_v1`.
-- Amber: `derived_v1`.
-- Purple: `simulated_v1`.
-- Gray: `future`.
-- Red-ish failure nodes.
-- Side drawers for inspector/proof/remote.
-- Bottom operator input.
-- Bottom-left truth legend.
-- Mobile layout.
+- `collectable_v1` — filled circle (green).
+- `derived_v1` — diamond (amber).
+- `simulated_v1` — triangle (blue).
+- `future` — dashed hollow circle (slate).
+- Red is rationed to genuine recorded failures.
+- Rail lens overlays (inspector / proof drawer / remote / compare / runway).
+- Operator command bar + ⌘K palette; composer drawer.
+- Bottom-left truth legend (confidence-meter / redaction / provenance rows).
+- First-class 390-wide mobile layout (chip row + bottom sheet + full-screen palette).
 
 ### `apps/canvas/scripts/capture-proof.mjs`
 

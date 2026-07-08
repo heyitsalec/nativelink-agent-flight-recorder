@@ -198,9 +198,9 @@ ledger: [`docs/ONE_PAGER.md`](docs/ONE_PAGER.md) ·
 ## Media tour
 
 <p align="center">
-  <img src="docs/media/nlfr-canvas-tour.gif" alt="NLFR canvas tour: Action Graph, Proof Packet, Compare Runs, and operator command" width="100%">
+  <img src="docs/media/nlfr-canvas-tour.gif" alt="NLFR canvas tour: Action Graph, Proof Packet, Compare Runs, and operator command in the redesigned canvas" width="100%">
   <br>
-  <sub><strong>Action Graph canvas:</strong> inspect the graph, proof packet, compare lens, and operator command from projection JSON.</sub>
+  <sub><strong>Redesigned canvas:</strong> the density Action Graph, Proof Packet drawer, Compare lens, and operator command — grayscale-safe truth glyphs on every node, rendered from projection JSON.</sub>
   <br><br>
   <img src="docs/media/nlfr-evidence-loop.gif" alt="NLFR evidence loop: record, ingest, export, and project with truth labels" width="100%">
   <br>
@@ -231,8 +231,11 @@ that scattered work into one loop:
 3. **Project.** Export versioned projection JSON and proof packets — Action
    Graph nodes, edges, metrics, and claims carry `source_kind`, `confidence`,
    `evidence_refs`, and `redaction_state`.
-4. **Inspect.** The sparse canvas renders only from projection JSON: Action
-   Graph, Proof Packet, Remote Boundary, failure focus, and agent-loop chain.
+4. **Inspect.** The redesigned canvas renders only from projection JSON — five
+   lenses over one graph: **Action Graph**, **Validation Runway**, **Proof
+   Packet**, **Remote Boundary**, and **Compare Runs**, plus operator focus modes
+   (failures, cache, agent-loop) and a grayscale-safe shape+hue truth legend.
+   First-class dark mode and a first-class 390-wide mobile layout.
 5. **Compare.** Export compare projections across run groups to contrast cold
    vs warm cache, fixture vs dogfood, or successive proof runs without
    re-running the workload. See [Compare runs (M9)](docs/wiki/compare-runs.md).
@@ -244,7 +247,7 @@ that scattered work into one loop:
 | Python recorder CLI | `nlfr run`, `ingest`, `graph export`, `proof export`, `compare export`, `simulate`, and `doctor` over the evidence spine. |
 | SQLite evidence spine | Immutable artifact manifest, idempotent ingest, Bazel/NativeLink parsers, and truth-labeled rows. |
 | Projection JSON | Action Graph, proof packet, compare lens, and runway exports consumed by the canvas and proof scripts. |
-| Sparse canvas | Vite/React app under `apps/canvas/` that renders projection JSON only — no invented scheduler or worker state. |
+| Redesigned canvas | Vite/React instrument panel under `apps/canvas/` — five lenses (Graph / Runway / Proof / Remote / Compare), grayscale-safe shape+hue truth glyphs, first-class dark mode and mobile — rendering projection JSON only, no invented scheduler or worker state. |
 | Proof lane | `pytest`, `./scripts/verify-demo.sh`, Nix proof scripts, and local gates. |
 
 Still frames from the same projection sources: [docs/media/README.md](docs/media/README.md).

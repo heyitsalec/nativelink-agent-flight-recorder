@@ -816,6 +816,23 @@ select:focus-visible {
   white-space: nowrap;
 }
 
+/* On regular (non-cluster) cards the kind + duration meta ("run · 5.4s") was
+   starved to ~32px in the single meta row and ellipsized to "run …", so the
+   DESIGN-SYSTEM-required duration never rendered even though the data has valid
+   started_at/ended_at. Let the meta wrap and drop the kindline onto its own
+   full-width row under the glyph / confidence / status row — the duration now
+   renders at ≥11px. The card box already had the vertical slack, so card height
+   and the graph layout are unchanged. Cluster cards keep their inline "×N". */
+.gcard:not(.gcluster-card) .gcard-meta {
+  flex-wrap: wrap;
+  row-gap: 2px;
+}
+.gcard:not(.gcluster-card) .gcard-kindline {
+  order: 9;
+  flex: 1 0 100%;
+  max-width: 100%;
+}
+
 .gcard-meta .status-glyph {
   flex-shrink: 0;
 }
@@ -1272,15 +1289,6 @@ select:focus-visible {
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-}
-
-.truth-legend-key {
-  padding: 1px 5px;
-  border: 1px solid var(--border-control);
-  border-radius: var(--radius-control);
-  background: var(--row-bg);
-  color: var(--text-muted);
-  font: 500 11px/1.4 var(--font-mono);
 }
 
 .truth-legend-sources {
