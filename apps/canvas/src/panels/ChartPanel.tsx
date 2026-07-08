@@ -49,6 +49,12 @@ const MODE_ICONS: Record<ViewModeId, React.ReactNode> = {
   compare: <Columns2 size={18} />,
 };
 
+/** Honest name for a mix segment: the "unknown" bucket also absorbs any
+ *  out-of-enum source_kind (see evidenceMix), so name it explicitly. */
+function segmentLabel(kind: string): string {
+  return kind === "unknown" ? "unknown source_kind" : kind;
+}
+
 /** Evidence-mix stacked bar — segments sized to the real node source_kind
  *  distribution of the loaded projection (board 1c). Real counts only. */
 function EvidenceMixBar({ projection }: { projection: ReturnType<typeof useViewContext>["bindings"]["actionGraph"] }) {
@@ -57,8 +63,8 @@ function EvidenceMixBar({ projection }: { projection: ReturnType<typeof useViewC
     <span
       className="evidence-mix"
       role="img"
-      aria-label={`evidence mix: ${mix.segments.map((s) => `${s.count} ${s.kind}`).join(", ")}`}
-      title={mix.segments.map((s) => `${s.kind}: ${s.count} of ${mix.total}`).join(" · ")}
+      aria-label={`evidence mix: ${mix.segments.map((s) => `${s.count} ${segmentLabel(s.kind)}`).join(", ")}`}
+      title={mix.segments.map((s) => `${segmentLabel(s.kind)}: ${s.count} of ${mix.total}`).join(" · ")}
     >
       {mix.segments.map((seg) => (
         <span

@@ -29,6 +29,8 @@ const EVIDENCE_MIX_ORDER: SourceKind[] = [
   "unknown",
 ];
 
+const EVIDENCE_MIX_KINDS: ReadonlySet<string> = new Set(EVIDENCE_MIX_ORDER);
+
 export function evidenceMix(projection: ActionGraphProjection): {
   total: number;
   dominant: SourceKind;
@@ -36,7 +38,12 @@ export function evidenceMix(projection: ActionGraphProjection): {
 } {
   const counts = new Map<SourceKind, number>();
   for (const node of projection.nodes) {
-    const kind = (node.source_kind ?? "unknown") as SourceKind;
+    const raw: string = node.source_kind ?? "unknown";
+    // Honesty guard: a non-null source_kind OUTSIDE the known enum must not
+    // be silently dropped (that would under-fill the mix bar while the node
+    // count stays full). Bucket it into the honest slate "unknown" catch-all
+    // so segments always sum to `total`.
+    const kind: SourceKind = EVIDENCE_MIX_KINDS.has(raw) ? (raw as SourceKind) : "unknown";
     counts.set(kind, (counts.get(kind) ?? 0) + 1);
   }
   const total = projection.nodes.length;

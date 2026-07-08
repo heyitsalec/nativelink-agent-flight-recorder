@@ -453,7 +453,7 @@ select:focus-visible {
 
 .wordmark-sub {
   font-size: 11px;
-  color: var(--text-faint);
+  color: var(--text-hint); /* AA at 11px — --text-faint is decorative-only */
 }
 
 /* Run-summary strip */
@@ -485,7 +485,7 @@ select:focus-visible {
 
 .run-stat-label {
   font-size: 11.5px;
-  color: var(--text-faint);
+  color: var(--text-body); /* AA — restores pre-redesign readability */
 }
 
 /* Honest remote pill — dashed, calm slate; never red. */
@@ -1877,7 +1877,7 @@ select:focus-visible {
   align-items: center;
   gap: 5px;
   flex: 0 0 auto;
-  color: var(--text-faint);
+  color: var(--text-hint); /* AA at 10.5px — --text-faint is decorative-only */
   font-size: 10.5px;
   white-space: nowrap;
   cursor: help;
