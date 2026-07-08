@@ -17,9 +17,11 @@ import {
 } from "../composer";
 import {
   addableCatalog,
-  effectiveComponents,
+  bindingKeysOfComponents,
+  composeEffectiveSpec,
   newPanelInstance,
   togglePanelSet,
+  type DetachedRail,
 } from "../composer/effectiveSpec";
 import { TEMPLATE_REFS } from "../composer/templates";
 import type { ComponentInstance, ComponentKind, ViewSpec } from "../view/types";
@@ -30,6 +32,8 @@ type ComposerDrawerProps = {
   open: boolean;
   onClose: () => void;
   initialSpec: ViewSpec;
+  /** Resolved binding statuses from the loaded view, for honest degrade copy. */
+  bindingStatus?: Record<string, string>;
 };
 
 /** Dedup the registry defensively — templates.ts is the single source. */
@@ -47,7 +51,31 @@ function humanKind(kind: ComponentKind): string {
   return kind.replace(/_/g, " ");
 }
 
-export function ComposerDrawer({ open, onClose, initialSpec }: ComposerDrawerProps) {
+/**
+ * Honest warning copy when a mode's secondary rail panel is toggled off. The
+ * compare case (board 1k V2) is specific: if compare-projection.json is absent,
+ * name that + the honest empty state it would render; otherwise say the lens
+ * simply will not render. Any other rail gets a plain "mode renders without it".
+ */
+function railWarningCopy(
+  rail: DetachedRail,
+  draft: ViewSpec,
+  bindingStatus?: Record<string, string>,
+): string {
+  const panel = draft.components.find((component) => component.instance_id === rail.rail);
+  const bindingKey =
+    panel && typeof panel.projection_binding === "string" ? panel.projection_binding : undefined;
+  if (rail.mode_id === "compare" && bindingKey === "binding.compare") {
+    const present = bindingStatus?.[bindingKey] === "ok";
+    return present
+      ? "Compare panel is off — the compare lens will not render in compare mode."
+      : "Compare panel is off but compare-projection.json is absent — enabling it will render the honest empty state.";
+  }
+  const panelLabel = panel ? humanKind(panel.component_kind) : rail.rail;
+  return `${panelLabel} is off — ${rail.label} mode will render without its rail panel.`;
+}
+
+export function ComposerDrawer({ open, onClose, initialSpec, bindingStatus }: ComposerDrawerProps) {
   const [draft, setDraft] = useState<ViewSpec>(initialSpec);
   const [templateId, setTemplateId] = useState(initialSpec.view_id);
   // Instance ids toggled OFF. Kept as a denylist (not by mutating components)
@@ -56,18 +84,52 @@ export function ComposerDrawer({ open, onClose, initialSpec }: ComposerDrawerPro
   const [addKind, setAddKind] = useState("");
   const runGroups = useRunGroups();
 
-  // The spec as composed = the draft minus toggled-off panels. Everything
-  // downstream (validation, live preview, persist, export) reads THIS, so the
-  // preview and validation reflect the REAL composed spec — never a mock.
-  const effectiveSpec = useMemo<ViewSpec>(
-    () => ({ ...draft, components: effectiveComponents(draft.components, disabled) }),
-    [draft, disabled],
-  );
+  // The composed spec = the draft minus toggled-off panels, WITH the modes
+  // reconciled so toggling off a panel a mode references degrades gracefully
+  // (mode dropped / rail detached) instead of leaving a dangling ref that trips
+  // a persist-blocking MODE_REF_ORPHAN error (redesign P7 V1, board 1k).
+  // Everything downstream (validation, live preview, persist, export) reads the
+  // composed spec, so it reflects the REAL, consistent, persistable spec.
+  const composed = useMemo(() => composeEffectiveSpec(draft, disabled), [draft, disabled]);
+  const effectiveSpec = composed.spec;
 
   const validation = useMemo(
     () => validate_spec({ spec: effectiveSpec, strict: false }),
     [effectiveSpec],
   );
+
+  // Binding keys orphaned SOLELY because their panel was toggled off — their
+  // generic ORPHAN_BINDING warning is superseded by the specific degrade copy.
+  const disabledBindingKeys = useMemo(
+    () =>
+      bindingKeysOfComponents(
+        draft.components.filter((component) => disabled.has(component.instance_id)),
+      ),
+    [draft.components, disabled],
+  );
+
+  // The warning box merges honest degrade notices (mode unavailable / rail
+  // detached, incl. the specific compare copy) with the remaining validator
+  // warnings, dropping the now-redundant generic orphan-binding lines.
+  const warnings = useMemo(() => {
+    const messages: string[] = [];
+    for (const mode of composed.unavailableModes) {
+      messages.push(
+        `${mode.label} mode is unavailable — its primary panel is toggled off. It will not appear in the mode rail.`,
+      );
+    }
+    for (const rail of composed.detachedRails) {
+      messages.push(railWarningCopy(rail, draft, bindingStatus));
+    }
+    for (const issue of validation.warnings) {
+      if (issue.code === "ORPHAN_BINDING") {
+        const key = issue.path.replace(/^\/bindings\//, "");
+        if (disabledBindingKeys.has(key)) continue;
+      }
+      messages.push(issue.message);
+    }
+    return messages;
+  }, [composed, validation.warnings, disabledBindingKeys, draft, bindingStatus]);
 
   const preview = useMemo(
     () => preview_spec({ spec: effectiveSpec, mode: "graph", selected_node: true }),
@@ -138,9 +200,14 @@ export function ComposerDrawer({ open, onClose, initialSpec }: ComposerDrawerPro
   return (
     <aside className="composer-drawer" aria-label="view composer" data-testid="composer-drawer">
       <header className="composer-head">
-        <span className="composer-head-title">
-          <Pencil size={15} aria-hidden="true" />
-          Composer
+        <span className="composer-head-copy">
+          <span className="composer-head-title">
+            <Pencil size={15} aria-hidden="true" />
+            Composer
+          </span>
+          <span className="composer-head-subtitle">
+            compose panels · pick a run group · preview · persist
+          </span>
         </span>
         <button
           type="button"
@@ -171,10 +238,8 @@ export function ComposerDrawer({ open, onClose, initialSpec }: ComposerDrawerPro
                   onClick={() => loadTemplate(template.view_id)}
                 >
                   <span className={`composer-radio${selected ? " composer-radio--on" : ""}`} aria-hidden="true" />
-                  <span className="composer-template-copy">
-                    <span className="composer-template-name">{template.title}</span>
-                    <span className="composer-template-desc">{template.description}</span>
-                  </span>
+                  <span className="composer-template-name">{template.title}</span>
+                  <span className="composer-template-desc">{template.description}</span>
                 </button>
               );
             })}
@@ -275,67 +340,77 @@ export function ComposerDrawer({ open, onClose, initialSpec }: ComposerDrawerPro
           </ul>
         </section>
 
-        {/* 4 — Validation (live, real validate_spec) */}
-        <section className="composer-section" aria-label="validation" data-testid="composer-validation">
-          <p className="composer-overline">Validation</p>
-          {validation.warnings.length > 0 && (
-            <div className="composer-validation-warn" role="status">
-              <AlertTriangle size={14} aria-hidden="true" />
-              <ul>
-                {validation.warnings.map((issue) => (
-                  <li key={`${issue.code}-${issue.path}`}>{issue.message}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {validation.errors.length > 0 ? (
-            <div className="composer-validation-error" role="alert">
-              <AlertTriangle size={14} aria-hidden="true" />
-              <ul>
-                {validation.errors.map((issue) => (
-                  <li key={`${issue.code}-${issue.path}`}>
-                    <code>{issue.path}</code> {issue.message}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : (
-            <p className="composer-validation-ok" data-testid="composer-validation-ok">
-              <Check size={14} aria-hidden="true" />
-              spec valid · {activeCount} panel{activeCount === 1 ? "" : "s"} · 0 errors
-            </p>
-          )}
-        </section>
-
-        {/* 5 — Live preview (wired via preview.ts / the real view-spec engine) */}
-        <section className="composer-section" aria-label="live preview">
-          <p className="composer-overline">Live preview</p>
-          <div className="composer-preview" data-testid="composer-live-preview">
-            <div className="composer-wire" aria-hidden="true">
-              {previewBlocks.notice && <span className="wire-notice" />}
-              {previewBlocks.header && <span className="wire-header" />}
-              <div className="wire-body">
-                <div className="wire-main">
-                  {previewBlocks.graph ? (
-                    <div className="wire-nodes">
-                      {Array.from({ length: 6 }).map((_, i) => (
-                        <span key={i} className="wire-node" />
-                      ))}
-                    </div>
-                  ) : (
-                    <span className="wire-empty" />
-                  )}
-                  {previewBlocks.legend && <span className="wire-legend" />}
-                </div>
-                {previewBlocks.rail && <div className="wire-rail" />}
+        {/* 4 + 5 — Validation + Live preview side-by-side (board 1k) */}
+        <div className="composer-vp-row">
+          {/* 4 — Validation (live, real validate_spec) */}
+          <section
+            className="composer-section composer-section--validation"
+            aria-label="validation"
+            data-testid="composer-validation"
+          >
+            <p className="composer-overline">Validation</p>
+            {warnings.length > 0 && (
+              <div className="composer-validation-warn" role="status">
+                <AlertTriangle size={14} aria-hidden="true" />
+                <ul>
+                  {warnings.map((message, i) => (
+                    <li key={`warn-${i}`}>{message}</li>
+                  ))}
+                </ul>
               </div>
-              {previewBlocks.operator && <span className="wire-operator" />}
+            )}
+            {validation.errors.length > 0 ? (
+              <div className="composer-validation-error" role="alert">
+                <AlertTriangle size={14} aria-hidden="true" />
+                <ul>
+                  {validation.errors.map((issue) => (
+                    <li key={`${issue.code}-${issue.path}`}>
+                      <code>{issue.path}</code> {issue.message}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <p className="composer-validation-ok" data-testid="composer-validation-ok">
+                <Check size={14} aria-hidden="true" />
+                spec valid · {activeCount} panel{activeCount === 1 ? "" : "s"} · 0 errors
+              </p>
+            )}
+          </section>
+
+          {/* 5 — Live preview (wired via preview.ts / the real view-spec engine) */}
+          <section
+            className="composer-section composer-section--preview"
+            aria-label="live preview"
+          >
+            <p className="composer-overline">Live preview</p>
+            <div className="composer-preview" data-testid="composer-live-preview">
+              <div className="composer-wire" aria-hidden="true">
+                {previewBlocks.notice && <span className="wire-notice" />}
+                {previewBlocks.header && <span className="wire-header" />}
+                <div className="wire-body">
+                  <div className="wire-main">
+                    {previewBlocks.graph ? (
+                      <div className="wire-nodes">
+                        {Array.from({ length: 6 }).map((_, i) => (
+                          <span key={i} className="wire-node" />
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="wire-empty" />
+                    )}
+                    {previewBlocks.legend && <span className="wire-legend" />}
+                  </div>
+                  {previewBlocks.rail && <div className="wire-rail" />}
+                </div>
+                {previewBlocks.operator && <span className="wire-operator" />}
+              </div>
+              <p className="composer-preview-caption">
+                updates as you edit · {preview.render_plan.visible_components.length} visible
+              </p>
             </div>
-            <p className="composer-preview-caption">
-              updates as you edit · {preview.render_plan.visible_components.length} components visible
-            </p>
-          </div>
-        </section>
+          </section>
+        </div>
       </div>
 
       {/* 6 — Footer: persist / export + non-evidentiary caption */}
@@ -366,7 +441,9 @@ export function ComposerDrawer({ open, onClose, initialSpec }: ComposerDrawerPro
             Export JSON
           </button>
         </div>
-        <p className="composer-footer-caption">view spec is URL-encoded · never evidence</p>
+        <p className="composer-footer-caption">
+          persist writes JSON to this browser · export downloads a JSON file · never evidence
+        </p>
       </footer>
     </aside>
   );

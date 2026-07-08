@@ -22,10 +22,13 @@ import {
 } from "../src/composer/catalog.ts";
 import {
   addableCatalog,
+  bindingKeysOfComponents,
+  composeEffectiveSpec,
   effectiveComponents,
   newPanelInstance,
   togglePanelSet,
 } from "../src/composer/effectiveSpec.ts";
+import { DEFAULT_VIEW_SPEC } from "../src/view/defaultViewSpec.ts";
 
 function fakeComponents() {
   return [
@@ -100,4 +103,127 @@ test("add → the added kind is no longer addable (round-trip)", () => {
   const added = [...components, newPanelInstance(entry, "x")];
   const kinds = addableCatalog(added, COMPONENT_CATALOG).map((e) => e.kind);
   assert.ok(!kinds.includes("proof_drawer"), "just-added kind removed from options");
+});
+
+test("bindingKeysOfComponents: collects direct string + join source keys", () => {
+  const keys = bindingKeysOfComponents([
+    { instance_id: "a", component_kind: "topbar_summary", region: "header", projection_binding: "binding.action_graph" },
+    {
+      instance_id: "b",
+      component_kind: "remote_boundary_lens",
+      region: "rail",
+      projection_binding: {
+        kind: "join_v1",
+        sources: ["binding.action_graph", "binding.proof_packet"],
+        join_fn: "remote_lens_model",
+        source_kind: "derived_v1",
+        confidence: "medium",
+        evidence_refs: [],
+        redaction_state: "safe",
+      },
+    },
+    { instance_id: "c", component_kind: "truth_legend", region: "primary" },
+  ]);
+  assert.deepEqual([...keys].sort(), ["binding.action_graph", "binding.proof_packet"]);
+});
+
+/**
+ * V1 (board 1k) — toggling off a panel a mode references must degrade
+ * gracefully, never leave a dangling mode → panel reference (which validate
+ * would flag as a persist-blocking MODE_REF_ORPHAN). composeEffectiveSpec
+ * reconciles the modes so the composed spec is always internally consistent.
+ * A spec with no dangling refs cannot trip MODE_REF_ORPHAN → stays persistable.
+ */
+function noDanglingModeRefs(spec) {
+  const ids = new Set(spec.components.map((c) => c.instance_id));
+  for (const mode of spec.modes) {
+    if (!ids.has(mode.primary_component)) return false;
+    if (mode.rail_component && !ids.has(mode.rail_component)) return false;
+  }
+  const modeIds = new Set(spec.modes.map((m) => m.mode_id));
+  const rail = spec.components.find((c) => c.component_kind === "mode_rail");
+  const listed = typeof rail?.props?.modes === "string" ? rail.props.modes : "";
+  if (listed) {
+    for (const id of listed.split(",").map((s) => s.trim()).filter(Boolean)) {
+      if (!modeIds.has(id)) return false;
+    }
+  }
+  return true;
+}
+
+// The 6 panels the default spec's modes reference (primary or rail).
+const MODE_REFERENCED = [
+  "graph-main", // primary of all 5 modes
+  "inspector-selected-node", // graph rail
+  "runway-overlay", // runway rail
+  "proof-drawer", // proof rail
+  "remote-lens", // remote rail
+  "compare-lens", // compare rail
+];
+
+test("composeEffectiveSpec: default (no toggles) is unchanged + fully consistent", () => {
+  const { spec, unavailableModes, detachedRails } = composeEffectiveSpec(
+    DEFAULT_VIEW_SPEC,
+    new Set(),
+  );
+  assert.equal(spec.components.length, 13);
+  assert.equal(spec.modes.length, 5);
+  assert.equal(unavailableModes.length, 0);
+  assert.equal(detachedRails.length, 0);
+  assert.ok(noDanglingModeRefs(spec), "default spec has no dangling mode refs");
+});
+
+test("composeEffectiveSpec: toggling EACH of the 13 panels off stays consistent (persistable)", () => {
+  const allIds = DEFAULT_VIEW_SPEC.components.map((c) => c.instance_id);
+  assert.equal(allIds.length, 13);
+  for (const id of allIds) {
+    const { spec } = composeEffectiveSpec(DEFAULT_VIEW_SPEC, new Set([id]));
+    assert.equal(spec.components.length, 12, `${id}: exactly one panel dropped`);
+    assert.ok(noDanglingModeRefs(spec), `${id}: no dangling mode ref → no MODE_REF_ORPHAN`);
+  }
+});
+
+test("composeEffectiveSpec: only mode-referenced panels emit a degrade notice", () => {
+  for (const id of DEFAULT_VIEW_SPEC.components.map((c) => c.instance_id)) {
+    const { unavailableModes, detachedRails } = composeEffectiveSpec(
+      DEFAULT_VIEW_SPEC,
+      new Set([id]),
+    );
+    const noticed = unavailableModes.length + detachedRails.length > 0;
+    if (MODE_REFERENCED.includes(id)) {
+      assert.ok(noticed, `${id} is mode-referenced → must warn`);
+    } else {
+      assert.ok(!noticed, `${id} is not mode-referenced → no mode warning`);
+    }
+  }
+});
+
+test("composeEffectiveSpec: primary panel off drops every dependent mode", () => {
+  // graph-main is the primary of all 5 modes.
+  const { spec, unavailableModes, detachedRails } = composeEffectiveSpec(
+    DEFAULT_VIEW_SPEC,
+    new Set(["graph-main"]),
+  );
+  assert.equal(unavailableModes.length, 5);
+  assert.equal(detachedRails.length, 0);
+  assert.equal(spec.modes.length, 0);
+  const rail = spec.components.find((c) => c.component_kind === "mode_rail");
+  assert.equal(rail.props.modes, "", "mode rail lists no dropped modes");
+  assert.ok(noDanglingModeRefs(spec));
+});
+
+test("composeEffectiveSpec: rail panel off detaches only that rail, keeps the mode", () => {
+  const { spec, unavailableModes, detachedRails } = composeEffectiveSpec(
+    DEFAULT_VIEW_SPEC,
+    new Set(["compare-lens"]),
+  );
+  assert.equal(unavailableModes.length, 0);
+  assert.deepEqual(
+    detachedRails.map((r) => r.mode_id),
+    ["compare"],
+  );
+  assert.equal(spec.modes.length, 5, "compare mode is kept");
+  const compare = spec.modes.find((m) => m.mode_id === "compare");
+  assert.equal(compare.rail_component, undefined, "dangling rail ref detached");
+  assert.ok(noDanglingModeRefs(spec));
 });

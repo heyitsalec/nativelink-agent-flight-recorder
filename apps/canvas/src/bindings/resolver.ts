@@ -1,4 +1,5 @@
 import { withBase } from "../lib/basePath";
+import { classifyBindingFetch, projectionParseDetail } from "../pageModel";
 import { sampleProofPacket, sampleProjection } from "../sampleProjection";
 import type { ActionGraphProjection, CompareProjection, ProofPacket } from "../types";
 import type {
@@ -32,27 +33,66 @@ function loadFixture(name: string): unknown {
   return fixture;
 }
 
+/**
+ * A bound projection that was fetched OK but is not valid JSON — the real
+ * projection is CORRUPT. This is deliberately NOT swallowed into the fixture
+ * fallback (which is reserved for MISSING data): it rethrows so the honest
+ * projection error state fires ("… — invalid JSON. Nothing partial is
+ * rendered."), carrying already-curated human copy in `.message` (redesign
+ * P7 V4, board 1l).
+ */
+export class ProjectionParseError extends Error {
+  constructor(detail: string) {
+    super(detail);
+    this.name = "ProjectionParseError";
+  }
+}
+
+/** MISSING binding → labeled fixture fallback (honest) or a null/missing value. */
+function fallbackForMissing(binding: ProjectionBindingDirect): {
+  value: unknown;
+  status: BindingResolveStatus;
+} {
+  if (binding.fallback?.startsWith("fixture:")) {
+    const fixtureName = binding.fallback.slice("fixture:".length);
+    return { value: loadFixture(fixtureName), status: "fixture" };
+  }
+  return { value: null, status: "missing" };
+}
+
 async function fetchBinding(binding: ProjectionBindingDirect): Promise<{
   value: unknown;
   status: BindingResolveStatus;
 }> {
+  // Stage 1 — reach the projection. A network throw or a non-2xx status means
+  // the projection is MISSING/unreachable → degrade to the labeled fallback.
+  let response: Response | null = null;
+  let networkError = false;
   try {
-    const response = await fetch(withBase(binding.path));
-    if (!response.ok) throw new Error(`fetch failed: ${binding.path}`);
+    response = await fetch(withBase(binding.path));
+  } catch {
+    networkError = true;
+  }
+  if (networkError || !response || !response.ok) {
+    // classifyBindingFetch: networkError | !responseOk → "missing"
+    return fallbackForMissing(binding);
+  }
+
+  // Stage 2 — parse. The projection EXISTS (HTTP OK); if its body is not valid
+  // JSON it is CORRUPT (classifyBindingFetch → "malformed"), which is a
+  // different failure from "missing". Do NOT dress it as a fixture fallback —
+  // surface the honest error state via a curated ProjectionParseError.
+  try {
     const value = await response.json();
     return { value, status: "ok" };
-  } catch {
-    if (binding.fallback?.startsWith("fixture:")) {
-      const fixtureName = binding.fallback.slice("fixture:".length);
-      return { value: loadFixture(fixtureName), status: "fixture" };
+  } catch (parseError) {
+    if (
+      classifyBindingFetch({ networkError: false, responseOk: true, parsedOk: false }) ===
+      "malformed"
+    ) {
+      throw new ProjectionParseError(projectionParseDetail(binding.path, parseError));
     }
-    if (binding.required === false) {
-      return { value: null, status: "missing" };
-    }
-    if (binding.fallback === "none") {
-      return { value: null, status: "missing" };
-    }
-    return { value: null, status: "missing" };
+    return fallbackForMissing(binding);
   }
 }
 

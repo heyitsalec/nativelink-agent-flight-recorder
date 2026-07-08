@@ -125,6 +125,45 @@ export function deriveProjectionNotice(
   return null;
 }
 
+/**
+ * Distinguish a MISSING projection (unreachable / 404) from a MALFORMED one (a
+ * bound projection that WAS fetched but is not valid JSON) — redesign P7 V4,
+ * board 1l. This is honesty-critical: a corrupt projection must NOT be dressed
+ * up as the labeled fixture fallback (which is reserved for genuinely absent
+ * data). Only a body that was fetched OK but failed to parse is "malformed" and
+ * drives the honest error state ("… — invalid JSON. Nothing partial is
+ * rendered."); everything else degrades to the labeled fallback.
+ */
+export type BindingFetchResult = "ok" | "missing" | "malformed";
+
+export function classifyBindingFetch(input: {
+  /** `fetch()` itself threw — the host/path was unreachable. */
+  networkError: boolean;
+  /** `response.ok` — a 2xx status. */
+  responseOk: boolean;
+  /** `response.json()` succeeded. */
+  parsedOk: boolean;
+}): BindingFetchResult {
+  if (input.networkError) return "missing";
+  if (!input.responseOk) return "missing";
+  if (!input.parsedOk) return "malformed";
+  return "ok";
+}
+
+/**
+ * Curate a raw JSON parse failure into honest, human error-DETAIL copy for the
+ * projection error state — never a raw JS exception / stack string. Names the
+ * projection file and, when the engine reports one, the character position
+ * (board 1l shows a line; the browser gives us a byte position honestly).
+ */
+export function projectionParseDetail(path: string, raw: unknown): string {
+  const name = path.split("/").filter(Boolean).pop() ?? path;
+  const message = raw instanceof Error ? raw.message : String(raw ?? "");
+  const position = message.match(/position (\d+)/i);
+  const near = position ? ` near character ${position[1]}` : "";
+  return `${name} — invalid JSON${near}`;
+}
+
 export function highlightedIds(nodes: ProjectionNode[], focus: FocusFilter): Set<string> {
   if (focus === "all") return new Set(nodes.map((node) => node.id));
   if (focus === "cache") {

@@ -342,6 +342,7 @@ export function OperatorCommandBarPanel(instance: ComponentInstance) {
               open={overlay.composerOpen}
               onClose={overlayActions.closeComposer}
               initialSpec={spec}
+              bindingStatus={bindings.status}
             />
             <CommandPalette
               open={overlay.paletteOpen}
@@ -356,8 +357,28 @@ export function OperatorCommandBarPanel(instance: ComponentInstance) {
         )
       : null;
 
+  // Clicking the operator BAR itself opens the palette (DESIGN-SYSTEM §8) — but
+  // NEVER when the operator is interacting with the text input or an existing
+  // control (input keeps its own focus + Enter→runCommand), and never for the
+  // portaled overlays (which bubble through the React tree but live outside this
+  // DOM node, so a contains() check on the real DOM target skips them).
+  const onBarClick = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+      if (!event.currentTarget.contains(target)) return;
+      if (target.closest("input, button, kbd, a, select, textarea")) return;
+      overlayActions.openPalette();
+    },
+    [overlayActions],
+  );
+
   return (
-    <div className={`operator ${lensClass}`.trim()}>
+    <div
+      className={`operator ${lensClass}`.trim()}
+      onClick={onBarClick}
+      data-testid="operator-bar"
+    >
       {overlays}
       <button
         type="button"

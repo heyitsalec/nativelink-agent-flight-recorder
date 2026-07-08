@@ -48,6 +48,19 @@ type RunGroupSelectorProps = {
   onChange: (runGroup: string) => void;
 };
 
+/**
+ * Curate a run-group load failure into honest human copy — a raw fetch/abort
+ * exception ("TypeError: Failed to fetch", "The user aborted a request") must
+ * never surface in the UI. Our own intentional "Run group index unavailable …"
+ * messages already read as copy, so they pass through unchanged.
+ */
+function runGroupErrorCopy(err: unknown): string {
+  if (err instanceof Error && err.message.startsWith("Run group index unavailable")) {
+    return err.message;
+  }
+  return "Run group index unavailable — could not load the projection index.";
+}
+
 function derivedEntry(runGroup: string, runCount?: number): RunGroupIndexEntry {
   return {
     run_group: runGroup,
@@ -209,7 +222,7 @@ export function useRunGroups(): UseRunGroupsResult {
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load run groups");
+          setError(runGroupErrorCopy(err));
           setGroups([]);
         }
       } finally {
@@ -287,7 +300,7 @@ export function RunGroupSelector({ value, onChange }: RunGroupSelectorProps) {
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load run groups");
+          setError(runGroupErrorCopy(err));
           setGroups([]);
         }
       } finally {

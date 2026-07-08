@@ -180,6 +180,12 @@ function validateJoinRegistry(components: ComponentInstance[] | undefined): Vali
   return errors;
 }
 
+// MODE_REF_ORPHAN stays a HARD error: a mode pointing at a missing component is
+// a genuinely broken spec. The composer never feeds such a spec here — it
+// reconciles toggled-off panels first (composeEffectiveSpec: drops a mode whose
+// primary is off, detaches a toggled-off rail), so an operator toggle degrades
+// to a WARNING and stays persistable, while a hand-authored dangling ref still
+// errors honestly (redesign P7 V1, board 1k).
 function validateModeConsistency(
   components: ComponentInstance[] | undefined,
   modes: ViewSpec["modes"] | undefined,
