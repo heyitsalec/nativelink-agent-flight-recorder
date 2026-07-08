@@ -971,7 +971,15 @@ export function RemoteBoundaryLensPanel(_instance: ComponentInstance) {
 /** Honest empty state (board 1i) — no compare projection is bound. NLFR never
  *  fabricates a comparison; it names the file to place and offers the Composer.
  *  The "Open Composer" hook is wired by P7 (the composer drawer). */
-function CompareEmptyState({ pathHint, onClose }: { pathHint: string; onClose: () => void }) {
+function CompareEmptyState({
+  pathHint,
+  onClose,
+  onOpenComposer,
+}: {
+  pathHint: string;
+  onClose: () => void;
+  onOpenComposer: () => void;
+}) {
   return (
     <aside className="compare-lens compare-lens--empty" aria-label="multi-run compare">
       <button className="close-button compare-close" onClick={onClose} aria-label="Close compare lens">
@@ -988,7 +996,8 @@ function CompareEmptyState({ pathHint, onClose }: { pathHint: string; onClose: (
           type="button"
           className="compare-empty-composer"
           data-testid="compare-open-composer"
-          title="The Composer drawer (bind run groups) arrives in a later phase (P7)."
+          title="Open the Composer drawer to bind run groups into a view spec."
+          onClick={onOpenComposer}
         >
           Open Composer to bind run groups →
         </button>
@@ -1006,12 +1015,18 @@ function CompareEmptyState({ pathHint, onClose }: { pathHint: string; onClose: (
  * comparison.
  */
 export function CompareLensPanel(instance: ComponentInstance) {
-  const { bindings, routeActions } = useViewContext();
+  const { bindings, routeActions, overlayActions } = useViewContext();
   const projection = bindings.compareProjection;
   const pathHint = stringProp(instance.props, "empty_state_path_hint") || "compare-projection.json";
 
   if (!projection) {
-    return <CompareEmptyState pathHint={pathHint} onClose={() => routeActions.setMode("graph")} />;
+    return (
+      <CompareEmptyState
+        pathHint={pathHint}
+        onClose={() => routeActions.setMode("graph")}
+        onOpenComposer={() => overlayActions.openComposer()}
+      />
+    );
   }
 
   const leftRuns = finiteSummary(projection.summary, "left_runs");

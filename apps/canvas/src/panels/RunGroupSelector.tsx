@@ -140,6 +140,102 @@ async function loadRunGroupIndex(): Promise<RunGroupIndexEntry[]> {
   return parseCompareProjection(payload);
 }
 
+export type RunGroupSource = "index" | "history" | "compare" | null;
+
+export type UseRunGroupsResult = {
+  groups: RunGroupIndexEntry[];
+  loading: boolean;
+  error: string | null;
+  source: RunGroupSource;
+  historySummary: RunHistoryProjection["summary"] | null;
+  /** Human sentence naming the real load source (derived_v1), for captions. */
+  helper: string | null;
+};
+
+/**
+ * Shared run-group index loader (redesign P7). The composer's run-group pills
+ * and the classic `<select>` both consume this — ONE fetch-with-fallback path
+ * (compact index → run history → pairwise compare fallback), so both surfaces
+ * show the SAME real run groups. Never fabricates a group.
+ */
+export function useRunGroups(): UseRunGroupsResult {
+  const [groups, setGroups] = useState<RunGroupIndexEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [source, setSource] = useState<RunGroupSource>(null);
+  const [historySummary, setHistorySummary] = useState<RunHistoryProjection["summary"] | null>(
+    null,
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    setHistorySummary(null);
+
+    void (async () => {
+      try {
+        const indexResponse = await fetch(INDEX_PATH);
+        if (!cancelled && indexResponse.ok) {
+          const payload: unknown = await indexResponse.json();
+          if (isRunGroupIndex(payload)) {
+            setGroups(payload.run_groups);
+            setSource("index");
+            setLoading(false);
+            return;
+          }
+        }
+
+        const historyResponse = await fetch(HISTORY_PATH);
+        if (!cancelled && historyResponse.ok) {
+          const payload: unknown = await historyResponse.json();
+          if (isRunHistoryProjection(payload)) {
+            setGroups(payload.run_groups);
+            setHistorySummary(payload.summary ?? null);
+            setSource("history");
+            setLoading(false);
+            return;
+          }
+        }
+
+        const compareResponse = await fetch(COMPARE_PATH);
+        if (!compareResponse.ok) {
+          throw new Error("Run group index unavailable — projection JSON not loaded.");
+        }
+        const comparePayload = (await compareResponse.json()) as CompareProjection;
+        if (!cancelled) {
+          setGroups(parseCompareProjection(comparePayload));
+          setSource("compare");
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Failed to load run groups");
+          setGroups([]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const helper =
+    source === "index"
+      ? "Loaded from compare-index.json (derived_v1)."
+      : source === "history"
+        ? historySummary?.total_runs != null
+          ? `Loaded from run-history.json — ${historySummary.run_groups ?? groups.length} group(s), ${historySummary.total_runs} run(s) (derived_v1).`
+          : "Loaded from run-history.json (derived_v1)."
+        : source === "compare"
+          ? "Derived from compare-projection.json run_group fields (derived_v1)."
+          : null;
+
+  return { groups, loading, error, source, historySummary, helper };
+}
+
 export function RunGroupSelector({ value, onChange }: RunGroupSelectorProps) {
   const [groups, setGroups] = useState<RunGroupIndexEntry[]>([]);
   const [loading, setLoading] = useState(true);

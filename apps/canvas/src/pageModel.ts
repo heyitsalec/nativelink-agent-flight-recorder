@@ -92,7 +92,7 @@ export function deriveProjectionNotice(
     return {
       tone: "fallback",
       message:
-        "Fixture fallback active — projection fetch failed; showing simulated sample data.",
+        "Using fixture fallback — projection fetch failed; showing the bundled simulated_v1 fixture, labeled as such.",
     };
   }
   const kinds = projection.nodes.map((node) => node.source_kind);
@@ -145,6 +145,47 @@ export function highlightedIds(nodes: ProjectionNode[], focus: FocusFilter): Set
     );
   }
   return new Set(nodes.filter((node) => node.source_kind === "derived_v1").map((node) => node.id));
+}
+
+/**
+ * Honest count of nodes that TRULY match a focus filter (redesign P7 §9,
+ * "Focus applied" state). Unlike {@link highlightedIds}, this NEVER falls back
+ * to "all nodes" when a category is empty (the remote fallback) — an empty
+ * match must report 0 so the focus pill can say "0 of N nodes match". The graph
+ * dims non-matches; it never silently hides evidence, so the count is the
+ * truthful surface of what the filter selected.
+ */
+export function focusMatchCount(nodes: ProjectionNode[], focus: FocusFilter): number {
+  if (focus === "all") return nodes.length;
+  if (focus === "cache") return nodes.filter((node) => node.kind === "cache_event").length;
+  if (focus === "failures") return nodes.filter((node) => node.kind === "failure").length;
+  if (focus === "remote") {
+    return nodes.filter((node) =>
+      ["remote_execution_config", "worker_readiness"].includes(node.kind),
+    ).length;
+  }
+  if (focus === "agent") {
+    return nodes.filter((node) => node.kind === "agent" || node.kind === "change").length;
+  }
+  return nodes.filter((node) => node.source_kind === "derived_v1").length;
+}
+
+/** Human label for a focus filter (redesign P7 §9 focus pill copy). */
+export function focusLabel(focus: FocusFilter): string {
+  switch (focus) {
+    case "failures":
+      return "failures";
+    case "cache":
+      return "cache misses";
+    case "remote":
+      return "remote boundary";
+    case "agent":
+      return "agent loop";
+    case "derived":
+      return "derived evidence";
+    default:
+      return "all evidence";
+  }
 }
 
 export function remoteLensModel(
