@@ -4750,6 +4750,40 @@ select:focus-visible {
     bottom: 126px;
   }
 
+  /* m-runway (pre-existing P6/#109 defect, exposed on mobile): the desktop
+     `.runway-lane-track` is a fixed 7-column `minmax(0,1fr)` grid (so run /
+     invocation / artifact columns align vertically on the wide desktop lens).
+     At the ~370px mobile lens width each of 7 columns collapses to ~20px —
+     half the 44px tap target — and the chip's label/clock overlap into garbled
+     digits. Mobile-only override: reflow the track into a horizontally
+     scrollable flex row so each chip keeps a legible, ≥44px-wide footprint and
+     its label ellipsizes honestly instead of crushing (nothing removed — the
+     source-kind glyph, label, clock and status glyph all stay). The
+     `.runway-artifact-cols` pills (display:contents → direct track items) and
+     the empty-lane statement reflow with it. Desktop keeps the 7-col grid. */
+  .runway-lane-track {
+    display: flex;
+    grid-template-columns: none;
+    flex-wrap: nowrap;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .runway-lane-track::-webkit-scrollbar {
+    display: none;
+  }
+  .runway-lane-track > .runway-chip,
+  .runway-artifact-pill {
+    flex: 0 0 auto;
+    min-width: 128px;
+    max-width: 200px;
+  }
+  /* The empty-lane statement (grid-column:1/-1 on desktop) fills the flex row. */
+  .runway-lane-track > .runway-lane-empty {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
   /* --- Hide the desktop operator bar; the bottom sheet's "Commands" pill owns
      the palette entry on mobile. The palette/composer/system-state overlays are
      portaled to <body>, so hiding this region never hides them. --- */
