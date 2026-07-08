@@ -2720,3 +2720,598 @@ select:focus-visible {
 .proof-block-heading .truth-glyph {
   margin-top: 3px;
 }
+
+/* ======================================================================== *
+ * Proof Packet drawer — flagship redesign (P5, DESIGN-SYSTEM.md §4).
+ * Three zones in a bounded flex column: header + block-index stay put, only
+ * the cards scroll. Placed last so the flagship layout wins over the shared
+ * .grid-region-rail .proof-drawer sizing without touching P3 shell chrome.
+ * ======================================================================== */
+.proof-drawer--flagship {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+  border: var(--elev3-border);
+  border-radius: 16px;
+  background: var(--elev3-bg);
+}
+
+/* Float the drawer viewport-bounded (top:112 / bottom:16 / right:16, per
+   §4) instead of letting it stretch the rail grid row — so only the cards
+   scroll while the header + block index stay put, and the graph behind keeps
+   its own height. Rail-context specificity beats the shared .proof-drawer
+   sizing without touching P3 shell chrome. */
+.proof-drawer--flagship,
+.grid-region-rail .proof-drawer--flagship {
+  position: fixed;
+  top: 112px;
+  right: 16px;
+  bottom: 16px;
+  left: auto;
+  width: min(560px, calc(100vw - 96px));
+  height: auto;
+  max-height: none;
+  padding: 0;
+  z-index: 6;
+}
+
+.proof-overline {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-hint);
+}
+
+/* ── Zone A — header ─────────────────────────────────────────────────── */
+.proof-head {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.proof-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.proof-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.proof-export {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border: 1px solid var(--border-control);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-body);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.proof-export:hover {
+  background: var(--hover-wash);
+  color: var(--ink);
+}
+
+/* The header close button sits inline in the action cluster, not floated. */
+.proof-drawer--flagship .close-button.proof-close {
+  position: static;
+  top: auto;
+  right: auto;
+}
+
+.proof-name {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 650;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.proof-generated {
+  font: 500 11.5px/1.3 var(--font-mono);
+  color: var(--text-hint);
+}
+
+.proof-rollup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.proof-rollup-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.proof-rollup-pill--recorded {
+  background: var(--truth-collectable-tint);
+  color: var(--truth-collectable);
+}
+
+.proof-rollup-pill--future {
+  border: 1px dashed color-mix(in srgb, var(--truth-future) 45%, transparent);
+  background: color-mix(in srgb, var(--truth-future) 10%, transparent);
+  color: var(--truth-future);
+}
+
+.proof-rollup-plain {
+  font-size: 11px;
+  color: var(--text-hint);
+}
+
+.proof-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.proof-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 7px;
+  border-radius: 8px;
+  background: var(--n1);
+}
+
+.proof-stat strong {
+  font: 600 16px/1 var(--font-mono);
+  color: var(--ink);
+}
+
+.proof-stat span {
+  font-size: 10.5px;
+  color: var(--text-hint);
+}
+
+/* ── Zone B — block index (the scannable TOC) ────────────────────────── */
+.proof-index {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 14px 14px 16px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.proof-index-overline {
+  padding: 0 10px 6px;
+}
+
+.proof-index-row {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto auto 12px;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.proof-index-row:hover {
+  background: var(--hover-wash);
+}
+
+.proof-index-row.active {
+  background: var(--truth-collectable-tint);
+}
+
+.proof-index-title {
+  overflow: hidden;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.proof-index-row.future .proof-index-title {
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.proof-index-meta {
+  font: 500 11px/1 var(--font-mono);
+  color: var(--text-hint);
+}
+
+.proof-index-meta--muted {
+  color: var(--text-faint);
+}
+
+.proof-index-meta--unsupported {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--failure) 12%, transparent);
+  color: var(--failure);
+}
+
+.proof-index-q {
+  width: 16px;
+  font: 600 11px/1 var(--font-mono);
+  color: var(--text-faint);
+  text-align: center;
+}
+
+.proof-index-chevron {
+  color: var(--text-faint);
+}
+
+/* ── Zone C — cards (scroll region) ──────────────────────────────────── */
+.proof-cards {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 24px 24px;
+  overflow-y: auto;
+}
+
+.proof-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  background: var(--elev1-bg);
+  scroll-margin-top: 8px;
+}
+
+.proof-card.active {
+  border-color: color-mix(in srgb, var(--truth-collectable) 40%, var(--hairline));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--truth-collectable) 12%, transparent);
+}
+
+/* Future blocks are dashed EVERYWHERE — the anti-collectable guarantee. */
+.proof-card--future {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--truth-future) 45%, transparent);
+  background: color-mix(in srgb, var(--elev1-bg) 60%, transparent);
+}
+
+.proof-card--future.active {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--truth-future) 10%, transparent);
+}
+
+.proof-card-head {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+}
+
+.proof-card-title {
+  margin: 0;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--ink);
+}
+
+.proof-card--future .proof-card-title {
+  color: var(--text-muted);
+}
+
+.proof-card-truth {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.proof-card-summary {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-body);
+}
+
+.proof-card-summary--strong {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.proof-noclaim {
+  align-self: flex-start;
+  padding: 3px 10px;
+  border: 1px dashed color-mix(in srgb, var(--truth-future) 45%, transparent);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--truth-future);
+}
+
+.proof-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 8px;
+}
+
+.proof-metric-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  background: var(--n1);
+}
+
+.proof-metric-cell strong {
+  font: 600 17px/1 var(--font-mono);
+  color: var(--ink);
+}
+
+.proof-metric-cell span {
+  font-size: 11px;
+  color: var(--text-hint);
+}
+
+/* Future metric cells: dashed + muted values (never styled as asserting). */
+.proof-card--future .proof-metric-cell {
+  border: 1px dashed color-mix(in srgb, var(--truth-future) 35%, transparent);
+  background: transparent;
+}
+
+.proof-card--future .proof-metric-cell strong {
+  color: var(--text-muted);
+}
+
+/* Cache economics per-leg list (board 1o). */
+.proof-legs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.proof-legs-caption {
+  margin-bottom: 2px;
+  font-size: 11px;
+  color: var(--text-hint);
+}
+
+.proof-leg-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 7px;
+  background: var(--row-bg);
+  font: 500 11.5px/1 var(--font-mono);
+}
+
+.proof-leg-index {
+  color: var(--text-faint);
+}
+
+.proof-leg-name {
+  overflow: hidden;
+  color: var(--text-body);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.proof-leg-dur {
+  color: var(--ink);
+}
+
+.proof-leg-hm {
+  color: var(--text-faint);
+}
+
+.proof-claim-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.proof-claim-list li {
+  position: relative;
+  padding-left: 16px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text-body);
+}
+
+.proof-claim-list li::before {
+  content: "";
+  position: absolute;
+  top: 6px;
+  left: 0;
+  width: 5px;
+  height: 5px;
+  border-radius: 1px;
+  background: var(--truth-collectable);
+}
+
+.proof-card--future .proof-claim-list li::before {
+  background: color-mix(in srgb, var(--truth-future) 60%, transparent);
+}
+
+.proof-claim-list li strong {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.proof-unsupported {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--failure) 22%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--failure) 5%, transparent);
+}
+
+.proof-unsupported-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--failure);
+}
+
+.proof-unsupported-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Collapsible evidence refs — count pill + expand on demand. */
+.proof-refs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 4px;
+  border-top: 1px solid var(--hairline);
+}
+
+.proof-refs-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-body);
+  font: 600 11.5px/1 var(--font-mono);
+  cursor: pointer;
+}
+
+.proof-refs-caret {
+  color: var(--text-hint);
+  transition: transform 160ms ease-out;
+}
+
+.proof-refs-caret.open {
+  transform: rotate(90deg);
+}
+
+.proof-refs-count {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--n1);
+  color: var(--text-hint);
+  font-size: 10.5px;
+}
+
+.proof-refs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.proof-ref-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 9px;
+  border-radius: 7px;
+  background: var(--row-bg);
+}
+
+.proof-ref-row code {
+  flex: 1;
+  overflow: hidden;
+  font: 500 11.5px/1.3 var(--font-mono);
+  color: var(--text-body);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.proof-ref-copy {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  padding: 2px 4px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-hint);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.proof-ref-copy:hover {
+  background: var(--hover-wash);
+  color: var(--ink);
+}
+
+.proof-ref-row--redacted {
+  padding: 4px 6px;
+}
+
+.proof-refs-more {
+  align-self: flex-start;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: var(--truth-collectable);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Scroll fade + "N more blocks" pill at the bottom of the card region. */
+.proof-cards-footer {
+  position: sticky;
+  bottom: -24px;
+  display: flex;
+  justify-content: center;
+  margin: 0 -24px -24px;
+  padding: 22px 24px 12px;
+  background: linear-gradient(to bottom, transparent, var(--elev3-bg) 60%);
+  pointer-events: none;
+}
+
+.proof-more-pill {
+  max-width: 100%;
+  overflow: hidden;
+  padding: 4px 12px;
+  border: 1px solid var(--border-control);
+  border-radius: 999px;
+  background: var(--elev2-bg);
+  color: var(--text-hint);
+  font-size: 11px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Graph dims to ~38% behind the open proof drawer (DESIGN-SYSTEM.md §4). */
+.canvas-stage--proof-dim .graph-canvas {
+  opacity: 0.38;
+  transition: opacity 220ms ease;
+}
+
+.canvas-stage--proof-dim .graph-grouping-pill,
+.canvas-stage--proof-dim .graph-count-readout {
+  opacity: 0.5;
+}

@@ -231,6 +231,55 @@ export function unsupportedClaimsFromPayload(payload: unknown): string[] {
   return claims.filter((claim): claim is string => typeof claim === "string");
 }
 
+/**
+ * Proof-packet rollup (redesign P5 header). Counts blocks by source_kind into
+ * the human buckets the drawer surfaces as pills — recorded (collectable),
+ * computed (derived), simulated, and "not yet collected" (future). Every count
+ * is a REAL block count; `recorded + computed + simulated + notCollected +
+ * unknown === total` holds by construction, so the pills can never over- or
+ * under-state what the packet actually contains.
+ */
+export type ProofRollup = {
+  recorded: number;
+  computed: number;
+  simulated: number;
+  notCollected: number;
+  unknown: number;
+  total: number;
+};
+
+export function proofRollup(blocks: ReadonlyArray<{ source_kind: SourceKind }>): ProofRollup {
+  const rollup: ProofRollup = {
+    recorded: 0,
+    computed: 0,
+    simulated: 0,
+    notCollected: 0,
+    unknown: 0,
+    total: blocks.length,
+  };
+  for (const block of blocks) {
+    switch (block.source_kind) {
+      case "collectable_v1":
+        rollup.recorded += 1;
+        break;
+      case "derived_v1":
+        rollup.computed += 1;
+        break;
+      case "simulated_v1":
+        rollup.simulated += 1;
+        break;
+      case "future":
+        rollup.notCollected += 1;
+        break;
+      default:
+        // Any out-of-enum/unknown source_kind is counted honestly, never
+        // silently dropped (mirrors evidenceMix's unknown bucket).
+        rollup.unknown += 1;
+    }
+  }
+  return rollup;
+}
+
 export function payloadRecord(payload: unknown): Record<string, unknown> | null {
   if (payload === null || typeof payload !== "object" || Array.isArray(payload)) return null;
   return payload as Record<string, unknown>;

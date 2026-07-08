@@ -1,8 +1,10 @@
-import { useState } from "react";
-import { Copy, GitCompare, Maximize2, Network, ReceiptText, ShieldCheck, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { ChevronRight, Copy, Download, GitCompare, Maximize2, Network, ReceiptText, X } from "lucide-react";
 import {
   formatMetricValue,
   labelKind,
+  payloadRecord,
+  proofRollup,
   type RemoteLensModel,
   unsupportedClaimsFromPayload,
 } from "../pageModel";
@@ -20,6 +22,7 @@ import type {
   PositionedNode,
   ProofBlock,
   ProofMetricValue,
+  ProofPacket,
   SourceKind,
 } from "../types";
 import type { ComponentInstance } from "../view/types";
@@ -197,42 +200,262 @@ function Inspector({ node, onClose }: { node: PositionedNode; onClose: () => voi
   );
 }
 
+/* ------------------------------------------------------------------------ *
+ * Proof Packet drawer (redesign P5 — DESIGN-SYSTEM.md §4, boards 1e/1f/1o).
+ * Three zones: A header (rollup + real summary grid), B block index (the
+ * scannable TOC), C cards (asserting vs future, collapsible evidence refs).
+ * Every number is a REAL packet number; future blocks are dashed and assert
+ * nothing; redacted values keep their slot as a lock chip.
+ * ------------------------------------------------------------------------ */
+
+/** The 6 summary stat cells, in board order. Values are REAL packet numbers. */
+const PROOF_SUMMARY_CELLS: { key: string; label: string }[] = [
+  { key: "runs", label: "runs" },
+  { key: "artifacts", label: "artifacts" },
+  { key: "actions", label: "actions" },
+  { key: "targets", label: "targets" },
+  { key: "cache_events", label: "cache events" },
+  { key: "failures", label: "failures" },
+];
+
+/** How many refs a card shows before the "show N more…" affordance. */
+const REFS_PREVIEW_LIMIT = 6;
+
+/** ISO ts → "YYYY-MM-DD HH:MM" (kept in UTC; the drawer appends " UTC"). */
+function formatGeneratedAt(iso: string): string {
+  if (typeof iso !== "string" || iso.length < 16) return iso ?? "";
+  return iso.slice(0, 16).replace("T", " ");
+}
+
+/** Middle-truncate a long ref/hash for display; the full value stays copyable. */
+function middleTruncate(value: string, head = 20, tail = 12): string {
+  if (value.length <= head + tail + 1) return value;
+  return `${value.slice(0, head)}…${value.slice(-tail)}`;
+}
+
+function isRedactedValue(value: string): boolean {
+  return value.includes("[REDACTED:") || value.includes("[REDACTED]");
+}
+
+/** Metric key → display label. The packet uses a generic "unknown" key for an
+ *  untyped count; name it honestly rather than printing "unknown 14". */
+function metricLabel(key: string, blockId: string): string {
+  if (key === "unknown") return blockId === "invocations" ? "commands" : "count";
+  return labelKind(key);
+}
+
+type BlockIndexMeta = { tone: "count" | "muted" | "unsupported"; text: string };
+
+/** Right-hand meta for a block-index row — a real count, "no claim" for future
+ *  blocks (they assert nothing), or the unsupported-claims tally. */
+function blockIndexMeta(block: ProofBlock): BlockIndexMeta {
+  const unsupported = unsupportedClaimsFromPayload(block.payload);
+  if (unsupported.length > 0) return { tone: "unsupported", text: `${unsupported.length} unsupported` };
+  if (block.source_kind === "future") return { tone: "muted", text: "no claim" };
+  const metrics = block.metrics ?? {};
+  if (block.id === "invocations" && typeof metrics.unknown === "number") {
+    return { tone: "count", text: `${metrics.unknown} cmds` };
+  }
+  if (typeof metrics.artifacts === "number") return { tone: "count", text: `${metrics.artifacts} artifacts` };
+  const refs = block.evidence_refs.length;
+  if (refs > 0) return { tone: "count", text: `${refs} ref${refs === 1 ? "" : "s"}` };
+  return { tone: "muted", text: "recorded" };
+}
+
+/** Split a claim so a standalone "not" renders bold (negative claims). */
+function claimNodes(claim: string): ReactNode[] {
+  return claim
+    .split(/(\bnot\b)/gi)
+    .map((part, index) => (/^not$/i.test(part) ? <strong key={index}>{part}</strong> : <span key={index}>{part}</span>));
+}
+
+type CacheLeg = { runId: string; scenario: string; duration: string; hits: number; misses: number };
+
+/** Per-leg cache economics rows from real payload legs (board 1o). */
+function cacheLegs(payload: unknown): CacheLeg[] | null {
+  const record = payloadRecord(payload);
+  const legs = record?.legs;
+  if (!Array.isArray(legs)) return null;
+  return legs.map((leg) => {
+    const rec = (leg && typeof leg === "object" ? leg : {}) as Record<string, unknown>;
+    const seconds = typeof rec.duration_seconds === "number" ? rec.duration_seconds : null;
+    return {
+      runId: typeof rec.run_id === "string" ? rec.run_id : "",
+      scenario: typeof rec.scenario === "string" ? rec.scenario : "leg",
+      duration: seconds === null ? "n/a" : `${seconds.toFixed(2)}s`,
+      hits: typeof rec.hits === "number" ? rec.hits : 0,
+      misses: typeof rec.misses === "number" ? rec.misses : 0,
+    };
+  });
+}
+
+/** A real [REDACTED:...] string a redacted block can surface in its header
+ *  chip, if a top-level payload field carries one — else undefined so the chip
+ *  shows the honest "redacted" state without inventing a value. Redacted
+ *  evidence *refs* keep their own slot in the refs list (EvidenceRefRow), so
+ *  they are intentionally not pulled up here. */
+function redactedValueForBlock(block: ProofBlock): string | undefined {
+  const record = payloadRecord(block.payload);
+  if (record) {
+    for (const value of Object.values(record)) {
+      if (typeof value === "string" && isRedactedValue(value)) return value;
+    }
+  }
+  return undefined;
+}
+
+function exportPacketJson(packet: ProofPacket) {
+  const blob = new Blob([JSON.stringify(packet, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `${packet.run_group || "proof"}-proof-packet.json`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
 export function ProofDrawerPanel(_instance: ComponentInstance) {
   const { bindings, routeActions } = useViewContext();
   const packet = bindings.proofPacket;
-  const summaryEntries = Object.entries(packet.summary).filter(
-    ([, value]) => typeof value === "number" || typeof value === "string",
-  );
+  const blocks = packet.blocks;
+  const rollup = useMemo(() => proofRollup(blocks), [blocks]);
+  const [activeId, setActiveId] = useState<string | null>(blocks[0]?.id ?? null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const cardRefs = useRef<Map<string, HTMLElement>>(new Map());
+
+  const registerCard = (id: string) => (el: HTMLElement | null) => {
+    if (el) cardRefs.current.set(id, el);
+    else cardRefs.current.delete(id);
+  };
+
+  const jumpTo = (id: string) => {
+    setActiveId(id);
+    cardRefs.current.get(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  // Highlight the top-most visible card in the block index as the user scrolls.
+  useEffect(() => {
+    const root = scrollRef.current;
+    if (!root || cardRefs.current.size === 0) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        const top = visible[0]?.target.getAttribute("data-block-id");
+        if (top) setActiveId(top);
+      },
+      { root, rootMargin: "0px 0px -55% 0px", threshold: 0 },
+    );
+    cardRefs.current.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [blocks]);
+
+  const summaryValue = (key: string): string => {
+    const value = packet.summary[key];
+    return typeof value === "number" || typeof value === "string"
+      ? formatMetricValue(value as ProofMetricValue)
+      : "0";
+  };
+
+  const activeIndex = blocks.findIndex((block) => block.id === activeId);
+  const remaining = activeIndex >= 0 ? blocks.slice(activeIndex + 1) : [];
 
   return (
-    <aside className="proof-drawer lens-panel lens-panel--proof" aria-label="proof packet">
-      <button
-        className="close-button"
-        onClick={() => routeActions.setMode("graph")}
-        aria-label="Close proof drawer"
-      >
-        <X size={16} />
-      </button>
-      <div className="proof-drawer-heading lens-heading">
-        <ShieldCheck size={18} />
-        <p>Proof Packet</p>
-        <h2>{packet.run_group}</h2>
-        <span className="lens-meta">
-          {packet.blocks.length} block{packet.blocks.length === 1 ? "" : "s"} · derived_v1 summary
+    <aside className="proof-drawer proof-drawer--flagship" aria-label="proof packet">
+      {/* Zone A — header */}
+      <header className="proof-head">
+        <div className="proof-head-row">
+          <span className="proof-overline">PROOF PACKET</span>
+          <div className="proof-head-actions">
+            <button type="button" className="proof-export" onClick={() => exportPacketJson(packet)}>
+              <Download size={13} aria-hidden="true" />
+              Export JSON
+            </button>
+            <button
+              className="close-button proof-close"
+              onClick={() => routeActions.setMode("graph")}
+              aria-label="Close proof drawer"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+        <h2 className="proof-name">{packet.run_group}</h2>
+        <span className="proof-generated">
+          {blocks.length} block{blocks.length === 1 ? "" : "s"} · generated {formatGeneratedAt(packet.generated_at)} UTC
         </span>
-      </div>
-      <div className="proof-summary lens-metric-strip" aria-label="proof summary">
-        {summaryEntries.map(([key, value]) => (
-          <span key={key}>
-            <strong>{formatMetricValue(value as ProofMetricValue)}</strong>
-            {labelKind(key)}
+        <div className="proof-rollup" aria-label="evidence rollup">
+          <span className="proof-rollup-pill proof-rollup-pill--recorded">
+            <SourceGlyph kind="collectable_v1" size={9} title={null} />
+            {rollup.recorded} recorded
           </span>
+          <span className="proof-rollup-pill proof-rollup-pill--future">
+            <SourceGlyph kind="future" size={9} title={null} />
+            {rollup.notCollected} not yet collected
+          </span>
+          <span className="proof-rollup-plain">
+            {rollup.computed} computed · {rollup.simulated} simulated
+          </span>
+        </div>
+        <div className="proof-summary-grid" aria-label="proof summary">
+          {PROOF_SUMMARY_CELLS.map((cell) => (
+            <div key={cell.key} className="proof-stat">
+              <strong>{summaryValue(cell.key)}</strong>
+              <span>{cell.label}</span>
+            </div>
+          ))}
+        </div>
+      </header>
+
+      {/* Zone B — block index (scannable TOC) */}
+      <nav className="proof-index" aria-label="proof blocks">
+        <span className="proof-overline proof-index-overline">BLOCKS</span>
+        {blocks.map((block) => {
+          const meta = blockIndexMeta(block);
+          const future = block.source_kind === "future";
+          return (
+            <button
+              key={block.id}
+              type="button"
+              className={`proof-index-row${block.id === activeId ? " active" : ""}${future ? " future" : ""}`}
+              onClick={() => jumpTo(block.id)}
+              aria-current={block.id === activeId}
+            >
+              <SourceGlyph kind={block.source_kind} size={16} />
+              <span className="proof-index-title">{block.title}</span>
+              <span className={`proof-index-meta proof-index-meta--${meta.tone}`}>{meta.text}</span>
+              {future ? (
+                <span className="proof-index-q" aria-hidden="true">?</span>
+              ) : (
+                <ConfidenceMeter confidence={block.confidence} size="sm" />
+              )}
+              <ChevronRight size={12} className="proof-index-chevron" aria-hidden="true" />
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* Zone C — cards */}
+      <div className="proof-cards" ref={scrollRef}>
+        {blocks.map((block) => (
+          <ProofBlockCard
+            key={block.id}
+            block={block}
+            active={block.id === activeId}
+            registerRef={registerCard(block.id)}
+          />
         ))}
-      </div>
-      <div className="proof-block-list">
-        {packet.blocks.map((block) => (
-          <ProofBlockView key={block.id} block={block} />
-        ))}
+        {remaining.length > 0 && (
+          <div className="proof-cards-footer" aria-hidden="true">
+            <span className="proof-more-pill">
+              ▾ {remaining.length} more block{remaining.length === 1 ? "" : "s"} —{" "}
+              {remaining.slice(0, 3).map((block) => block.title).join(" · ")}
+            </span>
+          </div>
+        )}
       </div>
     </aside>
   );
@@ -243,80 +466,158 @@ export function ProofBlockCardPanel(instance: ComponentInstance) {
   const blockId = stringProp(instance.props, "block_id");
   const block = bindings.proofPacket.blocks.find((entry) => entry.id === blockId);
   if (!block) return null;
-  return <ProofBlockView block={block} />;
+  return <ProofBlockCard block={block} active registerRef={() => {}} />;
 }
 
-function ProofBlockView({ block }: { block: ProofBlock }) {
+function ProofBlockCard({
+  block,
+  active,
+  registerRef,
+}: {
+  block: ProofBlock;
+  active: boolean;
+  registerRef: (el: HTMLElement | null) => void;
+}) {
+  const future = block.source_kind === "future";
   const metrics = Object.entries(block.metrics ?? {});
-  const unsupportedClaims = unsupportedClaimsFromPayload(block.payload);
+  const unsupported = unsupportedClaimsFromPayload(block.payload);
+  const legs = block.id === "cache_economics" ? cacheLegs(block.payload) : null;
+  const claims = block.claims ?? [];
+  const redactedValue = block.redaction_state === "redacted" ? redactedValueForBlock(block) : undefined;
+
   return (
-    <section className={`proof-block lens-block ${block.source_kind}`}>
-      <div className="proof-block-heading lens-block-heading">
-        <SourceGlyph kind={block.source_kind} size={11} />
-        <div>
-          <p>{block.kind}</p>
-          <h3>{block.title}</h3>
-        </div>
-      </div>
-      <p className="proof-block-summary">{block.summary}</p>
-      <dl className="truth-grid proof-block-truth">
-        <div>
-          <dt>Source</dt>
-          <dd className="truth-value">
-            <SourceGlyph kind={block.source_kind} size={11} />
-            <span>{block.source_kind}</span>
-          </dd>
-        </div>
-        <div>
-          <dt>Confidence</dt>
-          <dd className="truth-value">
-            <ConfidenceMeter confidence={block.confidence} />
-            <span>{block.confidence}</span>
-          </dd>
-        </div>
-        <div>
-          <dt>Redaction</dt>
-          <dd className="truth-value">
-            <RedactionChip state={block.redaction_state} />
-          </dd>
-        </div>
-      </dl>
+    <section
+      ref={registerRef}
+      className={`proof-card ${future ? "proof-card--future" : "proof-card--asserting"} proof-card--${block.source_kind}${active ? " active" : ""}`}
+      data-block-id={block.id}
+      data-testid={`proof-card-${block.id}`}
+    >
+      <header className="proof-card-head">
+        <SourceGlyph kind={block.source_kind} size={16} />
+        <h3 className="proof-card-title">{block.title}</h3>
+        <span className="proof-card-truth">
+          <ConfidenceMeter confidence={block.confidence} size="sm" />
+          <RedactionChip state={block.redaction_state} value={redactedValue} />
+        </span>
+      </header>
+      <p className={`proof-card-summary${block.id === "remote_execution" ? " proof-card-summary--strong" : ""}`}>
+        {block.summary}
+      </p>
+      {future && claims.length === 0 && <span className="proof-noclaim">no claim recorded</span>}
       {metrics.length > 0 && (
-        <div className="proof-block-metrics" aria-label={`${block.title} metrics`}>
+        <div className="proof-metrics" aria-label={`${block.title} metrics`}>
           {metrics.map(([key, value]) => (
-            <span key={key}>
+            <div key={key} className="proof-metric-cell">
               <strong>{formatMetricValue(value)}</strong>
-              {labelKind(key)}
-            </span>
+              <span>{metricLabel(key, block.id)}</span>
+            </div>
           ))}
         </div>
       )}
-      {(block.claims?.length ?? 0) > 0 && (
-        <ul className="proof-claims">
-          {block.claims?.map((claim) => (
-            <li key={claim}>{claim}</li>
+      {legs && legs.length > 0 && (
+        <div className="proof-legs" aria-label="cache economics per leg">
+          <span className="proof-legs-caption">hits / misses per leg — none recorded</span>
+          {legs.map((leg, index) => (
+            <div key={leg.runId || index} className="proof-leg-row">
+              <span className="proof-leg-index">#{index + 1}</span>
+              <span className="proof-leg-name">{leg.scenario}</span>
+              <span className="proof-leg-dur">{leg.duration}</span>
+              <span className="proof-leg-hm">
+                {leg.hits}/{leg.misses}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      {claims.length > 0 && (
+        <ul className="proof-claim-list">
+          {claims.map((claim) => (
+            <li key={claim}>{claimNodes(claim)}</li>
           ))}
         </ul>
       )}
-      {unsupportedClaims.length > 0 && (
-        <div className="unsupported-list proof-unsupported">
-          <span>Unsupported claims — named, not hidden</span>
-          <div>
-            {unsupportedClaims.map((claim) => (
+      {unsupported.length > 0 && (
+        <div className="proof-unsupported">
+          <span className="proof-unsupported-label">Unsupported claims — named, not hidden</span>
+          <div className="proof-unsupported-chips">
+            {unsupported.map((claim) => (
               <UnsupportedClaimChip key={claim} claim={labelKind(claim)} />
             ))}
           </div>
         </div>
       )}
-      {block.evidence_refs.length > 0 && (
-        <div className="evidence-list proof-evidence">
-          <span>Evidence refs</span>
-          {block.evidence_refs.map((ref) => (
-            <code key={ref}>{ref}</code>
+      <EvidenceRefs refs={block.evidence_refs} defaultOpen={active} />
+    </section>
+  );
+}
+
+/** Collapsible evidence-ref footer (redesign P5): count pill + expand on
+ *  demand, middle-truncated mono refs with copy, "show N more…" past the
+ *  preview limit. Collapsed by default except on the active block. Redacted
+ *  refs keep their slot as a lock chip carrying the partial path. */
+function EvidenceRefs({ refs, defaultOpen }: { refs: string[]; defaultOpen: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const [showAll, setShowAll] = useState(false);
+  useEffect(() => {
+    if (defaultOpen) setOpen(true);
+  }, [defaultOpen]);
+  if (refs.length === 0) return null;
+  const shown = showAll ? refs : refs.slice(0, REFS_PREVIEW_LIMIT);
+  const hidden = refs.length - shown.length;
+  return (
+    <div className="proof-refs">
+      <button
+        type="button"
+        className="proof-refs-toggle"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <ChevronRight size={12} className={`proof-refs-caret${open ? " open" : ""}`} aria-hidden="true" />
+        <span className="proof-refs-word">evidence refs</span>
+        <span className="proof-refs-count">{refs.length}</span>
+      </button>
+      {open && (
+        <div className="proof-refs-list">
+          {shown.map((ref) => (
+            <EvidenceRefRow key={ref} value={ref} />
           ))}
+          {hidden > 0 && (
+            <button type="button" className="proof-refs-more" onClick={() => setShowAll(true)}>
+              show {hidden} more…
+            </button>
+          )}
         </div>
       )}
-    </section>
+    </div>
+  );
+}
+
+function EvidenceRefRow({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+  if (isRedactedValue(value)) {
+    return (
+      <div className="proof-ref-row proof-ref-row--redacted">
+        <RedactionChip state="redacted" value={value} />
+      </div>
+    );
+  }
+  return (
+    <div className="proof-ref-row">
+      <code title={value}>{middleTruncate(value)}</code>
+      <button
+        type="button"
+        className="proof-ref-copy"
+        aria-label={`Copy ${value}`}
+        onClick={() => {
+          void navigator.clipboard?.writeText(value).then(() => {
+            setCopied(true);
+            window.setTimeout(() => setCopied(false), 1400);
+          });
+        }}
+      >
+        {copied ? "copied" : <Copy size={12} aria-hidden="true" />}
+      </button>
+    </div>
   );
 }
 
