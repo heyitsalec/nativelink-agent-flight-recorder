@@ -231,6 +231,120 @@ export function unsupportedClaimsFromPayload(payload: unknown): string[] {
   return claims.filter((claim): claim is string => typeof claim === "string");
 }
 
+/** True when a string carries a redaction marker — a real `[REDACTED:...]`
+ *  partial-path token or a bare `[REDACTED]`. */
+export function isRedactedValue(value: string): boolean {
+  return value.includes("[REDACTED:") || value.includes("[REDACTED]");
+}
+
+export type BlockIndexMeta = { tone: "count" | "muted" | "unsupported"; text: string };
+
+/**
+ * Right-hand meta for a proof block-index (TOC) row: the unsupported-claims
+ * tally, a real positive metric, "no claim" for a future block that asserts
+ * nothing, or a recorded count. A future block that still carries a real metric
+ * (cache economics ships 7 real legs) surfaces that metric rather than the
+ * blanket "no claim" (redesign P5 fix M5).
+ */
+export function blockIndexMeta(block: ProofBlock): BlockIndexMeta {
+  const unsupported = unsupportedClaimsFromPayload(block.payload);
+  if (unsupported.length > 0) return { tone: "unsupported", text: `${unsupported.length} unsupported` };
+  const metrics = block.metrics ?? {};
+  // Checked BEFORE the future early-return: a future block can still carry a
+  // real recorded count (per-leg cache economics) — show it, don't erase it.
+  if (typeof metrics.legs === "number" && metrics.legs > 0) {
+    return { tone: "count", text: `${metrics.legs} leg${metrics.legs === 1 ? "" : "s"}` };
+  }
+  if (block.source_kind === "future") return { tone: "muted", text: "no claim" };
+  if (block.id === "invocations" && typeof metrics.unknown === "number") {
+    return { tone: "count", text: `${metrics.unknown} cmds` };
+  }
+  if (typeof metrics.artifacts === "number") return { tone: "count", text: `${metrics.artifacts} artifacts` };
+  const refs = block.evidence_refs.length;
+  if (refs > 0) return { tone: "count", text: `${refs} ref${refs === 1 ? "" : "s"}` };
+  return { tone: "muted", text: "recorded" };
+}
+
+/**
+ * A real `[REDACTED:...]` string a redacted block can surface in its header lock
+ * chip when a top-level payload field carries one — else undefined, so the chip
+ * shows the honest "redacted" state without inventing a value (never a bare
+ * "[REDACTED]", redesign P5 fix M1). Redacted evidence *refs* keep their own row
+ * (EvidenceRefRow), so they are intentionally not pulled up here.
+ */
+export function redactedValueForBlock(block: ProofBlock): string | undefined {
+  const record = payloadRecord(block.payload);
+  if (record) {
+    for (const value of Object.values(record)) {
+      if (typeof value === "string" && isRedactedValue(value)) return value;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Blocks strictly below the active block, in document order — the accurate
+ * "N more blocks" count for the drawer's sticky footer pill. Empty on the last
+ * (or an unknown) active block, so the pill can never over-state what remains
+ * below the current scroll position (redesign P5 fix M2).
+ */
+export function blocksBelow<T extends { id: string }>(
+  blocks: readonly T[],
+  activeId: string | null,
+): T[] {
+  const index = blocks.findIndex((block) => block.id === activeId);
+  return index >= 0 ? blocks.slice(index + 1) : [];
+}
+
+/**
+ * Proof-packet rollup (redesign P5 header). Counts blocks by source_kind into
+ * the human buckets the drawer surfaces as pills — recorded (collectable),
+ * computed (derived), simulated, and "not yet collected" (future). Every count
+ * is a REAL block count; `recorded + computed + simulated + notCollected +
+ * unknown === total` holds by construction, so the pills can never over- or
+ * under-state what the packet actually contains.
+ */
+export type ProofRollup = {
+  recorded: number;
+  computed: number;
+  simulated: number;
+  notCollected: number;
+  unknown: number;
+  total: number;
+};
+
+export function proofRollup(blocks: ReadonlyArray<{ source_kind: SourceKind }>): ProofRollup {
+  const rollup: ProofRollup = {
+    recorded: 0,
+    computed: 0,
+    simulated: 0,
+    notCollected: 0,
+    unknown: 0,
+    total: blocks.length,
+  };
+  for (const block of blocks) {
+    switch (block.source_kind) {
+      case "collectable_v1":
+        rollup.recorded += 1;
+        break;
+      case "derived_v1":
+        rollup.computed += 1;
+        break;
+      case "simulated_v1":
+        rollup.simulated += 1;
+        break;
+      case "future":
+        rollup.notCollected += 1;
+        break;
+      default:
+        // Any out-of-enum/unknown source_kind is counted honestly, never
+        // silently dropped (mirrors evidenceMix's unknown bucket).
+        rollup.unknown += 1;
+    }
+  }
+  return rollup;
+}
+
 export function payloadRecord(payload: unknown): Record<string, unknown> | null {
   if (payload === null || typeof payload !== "object" || Array.isArray(payload)) return null;
   return payload as Record<string, unknown>;

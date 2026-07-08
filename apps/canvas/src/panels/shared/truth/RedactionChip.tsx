@@ -37,10 +37,14 @@ export function RedactionChip({
   }
 
   if (meta.tone === "redacted") {
+    // With a real redacted value (e.g. `[REDACTED:abs_path]/bazel-test.log`)
+    // keep it in a mono lock chip — withheld ≠ missing, the slot stays. With
+    // none, render an honest "redacted" label so the lock reads as
+    // intentionally-withheld, NEVER a bare "[REDACTED]" (DESIGN-SYSTEM.md §3).
     return (
       <span className="redaction redaction--redacted" data-redaction-state={state} title={tooltip}>
         <Lock size={12} aria-hidden="true" />
-        <code>{value ?? "[REDACTED]"}</code>
+        {value ? <code>{value}</code> : <span className="redaction-word">redacted</span>}
       </span>
     );
   }

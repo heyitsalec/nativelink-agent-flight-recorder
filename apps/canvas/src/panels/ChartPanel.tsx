@@ -3,14 +3,12 @@ import { select, zoom, zoomIdentity, type ZoomTransform } from "d3";
 import {
   Bot,
   Box,
-  Braces,
   ChevronDown,
   ChevronRight,
   Columns2,
   Database,
   FileCheck2,
   FileText,
-  Focus,
   GitCommitVertical,
   Globe,
   LayoutGrid,
@@ -20,8 +18,6 @@ import {
   Route,
   Rows3,
   Server,
-  ShieldCheck,
-  Sparkles,
   Target,
   Terminal,
   TriangleAlert,
@@ -426,8 +422,15 @@ export function ActionGraphCanvasPanel(instance: ComponentInstance) {
       ? `${totals.total} total · ${totals.cards} cards · ${totals.clustered} in ${totals.clusters} cluster${totals.clusters === 1 ? "" : "s"}`
       : `${totals.total} nodes / ${totals.cards} shown`;
 
+  // When the proof drawer is open the graph is background context — dim it to
+  // ~38% (DESIGN-SYSTEM.md §4) so the flagship packet reads as the foreground.
+  const proofDimmed = route.mode === "proof";
+
   return (
-    <section className="canvas-stage" aria-label="NativeLink evidence canvas">
+    <section
+      className={`canvas-stage${proofDimmed ? " canvas-stage--proof-dim" : ""}`}
+      aria-label="NativeLink evidence canvas"
+    >
       <svg
         ref={svgRef}
         className={`graph-canvas${lod ? " lod-compact" : ""}`}
@@ -608,7 +611,7 @@ function GraphCard({
             <span className="gcard-meta">
               <SourceGlyph kind={node.source_kind} size={8} />
               <ConfidenceMeter confidence={node.confidence} size="sm" />
-              <span className="gcard-kindline">{card.metaLine}</span>
+              <span className="gcard-kindline" title={card.metaLine || undefined}>{card.metaLine}</span>
               {card.statusDisplay !== null && (
                 <StatusGlyph status={card.statusDisplay} showLabel={false} />
               )}
@@ -722,41 +725,17 @@ export function TruthLegendPanel(instance: ComponentInstance) {
   return <TruthLegend items={items.length ? items : undefined} />;
 }
 
-export function ProofConstellationPanel(instance: ComponentInstance) {
-  const { bindings } = useViewContext();
-  const packet = bindings.proofPacket;
-  const scopeBlockId = stringProp(instance.props, "scope_block_id", "scope");
-  const collectable = packet.blocks.filter((block) => block.source_kind === "collectable_v1").length;
-  const derived = packet.blocks.filter((block) => block.source_kind === "derived_v1").length;
-  const simulated = packet.blocks.filter((block) => block.source_kind === "simulated_v1").length;
-  const future = packet.blocks.filter((block) => block.source_kind === "future").length;
-  const scope = packet.blocks.find((block) => block.id === scopeBlockId);
-
-  return (
-    <div className="proof-constellation-overlay">
-      <div className="proof-panel">
-        <div className="proof-title">
-          <ShieldCheck size={17} />
-          <span>Proof Lens</span>
-        </div>
-        <p>{scope?.summary ?? "Claims stay bounded to recorded evidence."}</p>
-        <div className="proof-metrics">
-          <span>
-            <Braces size={14} /> {collectable} collectable
-          </span>
-          <span>
-            <Sparkles size={14} /> {derived} derived
-          </span>
-          <span>
-            <Bot size={14} /> {simulated} simulated
-          </span>
-          <span>
-            <Focus size={14} /> {future} future
-          </span>
-        </div>
-      </div>
-    </div>
-  );
+/**
+ * Proof-lens overlay over the graph. In the P5 redesign the source-kind rollup
+ * it used to carry now lives — richer and scannable — in the proof drawer
+ * header (ProofDrawerPanel Zone A), and the graph behind the drawer is dimmed
+ * rather than covered by a second card. So this overlay intentionally renders
+ * nothing; the instance is kept in the view spec (its data-testid resolves) to
+ * avoid a shell/spec change (P3 owns regions), and the proof lens identity is
+ * carried by the active rail button + the drawer itself.
+ */
+export function ProofConstellationPanel(_instance: ComponentInstance) {
+  return null;
 }
 
 export function ValidationRunwayPanel(_instance: ComponentInstance) {
