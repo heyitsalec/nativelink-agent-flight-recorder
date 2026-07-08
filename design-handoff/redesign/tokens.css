@@ -1,0 +1,148 @@
+/* NLFR Canvas — design tokens (reference implementation for the redesign)
+   Light on :root; dark re-maps the same properties under [data-theme="dark"].
+   Also honor prefers-color-scheme when no explicit data-theme is set. */
+
+:root {
+  color-scheme: light dark;
+
+  /* ── Truth hues (semantic anchors — never repurpose) ── */
+  --truth-collectable: #0c7a68;
+  --truth-collectable-tint: rgba(12, 122, 104, 0.10);
+  --truth-derived: #a8660f;
+  --truth-derived-tint: rgba(168, 102, 15, 0.10);
+  --truth-simulated: #505aad;
+  --truth-simulated-tint: rgba(80, 90, 173, 0.10);
+  --truth-future: #64747f;
+  --truth-future-tint: rgba(100, 116, 127, 0.10);
+  --failure: #b23c33;
+  --failure-tint: rgba(178, 60, 51, 0.06);
+  --failure-border: rgba(178, 60, 51, 0.35);
+  --fallback-bg: #fbf3e4;
+  --fallback-border: #e3c98f;
+  --fallback-text: #7a4c10;
+
+  /* ── Neutral ramp ── */
+  --n0: #fbfcfc;
+  --n1: #f4f6f7;
+  --n2: #e9edee;
+  --n3: #d8dfe1;
+  --n4: #b9c4c7;
+  --n5: #8fa0a4;
+  --n6: #5f7378;
+  --n7: #3f545a;
+  --n8: #23363c;
+  --n9: #122026;
+
+  /* ── Semantic aliases ── */
+  --bg-app: #eef2f3;
+  --bg-dotgrid: rgba(13, 32, 38, 0.055);
+  --ink: #15262c;
+  --text-body: #33474d;
+  --text-muted: #5f7378;
+  --text-faint: #8fa0a4;
+  --text-faintest: #b9c4c7;
+  --hairline: #e9edee;
+  --border-control: #d8dfe1;
+  --row-bg: #f9fafb;
+  --hover-wash: rgba(13, 32, 38, 0.05);
+  --meter-filled: #3f545a;
+  --meter-empty: #d8dfe1;
+  --redaction-hatch: repeating-linear-gradient(45deg, rgba(63, 84, 90, 0.08) 0 4px, transparent 4px 8px);
+  --banner-text: #0b5a4e;
+
+  /* ── Elevation (one frosted-glass recipe, three levels) ── */
+  --elev1-bg: #ffffff;
+  --elev1-border: 1px solid rgba(13, 32, 38, 0.10);
+  --elev2-bg: rgba(255, 255, 255, 0.85);
+  --elev2-blur: blur(14px);
+  --elev2-shadow: 0 10px 30px rgba(13, 32, 38, 0.12);
+  --elev3-bg: rgba(255, 255, 255, 0.90);
+  --elev3-blur: blur(20px);
+  --elev3-border: 1px solid rgba(13, 32, 38, 0.12);
+  --elev3-shadow: 0 24px 60px rgba(13, 32, 38, 0.20);
+
+  /* ── Space (4px base) ── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  /* ── Radius ── */
+  --radius-control: 6px;
+  --radius-chip: 10px;
+  --radius-card: 14px;
+  --radius-drawer: 16px;
+  --radius-panel: 20px;
+  --radius-pill: 999px;
+
+  /* ── Focus ── */
+  --focus-ring: 0 0 0 2px var(--truth-collectable), 0 0 0 5px rgba(12, 122, 104, 0.25);
+
+  /* ── Type (floor 11px; weights 400/500/600/700 only) ── */
+  --font-ui: -apple-system, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
+  --text-display: 650 26px/32px var(--font-ui);
+  --text-title: 600 19px/26px var(--font-ui);
+  --text-heading: 600 14px/20px var(--font-ui);
+  --text-body-style: 400 13px/19px var(--font-ui);
+  --text-secondary: 400 12.5px/18px var(--font-ui);
+  --text-caption: 500 11px/14px var(--font-ui);
+  --text-overline: 600 11px/14px var(--font-ui); /* + letter-spacing: 0.08em; text-transform: uppercase */
+  --text-mono-style: 450 12px/17px var(--font-mono);
+}
+
+[data-theme="dark"] {
+  --truth-collectable: #3ecfb4;
+  --truth-collectable-tint: rgba(62, 207, 180, 0.12);
+  --truth-derived: #e2a55b;
+  --truth-derived-tint: rgba(226, 165, 91, 0.12);
+  --truth-simulated: #9aa5ef;
+  --truth-simulated-tint: rgba(154, 165, 239, 0.12);
+  --truth-future: #8fa2ad;
+  --truth-future-tint: rgba(143, 162, 173, 0.10);
+  --failure: #f08a82;
+  --failure-tint: rgba(240, 138, 130, 0.07);
+  --failure-border: rgba(240, 138, 130, 0.35);
+  --fallback-bg: rgba(226, 165, 91, 0.12);
+  --fallback-border: rgba(226, 165, 91, 0.4);
+  --fallback-text: #e2a55b;
+
+  /* Neutral ramp re-mapped: n0 = deepest surface … n9 = brightest ink */
+  --n0: #0b1315;
+  --n1: #121d20;
+  --n2: #1a282c;
+  --n3: #24343a;
+  --n4: #3a4c52;
+  --n5: #5c7075;
+  --n6: #82999e;
+  --n7: #a8bcbf;
+  --n8: #ccdadb;
+  --n9: #eaf2f2;
+
+  --bg-app: #0b1315;
+  --bg-dotgrid: rgba(234, 242, 242, 0.05);
+  --ink: #eaf2f2;
+  --text-body: #a8bcbf;
+  --text-muted: #82999e;
+  --text-faint: #5c7075;
+  --text-faintest: #3a4c52;
+  --hairline: #24343a;
+  --border-control: #24343a;
+  --row-bg: #1a282c;
+  --hover-wash: rgba(234, 242, 242, 0.06);
+  --meter-filled: #a8bcbf;
+  --meter-empty: #24343a;
+  --redaction-hatch: repeating-linear-gradient(45deg, rgba(204, 218, 219, 0.10) 0 4px, transparent 4px 8px);
+  --banner-text: #7fd8c6;
+
+  --elev1-bg: #121d20;
+  --elev1-border: 1px solid rgba(234, 242, 242, 0.10);
+  --elev2-bg: rgba(18, 29, 32, 0.85);
+  --elev2-shadow: 0 10px 30px rgba(0, 0, 0, 0.40);
+  --elev3-bg: rgba(18, 29, 32, 0.92);
+  --elev3-border: 1px solid rgba(234, 242, 242, 0.12);
+  --elev3-shadow: 0 24px 60px rgba(0, 0, 0, 0.50);
+}
