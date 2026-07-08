@@ -869,3 +869,28 @@ export function redactedPayloadFields(payload: unknown): RedactedPayloadField[] 
   }
   return fields;
 }
+
+/**
+ * Mobile bottom-sheet one-line summary (redesign P8, board 1m). A pure, honest
+ * projection of the SAME recorded counts the desktop run-strip shows — e.g.
+ * "7 runs · 70 nodes · 0 failures · remote execution not observed". Numbers
+ * come straight from the recorded projection summary (never fabricated); the
+ * mobile graph never silently hides nodes, so this readout stays truthful.
+ * `remoteObserved` is the caller's metric-derived remote-boundary flag (from
+ * remoteLensModel — recorded remote invocations only, never prose-parsed).
+ */
+export function mobileSummary(
+  summary: Record<string, unknown>,
+  nodeCount: number,
+  remoteObserved: boolean,
+): string {
+  const runs = Number(summary.runs ?? 0);
+  const nodes = Number(summary.nodes ?? nodeCount);
+  const failures = Number(summary.failures ?? 0);
+  const runsLabel = runs === 1 ? "run" : "runs";
+  const failuresLabel = failures === 1 ? "failure" : "failures";
+  const remote = remoteObserved
+    ? "remote execution observed"
+    : "remote execution not observed";
+  return `${runs} ${runsLabel} · ${nodes} nodes · ${failures} ${failuresLabel} · ${remote}`;
+}

@@ -233,25 +233,41 @@ export function ModeRailPanel(instance: ComponentInstance) {
     else ctrl.reset();
   };
 
+  // The zoom controls and the lens switcher are wrapped in two groups. On
+  // desktop the groups are `display:contents`, so they vanish from layout and
+  // the buttons flow directly in the vertical tool rail exactly as before (no
+  // desktop regression). On mobile (board 1m, @media) the tool rail becomes
+  // `display:contents` and the two groups reposition independently: the lens
+  // group becomes a horizontal chip row under the header, the zoom group floats
+  // top-right. Each lens chip carries a label span shown only on mobile.
   return (
     <nav className="tool-rail" aria-label="canvas tools">
-      <IconButton label="Zoom in" icon={<ZoomIn size={18} />} onClick={() => applyZoom("in")} />
-      <IconButton label="Zoom out" icon={<ZoomOut size={18} />} onClick={() => applyZoom("out")} />
-      <IconButton label="Reset view" icon={<Maximize2 size={18} />} onClick={() => applyZoom("reset")} />
+      <div className="tool-rail-zoom">
+        <IconButton label="Zoom in" icon={<ZoomIn size={18} />} onClick={() => applyZoom("in")} />
+        <IconButton label="Zoom out" icon={<ZoomOut size={18} />} onClick={() => applyZoom("out")} />
+        <IconButton label="Reset view" icon={<Maximize2 size={18} />} onClick={() => applyZoom("reset")} />
+      </div>
       <span className="rail-break" />
-      {modes.map((mode) => (
-        <IconButton
-          key={mode.mode_id}
-          label={mode.label}
-          active={route.mode === mode.mode_id}
-          icon={MODE_ICONS[mode.mode_id]}
-          onClick={() => {
-            routeActions.setMode(mode.mode_id);
-            if (mode.mode_id === "remote") routeActions.setFocus("remote");
-            if (mode.mode_id === "compare") routeActions.setFocus("derived");
-          }}
-        />
-      ))}
+      <div className="tool-rail-lenses" data-testid="lens-chip-row">
+        {modes.map((mode) => (
+          <IconButton
+            key={mode.mode_id}
+            label={mode.label}
+            active={route.mode === mode.mode_id}
+            icon={
+              <>
+                {MODE_ICONS[mode.mode_id]}
+                <span className="rail-lens-label">{mode.label}</span>
+              </>
+            }
+            onClick={() => {
+              routeActions.setMode(mode.mode_id);
+              if (mode.mode_id === "remote") routeActions.setFocus("remote");
+              if (mode.mode_id === "compare") routeActions.setFocus("derived");
+            }}
+          />
+        ))}
+      </div>
     </nav>
   );
 }
@@ -284,21 +300,40 @@ const MAX_FIT_SCALE = 1.0;
 const SCENE_FIT_MARGIN = 34;
 /** Below this zoom, card meta rows hide and labels condense (LOD). */
 const LOD_ZOOM_THRESHOLD = 0.6;
+/** At/under this svg width the graph uses the mobile fit path (board 1m, P8).
+ *  Matches the shell's responsive breakpoint so the two agree. */
+const MOBILE_FIT_BREAKPOINT_PX = 720;
+/** On mobile, fitting the whole tall 7-run scene collapses the graph to ~26%
+ *  — below the LOD floor, so nodes are illegible and well under a 44px touch
+ *  target. Instead the mobile default anchors the scene top-left at a legible,
+ *  near-desktop scale and lets the operator PAN. Nothing is hidden: the honest
+ *  count readout still names the full total, and the operator can still zoom
+ *  OUT to the whole-scene overview (the scale-extent floor stays the true fit).
+ *  0.9 keeps the 54px card ≈ 49px tall on screen (≥44px). */
+const MOBILE_LEGIBLE_SCALE = 0.9;
+const MOBILE_TOP_PAD_PX = 20;
 
 type SceneBounds = { minX: number; minY: number; maxX: number; maxY: number };
 
-function fitTransform(svg: SVGSVGElement, bounds: SceneBounds | null): ZoomTransform {
+function paddedBounds(bounds: SceneBounds): SceneBounds {
+  return {
+    minX: bounds.minX - SCENE_FIT_MARGIN,
+    minY: bounds.minY - SCENE_FIT_MARGIN,
+    maxX: bounds.maxX + SCENE_FIT_MARGIN,
+    maxY: bounds.maxY + SCENE_FIT_MARGIN,
+  };
+}
+
+/** The true fit-everything scale (0.2..MAX). Used for the zoom scale-extent
+ *  FLOOR so the operator can always zoom out to the whole-scene overview — even
+ *  on mobile, where the initial transform sits at the legible scale instead. */
+function overviewFitScale(svg: SVGSVGElement, bounds: SceneBounds | null): number {
   const box = svg.getBoundingClientRect();
-  if (!bounds || box.width <= 0 || box.height <= 0) {
-    return centerTransform(svg);
-  }
-  const minX = bounds.minX - SCENE_FIT_MARGIN;
-  const minY = bounds.minY - SCENE_FIT_MARGIN;
-  const maxX = bounds.maxX + SCENE_FIT_MARGIN;
-  const maxY = bounds.maxY + SCENE_FIT_MARGIN;
-  const spanX = Math.max(maxX - minX, 1);
-  const spanY = Math.max(maxY - minY, 1);
-  const scale = Math.max(
+  if (!bounds || box.width <= 0 || box.height <= 0) return centerTransform(svg).k;
+  const b = paddedBounds(bounds);
+  const spanX = Math.max(b.maxX - b.minX, 1);
+  const spanY = Math.max(b.maxY - b.minY, 1);
+  return Math.max(
     0.2,
     Math.min(
       MAX_FIT_SCALE,
@@ -306,8 +341,26 @@ function fitTransform(svg: SVGSVGElement, bounds: SceneBounds | null): ZoomTrans
       (box.height - FIT_PADDING_PX * 2) / spanY,
     ),
   );
-  const centerX = (minX + maxX) / 2;
-  const centerY = (minY + maxY) / 2;
+}
+
+function fitTransform(svg: SVGSVGElement, bounds: SceneBounds | null): ZoomTransform {
+  const box = svg.getBoundingClientRect();
+  if (!bounds || box.width <= 0 || box.height <= 0) {
+    return centerTransform(svg);
+  }
+  const b = paddedBounds(bounds);
+  const overview = overviewFitScale(svg, bounds);
+  if (box.width < MOBILE_FIT_BREAKPOINT_PX) {
+    // Mobile (board 1m): legible near-desktop scale, anchored top-left so the
+    // change→run→invocation→artifact flow reads left-to-right; pannable.
+    const scale = Math.min(MAX_FIT_SCALE, Math.max(MOBILE_LEGIBLE_SCALE, overview));
+    return zoomIdentity
+      .translate(FIT_PADDING_PX - b.minX * scale, MOBILE_TOP_PAD_PX - b.minY * scale)
+      .scale(scale);
+  }
+  const scale = overview;
+  const centerX = (b.minX + b.maxX) / 2;
+  const centerY = (b.minY + b.maxY) / 2;
   return zoomIdentity
     .translate(box.width / 2 - centerX * scale, box.height / 2 - centerY * scale)
     .scale(scale);
@@ -397,8 +450,9 @@ export function ActionGraphCanvasPanel(instance: ComponentInstance) {
   useEffect(() => {
     if (!svgRef.current) return;
     const fit = fitTransform(svgRef.current, boundsRef.current);
+    const overview = overviewFitScale(svgRef.current, boundsRef.current);
     const behavior = zoom<SVGSVGElement, unknown>()
-      .scaleExtent([Math.min(minScale, fit.k), maxScale])
+      .scaleExtent([Math.min(minScale, overview, fit.k), maxScale])
       .on("zoom", (event) => {
         setTransform(event.transform);
         if (event.sourceEvent) setViewMode("zoom");
@@ -424,7 +478,8 @@ export function ActionGraphCanvasPanel(instance: ComponentInstance) {
       reset: () => {
         if (!svgRef.current || !behaviorRef.current) return;
         const fit = fitTransform(svgRef.current, boundsRef.current);
-        behaviorRef.current.scaleExtent([Math.min(minScale, fit.k), maxScale]);
+        const overview = overviewFitScale(svgRef.current, boundsRef.current);
+        behaviorRef.current.scaleExtent([Math.min(minScale, overview, fit.k), maxScale]);
         setViewMode("fit");
         select(svgRef.current)
           .transition()
