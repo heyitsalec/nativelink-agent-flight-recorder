@@ -64,6 +64,20 @@ const MODE_ICONS: Record<ViewModeId, React.ReactNode> = {
   compare: <Columns2 size={18} />,
 };
 
+/** Short VISIBLE chip labels for the mobile lens chip row (board 1m) so all
+ *  five chips fit 390w without horizontal scroll. Only the visible `.rail-lens-label`
+ *  text shortens — the IconButton `label` (aria-label + title, and the desktop
+ *  vertical-rail affordance) keeps the full mode.label, so truth-guard and the
+ *  capture scripts (which key off the accessible name) are unaffected. The span
+ *  is display:none on desktop, so rendering the short text there is inert. */
+const SHORT_LENS_LABELS: Record<ViewModeId, string> = {
+  graph: "Graph",
+  runway: "Runway",
+  proof: "Proof",
+  remote: "Remote",
+  compare: "Compare",
+};
+
 /** Honest name for a mix segment: the "unknown" bucket also absorbs any
  *  out-of-enum source_kind (see evidenceMix), so name it explicitly. */
 function segmentLabel(kind: string): string {
@@ -257,7 +271,9 @@ export function ModeRailPanel(instance: ComponentInstance) {
             icon={
               <>
                 {MODE_ICONS[mode.mode_id]}
-                <span className="rail-lens-label">{mode.label}</span>
+                <span className="rail-lens-label">
+                  {SHORT_LENS_LABELS[mode.mode_id] ?? mode.label}
+                </span>
               </>
             }
             onClick={() => {
@@ -324,6 +340,28 @@ function paddedBounds(bounds: SceneBounds): SceneBounds {
   };
 }
 
+/** Bounding box of the RENDERED node cards (not clusters). This is the
+ *  "populated" region — the agent/run/invocation/artifact cards the operator
+ *  should land on. The full scene bounds also span the sparse, collapsed hub
+ *  clusters (e.g. the change column) far to the left, so anchoring the mobile
+ *  fit on the scene min-corner parks the viewport on an empty hub with the real
+ *  cards off-screen right (the V4 "reads empty" bug). Returns null when nothing
+ *  is rendered as an individual card (fit then falls back to the scene bounds). */
+function cardBounds(cards: readonly GraphSceneCard[]): SceneBounds | null {
+  if (cards.length === 0) return null;
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const card of cards) {
+    minX = Math.min(minX, card.x);
+    minY = Math.min(minY, card.y);
+    maxX = Math.max(maxX, card.x + card.w);
+    maxY = Math.max(maxY, card.y + card.h);
+  }
+  return { minX, minY, maxX, maxY };
+}
+
 /** The true fit-everything scale (0.2..MAX). Used for the zoom scale-extent
  *  FLOOR so the operator can always zoom out to the whole-scene overview — even
  *  on mobile, where the initial transform sits at the legible scale instead. */
@@ -343,7 +381,11 @@ function overviewFitScale(svg: SVGSVGElement, bounds: SceneBounds | null): numbe
   );
 }
 
-function fitTransform(svg: SVGSVGElement, bounds: SceneBounds | null): ZoomTransform {
+function fitTransform(
+  svg: SVGSVGElement,
+  bounds: SceneBounds | null,
+  contentBounds: SceneBounds | null = null,
+): ZoomTransform {
   const box = svg.getBoundingClientRect();
   if (!bounds || box.width <= 0 || box.height <= 0) {
     return centerTransform(svg);
@@ -351,11 +393,20 @@ function fitTransform(svg: SVGSVGElement, bounds: SceneBounds | null): ZoomTrans
   const b = paddedBounds(bounds);
   const overview = overviewFitScale(svg, bounds);
   if (box.width < MOBILE_FIT_BREAKPOINT_PX) {
-    // Mobile (board 1m): legible near-desktop scale, anchored top-left so the
-    // change→run→invocation→artifact flow reads left-to-right; pannable.
+    // Mobile (board 1m): legible near-desktop scale. The scene is far wider than
+    // 390w at this scale, so anchor on the POPULATED card region (not the scene
+    // min-corner, which is the sparse hub column) and center it horizontally so
+    // the default view lands on real cards; anchor its top just under the chip
+    // row. The operator pans to reach the rest and can still zoom out to the
+    // whole-scene overview (the scale-extent floor stays the true fit). V4 fix.
     const scale = Math.min(MAX_FIT_SCALE, Math.max(MOBILE_LEGIBLE_SCALE, overview));
+    const region =
+      contentBounds && contentBounds.maxX > contentBounds.minX
+        ? paddedBounds(contentBounds)
+        : b;
+    const centerX = (region.minX + region.maxX) / 2;
     return zoomIdentity
-      .translate(FIT_PADDING_PX - b.minX * scale, MOBILE_TOP_PAD_PX - b.minY * scale)
+      .translate(box.width / 2 - centerX * scale, MOBILE_TOP_PAD_PX - region.minY * scale)
       .scale(scale);
   }
   const scale = overview;
@@ -447,9 +498,16 @@ export function ActionGraphCanvasPanel(instance: ComponentInstance) {
     boundsRef.current = scene.bounds;
   }, [scene.bounds]);
 
+  // Populated-card bbox for the mobile fit anchor (V4). Kept in a ref alongside
+  // boundsRef so the zoom-init/reset effects read the latest without re-running.
+  const contentBoundsRef = useRef<SceneBounds | null>(cardBounds(scene.cards));
+  useEffect(() => {
+    contentBoundsRef.current = cardBounds(scene.cards);
+  }, [scene.cards]);
+
   useEffect(() => {
     if (!svgRef.current) return;
-    const fit = fitTransform(svgRef.current, boundsRef.current);
+    const fit = fitTransform(svgRef.current, boundsRef.current, contentBoundsRef.current);
     const overview = overviewFitScale(svgRef.current, boundsRef.current);
     const behavior = zoom<SVGSVGElement, unknown>()
       .scaleExtent([Math.min(minScale, overview, fit.k), maxScale])
@@ -477,7 +535,7 @@ export function ActionGraphCanvasPanel(instance: ComponentInstance) {
       },
       reset: () => {
         if (!svgRef.current || !behaviorRef.current) return;
-        const fit = fitTransform(svgRef.current, boundsRef.current);
+        const fit = fitTransform(svgRef.current, boundsRef.current, contentBoundsRef.current);
         const overview = overviewFitScale(svgRef.current, boundsRef.current);
         behaviorRef.current.scaleExtent([Math.min(minScale, overview, fit.k), maxScale]);
         setViewMode("fit");

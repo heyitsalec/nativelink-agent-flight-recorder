@@ -89,7 +89,11 @@ export function GridShell({ spec, visibility, renderComponent }: GridShellProps)
       {/* Rail lenses float over the full-width graph (P6). On desktop this is a
           fixed, pointer-events-none overlay layer; each lens' grid-slot wrapper
           positions itself (right drawer / centered panel) and re-enables pointer
-          events. On mobile the rail collapses into the bottom sheet (P8). */}
+          events. On mobile (collapsed) the rail is the SAME pass-through overlay
+          layer — each lens' wrapper is repositioned by the @media(max-width:720)
+          rules into a fixed panel that clears the chip row and the bottom sheet
+          (P8 S1 fix). It is no longer a bottom-anchored 45vh box, which used to
+          cram the lens into a short scroll region the mobile sheet then covered. */}
       {railComponents.length > 0 &&
         (collapsed ? (
           <aside
@@ -99,12 +103,12 @@ export function GridShell({ spec, visibility, renderComponent }: GridShellProps)
             aria-label="rail"
             style={{
               position: "fixed",
+              top: 0,
               left: 0,
               right: 0,
-              bottom: 72,
+              bottom: 0,
               zIndex: 6,
-              maxHeight: "45vh",
-              overflow: "auto",
+              pointerEvents: "none",
             }}
           >
             {railComponents.map(renderSlot)}

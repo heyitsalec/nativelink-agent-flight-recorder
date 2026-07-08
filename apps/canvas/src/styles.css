@@ -1360,11 +1360,16 @@ select:focus-visible {
   gap: 3px;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 720px) {
   /* Only the FLOATING graph legend hides on mobile — it relocates into the P8
      mobile bottom sheet (which renders its own <TruthLegend/>), so the legend
      stays reachable on mobile per board 1m (do NOT hide it outright). Scope to
-     the primary region so the sheet's legend copy is unaffected. */
+     the primary region so the sheet's legend copy is unaffected.
+     Breakpoint is 720 (NOT 760) so it hides EXACTLY where the mobile sheet that
+     re-hosts the legend appears — at 721-760 the floating legend stayed on the
+     graph and the sheet was absent, so a 760 hide left the legend unreachable
+     in that band (M-breakpoint fix). 720 is the single mobile-IA breakpoint
+     (shell collapse, chip row, sheet, graph fit all key off 720). */
   .grid-region-primary .truth-legend {
     display: none;
   }
@@ -4609,7 +4614,7 @@ select:focus-visible {
     top: 88px;
     left: 0;
     right: 0;
-    gap: 8px;
+    gap: 6px;
     align-items: center;
     padding: 0 12px 4px;
     overflow-x: auto;
@@ -4618,26 +4623,34 @@ select:focus-visible {
   .tool-rail-lenses::-webkit-scrollbar {
     display: none;
   }
-  /* Each chip: icon + label, ≥44px touch band, active = solid ink pill. */
+  /* Board 1m chip row: all five chips fit 390w without scroll because only the
+     ACTIVE chip carries its icon (a solid ink pill); the inactive chips are
+     label-only outline pills. Full mode.label stays on aria-label/title, so the
+     accessible name and the capture/truth-guard selectors are unchanged. */
   .tool-rail-lenses .icon-button {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
     width: auto;
-    height: 40px;
-    padding: 0 13px;
+    height: 36px;
+    padding: 0 10px;
     flex: 0 0 auto;
     border: 1px solid var(--border-control);
     border-radius: 999px;
     background: var(--elev2-bg);
     color: var(--text-body);
-    font-size: 12.5px;
-    font-weight: 600;
+    font-size: 11.5px;
+    font-weight: 500;
   }
   .tool-rail-lenses .icon-button.active {
     background: var(--n9);
     border-color: var(--n9);
     color: var(--n0);
+    font-weight: 600;
+  }
+  /* Icon only on the active chip — this is what lets all five fit at 390w. */
+  .tool-rail-lenses .icon-button:not(.active) svg {
+    display: none;
   }
   .rail-lens-label {
     display: inline;
@@ -4673,26 +4686,68 @@ select:focus-visible {
   }
   .graph-count-readout {
     right: 10px;
-    bottom: 108px;
+    /* Clear the collapsed bottom sheet (~117px tall). 108 sat ~9px under it
+       (m-readout fix); 126 leaves a small gap above the sheet's top edge. */
+    bottom: 126px;
   }
 
-  /* --- Lens overlays clear the header + chip row (top) and the sheet (bottom) --- */
-  .inspector,
-  .proof-drawer,
-  .remote-lens,
-  .compare-lens {
+  /* --- Lens overlays clear the header + chip row (top) and the sheet (bottom).
+     Proof drawer self-positions (position:absolute); on mobile its containing
+     block is the full-viewport pass-through rail overlay, so top/bottom are
+     viewport coords. Inspector/Remote/Compare are NOT positioned themselves —
+     they fill their .grid-slot-* wrapper — so their geometry lives on the
+     wrapper rule below (S1 fix). --- */
+  .proof-drawer {
     top: 176px;
     left: 10px;
     right: 10px;
-    bottom: 116px;
+    bottom: 126px;
     width: auto;
     max-height: none;
   }
+
+  /* S1: on mobile the rail is a pass-through overlay (GridShell) — the lens
+     wrappers get no desktop geometry, which previously left the lens crammed
+     inside the old bottom-sheet box (bottom:72, max-height:45vh) whose visible
+     bottom the mobile sheet covered by ~45px (dead + click-dead). Position each
+     lens' WRAPPER as a fixed panel that clears the chip row (top) and the mobile
+     sheet (bottom); the lens content (flex:1; width:100%) then fills it and
+     scrolls internally. :not(:empty) keeps a null inspector (default graph view,
+     no selection) from laying a dead overlay over the graph. */
+  .grid-rail-bottom-sheet > .grid-slot-evidence_inspector:not(:empty),
+  .grid-rail-bottom-sheet > .grid-slot-remote_boundary_lens:not(:empty),
+  .grid-rail-bottom-sheet > .grid-slot-compare_lens:not(:empty) {
+    position: fixed;
+    top: 176px;
+    left: 10px;
+    right: 10px;
+    bottom: 126px;
+    display: flex;
+    pointer-events: auto;
+  }
+
+  /* The pass-through overlay disables pointer events for descendants; re-enable
+     them on the self-positioning proof panels (mirrors the desktop
+     .grid-region-rail .proof-drawer rule). */
+  .grid-rail-bottom-sheet .proof-drawer,
+  .grid-rail-bottom-sheet .proof-card {
+    pointer-events: auto;
+  }
+
+  /* The floating zoom cluster is redundant while a lens/runway overlay covers
+     the graph, and its top-right stack would otherwise sit over the lens close
+     button (z:7 over the lens z:6). Hide it whenever an overlay is up; it
+     returns in the plain graph view where panning/zooming is what's wanted. */
+  .app-shell:has(.grid-rail-bottom-sheet) .tool-rail-zoom,
+  .app-shell:has(.runway-panel) .tool-rail-zoom {
+    display: none;
+  }
+
   .grid-region-primary .runway-panel {
     top: 176px;
     left: 10px;
     right: 10px;
-    bottom: 116px;
+    bottom: 126px;
   }
 
   /* --- Hide the desktop operator bar; the bottom sheet's "Commands" pill owns
