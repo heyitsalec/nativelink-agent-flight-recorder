@@ -5,6 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>NativeLink Agent Flight Recorder</title>
+    <script>
+      // Flash-of-wrong-theme guard: stamp an explicit stored choice onto
+      // <html> BEFORE first paint so a stored theme that differs from the OS
+      // preference never renders one frame in the wrong theme. When there is
+      // no stored choice we intentionally leave data-theme unset — the
+      // prefers-color-scheme CSS fallback paints correctly and initTheme()
+      // (main.tsx) then adopts it idempotently and keeps following the OS.
+      (function () {
+        try {
+          var t = localStorage.getItem("nlfr.theme");
+          if (t === "light" || t === "dark") {
+            document.documentElement.dataset.theme = t;
+          }
+        } catch (e) {
+          /* storage unavailable — fall through to the CSS media fallback */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

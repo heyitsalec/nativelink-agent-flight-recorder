@@ -50,6 +50,10 @@
   --text-body: #33474d;
   --text-muted: #5f7378;
   --text-faint: #8fa0a4;
+  /* Accessible "faint": for small secondary text that must still reach ~AA
+     (legend hint, operator placeholder) — darker than --text-faint (which is
+     decorative) while staying visibly secondary. #5f7378 ≈ 4.99:1 on white. */
+  --text-hint: #5f7378;
   --text-faintest: #b9c4c7;
   --hairline: #e9edee;
   --border-control: #d8dfe1;
@@ -167,6 +171,7 @@
   --text-body: #a8bcbf;
   --text-muted: #82999e;
   --text-faint: #5c7075;
+  --text-hint: #93a6ab;
   --text-faintest: #3a4c52;
   --hairline: #24343a;
   --border-control: #24343a;
@@ -230,6 +235,7 @@
     --text-body: #a8bcbf;
     --text-muted: #82999e;
     --text-faint: #5c7075;
+    --text-hint: #93a6ab;
     --text-faintest: #3a4c52;
     --hairline: #24343a;
     --border-control: #24343a;
@@ -651,12 +657,6 @@ select:focus-visible {
   fill: var(--ink);
 }
 
-.node-confidence {
-  font-size: 11px;
-  font-weight: 600;
-  fill: var(--text-muted);
-  text-transform: uppercase;
-}
 
 .graph-overflow-chip-bg {
   fill: var(--elev2-bg);
@@ -747,37 +747,15 @@ select:focus-visible {
   overflow-wrap: anywhere;
 }
 
-.truth-dot {
-  display: block;
-  width: 9px;
-  height: 9px;
-  margin-bottom: 14px;
-  border-radius: var(--radius-pill);
-  background: var(--truth-future);
-}
-
-.truth-dot.collectable_v1 {
-  background: var(--truth-collectable);
-}
-
-.truth-dot.derived_v1 {
-  background: var(--truth-derived);
-}
-
-.truth-dot.simulated_v1 {
-  background: var(--truth-simulated);
-}
-
-.truth-dot.future {
-  background: var(--truth-future);
-}
+/* .truth-dot was retired in P2 — every truth surface now renders the
+   <SourceGlyph> primitive (shape + hue) instead of a colour-only dot. */
 
 .truth-legend {
   position: absolute;
   z-index: 4;
   left: 24px;
   bottom: 92px;
-  width: 232px;
+  width: 264px;
   padding: 12px 14px;
   border: var(--elev1-border);
   background: var(--elev2-bg);
@@ -785,9 +763,14 @@ select:focus-visible {
   box-shadow: var(--elev2-shadow);
 }
 
-.truth-legend-title {
-  display: block;
+.truth-legend-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 10px;
+}
+
+.truth-legend-title {
   font-size: 11px;
   font-weight: 600;
   color: var(--text-muted);
@@ -795,27 +778,43 @@ select:focus-visible {
   letter-spacing: 0.08em;
 }
 
-.truth-legend ul {
+.truth-legend-key {
+  padding: 1px 5px;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-control);
+  background: var(--row-bg);
+  color: var(--text-muted);
+  font: 500 11px/1.4 var(--font-mono);
+}
+
+.truth-legend-sources {
   display: grid;
-  gap: 9px;
+  gap: 2px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.truth-legend li {
+.truth-legend-sources li {
   display: grid;
-  grid-template-columns: 10px minmax(0, 1fr);
-  gap: 4px 8px;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 2px 8px;
   align-items: center;
+  padding: 4px 6px;
+  margin: 0 -6px;
+  border-radius: 8px;
 }
 
-.truth-legend .truth-dot {
-  margin: 0;
+.truth-legend-sources li:hover {
+  background: var(--hover-wash);
+}
+
+.truth-legend .truth-glyph {
+  flex: 0 0 auto;
 }
 
 .truth-legend-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--ink);
 }
@@ -824,7 +823,47 @@ select:focus-visible {
   grid-column: 2;
   font-size: 11px;
   font-weight: 500;
-  color: var(--text-faint);
+  color: var(--text-hint);
+}
+
+.truth-legend-divider {
+  height: 1px;
+  margin: 10px 0;
+  background: var(--hairline);
+}
+
+.truth-legend-encodings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
+.truth-legend-encoding {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.truth-legend-encoding-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* Miniature redaction lock chip in the legend bottom row. */
+.truth-legend-lock {
+  width: 13px;
+  height: 13px;
+  border: 1px solid var(--border-control);
+  border-radius: 3px;
+  background-color: var(--row-bg);
+  background-image: var(--redaction-hatch);
+}
+
+.truth-legend-provenance-trio {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
 }
 
 @media (max-width: 760px) {
@@ -1357,10 +1396,6 @@ select:focus-visible {
   border-bottom: 1px solid var(--hairline);
 }
 
-.remote-state-line .truth-dot {
-  margin: 0;
-}
-
 .remote-state-line strong {
   min-width: 0;
   color: var(--ink);
@@ -1472,10 +1507,6 @@ select:focus-visible {
   gap: 10px;
 }
 
-.proof-block-heading .truth-dot {
-  flex: 0 0 auto;
-  margin: 5px 0 0;
-}
 
 .proof-block-heading h3 {
   margin: 2px 0 0;
@@ -1677,7 +1708,7 @@ select:focus-visible {
 }
 
 .operator input::placeholder {
-  color: var(--text-faint);
+  color: var(--text-hint);
 }
 
 .operator-run {
@@ -2217,10 +2248,6 @@ select:focus-visible {
   gap: 7px;
 }
 
-.provenance-block-heading .truth-dot {
-  margin-bottom: 0;
-}
-
 .provenance-block h4 {
   margin: 8px 0 0;
   font-size: 11px;
@@ -2258,4 +2285,200 @@ select:focus-visible {
 
 .provenance-block-facts code {
   font-size: 11px;
+}
+
+/* ============================================================================
+   Truth-language primitives (redesign P2)
+
+   One unified, grayscale-safe encoding. Source hues come from --truth-*; the
+   confidence meter is neutral (--meter-*) so it never borrows a source hue;
+   red is rationed to recorded failures and unsupported-claims chips.
+   ========================================================================= */
+
+/* Source glyph — shape carries the meaning; hue via currentColor per tone. */
+.truth-glyph {
+  display: inline-block;
+  vertical-align: middle;
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
+.truth--collectable {
+  color: var(--truth-collectable);
+}
+.truth--derived {
+  color: var(--truth-derived);
+}
+.truth--simulated {
+  color: var(--truth-simulated);
+}
+.truth--future {
+  color: var(--truth-future);
+}
+.truth--unknown {
+  color: var(--text-faint);
+}
+
+/* Confidence meter — neutral 3-bar, monochrome-safe. */
+.confidence-meter {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 3px;
+  vertical-align: middle;
+}
+
+.confidence-meter svg {
+  display: block;
+  overflow: visible;
+}
+
+.confidence-bar--filled {
+  fill: var(--meter-filled);
+}
+
+.confidence-bar--empty {
+  fill: var(--meter-empty);
+}
+
+.confidence-unknown {
+  font: 600 11px/1 var(--font-mono);
+  color: var(--text-muted);
+}
+
+/* Confidence meter drawn inside the SVG graph node. */
+.node-confidence-meter .confidence-bar--filled {
+  fill: var(--meter-filled);
+}
+
+.node-confidence-meter .confidence-bar--empty {
+  fill: var(--meter-empty);
+}
+
+.node-confidence-unknown {
+  font: 600 8px/1 var(--font-mono);
+  fill: var(--text-muted);
+}
+
+/* Truth-grid value cells: glyph/meter/chip + optional label, one line. */
+.truth-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.truth-value > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Redaction — treatment on the value itself. */
+.redaction {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.redaction--safe {
+  color: var(--text-muted);
+}
+
+.redaction--safe svg {
+  color: var(--truth-collectable);
+}
+
+.redaction--redacted {
+  padding: 3px 7px;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-control);
+  background-color: var(--row-bg);
+  background-image: var(--redaction-hatch);
+  color: var(--text-body);
+}
+
+.redaction--redacted code {
+  min-width: 0;
+  font: 600 11px/1.3 var(--font-mono);
+  overflow-wrap: anywhere;
+}
+
+.redaction--blocked {
+  padding: 3px 8px;
+  border-radius: var(--radius-control);
+  background: var(--meter-filled);
+  color: var(--n0);
+}
+
+.redaction--blocked svg {
+  color: var(--n0);
+}
+
+.redaction--unknown {
+  padding: 3px 7px;
+  border: 1px dotted var(--border-control);
+  border-radius: var(--radius-control);
+  color: var(--text-muted);
+}
+
+/* Status — glyph, not colour alone; red rationed to real failures. */
+.status-glyph {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-glyph-label {
+  text-transform: capitalize;
+}
+
+.status--pass {
+  color: var(--truth-collectable);
+}
+
+.status--fail {
+  color: var(--failure);
+}
+
+.status--neutral {
+  color: var(--text-muted);
+}
+
+/* Unsupported-claim chip — mono, failure family, slash-circle. */
+.unsupported-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border: 1px solid var(--failure-border);
+  border-radius: var(--radius-pill);
+  background: var(--failure-tint);
+  color: var(--failure);
+  font: 600 11px/1.2 var(--font-mono);
+  white-space: nowrap;
+}
+
+.unsupported-chip svg {
+  flex: 0 0 auto;
+}
+
+/* Provenance badge now leads with a source-family glyph. */
+.provenance-chip .truth-glyph {
+  margin-right: 1px;
+}
+
+/* Heading glyph placement where a corner dot used to sit. */
+.inspector-heading .truth-glyph {
+  display: block;
+  margin-bottom: 10px;
+}
+
+.proof-block-heading .truth-glyph {
+  margin-top: 3px;
 }

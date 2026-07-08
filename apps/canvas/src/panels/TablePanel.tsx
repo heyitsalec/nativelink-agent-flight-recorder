@@ -11,13 +11,28 @@ import {
   provenanceSide,
   truncateHash,
   type AgentReceiptModel,
-  type ProvenanceBadge,
+  type ProvenanceBadge as ProvenanceBadgeModel,
   type ProvenanceBlockSummary,
 } from "../receiptModel";
-import type { CompareProjection, PositionedNode, ProofBlock, ProofMetricValue } from "../types";
+import type {
+  CompareProjection,
+  Confidence,
+  PositionedNode,
+  ProofBlock,
+  ProofMetricValue,
+  SourceKind,
+} from "../types";
 import type { ComponentInstance } from "../view/types";
 import { useViewComponent, useViewContext } from "../view/ViewContext";
 import { stringProp } from "./shared/props";
+import {
+  ConfidenceMeter,
+  ProvenanceBadge,
+  RedactionChip,
+  SourceGlyph,
+  StatusGlyph,
+  UnsupportedClaimChip,
+} from "./shared/truth";
 
 export function EvidenceInspectorPanel(_instance: ComponentInstance) {
   const { graph, route, routeActions } = useViewContext();
@@ -41,17 +56,10 @@ function failureMessage(node: PositionedNode): string | null {
   return node.label.trim() || null;
 }
 
-export function ProvenanceChip({ badge }: { badge: ProvenanceBadge }) {
-  return (
-    <span
-      className={`provenance-chip provenance--${badge.tone}`}
-      data-provenance-class={badge.provenanceClass}
-      title={badge.hint}
-    >
-      {badge.live && <span className="provenance-live-dot" aria-label="live receipt" />}
-      {badge.label}
-    </span>
-  );
+export function ProvenanceChip({ badge }: { badge: ProvenanceBadgeModel }) {
+  // Delegates to the P2 truth primitive so provenance reuses the source-kind
+  // shape families (verified→circle, asserted→diamond, stub→triangle).
+  return <ProvenanceBadge badge={badge} />;
 }
 
 function CopyHash({ label, value }: { label: string; value: string }) {
@@ -137,7 +145,7 @@ function Inspector({ node, onClose }: { node: PositionedNode; onClose: () => voi
         <Maximize2 size={16} />
       </button>
       <div className="inspector-heading">
-        <span className={`truth-dot ${node.source_kind}`} />
+        <SourceGlyph kind={node.source_kind} size={11} />
         <p>{labelKind(node.kind)}</p>
         <h2>{node.label}</h2>
       </div>
@@ -151,19 +159,29 @@ function Inspector({ node, onClose }: { node: PositionedNode; onClose: () => voi
       <dl className="truth-grid">
         <div>
           <dt>Source</dt>
-          <dd>{node.source_kind}</dd>
+          <dd className="truth-value">
+            <SourceGlyph kind={node.source_kind} size={11} />
+            <span>{node.source_kind}</span>
+          </dd>
         </div>
         <div>
           <dt>Confidence</dt>
-          <dd>{node.confidence}</dd>
+          <dd className="truth-value">
+            <ConfidenceMeter confidence={node.confidence} />
+            <span>{node.confidence}</span>
+          </dd>
         </div>
         <div>
           <dt>Redaction</dt>
-          <dd>{node.redaction_state}</dd>
+          <dd className="truth-value">
+            <RedactionChip state={node.redaction_state} />
+          </dd>
         </div>
         <div>
           <dt>Status</dt>
-          <dd>{String(node.status ?? "unknown")}</dd>
+          <dd className="truth-value">
+            <StatusGlyph status={node.status} />
+          </dd>
         </div>
       </dl>
       <div className="evidence-list">
@@ -234,7 +252,7 @@ function ProofBlockView({ block }: { block: ProofBlock }) {
   return (
     <section className={`proof-block lens-block ${block.source_kind}`}>
       <div className="proof-block-heading lens-block-heading">
-        <span className={`truth-dot ${block.source_kind}`} />
+        <SourceGlyph kind={block.source_kind} size={11} />
         <div>
           <p>{block.kind}</p>
           <h3>{block.title}</h3>
@@ -244,15 +262,23 @@ function ProofBlockView({ block }: { block: ProofBlock }) {
       <dl className="truth-grid proof-block-truth">
         <div>
           <dt>Source</dt>
-          <dd>{block.source_kind}</dd>
+          <dd className="truth-value">
+            <SourceGlyph kind={block.source_kind} size={11} />
+            <span>{block.source_kind}</span>
+          </dd>
         </div>
         <div>
           <dt>Confidence</dt>
-          <dd>{block.confidence}</dd>
+          <dd className="truth-value">
+            <ConfidenceMeter confidence={block.confidence} />
+            <span>{block.confidence}</span>
+          </dd>
         </div>
         <div>
           <dt>Redaction</dt>
-          <dd>{block.redaction_state}</dd>
+          <dd className="truth-value">
+            <RedactionChip state={block.redaction_state} />
+          </dd>
         </div>
       </dl>
       {metrics.length > 0 && (
@@ -274,10 +300,10 @@ function ProofBlockView({ block }: { block: ProofBlock }) {
       )}
       {unsupportedClaims.length > 0 && (
         <div className="unsupported-list proof-unsupported">
-          <span>Unsupported claims</span>
+          <span>Unsupported claims — named, not hidden</span>
           <div>
             {unsupportedClaims.map((claim) => (
-              <code key={claim}>{labelKind(claim)}</code>
+              <UnsupportedClaimChip key={claim} claim={labelKind(claim)} />
             ))}
           </div>
         </div>
@@ -317,9 +343,12 @@ export function RemoteBoundaryLensPanel(_instance: ComponentInstance) {
         </span>
       </div>
       <div className="remote-state-line lens-state-line">
-        <span className={`truth-dot ${lens.sourceKind}`} />
+        <SourceGlyph kind={lens.sourceKind as SourceKind} size={11} />
         <strong>{lens.modeLabel}</strong>
-        <span>{lens.confidence}</span>
+        <span className="truth-value">
+          <ConfidenceMeter confidence={lens.confidence as Confidence} />
+          {lens.confidence}
+        </span>
       </div>
       <div className="remote-metrics lens-metric-strip">
         {lens.metrics.map((metric) => (
@@ -336,16 +365,19 @@ export function RemoteBoundaryLensPanel(_instance: ComponentInstance) {
               <p>{boundary.kind}</p>
               <h3>{boundary.title}</h3>
             </div>
-            <span>{boundary.confidence}</span>
+            <span className="truth-value">
+              <ConfidenceMeter confidence={boundary.confidence as Confidence} />
+              {boundary.confidence}
+            </span>
             <p>{boundary.summary}</p>
           </section>
         ))}
       </div>
       <div className="unsupported-list">
-        <span>Unsupported claims</span>
+        <span>Unsupported claims — named, not hidden</span>
         <div>
           {lens.unsupportedClaims.map((claim) => (
-            <code key={claim}>{labelKind(claim)}</code>
+            <UnsupportedClaimChip key={claim} claim={labelKind(claim)} />
           ))}
         </div>
       </div>
@@ -391,9 +423,12 @@ export function CompareLensPanel(instance: ComponentInstance) {
       ) : (
         <>
           <div className="compare-state-line lens-state-line">
-            <span className={`truth-dot ${projection.source_kind}`} />
+            <SourceGlyph kind={projection.source_kind} size={11} />
             <strong>{projection.source_kind}</strong>
-            <span>{projection.confidence}</span>
+            <span className="truth-value">
+              <ConfidenceMeter confidence={projection.confidence} />
+              {projection.confidence}
+            </span>
             <span className="compare-dimension-count">
               {projection.dimensions.length} dimension{projection.dimensions.length === 1 ? "" : "s"}
             </span>
@@ -433,7 +468,7 @@ function ProvenanceBlockCard({ block }: { block: ProvenanceBlockSummary }) {
   return (
     <article className={`provenance-block ${block.sourceKind}`}>
       <div className="provenance-block-heading">
-        <span className={`truth-dot ${block.sourceKind}`} />
+        <SourceGlyph kind={block.sourceKind as SourceKind} size={11} />
         {block.badge ? (
           <ProvenanceChip badge={block.badge} />
         ) : (
@@ -528,7 +563,7 @@ function CompareDimensionView({
   return (
     <section className={`compare-dimension ${dimension.source_kind}`}>
       <div className="compare-dimension-heading">
-        <span className={`truth-dot ${dimension.source_kind}`} />
+        <SourceGlyph kind={dimension.source_kind} size={11} />
         <div>
           <p>{dimension.id}</p>
           <h3>{dimension.title}</h3>
@@ -545,15 +580,23 @@ function CompareDimensionView({
       <dl className="truth-grid compare-dimension-truth">
         <div>
           <dt>Source</dt>
-          <dd>{dimension.source_kind}</dd>
+          <dd className="truth-value">
+            <SourceGlyph kind={dimension.source_kind} size={11} />
+            <span>{dimension.source_kind}</span>
+          </dd>
         </div>
         <div>
           <dt>Confidence</dt>
-          <dd>{dimension.confidence}</dd>
+          <dd className="truth-value">
+            <ConfidenceMeter confidence={dimension.confidence} />
+            <span>{dimension.confidence}</span>
+          </dd>
         </div>
         <div>
           <dt>Redaction</dt>
-          <dd>{dimension.redaction_state}</dd>
+          <dd className="truth-value">
+            <RedactionChip state={dimension.redaction_state} />
+          </dd>
         </div>
       </dl>
       {deltaEntries.length > 0 && (
