@@ -170,11 +170,83 @@ export const PROVENANCE_META: Record<ProvenanceClass, ProvenanceMeta> = {
 /** Status → glyph, not colour alone. Red is rationed to recorded failures. */
 export type StatusTone = "pass" | "fail" | "neutral";
 
+/**
+ * Genuine failure markers (word-bounded). Fail-tone always wins when any of
+ * these is present — a recorded failure earns the red glyph.
+ */
+const HARD_NEGATIVE = [
+  /\bfail(ed|ure|ing|s)?\b/,
+  /\berror(ed|s)?\b/,
+  /\bcancel(l?ed|l?ing|s)?\b/,
+  /\babort(ed|ing|s)?\b/,
+  /\btime(d)?[\s-]?out\b/,
+  /\bunsuccessful\b/,
+  /\bdenied\b/,
+  /\bblocked\b/,
+  /\bbroke(n)?\b/,
+  /\bcrash(ed|es|ing)?\b/,
+  /\bkilled\b/,
+  /\brejected\b/,
+];
+
+/**
+ * A positive word negated ("not ok", "not completed", "no success"). These
+ * must NEVER read as pass; they are also not necessarily recorded failures, so
+ * they resolve to the honest, non-committal NEUTRAL rather than red.
+ */
+const NEGATED_POSITIVE =
+  /\b(?:not|no|never|n['’]t|without|non[-\s]?)\s*(?:yet\s+)?(?:ok|okay|complete[d]?|pass(?:ed)?|success(?:ful)?|succeed(?:ed)?|done|finished?|ready)\b/;
+
+/** Unambiguous positives (word-bounded). Only these earn a pass — and only
+ *  when no hard-negative and no negation is present. */
+const POSITIVE = [
+  /\bcomplete[d]?\b/,
+  /\bpass(ed)?\b/,
+  /\bsuccess(ful)?\b/,
+  /\bsucceed(ed)?\b/,
+  /\bok\b/,
+  /\bokay\b/,
+  /\bdone\b/,
+  /\bfinished\b/,
+  /\bhealthy\b/,
+  /\bready\b/,
+];
+
+/** Parse an explicit exit code ("exit 0", "exit code 1", "exited: 2"). */
+const EXIT_CODE = /\bexit(?:ed)?(?:\s*code)?\s*[:=]?\s*(-?\d+)\b/;
+
+/**
+ * Robust status → tone. Ordering encodes the honesty rule "never round UP to
+ * pass": a real failure wins first; a negated positive drops to neutral; an
+ * exit code / bare number is judged by 0-vs-nonzero; only an unambiguous,
+ * un-negated positive earns pass; everything else is neutral.
+ */
 export function statusTone(status: string | number | null | undefined): StatusTone {
-  const value = String(status ?? "").toLowerCase();
+  if (typeof status === "number") {
+    if (!Number.isFinite(status)) return "neutral";
+    return status === 0 ? "pass" : "fail";
+  }
+
+  const value = String(status ?? "").trim().toLowerCase();
   if (!value) return "neutral";
-  if (/(fail|error|denied|broke)/.test(value)) return "fail";
-  if (/(complete|completed|pass|passed|ok|success|succeeded|done)/.test(value)) return "pass";
+
+  // A recorded failure always wins — red is warranted here.
+  if (HARD_NEGATIVE.some((re) => re.test(value))) return "fail";
+
+  // "not ok" / "not completed" etc. — never pass, but not an assertable
+  // failure either → neutral (when uncertain, never round up).
+  if (NEGATED_POSITIVE.test(value)) return "neutral";
+
+  // Explicit exit code: 0 passes, nonzero is a recorded failure.
+  const exitMatch = value.match(EXIT_CODE);
+  if (exitMatch) return Number(exitMatch[1]) === 0 ? "pass" : "fail";
+
+  // Bare integer status behaves like an exit code.
+  if (/^-?\d+$/.test(value)) return Number(value) === 0 ? "pass" : "fail";
+
+  // Unambiguous, un-negated positive.
+  if (POSITIVE.some((re) => re.test(value))) return "pass";
+
   return "neutral";
 }
 
