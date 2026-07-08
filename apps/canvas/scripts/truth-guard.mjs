@@ -90,6 +90,20 @@ await page.locator('[data-testid="action-graph-svg"]').waitFor();
  * ([data-graph-cluster-id][data-cluster-count]) — cards + clustered ===
  * total — and the always-visible readout states the same numbers. Nothing is
  * ever silently hidden; collapsed is countable, not gone.
+ *
+ * Scope of this DOM guard vs the source unit test — kept precise so neither
+ * overclaims:
+ *   - DOM (here): what the browser actually rendered — rendered card ids are
+ *     unique + real, printed capsule label digits sum to that capsule's own
+ *     data-cluster-count attribute, rendered cards + Σ(data-cluster-count) ===
+ *     total, and the readout's data-* attributes/text match the DOM. It cannot
+ *     see whether data-cluster-count itself honestly reflects a disjoint,
+ *     phantom-free partition of the projection (a capsule could, in principle,
+ *     assert a count while listing an invented or double-counted member).
+ *   - Source (scripts/graph-partition.test.mjs): proves buildGraphScene's
+ *     output is a disjoint, exhaustive, phantom-free partition of the real
+ *     node ids — so the count the DOM trusts provably corresponds to real,
+ *     distinct members. Together they close the phantom-member blind spot.
  */
 async function graphHonestySnapshot() {
   const renderedIds = await page.locator("[data-graph-node-id]").evaluateAll((elements) =>

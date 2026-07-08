@@ -914,16 +914,27 @@ select:focus-visible {
   }
 }
 
-/* Level-of-detail below ~60% zoom: meta rows hide, labels condense; capsules
-   stay labeled (their counts ARE the honesty). The agent provenance badge is
-   a truth label, NOT decorative meta — it never hides with LOD. */
-.graph-canvas.lod-compact .gcard-meta,
-.graph-canvas.lod-compact .gcard-suffix {
+/* Level-of-detail below ~60% zoom: the secondary meta condenses (confidence
+   meter, kind/duration line, status check, chevron, mono suffix all hide), but
+   two truth encodings ALWAYS survive:
+   - the source_kind SHAPE glyph (.truth-glyph) stays on every card. Encoding
+     source by colour alone (plate tint + border hue) is NOT grayscale-safe;
+     the shape is the guarantee, so it must never hide with LOD.
+   - the agent provenance badge (.gcard-badge, sibling of .gcard) stays.
+   Cluster cards keep their whole meta row (the "×N" count IS the honesty), so
+   the child-hiding is scoped to non-cluster cards. */
+.graph-canvas.lod-compact .gcard-suffix,
+.graph-canvas.lod-compact .gcard:not(.gcluster-card) .confidence-meter,
+.graph-canvas.lod-compact .gcard:not(.gcluster-card) .gcard-kindline,
+.graph-canvas.lod-compact .gcard:not(.gcluster-card) .status-glyph,
+.graph-canvas.lod-compact .gcard:not(.gcluster-card) .gcard-chevron {
   display: none;
 }
 
-.graph-canvas.lod-compact .gcluster-card .gcard-meta {
-  display: flex; /* cluster cards keep their ×N count visible */
+/* Keep the compact source shape legible when the whole scene is zoomed out. */
+.graph-canvas.lod-compact .gcard-meta .truth-glyph {
+  width: 11px;
+  height: 11px;
 }
 
 /* Top-right grouping pill: names the density model in force. */
