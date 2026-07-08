@@ -14,13 +14,17 @@ export const DEFAULT_VIEW_SPEC: ViewSpec = {
   redaction_state: "safe",
   layout: {
     kind: "grid_shell_v1",
-    columns: "minmax(0,1fr) 440px",
+    // Single full-width column: the primary graph fills the viewport. The rail
+    // is no longer a reserved column — inspector/proof/remote/compare panels
+    // float as fixed overlays over the (dimmed) full-width graph (redesign P6,
+    // DESIGN-SYSTEM.md — "inspector/proof/lens panels are floating overlays").
+    columns: "minmax(0, 1fr)",
     rows: "auto auto minmax(0,1fr) auto",
     regions: {
       notice: { grid_area: "notice", slot: "banner" },
       header: { grid_area: "header", slot: "topbar" },
       primary: { grid_area: "primary", slot: "canvas" },
-      rail: { grid_area: "rail", slot: "inspector", width_px: 440 },
+      rail: { grid_area: "rail", slot: "inspector" },
       operator: { grid_area: "operator", slot: "command" },
     },
     responsive: {

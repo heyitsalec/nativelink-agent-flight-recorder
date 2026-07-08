@@ -1,10 +1,13 @@
 import type {
   ActionGraphProjection,
+  CompareDimension,
+  Confidence,
   FocusFilter,
   ProjectionNode,
   ProofBlock,
   ProofMetricValue,
   ProofPacket,
+  RedactionState,
   SourceKind,
 } from "./types";
 import type { ProjectionNotice, ViewSpec } from "./view/types";
@@ -399,4 +402,324 @@ export function resolveJoinFn(
     throw new Error(`Unknown join_fn: ${joinFn}`);
   }
   return fn(sources, ctx);
+}
+
+/* ------------------------------------------------------------------------ *
+ * Validation Runway lanes (redesign P6 — DESIGN-SYSTEM.md §3, board 1j).
+ * Real projection nodes grouped into fixed, ordered lanes. An empty lane is
+ * never blank: it STATES its emptiness honestly. Every value keeps its truth
+ * labels so a chip can render source(shape)/confidence(meter)/status.
+ * ------------------------------------------------------------------------ */
+
+export type RunwayLaneKind =
+  | "run"
+  | "invocation"
+  | "target"
+  | "action"
+  | "cache_event"
+  | "failure"
+  | "artifact";
+
+export type RunwayLane = {
+  kind: RunwayLaneKind;
+  /** Human lane name shown in the 110px gutter (e.g. "runs"). */
+  name: string;
+  count: number;
+  empty: boolean;
+  /** Honest statement rendered when the lane has no nodes — never blank. */
+  emptyMessage: string;
+  nodes: ProjectionNode[];
+};
+
+const RUNWAY_LANE_ORDER: { kind: RunwayLaneKind; name: string }[] = [
+  { kind: "run", name: "runs" },
+  { kind: "invocation", name: "invocations" },
+  { kind: "target", name: "targets" },
+  { kind: "action", name: "actions" },
+  { kind: "cache_event", name: "cache" },
+  { kind: "failure", name: "failures" },
+  { kind: "artifact", name: "artifacts" },
+];
+
+/**
+ * A lane's honest empty statement. cache/failures get the board-specified copy;
+ * the failures lane, when empty, states how many recorded commands completed
+ * (invocation count) rather than leaving a gap. Every other empty lane names the
+ * projection it examined so "not shown" can never be mistaken for "hidden".
+ */
+function runwayEmptyMessage(kind: RunwayLaneKind, invocationCount: number): string {
+  switch (kind) {
+    case "cache_event":
+      return "no cache events recorded in this projection";
+    case "failure":
+      return `no failures recorded — ${invocationCount} of ${invocationCount} commands completed`;
+    case "target":
+      return "no targets recorded in this projection";
+    case "action":
+      return "no actions recorded in this projection";
+    case "run":
+      return "no runs recorded in this projection";
+    case "invocation":
+      return "no invocations recorded in this projection";
+    default:
+      return "no artifacts recorded in this projection";
+  }
+}
+
+export function runwayLanes(nodes: ReadonlyArray<ProjectionNode>): RunwayLane[] {
+  const byKind = new Map<string, ProjectionNode[]>();
+  for (const node of nodes) {
+    const list = byKind.get(node.kind);
+    if (list) list.push(node);
+    else byKind.set(node.kind, [node]);
+  }
+  const invocationCount = byKind.get("invocation")?.length ?? 0;
+  return RUNWAY_LANE_ORDER.map(({ kind, name }) => {
+    const laneNodes = byKind.get(kind) ?? [];
+    return {
+      kind,
+      name,
+      count: laneNodes.length,
+      empty: laneNodes.length === 0,
+      emptyMessage: runwayEmptyMessage(kind, invocationCount),
+      nodes: laneNodes,
+    };
+  });
+}
+
+/* ------------------------------------------------------------------------ *
+ * Remote Boundary view (redesign P6 — DESIGN-SYSTEM.md §5, board 1h).
+ * A derived join over the proof packet's remote_execution block. Every metric
+ * is dashed + slate (future / not-observed), NEVER red — "not observed" is a
+ * calm stated boundary, not a failure. Boundary rows shape-encode source_kind.
+ * ------------------------------------------------------------------------ */
+
+export type RemoteBoundaryCell = {
+  key: string;
+  label: string;
+  observed: boolean;
+  /** "0" for a count, "not observed" for an unmet flag. */
+  value: string;
+  kind: "count" | "flag";
+};
+
+export type RemoteBoundaryRow = {
+  title: string;
+  kind: string;
+  summary: string;
+  confidence: string;
+  sourceKind: SourceKind;
+};
+
+export type RemoteBoundaryView = {
+  sourceKind: SourceKind;
+  confidence: Confidence;
+  observed: boolean;
+  observedInvocations: number;
+  totalInvocations: number;
+  statement: string;
+  observedLine: string;
+  explainer: string;
+  /** Top row of the 3×2 grid: mono count cells. */
+  countCells: RemoteBoundaryCell[];
+  /** Bottom row of the 3×2 grid: dashed "not observed" flag cells. */
+  flagCells: RemoteBoundaryCell[];
+  /** "What would earn these claims" — the block's own requirement claims. */
+  earnClaims: string[];
+  unsupportedClaims: string[];
+  boundaries: RemoteBoundaryRow[];
+};
+
+const REMOTE_EXPLAINER =
+  "This is a stated boundary, not a failure. NLFR records what the local build tools emit; nothing beyond this line is claimed as observed.";
+
+function coerceSourceKind(value: string | undefined): SourceKind {
+  const known: ReadonlySet<string> = new Set([
+    "collectable_v1",
+    "derived_v1",
+    "simulated_v1",
+    "future",
+    "unknown",
+  ]);
+  return value && known.has(value) ? (value as SourceKind) : "future";
+}
+
+function coerceConfidence(value: string | undefined): Confidence {
+  return value === "high" || value === "medium" || value === "low" ? value : "unknown";
+}
+
+export function remoteBoundaryView(
+  projection: ActionGraphProjection,
+  packet: ProofPacket,
+): RemoteBoundaryView {
+  const remoteBlock = packet.blocks.find((block) => block.id === "remote_execution");
+  const invocationsBlock = packet.blocks.find((block) => block.id === "invocations");
+  const metrics = remoteBlock?.metrics ?? {};
+
+  const observedInvocations = numberMetric(metrics.remote_executor_invocations);
+  const endpoints = numberMetric(metrics.remote_executor_endpoints);
+  const overrides = numberMetric(metrics.remote_executor_overrides);
+  const totalInvocations =
+    numberMetric(invocationsBlock?.metrics?.unknown) ||
+    projection.nodes.filter((node) => node.kind === "invocation").length;
+  const observed = observedInvocations > 0;
+
+  const countCells: RemoteBoundaryCell[] = [
+    { key: "remote_invocations", label: "remote invocations", observed, value: String(observedInvocations), kind: "count" },
+    { key: "executor_endpoints", label: "executor endpoints", observed: endpoints > 0, value: String(endpoints), kind: "count" },
+    { key: "executor_overrides", label: "executor overrides", observed: overrides > 0, value: String(overrides), kind: "count" },
+  ];
+  const flag = (key: string, label: string): RemoteBoundaryCell => {
+    const seen = metrics[key] === true;
+    return { key, label, observed: seen, value: seen ? "observed" : "not observed", kind: "flag" };
+  };
+  const flagCells: RemoteBoundaryCell[] = [
+    flag("worker_identity_observed", "worker identity"),
+    flag("scheduler_assignment_observed", "scheduler assignment"),
+    flag("queue_time_observed", "queue time"),
+  ];
+
+  const statement = observed
+    ? `Remote execution observed in ${observedInvocations} of ${totalInvocations} recorded invocations.`
+    : "No remote execution was observed in recorded invocations.";
+  const observedLine = `${observedInvocations} of ${totalInvocations} recorded invocations used remote execution.`;
+
+  const remoteModel = remoteLensModel(projection, packet);
+
+  return {
+    sourceKind: coerceSourceKind(remoteBlock?.source_kind),
+    confidence: coerceConfidence(remoteBlock?.confidence),
+    observed,
+    observedInvocations,
+    totalInvocations,
+    statement,
+    observedLine,
+    explainer: REMOTE_EXPLAINER,
+    countCells,
+    flagCells,
+    earnClaims: remoteBlock?.claims ?? [],
+    unsupportedClaims: remoteModel.unsupportedClaims,
+    boundaries: remoteModel.boundaries.map((boundary) => ({
+      title: boundary.title,
+      kind: boundary.kind,
+      summary: boundary.summary,
+      confidence: boundary.confidence,
+      sourceKind: coerceSourceKind(boundary.sourceKind),
+    })),
+  };
+}
+
+/* ------------------------------------------------------------------------ *
+ * Compare dimension headline (redesign P6 — DESIGN-SYSTEM.md §6, board 1i).
+ * Derives the left value / delta pill / right value for a dimension card from
+ * the REAL recorded left/right/delta fields — never a fabricated number. An
+ * unrecognised dimension falls back to the honest "—" rather than inventing a
+ * headline value.
+ * ------------------------------------------------------------------------ */
+
+export type CompareDeltaTone = "increase" | "decrease" | "flat" | "match" | "differs" | "neutral";
+
+export type CompareHeadline = {
+  left: string;
+  right: string;
+  delta: string | null;
+  deltaTone: CompareDeltaTone;
+  caption: string;
+};
+
+function finiteNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function signedDelta(value: number): string {
+  return value > 0 ? `+${value}` : String(value);
+}
+
+function statusCountTotal(value: unknown): number {
+  const record = payloadRecord(value);
+  if (!record) return 0;
+  return Object.values(record).reduce<number>((sum, entry) => sum + (finiteNumber(entry) ?? 0), 0);
+}
+
+export function compareHeadline(dimension: CompareDimension): CompareHeadline {
+  const left = payloadRecord(dimension.left) ?? {};
+  const right = payloadRecord(dimension.right) ?? {};
+  const delta = payloadRecord(dimension.delta) ?? {};
+  const caption = dimension.summary;
+
+  switch (dimension.id) {
+    case "run_counts": {
+      const l = finiteNumber(left.runs);
+      const r = finiteNumber(right.runs);
+      const d = finiteNumber(delta.runs);
+      return {
+        left: l === null ? "—" : String(l),
+        right: r === null ? "—" : String(r),
+        delta: d === null ? null : `Δ ${signedDelta(d)}`,
+        deltaTone: d === null ? "neutral" : d > 0 ? "increase" : d < 0 ? "decrease" : "flat",
+        caption,
+      };
+    }
+    case "cache_metrics": {
+      const lm = payloadRecord(left.metrics) ?? {};
+      const rm = payloadRecord(right.metrics) ?? {};
+      const lv = `${finiteNumber(lm.hits) ?? 0}/${finiteNumber(lm.misses) ?? 0}`;
+      const rv = `${finiteNumber(rm.hits) ?? 0}/${finiteNumber(rm.misses) ?? 0}`;
+      const d = finiteNumber(delta.hits);
+      return {
+        left: lv,
+        right: rv,
+        delta: d === null ? "Δ 0" : `Δ ${signedDelta(d)}`,
+        deltaTone: d ? (d > 0 ? "increase" : "decrease") : "flat",
+        caption,
+      };
+    }
+    case "worker_identity": {
+      const lv = left.worker_identity_observed === true ? "observed" : "not observed";
+      const rv = right.worker_identity_observed === true ? "observed" : "not observed";
+      const changed = delta.worker_identity_observed_changed === true;
+      return { left: lv, right: rv, delta: changed ? "differs" : "match", deltaTone: changed ? "differs" : "match", caption };
+    }
+    case "status_deltas": {
+      const l = statusCountTotal(left.status_counts);
+      const r = statusCountTotal(right.status_counts);
+      const changed = delta.changed === true;
+      return { left: String(l), right: String(r), delta: changed ? "differs" : "match", deltaTone: changed ? "differs" : "match", caption };
+    }
+    default: {
+      const entry = Object.entries(delta).find(([, value]) => finiteNumber(value) !== null);
+      const d = entry ? finiteNumber(entry[1]) : null;
+      return {
+        left: "—",
+        right: "—",
+        delta: d === null ? null : `Δ ${signedDelta(d)}`,
+        deltaTone: d === null ? "neutral" : d > 0 ? "increase" : d < 0 ? "decrease" : "flat",
+        caption,
+      };
+    }
+  }
+}
+
+/** Redacted `[REDACTED:...]` strings surfaced from a node payload's top-level
+ *  scalar fields + command array, so the inspector can render them as lock
+ *  chips (the P6 carry-forward of the P5 EvidenceRefRow treatment). Returns the
+ *  field label + the real partial-path value; never a bare "[REDACTED]". */
+export type RedactedPayloadField = { label: string; value: string };
+
+export function redactedPayloadFields(payload: unknown): RedactedPayloadField[] {
+  const record = payloadRecord(payload);
+  if (!record) return [];
+  const fields: RedactedPayloadField[] = [];
+  for (const [key, value] of Object.entries(record)) {
+    if (typeof value === "string" && isRedactedValue(value)) {
+      fields.push({ label: labelKind(key), value });
+    } else if (Array.isArray(value)) {
+      for (const entry of value) {
+        if (typeof entry === "string" && isRedactedValue(entry)) {
+          fields.push({ label: labelKind(key), value: entry });
+        }
+      }
+    }
+  }
+  return fields;
 }
