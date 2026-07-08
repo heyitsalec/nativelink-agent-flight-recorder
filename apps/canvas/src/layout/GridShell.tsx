@@ -8,17 +8,20 @@ export type GridShellProps = {
   renderComponent: (instance: ComponentInstance) => ReactNode;
 };
 
-const REGION_ORDER: RegionSlot[] = ["notice", "header", "primary", "rail", "operator"];
+// The rail is NOT a flow region in the redesign (P6): the graph is full-width
+// and the rail's panels float as fixed overlays. So the grid lays out only
+// notice/header/primary/operator in a single column.
+const FLOW_REGIONS: RegionSlot[] = ["notice", "header", "primary", "operator"];
 
-function shellGridStyle(spec: ViewSpec, collapsed: boolean): CSSProperties {
+function shellGridStyle(spec: ViewSpec): CSSProperties {
   const { layout } = spec;
   return {
     display: "grid",
-    gridTemplateColumns: collapsed ? "1fr" : layout.columns,
+    // Single full-width column — the reserved 440px rail column is gone; the
+    // primary graph fills the viewport and lenses float over it (P6).
+    gridTemplateColumns: "minmax(0, 1fr)",
     gridTemplateRows: layout.rows,
-    gridTemplateAreas: collapsed
-      ? '"notice" "header" "primary" "operator"'
-      : '"notice notice" "header header" "primary rail" "operator operator"',
+    gridTemplateAreas: '"notice" "header" "primary" "operator"',
     minHeight: "100vh",
     width: "100vw",
     position: "relative",
@@ -26,20 +29,12 @@ function shellGridStyle(spec: ViewSpec, collapsed: boolean): CSSProperties {
   };
 }
 
-function regionStyle(region: RegionSlot, spec: ViewSpec, collapsed: boolean): CSSProperties {
+function regionStyle(region: RegionSlot, spec: ViewSpec): CSSProperties {
   const gridArea = spec.layout.regions[region].grid_area;
-  const base: CSSProperties = {
-    gridArea,
-    position: "relative",
-    minWidth: 0,
-  };
-  if (region === "rail" && !collapsed && spec.layout.regions.rail.width_px) {
-    base.width = spec.layout.regions.rail.width_px;
-  }
   // The header region is a full-bleed block; the .topbar bar owns its own
   // flex layout (P3 shell). The tool rail floats out of the header via
   // position:fixed, and the zoom-controls slot is hidden by CSS.
-  return base;
+  return { gridArea, position: "relative", minWidth: 0 };
 }
 
 export function GridShell({ spec, visibility, renderComponent }: GridShellProps) {
@@ -62,61 +57,63 @@ export function GridShell({ spec, visibility, renderComponent }: GridShellProps)
   const byRegion = componentsByRegion(spec.components, ctx);
   const railComponents = byRegion.rail ?? [];
 
+  const renderSlot = (instance: ComponentInstance) => (
+    <div
+      key={instance.instance_id}
+      className={`grid-slot grid-slot-${instance.component_kind}`}
+      data-instance-id={instance.instance_id}
+      data-testid={instance.data_testid}
+    >
+      {renderComponent(instance)}
+    </div>
+  );
+
   return (
     <main
       className="app-shell grid-shell"
       data-testid="nlfr-canvas-app"
       data-view-id={spec.view_id}
-      style={shellGridStyle(spec, collapsed)}
+      style={shellGridStyle(spec)}
     >
-      {REGION_ORDER.filter((region) => region !== "rail" || !collapsed).map((region) => (
+      {FLOW_REGIONS.map((region) => (
         <section
           key={region}
           className={`grid-region grid-region-${region}`}
           data-region={region}
           aria-label={region}
-          style={regionStyle(region, spec, collapsed)}
+          style={regionStyle(region, spec)}
         >
-          {(byRegion[region] ?? []).map((instance) => (
-            <div
-              key={instance.instance_id}
-              className={`grid-slot grid-slot-${instance.component_kind}`}
-              data-instance-id={instance.instance_id}
-              data-testid={instance.data_testid}
-            >
-              {renderComponent(instance)}
-            </div>
-          ))}
+          {(byRegion[region] ?? []).map(renderSlot)}
         </section>
       ))}
-      {collapsed && railComponents.length > 0 && (
-        <aside
-          className="grid-rail-bottom-sheet"
-          data-region="rail"
-          data-collapsed="true"
-          aria-label="rail"
-          style={{
-            position: "fixed",
-            left: 0,
-            right: 0,
-            bottom: 72,
-            zIndex: 6,
-            maxHeight: "45vh",
-            overflow: "auto",
-          }}
-        >
-          {railComponents.map((instance) => (
-            <div
-              key={instance.instance_id}
-              className={`grid-slot grid-slot-${instance.component_kind}`}
-              data-instance-id={instance.instance_id}
-              data-testid={instance.data_testid}
-            >
-              {renderComponent(instance)}
-            </div>
-          ))}
-        </aside>
-      )}
+      {/* Rail lenses float over the full-width graph (P6). On desktop this is a
+          fixed, pointer-events-none overlay layer; each lens' grid-slot wrapper
+          positions itself (right drawer / centered panel) and re-enables pointer
+          events. On mobile the rail collapses into the bottom sheet (P8). */}
+      {railComponents.length > 0 &&
+        (collapsed ? (
+          <aside
+            className="grid-rail-bottom-sheet"
+            data-region="rail"
+            data-collapsed="true"
+            aria-label="rail"
+            style={{
+              position: "fixed",
+              left: 0,
+              right: 0,
+              bottom: 72,
+              zIndex: 6,
+              maxHeight: "45vh",
+              overflow: "auto",
+            }}
+          >
+            {railComponents.map(renderSlot)}
+          </aside>
+        ) : (
+          <div className="grid-region grid-region-rail" data-region="rail" aria-label="rail">
+            {railComponents.map(renderSlot)}
+          </div>
+        ))}
     </main>
   );
 }

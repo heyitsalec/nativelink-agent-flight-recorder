@@ -977,19 +977,21 @@ select:focus-visible {
   pointer-events: none;
 }
 
+/* Evidence Inspector — right E3 drawer that fills its fixed overlay wrapper
+   (redesign P6, board 1g). Sections scroll as one column. */
 .inspector {
-  position: absolute;
-  z-index: 5;
-  top: 94px;
-  right: 24px;
-  width: min(360px, calc(100vw - 108px));
-  max-height: calc(100vh - 188px);
-  padding: 20px;
-  overflow: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
   border: var(--elev3-border);
+  border-radius: var(--radius-drawer);
   background: var(--elev3-bg);
   backdrop-filter: var(--elev3-blur);
   box-shadow: var(--elev3-shadow);
+  color: var(--ink);
 }
 
 .close-button {
@@ -1006,50 +1008,239 @@ select:focus-visible {
   cursor: pointer;
 }
 
-.inspector-heading {
-  padding-right: 32px;
+/* ── Inspector sections (board 1g) ── each hairline-divided, overlined ── */
+.inspector-section {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 22px;
+  border-bottom: 1px solid var(--hairline);
 }
 
-.inspector-heading p {
-  margin: 0 0 8px;
+.inspector-section:last-child {
+  border-bottom: 0;
+}
+
+.inspector-overline {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-hint);
+}
+
+.inspector-head-section {
+  gap: 12px;
+}
+
+.inspector-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.inspector-close {
+  position: static;
+  top: auto;
+  right: auto;
+}
+
+.inspector-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.inspector-plate {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.inspector-head-text {
+  min-width: 0;
+}
+
+.inspector-title {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.16;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.inspector-id {
+  font: 500 11px/1.4 var(--font-mono);
+  color: var(--text-hint);
+  overflow-wrap: anywhere;
+}
+
+/* 2×2 truth-label cells (§2). */
+.inspector-truth-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.inspector-truth-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  background: var(--n1);
+}
+
+/* Field captions are lowercase + muted (board 1g), visually DISTINCT from the
+ * uppercase-tracked section overlines — never bold ALL-CAPS (redesign P6 M5). */
+.inspector-truth-caption {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-hint);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+/* Recorded-run key/value rows (§5). */
+.insp-kv {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.insp-kv div {
+  display: grid;
+  grid-template-columns: 108px minmax(0, 1fr);
+  gap: 8px;
+  align-items: baseline;
+}
+
+.insp-kv dt {
+  margin: 0;
   font-size: 11px;
   font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.03em;
 }
 
-.inspector-heading h2 {
+.insp-kv dd {
   margin: 0;
-  font-size: 22px;
-  line-height: 1.14;
-  letter-spacing: 0;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--ink);
+  overflow-wrap: anywhere;
 }
 
-.inspector--failure .failure-message-panel {
-  margin: 16px 0 18px;
-  padding: 14px 16px;
+.insp-mono {
+  font: 600 12px/1.4 var(--font-mono);
+}
+
+/* Failure callout (§4) — failure-tint box + the honest origin-vs-outcome row. */
+.failure-callout {
+  gap: 8px;
+}
+
+.failure-callout-box {
+  padding: 12px 14px;
   border: 1px solid var(--failure-border);
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--failure-tint);
 }
 
-.failure-message-label {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 11px;
-  font-weight: 600;
+.failure-callout-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   color: var(--failure);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-size: 13px;
+  font-weight: 600;
 }
 
-.failure-message-body {
-  margin: 0;
-  font-size: 14px;
+.failure-callout-body {
+  margin: 8px 0 0;
+  font-size: 12.5px;
   line-height: 1.45;
   color: var(--text-body);
   overflow-wrap: anywhere;
+}
+
+.failure-callout-truth {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--truth-collectable);
+}
+
+/* Raw payload — collapsed by default, explicitly secondary (§7). */
+.insp-raw {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.insp-raw-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.insp-raw-caret {
+  transition: transform 150ms ease;
+}
+
+.insp-raw-caret.open {
+  transform: rotate(90deg);
+}
+
+.insp-raw-word {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.insp-raw-meta {
+  font-size: 11px;
+  color: var(--text-hint);
+}
+
+.insp-raw-copy {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  min-width: 44px;
+  justify-content: flex-end;
+  padding: 2px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 10.5px;
+  cursor: pointer;
+}
+
+.insp-raw-pre {
+  margin: 0;
+  padding: 12px;
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  background: var(--n1);
+  color: var(--text-body);
+  font: 450 11px/1.5 var(--font-mono);
 }
 
 /* .truth-dot was retired in P2 — every truth surface now renders the
@@ -1175,183 +1366,289 @@ select:focus-visible {
   }
 }
 
-.truth-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin: 20px 0 0;
+/* .truth-grid / .evidence-list / .payload retired in P6 — the inspector and
+   compare lenses were rebuilt on dedicated section styles (inspector-truth-grid,
+   insp-kv, proof-refs) and no longer use these. */
+
+/* ======================================================================== *
+ * Validation Runway — lane timeline (redesign P6, DESIGN-SYSTEM.md §3, 1j).
+ * A full E3 panel overlaying the graph: header + hairline-separated lanes with
+ * a 110px label gutter, each a row of truth-labelled chips or an honest dashed
+ * empty statement, plus a bottom axis of recorded start-time ticks.
+ * ======================================================================== */
+.runway-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 22px 26px;
+  overflow: auto;
+  border: var(--elev3-border);
+  border-radius: var(--radius-drawer);
+  background: var(--elev3-bg);
+  backdrop-filter: var(--elev3-blur);
+  box-shadow: var(--elev3-shadow);
+  color: var(--ink);
 }
 
-.truth-grid div {
+.runway-close {
+  top: 14px;
+  right: 14px;
+}
+
+.runway-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-right: 36px;
+}
+
+.runway-head-lead {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
   min-width: 0;
+}
+
+.runway-overline {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-hint);
+}
+
+.runway-heading {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.14;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.runway-meta {
+  font: 500 11.5px/1.4 var(--font-mono);
+  color: var(--text-hint);
+}
+
+.runway-head-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex: none;
+}
+
+.runway-shared {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.runway-scale {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-pill);
+  background: var(--n1);
+}
+
+.runway-scale-btn {
+  padding: 3px 12px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.runway-scale-btn.active {
+  background: var(--n9);
+  color: var(--n0);
+}
+
+.runway-lanes {
+  display: flex;
+  flex-direction: column;
+}
+
+.runway-lane {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
   padding: 10px 0;
   border-top: 1px solid var(--hairline);
 }
 
-.truth-grid dt,
-.evidence-list span {
-  margin-bottom: 5px;
+.runway-lane:first-child {
+  border-top: 0;
+}
+
+.runway-lane-gutter {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.runway-lane-name {
   font-size: 11px;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
+  font-weight: 700;
   letter-spacing: 0.08em;
-}
-
-.truth-grid dd {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink);
-  overflow-wrap: anywhere;
-}
-
-.evidence-list {
-  display: grid;
-  gap: 8px;
-  margin-top: 20px;
-}
-
-.evidence-list code,
-.payload {
-  border: 1px solid var(--hairline);
-  background: var(--row-bg);
-  color: var(--text-body);
-}
-
-.evidence-list code {
-  padding: 7px 8px;
-  font-size: 11px;
-  overflow-wrap: anywhere;
-}
-
-.payload {
-  margin: 18px 0 0;
-  padding: 12px;
-  max-height: 190px;
-  overflow: auto;
-  font-size: 11px;
-  line-height: 1.5;
-}
-
-.runway-overlay {
-  position: absolute;
-  z-index: 4;
-  left: 96px;
-  right: 24px;
-  bottom: 100px;
-  padding: 14px 16px 16px;
-  border: var(--elev1-border);
-  background: var(--elev2-bg);
-  backdrop-filter: var(--elev2-blur);
-  box-shadow: var(--elev2-shadow);
-}
-
-.runway-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-body);
-}
-
-.runway-track {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(140px, 1fr);
-  gap: 8px;
-  overflow-x: auto;
-  padding-bottom: 2px;
-}
-
-.runway-event {
-  display: grid;
-  gap: 4px;
-  min-height: 62px;
-  padding: 10px;
-  border: 1px solid var(--border-control);
-  background: var(--elev1-bg);
-  color: var(--ink);
-  text-align: left;
-  cursor: pointer;
-}
-
-.runway-event span {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-muted);
   text-transform: uppercase;
+  color: var(--text-muted);
 }
 
-.runway-event strong {
-  font-size: 12px;
-  line-height: 1.25;
-}
-
-.runway-event.collectable_v1 {
-  border-color: color-mix(in srgb, var(--truth-collectable) 40%, transparent);
-}
-
-.runway-event.derived_v1 {
-  border-color: color-mix(in srgb, var(--truth-derived) 40%, transparent);
-}
-
-.runway-event.simulated_v1 {
-  border-color: color-mix(in srgb, var(--truth-simulated) 40%, transparent);
-}
-
-.runway-event.future {
-  border-color: color-mix(in srgb, var(--truth-future) 40%, transparent);
-}
-
-.proof-panel {
-  width: 340px;
-  padding: 16px;
-  border: var(--elev1-border);
-  background: var(--elev2-bg);
+.runway-lane-count {
+  font: 600 12px/1.2 var(--font-mono);
   color: var(--ink);
-  backdrop-filter: var(--elev2-blur);
-  box-shadow: var(--elev2-shadow);
 }
 
-.proof-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.proof-panel p {
-  margin: 10px 0 14px;
-  font-size: 13px;
-  line-height: 1.45;
-  color: var(--text-body);
-}
-
-.proof-metrics {
+/* All runway lanes share ONE 7-column grid (board 1j) so run chips, invocation
+ * chips and the artifacts lane's per-run count pills line up vertically by run
+ * column. Flex-wrap drifted item #n apart per lane (run chip #2 vs artifact pill
+ * #2 measured 101px off); a shared grid pins every lane's column n to the same x
+ * (redesign P6 fix M3-residual). Fewer-than-7 lanes leave trailing columns empty
+ * (still aligned); >7 wrap identically row over row. */
+.runway-lane-track {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  align-items: center;
+  justify-items: start;
+  min-width: 0;
 }
 
-.proof-metrics span {
+/* Cap a chip to its own run column so a long command label truncates (label has
+ * ellipsis) instead of overflowing into the next run's column and breaking the
+ * shared-grid alignment. */
+.runway-lane-track > .runway-chip {
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* An empty lane's single statement spans the whole track, not just column 1. */
+.runway-lane-track > .runway-lane-empty {
+  grid-column: 1 / -1;
+}
+
+.runway-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-width: 0;
-  padding: 7px 8px;
-  background: var(--row-bg);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-body);
+  max-width: 220px;
+  padding: 5px 9px;
+  border: 1px solid color-mix(in srgb, var(--gcard-hue, var(--border-control)) 50%, transparent);
+  border-radius: var(--radius-chip);
+  background: var(--elev1-bg);
+  color: var(--ink);
+  cursor: pointer;
 }
 
-.proof-drawer,
-.remote-lens,
-.compare-lens {
+.runway-chip.truth-src--collectable { --gcard-hue: var(--truth-collectable); }
+.runway-chip.truth-src--derived { --gcard-hue: var(--truth-derived); }
+.runway-chip.truth-src--simulated { --gcard-hue: var(--truth-simulated); }
+.runway-chip.truth-src--future {
+  --gcard-hue: var(--truth-future);
+  border-style: dashed;
+}
+.runway-chip.truth-src--unknown {
+  --gcard-hue: var(--text-faint);
+  border-style: dotted;
+}
+
+.runway-chip.selected {
+  border-width: 2px;
+  box-shadow: 0 0 0 3px var(--selection-tint);
+}
+
+.runway-chip-label {
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.runway-chip-clock {
+  font: 500 10.5px/1 var(--font-mono);
+  color: var(--text-hint);
+}
+
+.runway-lane-overflow {
+  font: 600 11px/1 var(--font-mono);
+  color: var(--truth-collectable);
+}
+
+/* Artifacts lane = per-run count pills aligned to the run columns (board 1j):
+ * a file icon + the run's real artifact count, one pill per run — not a flat
+ * filename list (redesign P6 M3). `display: contents` hoists the pills out of
+ * this wrapper so they become direct items of the parent `.runway-lane-track`
+ * grid — pill #n then lands in the SAME run column as run chip #n / invocation
+ * chip #n (the M3-residual alignment fix), no separate grid to keep in sync. */
+.runway-artifact-cols {
+  display: contents;
+}
+
+.runway-artifact-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border: 1px solid color-mix(in srgb, var(--truth-collectable) 45%, transparent);
+  border-radius: var(--radius-chip);
+  background: var(--elev1-bg);
+  color: var(--truth-collectable);
+}
+
+.runway-artifact-pill--loose {
+  border-style: dashed;
+  border-color: var(--border-control);
+  color: var(--text-hint);
+}
+
+.runway-artifact-run {
+  font: 500 10.5px/1 var(--font-mono);
+  color: var(--text-hint);
+}
+
+.runway-artifact-count {
+  font: 600 12px/1 var(--font-mono);
+  color: inherit;
+}
+
+/* An empty lane STATES its emptiness — never blank (board 1j). */
+.runway-lane-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 1.25px dashed var(--border-control);
+  border-radius: var(--radius-chip);
+  color: var(--text-hint);
+  font-size: 11.5px;
+}
+
+.runway-axis {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px solid var(--hairline);
+}
+
+.runway-tick {
+  font: 500 10.5px/1 var(--font-mono);
+  color: var(--text-faint);
+}
+
+/* Proof drawer base (P5 — NO_TOUCH; .proof-drawer--flagship overrides most of
+   this to a fixed viewport-bounded drawer). Kept intact. */
+.proof-drawer {
   position: absolute;
   z-index: 5;
   top: 94px;
@@ -1366,535 +1663,10 @@ select:focus-visible {
   box-shadow: var(--elev3-shadow);
 }
 
-.lens-panel {
-  border-top: 3px solid transparent;
-}
-
-.lens-panel--proof {
-  border-top-color: var(--lens-proof-accent);
-}
-
-.lens-panel--remote {
-  border-top-color: var(--lens-remote-accent);
-}
-
-.lens-panel--compare {
-  border-top-color: var(--lens-compare-accent);
-}
-
-.lens-heading {
-  padding-right: 32px;
-}
-
-.lens-meta {
-  grid-column: 2;
-  margin-top: 2px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-muted);
-  line-height: 1.35;
-}
-
-.lens-state-line {
-  margin-top: 14px;
-  padding: 8px 0;
-}
-
-.lens-metric-strip span {
-  border: 1px solid var(--hairline);
-  border-radius: 8px;
-}
-
-.lens-empty {
-  margin: 14px 0 0;
-  padding: 12px;
-  border-radius: var(--radius-chip);
-  background: var(--row-bg);
-  border: 1px dashed var(--border-control);
-}
-
-.lens-block {
-  border-left: 3px solid var(--border-control);
-  padding-left: 12px;
-}
-
-.lens-block.collectable_v1 {
-  border-left-color: var(--truth-collectable);
-}
-
-.lens-block.derived_v1 {
-  border-left-color: var(--truth-derived);
-}
-
-.lens-block.simulated_v1 {
-  border-left-color: var(--truth-simulated);
-}
-
-.lens-block.future {
-  border-left-color: var(--truth-future);
-}
-
-.lens-boundary {
-  border-left: 3px solid color-mix(in srgb, var(--truth-future) 45%, transparent);
-  padding-left: 12px;
-}
-
-.lens-boundary.collectable_v1 {
-  border-left-color: var(--truth-collectable);
-}
-
-.lens-boundary.future {
-  border-left-color: var(--truth-future);
-}
-
-.proof-drawer-heading {
-  display: grid;
-  grid-template-columns: 22px minmax(0, 1fr);
-  gap: 8px 10px;
-  padding-right: 32px;
-  color: var(--ink);
-}
-
-.proof-drawer-heading > svg,
-.remote-lens-heading > svg,
-.compare-lens-heading > svg {
-  grid-row: span 3;
-  margin-top: 2px;
-}
-
-.proof-drawer-heading > svg {
-  color: var(--truth-collectable);
-}
-
-.remote-lens-heading {
-  display: grid;
-  grid-template-columns: 22px minmax(0, 1fr);
-  gap: 8px 10px;
-  padding-right: 32px;
-}
-
-.remote-lens-heading > svg {
-  color: var(--truth-future);
-}
-
-.proof-drawer-heading p,
-.proof-block-heading p,
-.remote-lens-heading p,
-.remote-boundary p:first-child {
-  margin: 0;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.proof-drawer-heading h2,
-.remote-lens-heading h2 {
-  margin: 0;
-  color: var(--ink);
-  font-size: 20px;
-  line-height: 1.12;
-  letter-spacing: -0.01em;
-}
-
-.compare-lens-heading {
-  display: grid;
-  grid-template-columns: 22px minmax(0, 1fr);
-  gap: 8px 10px;
-  padding-right: 32px;
-}
-
-.compare-lens-heading > svg {
-  color: var(--truth-derived);
-}
-
-.compare-lens-heading p {
-  margin: 0;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.compare-lens-heading h2,
-.compare-run-title {
-  margin: 0;
-  color: var(--ink);
-  font-size: 18px;
-  line-height: 1.14;
-  letter-spacing: -0.01em;
-}
-
-.compare-run-pills {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  grid-column: 2;
-  margin-top: 4px;
-}
-
-.compare-run-pill {
-  display: inline-flex;
-  align-items: center;
-  max-width: 100%;
-  padding: 4px 9px;
-  border-radius: var(--radius-pill);
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.2;
-  overflow-wrap: anywhere;
-}
-
-.compare-run-pill--left {
-  background: var(--truth-collectable-tint);
-  color: var(--truth-collectable);
-  border: 1px solid color-mix(in srgb, var(--truth-collectable) 25%, transparent);
-}
-
-.compare-run-pill--right {
-  background: var(--truth-derived-tint);
-  color: var(--truth-derived);
-  border: 1px solid color-mix(in srgb, var(--truth-derived) 25%, transparent);
-}
-
-.compare-run-pill--vs {
-  padding: 0;
-  background: transparent;
-  border: 0;
-  color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.compare-state-line {
-  display: grid;
-  grid-template-columns: 13px minmax(0, 1fr) auto auto;
-  gap: 8px 10px;
-  align-items: center;
-  margin-top: 14px;
-  padding: 8px 0;
-  border-top: 1px solid var(--hairline);
-  border-bottom: 1px solid var(--hairline);
-}
-
-.compare-dimension-count {
-  color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  white-space: nowrap;
-}
-
-.compare-empty {
-  margin: 14px 0 0;
-  color: var(--text-body);
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.compare-dimension-list {
-  display: grid;
-  gap: 10px;
-  margin-top: 12px;
-}
-
-.compare-dimension {
-  padding: 11px 12px;
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-chip);
-  background: var(--row-bg);
-  border-left: 3px solid color-mix(in srgb, var(--truth-derived) 35%, transparent);
-}
-
-.compare-dimension.derived_v1 {
-  border-left-color: var(--truth-derived);
-}
-
-.compare-dimension.collectable_v1 {
-  border-left-color: var(--truth-collectable);
-}
-
-.compare-dimension-heading {
-  display: grid;
-  grid-template-columns: 13px minmax(0, 1fr);
-  gap: 8px 10px;
-}
-
-.compare-dimension-heading p {
-  margin: 0;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.compare-dimension-heading h3 {
-  margin: 0;
-  color: var(--ink);
-  font-size: 14px;
-  line-height: 1.2;
-}
-
-.compare-dimension-summary {
-  margin: 8px 0 0;
-  color: var(--text-body);
-  font-size: 12px;
-  line-height: 1.45;
-}
-
-.compare-dimension-truth {
-  margin-top: 8px;
-}
-
-.compare-dimension-truth.truth-grid {
-  gap: 6px;
-  margin-top: 8px;
-}
-
-.compare-dimension-truth.truth-grid div {
-  padding: 6px 0;
-}
-
-.compare-delta-metrics {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-  margin-top: 8px;
-}
-
-.compare-delta-metrics span {
-  display: grid;
-  gap: 1px;
-  padding: 7px 8px;
-  border-radius: 8px;
-  border: 1px solid var(--hairline);
-  background: var(--elev1-bg);
-  font-size: 11px;
-  color: var(--text-muted);
-  text-transform: uppercase;
-}
-
-.compare-delta-metrics strong {
-  color: var(--ink);
-  font-size: 14px;
-  font-weight: 600;
-  text-transform: none;
-}
-
-.remote-state-line {
-  display: grid;
-  grid-template-columns: 13px minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: center;
-  margin-top: 18px;
-  padding: 10px 0;
-  border-top: 1px solid var(--hairline);
-  border-bottom: 1px solid var(--hairline);
-}
-
-.remote-state-line strong {
-  min-width: 0;
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 600;
-  text-transform: capitalize;
-}
-
-.remote-state-line span:last-child {
-  color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.proof-summary {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
-  margin: 14px 0 2px;
-}
-
-.proof-summary span,
-.proof-block-metrics span,
-.remote-metrics span {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-  padding: 7px 8px;
-  background: var(--row-bg);
-  color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-}
-
-.proof-summary strong,
-.proof-block-metrics strong,
-.remote-metrics strong {
-  color: var(--ink);
-  font-size: 14px;
-  font-weight: 600;
-  text-transform: none;
-}
-
-.remote-metrics {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-  margin-top: 12px;
-}
-
-.remote-boundaries {
-  display: grid;
-  gap: 2px;
-  margin-top: 12px;
-}
-
-.remote-boundary {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 6px 10px;
-  padding: 12px 0 12px 0;
-  border-top: 1px solid var(--hairline);
-}
-
-.remote-boundary h3 {
-  margin: 2px 0 0;
-  color: var(--ink);
-  font-size: 15px;
-  line-height: 1.18;
-  letter-spacing: -0.01em;
-}
-
-.remote-boundary > span {
-  color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.remote-boundary > p {
-  grid-column: 1 / -1;
-  margin: 0;
-  color: var(--text-body);
-  font-size: 12px;
-  line-height: 1.45;
-}
-
-.proof-block-list {
-  display: grid;
-  gap: 2px;
-}
-
-.proof-block {
-  min-width: 0;
-  padding: 14px 0 14px 0;
-  border-top: 1px solid var(--hairline);
-}
-
-.proof-block:first-child {
-  border-top: 0;
-}
-
-.proof-block-heading {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-}
-
-
-.proof-block-heading h3 {
-  margin: 2px 0 0;
-  color: var(--ink);
-  font-size: 15px;
-  line-height: 1.18;
-  letter-spacing: -0.01em;
-}
-
-.proof-block-summary {
-  margin: 8px 0 0;
-  color: var(--text-body);
-  font-size: 12px;
-  line-height: 1.45;
-}
-
-.proof-block-truth {
-  margin-top: 10px;
-}
-
-.proof-block-truth.truth-grid {
-  gap: 6px;
-  margin-top: 10px;
-}
-
-.proof-block-truth.truth-grid div {
-  padding: 6px 0;
-}
-
-.proof-block-metrics {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-  margin-top: 10px;
-}
-
-.proof-claims {
-  display: grid;
-  gap: 6px;
-  margin: 10px 0 0;
-  padding-left: 16px;
-  color: var(--text-body);
-  font-size: 11px;
-  line-height: 1.45;
-}
-
-.proof-evidence {
-  margin-top: 10px;
-}
-
-.unsupported-list {
-  display: grid;
-  gap: 9px;
-  margin-top: 16px;
-}
-
-/* Unsupported claims: named, not hidden — overline + chips in the failure
-   family (DESIGN-SYSTEM.md truth language §unsupported-claims). */
-.unsupported-list > span {
-  color: var(--failure);
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.unsupported-list > div {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.unsupported-list code {
-  min-width: 0;
-  padding: 6px 8px;
-  border: 1px solid var(--failure-border);
-  background: var(--failure-tint);
-  color: var(--failure);
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.proof-unsupported {
-  margin-top: 14px;
-}
+/* Old .lens-panel / .lens-block / .lens-boundary / .compare-dimension /
+ * .remote-boundary / .proof-block* / .proof-claims / .unsupported-list CSS
+ * retired in P6 — the remote & compare lenses were rebuilt on dedicated
+ * classes (see the P6 lens block at the end of this file). */
 
 /* View picker (board 1c): bordered control — overline "VIEW" + name + chevron. */
 .view-template-select {
@@ -2221,11 +1993,14 @@ select:focus-visible {
   bottom: 24px;
 }
 
-.grid-region-primary .runway-overlay {
+/* Validation Runway — full E3 panel over the (full-width) graph (board 1j). */
+.grid-region-primary .runway-panel {
   position: absolute;
-  left: 24px;
+  z-index: 5;
+  left: 76px;
   right: 24px;
-  bottom: 24px;
+  top: 20px;
+  bottom: 20px;
 }
 
 .grid-region-primary .proof-constellation-overlay {
@@ -2235,22 +2010,68 @@ select:focus-visible {
   left: 24px;
 }
 
+/* Rail is a fixed pass-through overlay layer (P6): the graph is full-width and
+   the inspector / remote / compare lenses float over it. Each lens' slot
+   wrapper is the fixed drawer/panel and re-enables pointer events; the proof
+   drawer positions itself (P5 flagship). */
 .grid-region-rail {
-  position: relative;
-  overflow: auto;
-  padding: 16px;
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  padding: 0;
+  overflow: visible;
+  pointer-events: none;
 }
 
-.grid-region-rail .inspector,
+.grid-region-rail > .grid-slot {
+  pointer-events: none;
+}
+
+/* Inspector — right E3 drawer (board 1g). */
+.grid-region-rail > .grid-slot-evidence_inspector {
+  position: fixed;
+  top: 112px;
+  right: 16px;
+  bottom: 96px;
+  width: min(420px, calc(100vw - 32px));
+  display: flex;
+  pointer-events: auto;
+}
+
+/* Remote boundary — centered E3 panel (board 1h). */
+.grid-region-rail > .grid-slot-remote_boundary_lens {
+  position: fixed;
+  top: 116px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(780px, calc(100vw - 32px));
+  max-height: calc(100vh - 196px);
+  display: flex;
+  pointer-events: auto;
+}
+
+/* Compare — wide centered E3 panel (board 1i). */
+.grid-region-rail > .grid-slot-compare_lens {
+  position: fixed;
+  top: 116px;
+  bottom: 92px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(940px, calc(100vw - 32px));
+  display: flex;
+  pointer-events: auto;
+}
+
+/* Proof drawer + proof block card self-position (P5) — keep their wrappers as
+   pass-throughs and re-enable pointer events on the panels themselves. */
+.grid-region-rail > .grid-slot-proof_drawer,
+.grid-region-rail > .grid-slot-proof_block_card {
+  pointer-events: none;
+}
+
 .grid-region-rail .proof-drawer,
-.grid-region-rail .remote-lens,
-.grid-region-rail .compare-lens {
-  position: relative;
-  top: auto;
-  right: auto;
-  left: auto;
-  width: 100%;
-  max-height: none;
+.grid-region-rail .proof-card {
+  pointer-events: auto;
 }
 
 .grid-region-operator {
@@ -2277,9 +2098,10 @@ select:focus-visible {
     bottom: 12px;
   }
 
-  .grid-region-primary .runway-overlay {
+  .grid-region-primary .runway-panel {
     left: 12px;
     right: 12px;
+    top: 12px;
     bottom: 12px;
   }
 }
@@ -2353,47 +2175,28 @@ select:focus-visible {
   background: var(--row-bg);
 }
 
-.receipt-pane-heading {
+/* Single receipt header row: overline (left) + receipt_verified badge (right),
+ * board 1g §2.3 (redesign P6 M4). */
+.receipt-head-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-muted);
+  margin-bottom: 8px;
 }
 
-.receipt-pane-heading .provenance-chip {
-  margin-left: auto;
+/* The receipt badge reads "● verified …" like board 1g — NOT the drifted
+ * "●● VERIFIED RECEIPT". Scoped to the receipt so the shared graph-node /
+ * compare provenance chips are untouched: drop the ALL-CAPS and the second
+ * (pulsing live) dot so a single source glyph reads next to the label
+ * (redesign P6 fix M4). */
+.receipt-head-row .provenance-chip {
+  text-transform: none;
+  letter-spacing: normal;
 }
 
-.receipt-pane-hint {
-  margin: 8px 0 0;
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.receipt-grid {
-  margin-top: 10px;
-}
-
-.receipt-grid dd {
-  overflow-wrap: anywhere;
-}
-
-.receipt-usage {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 14px;
-  margin-top: 10px;
-  font-size: 11px;
-  color: var(--text-body);
-}
-
-.receipt-usage strong {
-  margin-right: 4px;
-  color: var(--ink);
+.receipt-head-row .provenance-chip .provenance-live-dot {
+  display: none;
 }
 
 .receipt-hashes {
@@ -2409,12 +2212,15 @@ select:focus-visible {
   align-items: center;
 }
 
+/* Field-label caption, same lowercase/muted treatment as the inspector truth-
+ * grid captions (M5) — it sits in the same receipt panel and read bold-uppercase
+ * "PROMPT SHA256" right below the now-lowercase truth captions (P6 M5-residual). */
 .receipt-hash-label {
   font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--text-muted);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text-hint);
 }
 
 .receipt-hash code {
@@ -3328,4 +3134,490 @@ select:focus-visible {
 .canvas-stage--proof-dim .graph-grouping-pill,
 .canvas-stage--proof-dim .graph-count-readout {
   opacity: 0.5;
+}
+
+/* ======================================================================== *
+ * P6 LENS REDESIGN — Remote Boundary + Compare Runs + inspector receipt.
+ * Inspector / runway styles live above; these panels float over the dimmed
+ * full-width graph as fixed overlays (see .grid-region-rail wrappers).
+ * ======================================================================== */
+
+/* ── Agent receipt additions (board 1g §3) ── */
+.receipt-model {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.receipt-model-value {
+  font: 600 12.5px/1.3 var(--font-mono);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.receipt-model-note {
+  font-size: 11px;
+  color: var(--text-hint);
+}
+
+/* The raw prompt is never exported — only its hash is retained (hatched lock). */
+.receipt-rawlock {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-chip);
+  background: var(--redaction-hatch);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* ── Remote Boundary (board 1h) ── centered E3 panel, all-dashed, slate ── */
+.remote-lens {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 28px 32px;
+  overflow-y: auto;
+  border: var(--elev3-border);
+  border-radius: var(--radius-drawer);
+  background: var(--elev3-bg);
+  backdrop-filter: var(--elev3-blur);
+  box-shadow: var(--elev3-shadow);
+  color: var(--ink);
+}
+
+.remote-close {
+  top: 16px;
+  right: 16px;
+}
+
+.remote-lead {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 36px;
+}
+
+.remote-emblem {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  border: 1.5px dashed color-mix(in srgb, var(--truth-future) 60%, transparent);
+  color: var(--truth-future);
+}
+
+.remote-overline {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-hint);
+}
+
+.remote-statement {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 650;
+  line-height: 1.14;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.remote-explainer {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-body);
+  max-width: 62ch;
+}
+
+.remote-observed-line {
+  font: 500 11.5px/1.4 var(--font-mono);
+  color: var(--text-hint);
+}
+
+/* 3×2 grid of DASHED metric cells — slate, NEVER red. */
+.remote-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.remote-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  border: 1.25px dashed var(--border-control);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--truth-future) 5%, transparent);
+}
+
+.remote-cell-value {
+  font: 600 20px/1 var(--font-mono);
+  color: var(--text-body);
+}
+
+.remote-cell-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 500 13px/1 var(--font-mono);
+  color: var(--text-muted);
+}
+
+/* Metric captions: lowercase muted, distinct from overlines (redesign P6 M5). */
+.remote-cell-label {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-hint);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.remote-earn {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.remote-earn-overline {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-hint);
+}
+
+.remote-earn-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text-body);
+}
+
+/* (The per-boundary "derived summary" rows were removed as an unspec'd
+ *  near-duplicate — redesign P6 M6. Their CSS is retired with them.) */
+
+.remote-unsupported {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.remote-unsupported-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--failure);
+}
+
+.remote-unsupported-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Truth footer — dashed future glyph + hollow ? meter + calm assertion. */
+.remote-footer {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding-top: 14px;
+  border-top: 1px solid var(--hairline);
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+/* ── Compare Runs (board 1i) ── wide centered E3 panel ── */
+.compare-lens {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 24px 28px;
+  overflow-y: auto;
+  border: var(--elev3-border);
+  border-radius: var(--radius-drawer);
+  background: var(--elev3-bg);
+  backdrop-filter: var(--elev3-blur);
+  box-shadow: var(--elev3-shadow);
+  color: var(--ink);
+}
+
+.compare-close {
+  top: 16px;
+  right: 16px;
+}
+
+.compare-head {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-right: 36px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.compare-overline {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-hint);
+}
+
+.compare-run-groups {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.compare-run-pill {
+  display: inline-flex;
+  align-items: baseline;
+  max-width: 100%;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.compare-run-pill--left {
+  background: var(--truth-collectable-tint);
+  color: var(--truth-collectable);
+  border: 1px solid color-mix(in srgb, var(--truth-collectable) 25%, transparent);
+}
+
+.compare-run-pill--right {
+  background: var(--truth-derived-tint);
+  color: var(--truth-derived);
+  border: 1px solid color-mix(in srgb, var(--truth-derived) 25%, transparent);
+}
+
+.compare-run-count {
+  font: 500 11px/1.2 var(--font-mono);
+  opacity: 0.85;
+}
+
+.compare-swap {
+  display: inline-flex;
+  color: var(--text-muted);
+}
+
+.compare-head-truth {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.compare-dimension-count {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.compare-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.compare-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border: var(--elev1-border);
+  border-radius: var(--radius-card);
+  background: var(--elev1-bg);
+}
+
+.compare-card--full {
+  grid-column: 1 / -1;
+}
+
+.compare-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.compare-card-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--ink);
+}
+
+.compare-card-head .confidence-meter {
+  margin-left: auto;
+}
+
+.compare-card-values {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 10px;
+  align-items: center;
+}
+
+.compare-val {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.compare-val--right {
+  text-align: right;
+  align-items: flex-end;
+}
+
+/* Run-group labels: lowercase muted, distinct from overlines (redesign P6 M5). */
+.compare-val-tag {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-hint);
+  text-transform: none;
+  letter-spacing: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.compare-val-num {
+  font: 600 22px/1 var(--font-mono);
+  color: var(--ink);
+}
+
+.compare-delta-pill {
+  justify-self: center;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  font: 600 11.5px/1.3 var(--font-mono);
+  white-space: nowrap;
+  background: var(--n2);
+  color: var(--text-body);
+  border: 1px solid var(--hairline);
+}
+
+.compare-delta-pill--differs {
+  background: var(--truth-derived-tint);
+  color: var(--truth-derived);
+  border-color: color-mix(in srgb, var(--truth-derived) 25%, transparent);
+}
+
+.compare-delta-pill--match {
+  background: var(--truth-collectable-tint);
+  color: var(--truth-collectable);
+  border-color: color-mix(in srgb, var(--truth-collectable) 22%, transparent);
+}
+
+.compare-card-caption {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+/* (.compare-card-truth removed — dimension cards stop at the caption per board
+ *  1i; redesign P6 m8.) */
+
+/* Provenance side-empty restyle (P6): glyph + honest "stated, not padded". */
+.provenance-side--empty .provenance-side-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 12px;
+  border: 1.25px dashed var(--border-control);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--truth-future) 5%, transparent);
+}
+
+.provenance-side-empty strong {
+  font-size: 12.5px;
+  color: var(--ink);
+}
+
+.provenance-side-empty span {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+/* ── Compare honest empty state (board 1i) ── */
+.compare-lens--empty {
+  align-items: center;
+  justify-content: center;
+}
+
+.compare-empty-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: 480px;
+  padding: 28px;
+  text-align: center;
+  border: 1.25px dashed var(--border-control);
+  border-radius: var(--radius-card);
+  background: color-mix(in srgb, var(--truth-future) 5%, transparent);
+}
+
+.compare-empty-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.compare-empty-body {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-body);
+}
+
+.compare-empty-body code {
+  font: 500 11.5px/1 var(--font-mono);
+  color: var(--truth-derived);
+}
+
+.compare-empty-composer {
+  margin-top: 4px;
+  padding: 7px 14px;
+  border: 0;
+  background: transparent;
+  color: var(--truth-collectable);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.compare-empty-composer:hover {
+  text-decoration: underline;
 }

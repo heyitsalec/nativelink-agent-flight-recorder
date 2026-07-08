@@ -146,10 +146,10 @@
       },
       "visible_when": {
         "mode": [
-          "graph",
-          "runway"
+          "graph"
         ],
         "mode_not": [
+          "runway",
           "proof",
           "remote",
           "compare"

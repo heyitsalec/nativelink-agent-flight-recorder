@@ -1,28 +1,48 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ChevronRight, Copy, Download, GitCompare, Maximize2, Network, ReceiptText, X } from "lucide-react";
+import {
+  ArrowLeftRight,
+  Bot,
+  Box,
+  ChevronRight,
+  Copy,
+  Database,
+  Download,
+  FileText,
+  GitCommitVertical,
+  Globe,
+  Lock,
+  Play,
+  Server,
+  Target,
+  Terminal,
+  TriangleAlert,
+  X,
+  Zap,
+} from "lucide-react";
 import {
   blockIndexMeta,
   blocksBelow,
+  compareHeadline,
   formatMetricValue,
   isRedactedValue,
   labelKind,
   payloadRecord,
   proofRollup,
+  redactedPayloadFields,
   redactedValueForBlock,
-  type RemoteLensModel,
+  remoteBoundaryView,
   unsupportedClaimsFromPayload,
 } from "../pageModel";
 import {
   agentReceiptModel,
   provenanceSide,
-  truncateHash,
   type AgentReceiptModel,
   type ProvenanceBadge as ProvenanceBadgeModel,
   type ProvenanceBlockSummary,
 } from "../receiptModel";
 import type {
+  CompareDimension,
   CompareProjection,
-  Confidence,
   PositionedNode,
   ProofBlock,
   ProofMetricValue,
@@ -30,7 +50,7 @@ import type {
   SourceKind,
 } from "../types";
 import type { ComponentInstance } from "../view/types";
-import { useViewComponent, useViewContext } from "../view/ViewContext";
+import { useViewContext } from "../view/ViewContext";
 import { stringProp } from "./shared/props";
 import {
   ConfidenceMeter,
@@ -40,6 +60,7 @@ import {
   StatusGlyph,
   UnsupportedClaimChip,
 } from "./shared/truth";
+import { SOURCE_KIND_META } from "./shared/truth/copy";
 
 export function EvidenceInspectorPanel(_instance: ComponentInstance) {
   const { graph, route, routeActions } = useViewContext();
@@ -69,12 +90,38 @@ export function ProvenanceChip({ badge }: { badge: ProvenanceBadgeModel }) {
   return <ProvenanceBadge badge={badge} />;
 }
 
+/** Kind → lucide icon for the inspector header plate (mirrors the graph card
+ *  plate icons, DESIGN-SYSTEM.md §1). */
+const INSPECTOR_KIND_ICONS: Record<
+  string,
+  React.ComponentType<{ size?: number | string; "aria-hidden"?: React.AriaAttributes["aria-hidden"] }>
+> = {
+  run: Play,
+  invocation: Terminal,
+  artifact: FileText,
+  agent: Bot,
+  change: GitCommitVertical,
+  target: Target,
+  action: Zap,
+  cache_event: Database,
+  failure: TriangleAlert,
+  worker: Server,
+  worker_readiness: Server,
+  remote_execution_config: Server,
+};
+
+/** Middle-truncate a hash for display; full value stays copyable. */
+function truncateHashMiddle(value: string, head = 10, tail = 8): string {
+  if (value.length <= head + tail + 1) return value;
+  return `${value.slice(0, head)}…${value.slice(-tail)}`;
+}
+
 function CopyHash({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <div className="receipt-hash">
       <span className="receipt-hash-label">{label}</span>
-      <code title={value}>{truncateHash(value)}</code>
+      <code title={value}>{truncateHashMiddle(value)}</code>
       <button
         className="receipt-hash-copy"
         aria-label={`Copy ${label}`}
@@ -91,114 +138,251 @@ function CopyHash({ label, value }: { label: string; value: string }) {
   );
 }
 
+/** Board 1g §2.3 hash rows, in order: prompt_sha256 then response_sha256 only
+ *  (the receipt_sha256 row and reordering were the P6 M4 drift). */
+const RECEIPT_HASH_ORDER = ["prompt sha256", "response sha256"];
+
+/**
+ * Agent receipt pane (board 1g §2.3). A SINGLE header (overline + the P2
+ * `receipt_verified` ProvenanceBadge) + server-resolved model + prompt_sha256
+ * then response_sha256 (mono, middle-truncated, copyable) + the honest raw-
+ * prompt lock (the prompt is NEVER exported — only its hash is retained). No
+ * duplicated heading, hint sentence, token-count pills, or receipt_sha256 row
+ * (redesign P6 fix M4).
+ */
 function ReceiptDetailPane({ receipt }: { receipt: AgentReceiptModel }) {
-  const fields: { label: string; value: string | null }[] = [
-    { label: "Model", value: receipt.model },
-    { label: "Session", value: receipt.sessionId },
-    { label: "CLI version", value: receipt.cliVersion },
-    { label: "Captured at", value: receipt.capturedAt },
-  ];
-  const present = fields.filter((field) => field.value !== null);
+  const specHashes = RECEIPT_HASH_ORDER.map((label) =>
+    receipt.hashes.find((hash) => hash.label === label),
+  ).filter((hash): hash is (typeof receipt.hashes)[number] => Boolean(hash));
 
   return (
-    <section className="receipt-pane" aria-label="agent receipt" data-testid="receipt-detail-pane">
-      <div className="receipt-pane-heading">
-        <ReceiptText size={15} />
-        <span>Agent receipt</span>
+    <section className="receipt-pane inspector-section" aria-label="agent receipt" data-testid="receipt-detail-pane">
+      <div className="receipt-head-row">
+        <span className="inspector-overline">AGENT RECEIPT</span>
         <ProvenanceChip badge={receipt.badge} />
       </div>
-      <p className="receipt-pane-hint">{receipt.badge.hint}</p>
-      {present.length > 0 && (
-        <dl className="truth-grid receipt-grid">
-          {present.map((field) => (
-            <div key={field.label}>
-              <dt>{field.label}</dt>
-              <dd>{field.value}</dd>
-            </div>
-          ))}
-        </dl>
-      )}
-      {receipt.usage.length > 0 && (
-        <div className="receipt-usage lens-metric-strip" aria-label="receipt token usage">
-          {receipt.usage.map((entry) => (
-            <span key={entry.label}>
-              <strong>{entry.value}</strong>
-              {entry.label}
-            </span>
-          ))}
+      {receipt.model && (
+        <div className="receipt-model">
+          <span className="receipt-model-value">{receipt.model}</span>
+          <span className="receipt-model-note">server-resolved</span>
         </div>
       )}
-      {receipt.hashes.length > 0 && (
+      {specHashes.length > 0 && (
         <div className="receipt-hashes" aria-label="receipt hashes">
-          {receipt.hashes.map((hash) => (
+          {specHashes.map((hash) => (
             <CopyHash key={hash.label} label={hash.label} value={hash.value} />
           ))}
         </div>
       )}
+      <div className="receipt-rawlock" title="The raw prompt is never written to any projection or export — only its sha256 is retained.">
+        <Lock size={12} aria-hidden="true" />
+        <span>raw prompt — never exported · hash only</span>
+      </div>
     </section>
   );
 }
 
+/** Curated recorded-run detail fields, in board order (§5). Redacted values
+ *  render as lock chips (carry-forward), never a bare "[REDACTED]". */
+const RECORDED_DETAIL_KEYS: { key: string; label: string }[] = [
+  { key: "run_group", label: "run group" },
+  { key: "scenario", label: "scenario" },
+  { key: "mode", label: "mode" },
+  { key: "invocation_kind", label: "invocation" },
+  { key: "exit_code", label: "exit code" },
+  { key: "cwd", label: "cwd" },
+  { key: "started_at", label: "started" },
+  { key: "ended_at", label: "ended" },
+];
+
+function durationSeconds(start: unknown, end: unknown): string | null {
+  if (typeof start !== "string" || typeof end !== "string") return null;
+  const a = Date.parse(start);
+  const b = Date.parse(end);
+  if (!Number.isFinite(a) || !Number.isFinite(b) || b < a) return null;
+  return `${((b - a) / 1000).toFixed(2)}s`;
+}
+
+/** Recorded-run details section (§5): the real payload facts, with a computed
+ *  duration and redacted values kept honest as lock chips. */
+function RecordedDetails({ node }: { node: PositionedNode }) {
+  const record = payloadRecord(node.payload);
+  if (!record) return null;
+  const rows = RECORDED_DETAIL_KEYS.filter(({ key }) => {
+    const value = record[key];
+    return value !== undefined && value !== null && value !== "";
+  }).map(({ key, label }) => ({ key, label, raw: record[key] }));
+  const duration = durationSeconds(record.started_at, record.ended_at);
+  if (rows.length === 0 && !duration) return null;
+
+  return (
+    <section className="inspector-section" aria-label="recorded details">
+      <span className="inspector-overline">RECORDED {node.kind === "run" ? "RUN" : "EVIDENCE"}</span>
+      <dl className="insp-kv">
+        {rows.map((row) => (
+          <div key={row.key}>
+            <dt>{row.label}</dt>
+            <dd>
+              {typeof row.raw === "string" && isRedactedValue(row.raw) ? (
+                <RedactionChip state="redacted" value={row.raw} />
+              ) : (
+                <span>{String(row.raw)}</span>
+              )}
+            </dd>
+          </div>
+        ))}
+        {duration && (
+          <div>
+            <dt>duration</dt>
+            <dd>
+              <span className="insp-mono">{duration}</span>
+            </dd>
+          </div>
+        )}
+      </dl>
+    </section>
+  );
+}
+
+/** Raw payload — collapsed by default, explicitly secondary (§7). */
+function RawPayload({ payload }: { payload: Record<string, unknown> }) {
+  const [open, setOpen] = useState(false);
+  const json = useMemo(() => JSON.stringify(payload, null, 2), [payload]);
+  const [copied, setCopied] = useState(false);
+  const lines = json.split("\n").length;
+  return (
+    <div className="insp-raw">
+      <button type="button" className="insp-raw-toggle" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+        <ChevronRight size={12} className={`insp-raw-caret${open ? " open" : ""}`} aria-hidden="true" />
+        <span className="insp-raw-word">raw payload</span>
+        <span className="insp-raw-meta">developer · {lines} lines JSON</span>
+        <button
+          type="button"
+          className="insp-raw-copy"
+          aria-label="Copy raw payload"
+          onClick={(event) => {
+            event.stopPropagation();
+            void navigator.clipboard?.writeText(json).then(() => {
+              setCopied(true);
+              window.setTimeout(() => setCopied(false), 1400);
+            });
+          }}
+        >
+          {copied ? "copied" : <Copy size={12} aria-hidden="true" />}
+        </button>
+      </button>
+      {open && <pre className="insp-raw-pre">{json}</pre>}
+    </div>
+  );
+}
+
+/**
+ * Evidence Inspector (redesign P6 — DESIGN-SYSTEM.md §2, board 1g). Right E3
+ * drawer. Hairline-divided sections, each overlined: header, the 2×2 truth
+ * grid, the agent receipt (if any), a failure callout that keeps the honest
+ * "red marks the outcome, teal marks the origin" truth row, recorded-run
+ * details, collapsible evidence refs, and a collapsed-by-default raw payload.
+ * Redacted payload values are kept as lock chips carrying the real partial path.
+ */
 function Inspector({ node, onClose }: { node: PositionedNode; onClose: () => void }) {
   const message = failureMessage(node);
   const receipt = node.kind === "agent" ? agentReceiptModel(node.payload) : null;
+  const Icon = INSPECTOR_KIND_ICONS[node.kind] ?? Box;
+  const sourceMeta = SOURCE_KIND_META[node.source_kind] ?? SOURCE_KIND_META.unknown;
+  // Carry-forward: surface a real `[REDACTED:...]` value from the payload so the
+  // redaction cell shows the partial path, never a bare "[REDACTED]".
+  const redactedFields = useMemo(() => redactedPayloadFields(node.payload), [node.payload]);
+  const redactionValue = node.redaction_state === "redacted" ? redactedFields[0]?.value : undefined;
+  const exitCode = payloadRecord(node.payload)?.exit_code;
 
   return (
     <aside
       className={`inspector ${node.kind === "failure" ? "inspector--failure" : ""}`}
       aria-label="selected evidence"
     >
-      <button className="close-button" onClick={onClose} aria-label="Close inspector">
-        <Maximize2 size={16} />
-      </button>
-      <div className="inspector-heading">
-        <SourceGlyph kind={node.source_kind} size={11} />
-        <p>{labelKind(node.kind)}</p>
-        <h2>{node.label}</h2>
-      </div>
+      <section className="inspector-section inspector-head-section">
+        <div className="inspector-head-row">
+          <span className="inspector-overline">EVIDENCE INSPECTOR</span>
+          <button className="close-button inspector-close" onClick={onClose} aria-label="Close inspector">
+            <X size={16} />
+          </button>
+        </div>
+        <div className="inspector-head">
+          <span className={`inspector-plate truth--${sourceMeta.tone}`} aria-hidden="true">
+            <Icon size={18} />
+          </span>
+          <div className="inspector-head-text">
+            <h2 className="inspector-title">{node.label}</h2>
+            <span className="inspector-id">{node.id}</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="inspector-section">
+        <span className="inspector-overline">TRUTH LABELS</span>
+        <div className="inspector-truth-grid">
+          <div className="inspector-truth-cell">
+            <span className="inspector-truth-caption">source</span>
+            <span className="truth-value">
+              <SourceGlyph kind={node.source_kind} size={11} />
+              <span>{sourceMeta.label}</span>
+            </span>
+          </div>
+          <div className="inspector-truth-cell">
+            <span className="inspector-truth-caption">confidence</span>
+            <span className="truth-value">
+              <ConfidenceMeter confidence={node.confidence} />
+              <span>{node.confidence}</span>
+            </span>
+          </div>
+          <div className="inspector-truth-cell">
+            <span className="inspector-truth-caption">redaction</span>
+            <span className="truth-value">
+              <RedactionChip state={node.redaction_state} value={redactionValue} />
+            </span>
+          </div>
+          <div className="inspector-truth-cell">
+            <span className="inspector-truth-caption">status</span>
+            <span className="truth-value">
+              <StatusGlyph status={node.status} />
+            </span>
+          </div>
+        </div>
+      </section>
+
       {receipt && <ReceiptDetailPane receipt={receipt} />}
+
       {message && (
-        <section className="failure-message-panel" aria-label="failure message">
-          <span className="failure-message-label">Failure message</span>
-          <p className="failure-message-body">{message}</p>
+        <section className="inspector-section failure-callout" aria-label="failure callout">
+          <div className="failure-callout-box">
+            <div className="failure-callout-head">
+              <TriangleAlert size={14} aria-hidden="true" />
+              <strong>
+                Recorded failure{typeof exitCode === "number" ? ` — exit ${exitCode}` : ""}
+              </strong>
+            </div>
+            <p className="failure-callout-body">{message}</p>
+          </div>
+          <p className="failure-callout-truth">
+            a failure is still high-confidence recorded evidence — red marks the outcome, teal marks the
+            origin.
+          </p>
         </section>
       )}
-      <dl className="truth-grid">
-        <div>
-          <dt>Source</dt>
-          <dd className="truth-value">
-            <SourceGlyph kind={node.source_kind} size={11} />
-            <span>{node.source_kind}</span>
-          </dd>
-        </div>
-        <div>
-          <dt>Confidence</dt>
-          <dd className="truth-value">
-            <ConfidenceMeter confidence={node.confidence} />
-            <span>{node.confidence}</span>
-          </dd>
-        </div>
-        <div>
-          <dt>Redaction</dt>
-          <dd className="truth-value">
-            <RedactionChip state={node.redaction_state} />
-          </dd>
-        </div>
-        <div>
-          <dt>Status</dt>
-          <dd className="truth-value">
-            <StatusGlyph status={node.status} />
-          </dd>
-        </div>
-      </dl>
-      <div className="evidence-list">
-        <span>Evidence refs</span>
-        {node.evidence_refs.map((ref) => (
-          <code key={ref}>{ref}</code>
-        ))}
-      </div>
+
+      <RecordedDetails node={node} />
+
+      {node.evidence_refs.length > 0 && (
+        <section className="inspector-section">
+          <span className="inspector-overline">EVIDENCE REFS</span>
+          <EvidenceRefs refs={node.evidence_refs} defaultOpen={false} />
+        </section>
+      )}
+
       {node.payload && Object.keys(node.payload).length > 0 && (
-        <pre className="payload">{JSON.stringify(node.payload, null, 2)}</pre>
+        <section className="inspector-section">
+          <RawPayload payload={node.payload} />
+        </section>
       )}
     </aside>
   );
@@ -694,133 +878,194 @@ function EvidenceRefRow({ value }: { value: string }) {
   );
 }
 
+/**
+ * Remote Boundary (redesign P6 — DESIGN-SYSTEM.md §5, board 1h). Centered E3
+ * panel. A dashed globe emblem, the honest boundary statement, a 3×2 grid of
+ * DASHED metric cells (slate, NEVER red — "not observed" is a calm stated
+ * boundary), what would earn the claims, the unsupported-claims set, and a
+ * truth footer asserting the block claims nothing it cannot prove. Every value
+ * is a real proof-packet number. Per-boundary rows shape-encode source_kind.
+ */
 export function RemoteBoundaryLensPanel(_instance: ComponentInstance) {
-  const { routeActions } = useViewContext();
-  const lens = useViewComponent(_instance) as RemoteLensModel | null;
-  if (!lens) return null;
+  const { bindings, routeActions } = useViewContext();
+  const view = useMemo(
+    () => remoteBoundaryView(bindings.actionGraph, bindings.proofPacket),
+    [bindings.actionGraph, bindings.proofPacket],
+  );
 
   return (
-    <aside className="remote-lens lens-panel lens-panel--remote" aria-label="remote execution boundary">
+    <aside className="remote-lens" aria-label="remote execution boundary">
       <button
-        className="close-button"
+        className="close-button remote-close"
         onClick={() => routeActions.setMode("graph")}
         aria-label="Close remote boundary"
       >
         <X size={16} />
       </button>
-      <div className="remote-lens-heading lens-heading">
-        <Network size={18} />
-        <p>Remote Boundary</p>
-        <h2>{lens.statusLabel}</h2>
-        <span className="lens-meta">
-          {lens.boundaries.length} boundary{lens.boundaries.length === 1 ? "" : "ies"} · projection join
+      <div className="remote-lead">
+        <span className="remote-emblem" aria-hidden="true">
+          <Globe size={26} />
         </span>
+        <span className="remote-overline">REMOTE EXECUTION BOUNDARY · DERIVED JOIN</span>
+        <h2 className="remote-statement">{view.statement}</h2>
+        <p className="remote-explainer">{view.explainer}</p>
+        <span className="remote-observed-line">{view.observedLine}</span>
       </div>
-      <div className="remote-state-line lens-state-line">
-        <SourceGlyph kind={lens.sourceKind as SourceKind} size={11} />
-        <strong>{lens.modeLabel}</strong>
-        <span className="truth-value">
-          <ConfidenceMeter confidence={lens.confidence as Confidence} />
-          {lens.confidence}
-        </span>
-      </div>
-      <div className="remote-metrics lens-metric-strip">
-        {lens.metrics.map((metric) => (
-          <span key={metric.label}>
-            <strong>{metric.value}</strong>
-            {metric.label}
-          </span>
+
+      <div className="remote-grid" aria-label="remote boundary metrics">
+        {view.countCells.map((cell) => (
+          <div key={cell.key} className="remote-cell remote-cell--count">
+            <strong className="remote-cell-value">{cell.value}</strong>
+            <span className="remote-cell-label">{cell.label}</span>
+          </div>
         ))}
-      </div>
-      <div className="remote-boundaries lens-boundary-list">
-        {lens.boundaries.map((boundary) => (
-          <section key={boundary.title} className={`remote-boundary lens-boundary ${boundary.sourceKind}`}>
-            <div>
-              <p>{boundary.kind}</p>
-              <h3>{boundary.title}</h3>
-            </div>
-            <span className="truth-value">
-              <ConfidenceMeter confidence={boundary.confidence as Confidence} />
-              {boundary.confidence}
+        {view.flagCells.map((cell) => (
+          <div key={cell.key} className={`remote-cell remote-cell--flag${cell.observed ? " remote-cell--observed" : ""}`}>
+            <span className="remote-cell-flag">
+              {/* Reflect the REAL observed state: a boundary that WAS observed
+                  earns the collectable glyph, not a hardcoded future one that
+                  under-claims recorded evidence (redesign P6 fix m9). */}
+              <SourceGlyph kind={cell.observed ? "collectable_v1" : "future"} size={11} title={null} />
+              {cell.value}
             </span>
-            <p>{boundary.summary}</p>
-          </section>
+            <span className="remote-cell-label">{cell.label}</span>
+          </div>
         ))}
       </div>
-      <div className="unsupported-list">
-        <span>Unsupported claims — named, not hidden</span>
-        <div>
-          {lens.unsupportedClaims.map((claim) => (
-            <UnsupportedClaimChip key={claim} claim={labelKind(claim)} />
-          ))}
+
+      {view.earnClaims.length > 0 && (
+        <div className="remote-earn">
+          <span className="remote-earn-overline">WHAT WOULD EARN THESE CLAIMS</span>
+          <ul className="remote-earn-list">
+            {view.earnClaims.map((claim) => (
+              <li key={claim}>{claim}</li>
+            ))}
+          </ul>
         </div>
+      )}
+
+      {/* The per-boundary "derived summary" rows (own header + confidence badge)
+          were an unspec'd near-duplicate of the lead statement — not in board
+          1h / DESIGN-SYSTEM §5. Removed (redesign P6 fix M6). */}
+
+      {view.unsupportedClaims.length > 0 && (
+        <div className="remote-unsupported">
+          <span className="remote-unsupported-label">Unsupported claims — named, not hidden</span>
+          <div className="remote-unsupported-chips">
+            {view.unsupportedClaims.map((claim) => (
+              <UnsupportedClaimChip key={claim} claim={labelKind(claim)} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="remote-footer">
+        <SourceGlyph kind="future" size={11} title={null} />
+        <ConfidenceMeter confidence="unknown" />
+        <span>this block asserts nothing it cannot prove</span>
       </div>
     </aside>
   );
 }
 
+/** Honest empty state (board 1i) — no compare projection is bound. NLFR never
+ *  fabricates a comparison; it names the file to place and offers the Composer.
+ *  The "Open Composer" hook is wired by P7 (the composer drawer). */
+function CompareEmptyState({ pathHint, onClose }: { pathHint: string; onClose: () => void }) {
+  return (
+    <aside className="compare-lens compare-lens--empty" aria-label="multi-run compare">
+      <button className="close-button compare-close" onClick={onClose} aria-label="Close compare lens">
+        <X size={16} />
+      </button>
+      <div className="compare-empty-card" data-testid="compare-empty-state">
+        <SourceGlyph kind="future" size={22} title={null} />
+        <h2 className="compare-empty-title">No comparison is bound</h2>
+        <p className="compare-empty-body">
+          Place <code>{pathHint}</code> in <code>public/projections/</code> to render a derived proof-packet
+          diff. NLFR never fabricates a comparison.
+        </p>
+        <button
+          type="button"
+          className="compare-empty-composer"
+          data-testid="compare-open-composer"
+          title="The Composer drawer (bind run groups) arrives in a later phase (P7)."
+        >
+          Open Composer to bind run groups →
+        </button>
+      </div>
+    </aside>
+  );
+}
+
+/**
+ * Compare Runs (redesign P6 — DESIGN-SYSTEM.md §6, board 1i). The context
+ * banner re-tones derived amber (P3). Header = two run-group pills + arrow-swap;
+ * a row of dimension cards (left value / delta pill / right value); the Agent
+ * Provenance dimension renders as a full-width two-column card. When no compare
+ * projection is bound, the honest empty state states so — never a fabricated
+ * comparison.
+ */
 export function CompareLensPanel(instance: ComponentInstance) {
   const { bindings, routeActions } = useViewContext();
   const projection = bindings.compareProjection;
-  void stringProp(instance.props, "empty_state_path_hint");
+  const pathHint = stringProp(instance.props, "empty_state_path_hint") || "compare-projection.json";
+
+  if (!projection) {
+    return <CompareEmptyState pathHint={pathHint} onClose={() => routeActions.setMode("graph")} />;
+  }
+
+  const leftRuns = finiteSummary(projection.summary, "left_runs");
+  const rightRuns = finiteSummary(projection.summary, "right_runs");
 
   return (
-    <aside className="compare-lens lens-panel lens-panel--compare" aria-label="multi-run compare">
+    <aside className="compare-lens" aria-label="multi-run compare">
       <button
-        className="close-button"
+        className="close-button compare-close"
         onClick={() => routeActions.setMode("graph")}
         aria-label="Close compare lens"
       >
         <X size={16} />
       </button>
-      <div className="compare-lens-heading lens-heading">
-        <GitCompare size={18} />
-        <p>Multi-run Compare</p>
-        {projection ? (
-          <>
-            <h2 className="compare-run-title">Run group deltas</h2>
-            <div className="compare-run-pills" aria-label="compared run groups">
-              <span className="compare-run-pill compare-run-pill--left">{projection.left_run_group}</span>
-              <span className="compare-run-pill compare-run-pill--vs">vs</span>
-              <span className="compare-run-pill compare-run-pill--right">{projection.right_run_group}</span>
-            </div>
-          </>
-        ) : (
-          <h2>No compare projection loaded</h2>
-        )}
+      <header className="compare-head">
+        <span className="compare-overline">COMPARE RUNS · DERIVED JOIN</span>
+        <div className="compare-run-groups">
+          <span className="compare-run-pill compare-run-pill--left">
+            {projection.left_run_group}
+            {leftRuns !== null && <span className="compare-run-count"> · {leftRuns} runs</span>}
+          </span>
+          <span className="compare-swap" aria-hidden="true">
+            <ArrowLeftRight size={13} />
+          </span>
+          <span className="compare-run-pill compare-run-pill--right">
+            {projection.right_run_group}
+            {rightRuns !== null && <span className="compare-run-count"> · {rightRuns} runs</span>}
+          </span>
+        </div>
+        <div className="compare-head-truth">
+          <SourceGlyph kind={projection.source_kind} size={11} />
+          <ConfidenceMeter confidence={projection.confidence} />
+          <span className="compare-dimension-count">
+            {projection.dimensions.length} dimension{projection.dimensions.length === 1 ? "" : "s"}
+          </span>
+        </div>
+      </header>
+      <div className="compare-cards">
+        {projection.dimensions.map((dimension) => (
+          <CompareDimensionView
+            key={dimension.id}
+            dimension={dimension}
+            leftRunGroup={projection.left_run_group}
+            rightRunGroup={projection.right_run_group}
+          />
+        ))}
       </div>
-      {!projection ? (
-        <p className="compare-empty lens-empty">
-          Place <code>compare-projection.json</code> under <code>public/projections/</code> to enable
-          derived proof-packet diffs.
-        </p>
-      ) : (
-        <>
-          <div className="compare-state-line lens-state-line">
-            <SourceGlyph kind={projection.source_kind} size={11} />
-            <strong>{projection.source_kind}</strong>
-            <span className="truth-value">
-              <ConfidenceMeter confidence={projection.confidence} />
-              {projection.confidence}
-            </span>
-            <span className="compare-dimension-count">
-              {projection.dimensions.length} dimension{projection.dimensions.length === 1 ? "" : "s"}
-            </span>
-          </div>
-          <div className="compare-dimension-list">
-            {projection.dimensions.map((dimension) => (
-              <CompareDimensionView
-                key={dimension.id}
-                dimension={dimension}
-                leftRunGroup={projection.left_run_group}
-                rightRunGroup={projection.right_run_group}
-              />
-            ))}
-          </div>
-        </>
-      )}
     </aside>
   );
+}
+
+function finiteSummary(summary: Record<string, unknown>, key: string): number | null {
+  const value = summary[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
 export function CompareDimensionCardPanel(instance: ComponentInstance) {
@@ -886,14 +1131,18 @@ function ProvenanceSideColumn({
   side: ReturnType<typeof provenanceSide>;
 }) {
   return (
-    <div className="provenance-side">
+    <div className={`provenance-side${side.blocks.length === 0 ? " provenance-side--empty" : ""}`}>
       <span className="provenance-side-title">{title}</span>
       {side.blocks.length === 0 ? (
-        <p className="provenance-side-empty">
-          {side.present
-            ? "Provenance blocks recorded without receipt summaries."
-            : "No agent provenance block recorded."}
-        </p>
+        <div className="provenance-side-empty">
+          <SourceGlyph kind="future" size={13} title={null} />
+          <strong>No agent receipts recorded</strong>
+          <span>
+            {side.present
+              ? "provenance blocks recorded without receipt summaries — stated, not padded"
+              : `${side.blockCount} agent_provenance blocks in this packet — stated, not padded`}
+          </span>
+        </div>
       ) : (
         side.blocks.map((block) => <ProvenanceBlockCard key={block.id} block={block} />)
       )}
@@ -922,6 +1171,47 @@ function AgentProvenanceCompare({
   );
 }
 
+/** Agent-provenance block-count pill: "differs · +N blocks" (derived amber) or
+ *  "match · N blocks" — from the real recorded delta, never padded. */
+function provenanceDeltaPill(dimension: CompareDimension): { text: string; changed: boolean } {
+  const delta = payloadRecord(dimension.delta) ?? {};
+  const changed = delta.present_changed === true;
+  const count = typeof delta.block_count_delta === "number" ? delta.block_count_delta : 0;
+  const signed = count > 0 ? `+${count}` : String(count);
+  return {
+    text: changed ? `differs · ${signed} blocks` : `match · ${count} blocks`,
+    changed,
+  };
+}
+
+/** Full-width Agent Provenance card (§6): header + differs/match pill + the
+ *  two-column receipts-vs-empty comparison. */
+function AgentProvenanceCard({
+  dimension,
+  leftRunGroup,
+  rightRunGroup,
+}: {
+  dimension: CompareDimension;
+  leftRunGroup: string;
+  rightRunGroup: string;
+}) {
+  const pill = provenanceDeltaPill(dimension);
+  return (
+    <section className="compare-card compare-card--full compare-card--provenance">
+      <header className="compare-card-head">
+        <SourceGlyph kind={dimension.source_kind} size={11} />
+        <h3 className="compare-card-title">{dimension.title}</h3>
+        <span className={`compare-delta-pill compare-delta-pill--${pill.changed ? "differs" : "match"}`}>
+          {pill.text}
+        </span>
+        <ConfidenceMeter confidence={dimension.confidence} size="md" />
+      </header>
+      <AgentProvenanceCompare dimension={dimension} leftRunGroup={leftRunGroup} rightRunGroup={rightRunGroup} />
+      <p className="compare-card-caption">{dimension.summary}</p>
+    </section>
+  );
+}
+
 function CompareDimensionView({
   dimension,
   leftRunGroup,
@@ -931,73 +1221,41 @@ function CompareDimensionView({
   leftRunGroup?: string;
   rightRunGroup?: string;
 }) {
-  const deltaEntries = Object.entries(dimension.delta ?? {}).filter(
-    ([, value]) => value !== null && typeof value !== "object",
-  );
+  const left = leftRunGroup ?? "left run group";
+  const right = rightRunGroup ?? "right run group";
+
+  if (dimension.id === "agent_provenance") {
+    return <AgentProvenanceCard dimension={dimension} leftRunGroup={left} rightRunGroup={right} />;
+  }
+
+  const headline = compareHeadline(dimension);
+
+  // Board 1i dimension cards stop at the caption: diamond + title + meter
+  // (header), left / delta / right (values), then the caption. The extra
+  // truth-badge row (which also carried a value-less RedactionChip — the m10
+  // bare-"[REDACTED]" risk) and the collapsible evidence refs are dropped
+  // (redesign P6 fixes m8 + m10).
   return (
-    <section className={`compare-dimension ${dimension.source_kind}`}>
-      <div className="compare-dimension-heading">
+    <section className="compare-card compare-card--dimension">
+      <header className="compare-card-head">
         <SourceGlyph kind={dimension.source_kind} size={11} />
-        <div>
-          <p>{dimension.id}</p>
-          <h3>{dimension.title}</h3>
+        <h3 className="compare-card-title">{dimension.title}</h3>
+        <ConfidenceMeter confidence={dimension.confidence} size="md" />
+      </header>
+      <div className="compare-card-values">
+        <div className="compare-val compare-val--left">
+          <span className="compare-val-tag">{left}</span>
+          <strong className="compare-val-num">{headline.left}</strong>
+        </div>
+        {headline.delta !== null && (
+          <span className={`compare-delta-pill compare-delta-pill--${headline.deltaTone}`}>{headline.delta}</span>
+        )}
+        <div className="compare-val compare-val--right">
+          <span className="compare-val-tag">{right}</span>
+          <strong className="compare-val-num">{headline.right}</strong>
         </div>
       </div>
-      <p className="compare-dimension-summary">{dimension.summary}</p>
-      {dimension.id === "agent_provenance" && (
-        <AgentProvenanceCompare
-          dimension={dimension}
-          leftRunGroup={leftRunGroup ?? "left run group"}
-          rightRunGroup={rightRunGroup ?? "right run group"}
-        />
-      )}
-      <dl className="truth-grid compare-dimension-truth">
-        <div>
-          <dt>Source</dt>
-          <dd className="truth-value">
-            <SourceGlyph kind={dimension.source_kind} size={11} />
-            <span>{dimension.source_kind}</span>
-          </dd>
-        </div>
-        <div>
-          <dt>Confidence</dt>
-          <dd className="truth-value">
-            <ConfidenceMeter confidence={dimension.confidence} />
-            <span>{dimension.confidence}</span>
-          </dd>
-        </div>
-        <div>
-          <dt>Redaction</dt>
-          <dd className="truth-value">
-            <RedactionChip state={dimension.redaction_state} />
-          </dd>
-        </div>
-      </dl>
-      {deltaEntries.length > 0 && (
-        <div className="compare-delta-metrics" aria-label={`${dimension.title} delta`}>
-          {deltaEntries.map(([key, value]) => (
-            <span key={key}>
-              <strong>{formatMetricValue(value as ProofMetricValue)}</strong>
-              {labelKind(key)}
-            </span>
-          ))}
-        </div>
-      )}
-      {(dimension.claims?.length ?? 0) > 0 && (
-        <ul className="proof-claims">
-          {dimension.claims.map((claim) => (
-            <li key={claim}>{claim}</li>
-          ))}
-        </ul>
-      )}
-      {dimension.evidence_refs.length > 0 && (
-        <div className="evidence-list proof-evidence">
-          <span>Evidence refs</span>
-          {dimension.evidence_refs.map((ref) => (
-            <code key={ref}>{ref}</code>
-          ))}
-        </div>
-      )}
+      <p className="compare-card-caption">{headline.caption}</p>
     </section>
   );
 }

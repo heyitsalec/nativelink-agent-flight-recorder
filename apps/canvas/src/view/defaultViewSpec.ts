@@ -14,13 +14,17 @@ export const DEFAULT_VIEW_SPEC: ViewSpec = {
   redaction_state: "safe",
   layout: {
     kind: "grid_shell_v1",
-    columns: "minmax(0,1fr) 440px",
+    // Single full-width column: the primary graph fills the viewport. The rail
+    // is no longer a reserved column — inspector/proof/remote/compare panels
+    // float as fixed overlays over the (dimmed) full-width graph (redesign P6,
+    // DESIGN-SYSTEM.md — "inspector/proof/lens panels are floating overlays").
+    columns: "minmax(0, 1fr)",
     rows: "auto auto minmax(0,1fr) auto",
     regions: {
       notice: { grid_area: "notice", slot: "banner" },
       header: { grid_area: "header", slot: "topbar" },
       primary: { grid_area: "primary", slot: "canvas" },
-      rail: { grid_area: "rail", slot: "inspector", width_px: 440 },
+      rail: { grid_area: "rail", slot: "inspector" },
       operator: { grid_area: "operator", slot: "command" },
     },
     responsive: {
@@ -199,9 +203,13 @@ export const DEFAULT_VIEW_SPEC: ViewSpec = {
       component_kind: "evidence_inspector",
       region: "rail",
       projection_binding: "binding.action_graph",
+      // Graph mode only. The Validation Runway carries its own selection/timeline
+      // display; letting the 420px inspector overlay also fire in runway mode put
+      // it on top of the runway's close button + right ~30% (both fixed overlays,
+      // inspector z6 > runway z5), intercepting real clicks (redesign P6 fix M1).
       visible_when: {
-        mode: ["graph", "runway"],
-        mode_not: ["proof", "remote", "compare"],
+        mode: ["graph"],
+        mode_not: ["runway", "proof", "remote", "compare"],
         selected_node: true,
       },
       data_testid: "evidence-inspector",

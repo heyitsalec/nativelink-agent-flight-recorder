@@ -21,6 +21,7 @@ import {
   Target,
   Terminal,
   TriangleAlert,
+  X,
   Zap,
   ZoomIn,
   ZoomOut,
@@ -30,7 +31,9 @@ import {
   highlightedIds,
   labelKind,
   remoteLensModel,
-  sortRunwayNodes,
+  runwayArtifactColumns,
+  runwayLanes,
+  type RunwayLane,
 } from "../pageModel";
 import {
   buildGraphScene,
@@ -103,25 +106,44 @@ export function ProjectionNoticePanel(_instance: ComponentInstance) {
   const dominant = mix.dominant;
   const isFallback = projectionNotice?.tone === "fallback";
   const compareToned = route.mode === "compare";
+  // When the compare lens is active AND a compare projection is bound, the
+  // banner states the REAL compare projection (board 1i): "left ↔ right —
+  // derived_v1 compare projection · N dimensions" with the derived diamond —
+  // not the underlying graph's collectable descriptor (redesign P6 fix m7).
+  const compareProjection = compareToned ? bindings.compareProjection : null;
 
   const tone = isFallback ? "fallback" : compareToned ? "derived" : SOURCE_KIND_META[dominant].tone;
   const descriptor = isFallback
     ? projectionNotice?.message
     : `${SOURCE_KIND_META[dominant].enum} projection`;
+  const glyphKind = isFallback ? "simulated_v1" : compareProjection ? "derived_v1" : dominant;
 
   return (
     <div className={`context-banner context-banner--${tone}`} data-testid="context-banner" role="status">
       <div className="context-banner-lead">
-        <SourceGlyph kind={isFallback ? "simulated_v1" : dominant} size={9} />
-        <span className="context-banner-text">
-          <strong>{projection.run_group}</strong> run group — {descriptor}
-          {!isFallback && (
-            <>
-              {" · "}
-              <span className="context-banner-count">{mix.total} nodes</span>
-            </>
-          )}
-        </span>
+        <SourceGlyph kind={glyphKind} size={9} />
+        {compareProjection ? (
+          <span className="context-banner-text">
+            <strong>
+              {compareProjection.left_run_group} ↔ {compareProjection.right_run_group}
+            </strong>
+            {" — derived_v1 compare projection · "}
+            <span className="context-banner-count">
+              {compareProjection.dimensions.length} dimension
+              {compareProjection.dimensions.length === 1 ? "" : "s"}
+            </span>
+          </span>
+        ) : (
+          <span className="context-banner-text">
+            <strong>{projection.run_group}</strong> run group — {descriptor}
+            {!isFallback && (
+              <>
+                {" · "}
+                <span className="context-banner-count">{mix.total} nodes</span>
+              </>
+            )}
+          </span>
+        )}
       </div>
       <div className="context-banner-mix">
         <span className="context-banner-mix-caption">evidence mix</span>
@@ -249,13 +271,17 @@ function centerTransform(svg: SVGSVGElement): ZoomTransform {
   return zoomIdentity.translate(box.width / 2, box.height / 2).scale(scale);
 }
 
-/** Padding kept between the fitted graph and the svg edge, in px. */
-const FIT_PADDING_PX = 48;
-/** Never zoom in past this when fitting — matches the old default framing. */
-const MAX_FIT_SCALE = 0.95;
+/** Padding kept between the fitted graph and the svg edge, in px. Trimmed
+ *  (was 48) so the full-width scene fills more of the viewport at fit
+ *  (redesign P6 fix M2). */
+const FIT_PADDING_PX = 24;
+/** Fit may zoom to a legible near-100% — board 1c lands at "fit · 100%".
+ *  (was 0.95; the fit is now width-bound rather than height-bottlenecked so
+ *  this cap is what lets the default graph read full, redesign P6 fix M2.) */
+const MAX_FIT_SCALE = 1.0;
 /** Provenance badges + card shadows render past the card boxes; keep them
- *  on-screen when fitting. */
-const SCENE_FIT_MARGIN = 44;
+ *  on-screen when fitting (agent badge extends ~32px below its card). */
+const SCENE_FIT_MARGIN = 34;
 /** Below this zoom, card meta rows hide and labels condense (LOD). */
 const LOD_ZOOM_THRESHOLD = 0.6;
 
@@ -422,13 +448,16 @@ export function ActionGraphCanvasPanel(instance: ComponentInstance) {
       ? `${totals.total} total · ${totals.cards} cards · ${totals.clustered} in ${totals.clusters} cluster${totals.clusters === 1 ? "" : "s"}`
       : `${totals.total} nodes / ${totals.cards} shown`;
 
-  // When the proof drawer is open the graph is background context — dim it to
-  // ~38% (DESIGN-SYSTEM.md §4) so the flagship packet reads as the foreground.
-  const proofDimmed = route.mode === "proof";
+  // When a full-overlay lens is open (proof / remote / compare) the graph is
+  // background context — dim it to ~38% (DESIGN-SYSTEM.md §4/§5/§6) so the
+  // floating panel reads as the foreground. The inspector (graph/runway mode)
+  // keeps the graph bright and interactive — it dims only non-neighbour nodes.
+  const lensDimmed =
+    route.mode === "proof" || route.mode === "remote" || route.mode === "compare";
 
   return (
     <section
-      className={`canvas-stage${proofDimmed ? " canvas-stage--proof-dim" : ""}`}
+      className={`canvas-stage${lensDimmed ? " canvas-stage--proof-dim" : ""}`}
       aria-label="NativeLink evidence canvas"
     >
       <svg
@@ -738,30 +767,217 @@ export function ProofConstellationPanel(_instance: ComponentInstance) {
   return null;
 }
 
+/** Max chips a lane renders inline before an honest "· N more" overflow
+ *  capsule — the lane gutter always states the FULL count, so nothing is
+ *  hidden, only deferred. */
+const RUNWAY_LANE_PREVIEW = 12;
+
+/** "HH:MM" from an ISO timestamp, else null. */
+function clockLabel(iso: unknown): string | null {
+  if (typeof iso !== "string" || iso.length < 16) return null;
+  return iso.slice(11, 16);
+}
+
+/** Ordered lane nodes: sequence (projection order) or by recorded start time
+ *  when the scale toggle is on "time" — real payload timestamps only. */
+function orderLaneNodes(lane: RunwayLane, scale: "sequence" | "time"): ProjectionNode[] {
+  if (scale === "sequence") return lane.nodes;
+  const withTime = lane.nodes.map((node, index) => ({
+    node,
+    index,
+    started: typeof node.payload?.started_at === "string" ? String(node.payload.started_at) : null,
+  }));
+  withTime.sort((a, b) => {
+    if (a.started && b.started) return a.started < b.started ? -1 : a.started > b.started ? 1 : a.index - b.index;
+    if (a.started) return -1;
+    if (b.started) return 1;
+    return a.index - b.index;
+  });
+  return withTime.map((entry) => entry.node);
+}
+
+function RunwayChip({
+  node,
+  selected,
+  onSelect,
+}: {
+  node: ProjectionNode;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const clock = clockLabel(node.payload?.started_at);
+  return (
+    <button
+      type="button"
+      className={`runway-chip truth-src--${SOURCE_KIND_META[node.source_kind]?.tone ?? "unknown"}${selected ? " selected" : ""}`}
+      onClick={onSelect}
+      title={`${labelKind(node.kind)}: ${node.label}`}
+    >
+      <SourceGlyph kind={node.source_kind} size={9} />
+      <span className="runway-chip-label">{node.label}</span>
+      {clock && <span className="runway-chip-clock">{clock}</span>}
+      {node.status !== null && node.status !== undefined && (
+        <StatusGlyph status={node.status} showLabel={false} />
+      )}
+    </button>
+  );
+}
+
+/**
+ * Validation Runway (redesign P6 — DESIGN-SYSTEM.md §3, board 1j). A real lane
+ * timeline over the loaded projection: fixed ordered lanes (runs / invocations
+ * / targets / actions / cache / failures / artifacts), each a row of truth-
+ * labelled chips or, when empty, ONE honest full-width dashed statement — an
+ * empty lane states its emptiness, never blank. Selection is shared with the
+ * graph. Real projection data only.
+ */
 export function ValidationRunwayPanel(_instance: ComponentInstance) {
-  const { bindings, routeActions } = useViewContext();
+  const { bindings, route, routeActions } = useViewContext();
   const projection = bindings.actionGraph;
-  const ordered = useMemo(() => sortRunwayNodes(projection.nodes), [projection.nodes]);
+  const lanes = useMemo(() => runwayLanes(projection.nodes), [projection.nodes]);
+  // Per-run artifact counts for the artifacts lane's count pills (board 1j),
+  // resolved through the real recorded run→invocation→artifact edges/refs.
+  const artifactColumns = useMemo(
+    () => runwayArtifactColumns(projection.nodes, projection.edges),
+    [projection.nodes, projection.edges],
+  );
+  const [scale, setScale] = useState<"sequence" | "time">("sequence");
+
+  const summary = projection.summary;
+  const runs = Number(summary.runs ?? lanes.find((lane) => lane.kind === "run")?.count ?? 0);
+  const invocations = lanes.find((lane) => lane.kind === "invocation")?.count ?? 0;
+  const artifacts = lanes.find((lane) => lane.kind === "artifact")?.count ?? 0;
+
+  // Axis ticks from recorded run start times (HH:MM), deduped in order — real
+  // timestamps only; skipped entirely when no run carries one.
+  const ticks = useMemo(() => {
+    const runNodes = lanes.find((lane) => lane.kind === "run")?.nodes ?? [];
+    const labels: string[] = [];
+    for (const node of runNodes) {
+      const clock = clockLabel(node.payload?.started_at);
+      if (clock && !labels.includes(clock)) labels.push(clock);
+    }
+    return labels;
+  }, [lanes]);
 
   return (
-    <aside className="runway-overlay" aria-label="validation runway">
-      <div className="runway-title">
-        <Route size={17} />
-        <span>Validation Runway</span>
+    <aside className="runway-panel" aria-label="validation runway">
+      <button
+        className="close-button runway-close"
+        onClick={() => routeActions.setMode("graph")}
+        aria-label="Close validation runway"
+      >
+        <X size={16} />
+      </button>
+      <header className="runway-head">
+        <div className="runway-head-lead">
+          <span className="runway-overline">VALIDATION RUNWAY</span>
+          <h2 className="runway-heading">Validation runway</h2>
+          <span className="runway-meta">
+            {runs} runs · {invocations} invocations · {artifacts} artifacts
+          </span>
+        </div>
+        <div className="runway-head-right">
+          <span className="runway-shared">selection shared with graph</span>
+          <div className="runway-scale" role="group" aria-label="runway scale">
+            <button
+              type="button"
+              className={`runway-scale-btn${scale === "sequence" ? " active" : ""}`}
+              onClick={() => setScale("sequence")}
+              aria-pressed={scale === "sequence"}
+            >
+              sequence
+            </button>
+            <button
+              type="button"
+              className={`runway-scale-btn${scale === "time" ? " active" : ""}`}
+              onClick={() => setScale("time")}
+              aria-pressed={scale === "time"}
+            >
+              time
+            </button>
+          </div>
+        </div>
+      </header>
+      <div className="runway-lanes">
+        {lanes.map((lane) => {
+          const ordered = orderLaneNodes(lane, scale);
+          const shown = ordered.slice(0, RUNWAY_LANE_PREVIEW);
+          const overflow = lane.count - shown.length;
+          return (
+            <div key={lane.kind} className="runway-lane">
+              <div className="runway-lane-gutter">
+                <span className="runway-lane-name">{lane.name}</span>
+                <span className="runway-lane-count">{lane.count}</span>
+              </div>
+              <div className="runway-lane-track">
+                {lane.empty ? (
+                  <div className="runway-lane-empty">
+                    <SourceGlyph kind="future" size={11} title={null} />
+                    <span>{lane.emptyMessage}</span>
+                  </div>
+                ) : lane.kind === "artifact" ? (
+                  // Per-run count pills aligned to the run columns (board 1j),
+                  // not a flat filename list — a file icon + the run's real
+                  // artifact count. An honest remainder pill covers any
+                  // artifact that resolves to no run (redesign P6 fix M3).
+                  <div className="runway-artifact-cols">
+                    {artifactColumns.columns.map((col) => (
+                      <span
+                        key={col.runId}
+                        className="runway-artifact-pill"
+                        title={`${col.count} artifact${col.count === 1 ? "" : "s"} recorded under run ${col.label}`}
+                      >
+                        <FileText size={12} aria-hidden="true" />
+                        <span className="runway-artifact-run">{col.label}</span>
+                        <span className="runway-artifact-count">{col.count}</span>
+                      </span>
+                    ))}
+                    {artifactColumns.unattributed > 0 && (
+                      <span
+                        className="runway-artifact-pill runway-artifact-pill--loose"
+                        title="artifacts not attributable to a specific run in this projection"
+                      >
+                        <FileText size={12} aria-hidden="true" />
+                        <span className="runway-artifact-run">·</span>
+                        <span className="runway-artifact-count">{artifactColumns.unattributed}</span>
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    {shown.map((node) => (
+                      <RunwayChip
+                        key={node.id}
+                        node={node}
+                        selected={route.selectedId === node.id}
+                        onSelect={() => routeActions.setSelectedId(node.id)}
+                      />
+                    ))}
+                    {overflow > 0 && (
+                      <span
+                        className="runway-lane-overflow"
+                        title={`${overflow} more ${lane.name} in this projection — expand on the graph`}
+                      >
+                        · {overflow} more
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
-      <div className="runway-track">
-        {ordered.map((node) => (
-          <button
-            key={node.id}
-            className={`runway-event ${node.source_kind}`}
-            onClick={() => routeActions.setSelectedId(node.id)}
-            title={node.label}
-          >
-            <span>{labelKind(node.kind)}</span>
-            <strong>{String(node.status ?? node.label)}</strong>
-          </button>
-        ))}
-      </div>
+      {ticks.length > 0 && (
+        <div className="runway-axis" aria-hidden="true">
+          {ticks.map((tick, index) => (
+            <span key={`${tick}-${index}`} className="runway-tick">
+              {tick}
+            </span>
+          ))}
+        </div>
+      )}
     </aside>
   );
 }
