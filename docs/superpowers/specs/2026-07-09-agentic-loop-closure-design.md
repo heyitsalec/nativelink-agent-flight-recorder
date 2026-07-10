@@ -75,10 +75,13 @@ Verdict payload:
   validation-block failures); never re-derived differently.
 - `failures[]`: kind, message, span, plus `attributed_targets[]` (labels whose
   `targets.status == "FAILED"`, cross-referenced with failure messages).
-- `classification`: `honest_scenario_failure | toolchain_blocker |
+- `classification`: adopts spark's existing vocabulary rather than synonyms —
+  `scenario_validation_failure | toolchain_failure | unattributed_failure |
   first_pass_success | unclassified` + `matched_signatures[]` +
   `attribution_target_referenced` (bool, when an attribution target given).
-  Only computed when `artifact_root` provided; otherwise `unclassified` with
+  `unattributed_failure` stays distinct (logs present, failure not
+  attributable to the target — reason `failure_not_attributed`); only
+  computed when `artifact_root` provided, otherwise `unclassified` with
   reason `raw_logs_unavailable` — never guessed from DB rows alone.
 - `failure_evidence`: when red and raw logs available — redacted excerpt
   (same 80-line `failure_excerpt` rules), its sha256, and the artifact refs
@@ -91,7 +94,12 @@ Verdict payload:
   `operator_asserted_v1` counts).
 - `next_steps[]`: **ordered, closed enum** — each entry
   `{action, reason, inputs, source_kind, confidence, evidence_refs,
-  redaction_state}`. v1 action vocabulary:
+  redaction_state}`. **Precedence is an explicit, tested contract** (not
+  implicit list order): `record_environment_blocker` > `rerun_validation` >
+  `dispatch_fix_with_evidence` > `attach_missing_evidence` >
+  `none_complete`. A pending on-disk fix newer than the last recorded run
+  therefore yields `rerun_validation`, never a duplicate
+  `dispatch_fix_with_evidence`. v1 action vocabulary:
   - `dispatch_fix_with_evidence` — red + honest classification; `inputs`
     carries the evidence-excerpt ref and the changed-file path from `changes`.
   - `rerun_validation` — a fix was applied after the last recorded run
@@ -143,9 +151,22 @@ nlfr loop --scenario two-act-underspec --mode cache-only [--skip-nativelink]
   setup, prompt build, fenced-file extraction) and invokes the existing
   `agent-invoke` / `run` / `ingest` / `graph export` / `proof export` /
   `compare export` machinery per iteration.
+- **Wheel-install resolution:** the scenario's `workload.repo_root` is
+  repo-relative and must not be consumed literally; the loop resolves the
+  workspace template through `simulate_resources` precedence (explicit
+  `--workspace` > packaged wheel data > repo `demo/` checkout), mirroring
+  `nlfr simulate`.
 - Environment boundary: the loop does **not** manage the NativeLink server —
   the operator/script provides the validation environment, exactly as
   `run --skip-nativelink` assumes today (or `run` manages it when asked).
+- **Run-group scoping (load-bearing):** `validation_status` semantics are
+  run-group-wide and run-group lookup is a literal match (no "latest"
+  resolver in compare/in-toto). Each loop iteration therefore validates into
+  **its own run group** (`<prefix>-iter<N>`), and `evaluate` is always
+  invoked with that explicit group id — never the literal token `latest`.
+  A mixed red+green group would otherwise keep the verdict red and trap the
+  loop at the iteration cap; a loop test covers red-then-green reaching
+  `none_complete`.
 - Iteration engine: run validation → ingest → `evaluate` (with `--record`
   semantics) → branch **only** on `next_steps[0].action`:
   - `dispatch_fix_with_evidence` → build fix prompt from the verdict's
@@ -191,6 +212,22 @@ builds the invocation happens where NLFR isn't. The honest contract:
   class). Ladder becomes: `receipt_verified_v1 > receipt_imported_v1 >
   stub_receipt_v1 > operator_asserted_v1`, updated everywhere the ladder is
   documented (README, one-pager, graph projector docstring).
+
+  **Honesty leak guard (redteam BLOCKER fix).** The existing machinery
+  derives "verified" purely from receipt shape: `is_live_receipt()`
+  (`agent_receipt.py:373`) keys on `cli.name ∈ {claude,gemini}` + `status ==
+  "success"`, `receipt_provenance_summary()` embeds `live:`, and both
+  `projectors/graph.py:205` and `projectors/compare.py:520` render
+  `receipt_verified = bool(receipt.live)`. An imported receipt MUST NOT flow
+  through `generic_run._agent_provenance_payload`'s `is_live_receipt →
+  receipt_verified_v1` branch. The import path uses a dedicated provenance
+  builder that hard-sets `provenance_class="receipt_imported_v1"`, stamps the
+  receipt summary `live: false` plus `observed_by_nlfr: false`, and never
+  calls `is_live_receipt`. Tests assert an imported claude/success receipt
+  renders `receipt_verified: false` in BOTH graph and compare projections.
+  Docs frame `receipt_imported_v1` as an unverified third-party assertion
+  with structured telemetry present — a statement about evidence *shape*,
+  not trust.
 - Invalid/privacy-violating receipt files are rejected with exit 2 and a
   specific reason; no partial attach.
 - New how-to: `docs/wiki/how-to/capture-agent-telemetry-in-ci.md` covering
