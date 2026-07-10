@@ -38,6 +38,9 @@ safety-critical) who has to show *what actually ran* when an agent wrote the cod
 | **PR-comment / CI-attachment proof** | `nlfr proof comment` → a compact, redact-gated proof summary (status, cache economics, artifact-verification rollup, agent-receipt presence, in-toto ref) as a PR comment + JSON sidecar ([how-to](docs/wiki/how-to/pr-comment-proof.md)). |
 | **Contract-enforced projections** | Projection JSON shape is CI-gated against committed JSON contracts ([contracts](docs/wiki/reference/contracts/README.md)). |
 | **Verified agent receipts** | `receipt_verified_v1` receipts — model, session, token usage, prompt/response SHA-256; raw prompt structurally absent. Claude is live-proven in the committed two-act run; the Gemini parser is fixture-tested (live validation env-gated). |
+| **Evidence evaluation** | `nlfr evaluate` → deterministic, truth-labeled verdict (`nlfr.evaluation.v1`) over a recorded run group: status, honest-failure classification, redacted failure-evidence excerpt, and a precedence-ordered `next_steps` list; `--record` writes the verdict back into the evidence DB as an `evaluation` proof block. |
+| **Closed agent loop** | `nlfr loop` → evaluate → fix → revalidate driven entirely by recorded evidence: the fixing agent receives the verdict's recorded failure excerpt (never a re-run), each iteration is its own run group, and toolchain blockers stop the loop instead of fabricating agent-failure narratives ([proof script](scripts/agentic-loop-proof.sh)). |
+| **Cloud/pod agent telemetry** | `nlfr receipt import` attaches receipts produced where NLFR wasn't (CI runners, pods) as `receipt_imported_v1` — schema- and privacy-validated, honestly rendered `receipt_verified: false` ([how-to](docs/wiki/how-to/capture-agent-telemetry-in-ci.md)). |
 | **`nlfr db upgrade` / `db gc`** | Schema migration and operator-consented evidence retention ([CLI reference](docs/wiki/reference/cli.md#db-upgrade)). |
 | **Bazel version matrix** | BEP + exec-log + profile parsers pinned across Bazel 7.4.1 / 9.0.0 with populator-verified fixtures; `doctor`/`record` warn (non-blocking) on untested versions ([version matrix](docs/wiki/reference/bazel-version-matrix.md)). |
 
@@ -174,8 +177,11 @@ Every normalized evidence row and projection object carries four fields:
 
 Agent nodes additionally carry a receipt provenance badge:
 `receipt_verified_v1` (parsed live-CLI receipt — the committed two-act run),
+`receipt_imported_v1` (schema-valid receipt imported from an invocation NLFR
+did not observe — cloud/pod builds; renders `receipt_verified: false`),
 `stub_receipt_v1` (deterministic stub used by the CI mechanics gate), or
-`operator_asserted_v1` (operator claim without a receipt).
+`operator_asserted_v1` (operator claim without a receipt). The ladder is a
+statement about evidence shape, not trust.
 
 Receipts are captured through a per-CLI parser registry
 ([`src/nlfr/agent_receipt.py`](src/nlfr/agent_receipt.py)): `nlfr agent-invoke

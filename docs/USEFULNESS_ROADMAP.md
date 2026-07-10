@@ -175,7 +175,15 @@ Until those exist, operator-console remote views stay gated.
 
 ### Gap 5: live agent provenance
 
-The current agent loop is deterministic. That is correct for an MVP proof. A
+**Update (2026-07-09):** substantially closed. The two-act spark records live
+`receipt_verified_v1` Claude receipts; `nlfr loop` now drives the
+evaluate → fix → revalidate loop natively from recorded evidence (verdicts
+recorded as `evaluation` proof blocks by `nlfr evaluate --record`); and
+`nlfr receipt import` attaches cloud/pod receipts as `receipt_imported_v1`
+(never rendered verified). Remaining below: tool-call summaries and signed
+provenance.
+
+The original gap list (pre two-act receipts), kept for history. A
 real agent integration would need:
 
 - agent run ID.

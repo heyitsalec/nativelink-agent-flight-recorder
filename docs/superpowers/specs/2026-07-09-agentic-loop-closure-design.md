@@ -102,8 +102,11 @@ Verdict payload:
   `dispatch_fix_with_evidence`. v1 action vocabulary:
   - `dispatch_fix_with_evidence` — red + honest classification; `inputs`
     carries the evidence-excerpt ref and the changed-file path from `changes`.
-  - `rerun_validation` — a fix was applied after the last recorded run
-    (changes row newer than latest run) or verdict requested it.
+  - `rerun_validation` — a pending edit is directly observed: the caller
+    passed `--workspace` and a changed file's on-disk hash differs from the
+    newest recorded after-hash. (DB rows alone cannot observe pending edits —
+    change rows are written at run time — so without a workspace this step
+    honestly never fires.)
   - `record_environment_blocker` — toolchain/blocked classification; loop
     must stop, not retry.
   - `attach_missing_evidence` — evaluation degraded because raw logs or
