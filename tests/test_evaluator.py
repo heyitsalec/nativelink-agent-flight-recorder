@@ -274,6 +274,41 @@ def test_verdict_is_derived_and_redact_clean(tmp_path: Path) -> None:
     assert verdict["evidence_refs"]
 
 
+def test_excerpt_hash_matches_stored_excerpt_with_nonhome_paths(tmp_path: Path) -> None:
+    """The redteam MAJOR: /nix/store & /private/tmp paths are rewritten by the
+    full redaction registry AFTER the old code hashed the excerpt, so the
+    stored hash no longer matched the stored bytes — a false integrity claim."""
+
+    _seed(tmp_path / "nlfr.sqlite", failed=True)
+    stderr = (
+        f"FAIL: {HIDDEN_TARGET}\n"
+        "ERROR: /private/tmp/nlfr-loop-x/execroot/_main/tasks/test.py:12: boom\n"
+        "tool: /nix/store/abc123-bazel/bin/bazel died\n"
+    )
+    root = _artifact_root(tmp_path, stderr)
+    verdict = _evaluate(
+        tmp_path, artifact_root=root, attribution_target=HIDDEN_TARGET
+    )
+    evidence = verdict["failure_evidence"]
+    assert evidence["excerpt_sha256"] == _sha256(evidence["excerpt"])
+    assert "/private/tmp/nlfr-loop-x" not in evidence["excerpt"]
+    assert "/nix/store/abc123-bazel" not in evidence["excerpt"]
+
+
+def test_pending_edit_scan_refuses_escaping_paths(tmp_path: Path) -> None:
+    from nlfr.evaluator import _pending_workspace_edits
+
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    outside = tmp_path / "outside.txt"
+    outside.write_text("secret\n", encoding="utf-8")
+    change_rows = [
+        {"path": str(outside), "after_hash": "0" * 64},
+        {"path": "../outside.txt", "after_hash": "0" * 64},
+    ]
+    assert _pending_workspace_edits(change_rows, workspace) == []
+
+
 def test_confidence_uses_weakest_consulted_input(tmp_path: Path) -> None:
     _seed(tmp_path / "nlfr.sqlite", failed=False, low_confidence_row=True)
     verdict = _evaluate(tmp_path)

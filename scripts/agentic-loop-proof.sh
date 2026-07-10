@@ -113,7 +113,7 @@ uv run python -m nlfr loop \
   --remote-cache "$REMOTE_CACHE" \
   --claude-bin "$CLAUDE_BIN" \
   --bazel-bin "$BAZEL_BIN" \
-  "${MODEL_ARGS[@]}" \
+  ${MODEL_ARGS[@]+"${MODEL_ARGS[@]}"} \
   --run-group-prefix agentic-loop \
   --output-dir "$OUT" || LOOP_RC=$?
 

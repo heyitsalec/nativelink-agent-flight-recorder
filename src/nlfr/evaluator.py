@@ -35,7 +35,7 @@ from nlfr.projectors.common import rows, run_rows
 from nlfr.projectors.compare import require_run_group
 from nlfr.projectors.proof import export_proof_packet
 from nlfr.projectors.proof_markdown import validation_status
-from nlfr.redaction import RedactionConfig, redact_payload
+from nlfr.redaction import RedactionConfig, redact_payload, redact_text
 
 EVALUATION_SCHEMA_VERSION = "nlfr.evaluation.v1"
 
@@ -150,7 +150,13 @@ def failure_excerpt(artifact_root: str | Path, *, max_lines: int = 80) -> str:
         raise ValueError(f"no failure evidence found under {root}")
     # Both streams matter: bazel's summary lands on stderr while the failing
     # test's own output (e.g. unittest assertion detail) lands on stdout.
-    return "\n\n".join(sections) + "\n"
+    # Redact with the FULL detector registry before returning: any hash a
+    # caller computes over this excerpt must match the bytes that survive the
+    # downstream redact_payload gate (which rewrites every multi-segment
+    # absolute path — /nix/store, /private/tmp, execroot — not just home
+    # paths), or the verdict would carry a false integrity claim.
+    excerpt = "\n\n".join(sections) + "\n"
+    return str(redact_text(excerpt, RedactionConfig()).payload)
 
 
 def evaluate_run_group(
@@ -183,6 +189,7 @@ def evaluate_run_group(
     cache_rows = rows(conn, "cache_events", run_ids)
     change_rows = rows(conn, "changes", run_ids)
     proof_block_rows = rows(conn, "proof_blocks", run_ids)
+    artifact_reference_rows = rows(conn, "artifact_references", run_ids)
 
     failed_labels = [
         row["label"]
@@ -271,7 +278,19 @@ def evaluate_run_group(
         attribution_target=attribution_target,
     )
 
-    consulted = [*runs, *target_rows, *failure_rows, *cache_rows, *change_rows]
+    # Every table this evaluation actually read weighs into the truth quad:
+    # the agent_provenance rollup consults proof_blocks and the
+    # artifact_verification rollup consults artifact_references, so a low-
+    # confidence row in either honestly drags the verdict's confidence down.
+    consulted = [
+        *runs,
+        *target_rows,
+        *failure_rows,
+        *cache_rows,
+        *change_rows,
+        *proof_block_rows,
+        *artifact_reference_rows,
+    ]
     evidence_refs = [f"run-group:{run_group}"]
     for row in consulted:
         for ref in row.get("evidence_refs") or []:
@@ -321,6 +340,12 @@ def _pending_workspace_edits(
             newest_by_path[str(path)] = str(after)
     pending = []
     for path, after_hash in sorted(newest_by_path.items()):
+        # Recorded change paths are workspace-relative; refuse anything that
+        # would escape the workspace (absolute or ..-traversing) rather than
+        # hash an arbitrary host file a crafted row points at.
+        parts = Path(path)
+        if parts.is_absolute() or ".." in parts.parts:
+            continue
         candidate = root / path
         if not candidate.is_file():
             continue

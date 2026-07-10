@@ -213,6 +213,56 @@ def test_loop_iteration_cap_exits_one(tmp_path: Path) -> None:
     assert summary["checks"]["final_green"] is False
 
 
+def test_loop_refuses_nonempty_output_dir(tmp_path: Path) -> None:
+    out = tmp_path / "loop-out"
+    out.mkdir()
+    (out / "stale.txt").write_text("prior run debris\n", encoding="utf-8")
+    result, _ = _run_loop(tmp_path)
+    assert result.returncode == 2
+    assert "not empty" in result.stderr
+    assert "Traceback" not in result.stderr
+
+
+def test_loop_blocks_honestly_when_run_emits_no_metadata(tmp_path: Path) -> None:
+    # `nlfr run --mode <bogus>` is an argparse error: rc 2, empty stdout. The
+    # loop must emit a blocker, not a traceback.
+    result, out = _run_loop(tmp_path, "--mode", "definitely-bogus")
+    assert result.returncode == 2, result.stderr + result.stdout
+    assert "Traceback" not in result.stderr
+    blocker = json.loads((out / "loop-blocker.json").read_text(encoding="utf-8"))
+    assert "no run metadata" in blocker["reason"]
+
+
+def test_loop_resolves_relative_tool_paths(tmp_path: Path) -> None:
+    # Found live: agent-invoke execs the CLI from a scratch cwd, so a relative
+    # --claude-bin must be absolutized by the loop before dispatch.
+    shim = _write_fake_bazel(tmp_path, "red_then_green")
+    out = tmp_path / "loop-out-rel"
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(ROOT / "src")
+    result = subprocess.run(
+        [
+            sys.executable, "-m", "nlfr", "loop",
+            "--scenario", "two-act-underspec",
+            "--mode", "cache-only",
+            "--skip-nativelink",
+            "--no-remote-cache",
+            "--claude-bin", "scripts/spark-stub-claude.sh",
+            "--bazel-bin", str(shim),
+            "--run-group-prefix", "relbin",
+            "--output-dir", str(out),
+        ],
+        cwd=ROOT,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr + result.stdout
+    summary = json.loads((out / "loop-summary.json").read_text(encoding="utf-8"))
+    assert summary["outcome"] == "fixed_and_green"
+
+
 def test_loop_help_registered() -> None:
     env = os.environ.copy()
     env["PYTHONPATH"] = str(ROOT / "src")

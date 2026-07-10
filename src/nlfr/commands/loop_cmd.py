@@ -78,9 +78,25 @@ def run(args: argparse.Namespace) -> int:
         return 2
 
     output_dir = Path(args.output_dir)
+    if output_dir.exists() and any(output_dir.iterdir()):
+        print(
+            f"output dir {output_dir} is not empty; a loop run must start from a "
+            "fresh evidence tree (reusing a prior workspace/DB would blend runs "
+            "and could fake a first-pass success). Remove it or pass a new "
+            "--output-dir.",
+            file=sys.stderr,
+        )
+        return 2
     for sub in ("receipts", "responses", "projections", "verdicts"):
         (output_dir / sub).mkdir(parents=True, exist_ok=True)
     db_path = output_dir / "nlfr.sqlite"
+
+    # Resolve tool paths BEFORE any subprocess: agent-invoke execs the CLI from
+    # a scratch cwd, where a relative --claude-bin/--bazel-bin would no longer
+    # resolve (found in the first live proof run — the --version probe passed
+    # from the repo cwd, the real invocation then failed FileNotFoundError).
+    args.claude_bin = _resolve_bin(args.claude_bin)
+    args.bazel_bin = _resolve_bin(args.bazel_bin)
 
     workspace = output_dir / "workspace"
     try:
@@ -299,7 +315,17 @@ def _iterate(
         run_cmd += ["--remote-cache", args.remote_cache]
     run_cmd += bazel_targets
     run_result = _run_subprocess(run_cmd, run_json_path)
-    run_payload = _load_json(run_json_path)
+    try:
+        run_payload = _load_json(run_json_path)
+    except (OSError, ValueError):
+        # nlfr run's early-error paths (rc 2) print to stderr and emit no JSON;
+        # an honest blocker beats a traceback.
+        raise LoopBlocked(
+            f"validation run in iteration {iteration} produced no run metadata "
+            f"(rc={run_result.returncode})",
+            detail=run_result.stderr[-2000:],
+            refs=[f"run:{run_json_path}"],
+        )
     status = run_payload.get("status")
     if status not in ("completed", "failed"):
         raise LoopBlocked(
@@ -478,8 +504,12 @@ def _write_summary(
     final_cache = (final_verdict or {}).get("cache") or {}
     checks = {
         "first_iteration_red": bool(iterations) and iterations[0]["status"] == "failed",
+        # True only when a RED first iteration was honestly attributed; a green
+        # first pass reads false here and true under first-pass outcome — the
+        # check never claims "the recorder caught the agent" without a red.
         "honest_classification": bool(iterations)
-        and iterations[0]["classification"] in ("scenario_validation_failure", "first_pass_success"),
+        and iterations[0]["status"] == "failed"
+        and iterations[0]["classification"] == "scenario_validation_failure",
         "fix_receipt_present": len(iterations) > 1
         and Path(iterations[-1]["receipt_ref"]).exists(),
         "final_green": final_status.get("status") == "ok",
@@ -541,6 +571,16 @@ def _resolve_workspace_template(explicit: str | None, scenario: dict[str, Any]) 
         "no workspace template found: pass --workspace PATH (tried the scenario's "
         "repo_root in a source checkout and the packaged demo workspace)"
     )
+
+
+def _resolve_bin(value: str) -> str:
+    """Absolutize a path-like tool argument; leave bare command names to PATH."""
+
+    if "/" in value:
+        candidate = Path(value)
+        if candidate.exists():
+            return str(candidate.resolve())
+    return value
 
 
 def _run_subprocess(cmd: list[str], stdout_path: Path | None) -> subprocess.CompletedProcess[str]:
