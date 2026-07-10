@@ -105,6 +105,9 @@ then
 fi
 
 echo "== nlfr loop: evaluate → fix → revalidate, decisions from recorded evidence =="
+# The loop demands a FRESH output dir (reusing one could blend evidence);
+# NativeLink logs live in $OUT, the loop's evidence tree in $OUT/loop.
+LOOP_OUT="$OUT/loop"
 LOOP_RC=0
 uv run python -m nlfr loop \
   --scenario "$SCENARIO" \
@@ -115,7 +118,7 @@ uv run python -m nlfr loop \
   --bazel-bin "$BAZEL_BIN" \
   ${MODEL_ARGS[@]+"${MODEL_ARGS[@]}"} \
   --run-group-prefix agentic-loop \
-  --output-dir "$OUT" || LOOP_RC=$?
+  --output-dir "$LOOP_OUT" || LOOP_RC=$?
 
 echo "== Redaction gate: no raw prompt text may appear in any output artifact =="
 OUT_DIR="$OUT" SCENARIO_NAME="$SCENARIO" ROOT_DIR="$ROOT" python3 - <<'PY'
@@ -150,6 +153,6 @@ if leaks:
 PY
 
 echo "== Loop summary =="
-python3 -m json.tool "$OUT/loop-summary.json" | sed -n '1,60p'
+python3 -m json.tool "$LOOP_OUT/loop-summary.json" | sed -n '1,60p'
 echo "nlfr loop exit code: $LOOP_RC"
 exit "$LOOP_RC"
