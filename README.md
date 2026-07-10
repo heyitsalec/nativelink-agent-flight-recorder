@@ -75,6 +75,20 @@ the raw prompt). **Act 2** — the agent receives the recorded failure evidence
 and ships the fix: validation goes green with warm NativeLink cache hits on
 unchanged targets, and a compare projection contrasts the two acts.
 
+**The loop is now closed natively.** `nlfr loop` drives the whole story from
+recorded evidence — `nlfr evaluate` turns the red leg into a truth-labeled
+verdict (`derived_v1`, recorded into the DB as an `evaluation` proof block),
+and the verdict's first next step decides what happens: dispatch the fix with
+the recorded excerpt, stop on an environment blocker, or finish green. The
+committed live run
+([summary](docs/proof-samples/agentic-loop-live-summary-sample.json) ·
+[iter-1 verdict](docs/proof-samples/agentic-loop-live-iter1-verdict-sample.json) ·
+[fix receipt](docs/proof-samples/agentic-loop-live-fix-receipt-sample.json))
+shows a real Claude (server-resolved `claude-opus-4-8`, `receipt_verified_v1`
+on both legs) going red, being evaluated, and fixing itself to green with warm
+cache hits — outcome `fixed_and_green`, every decision made by the recorder's
+own verdicts, not a shell script.
+
 <p align="center">
   <img src="apps/canvas/baselines/screenshots/two-act-graph-receipt-badge.png" alt="Two-act spark act 1 in the canvas: failed agent patch in the Action Graph with the agent receipt pane open" width="100%">
   <br>

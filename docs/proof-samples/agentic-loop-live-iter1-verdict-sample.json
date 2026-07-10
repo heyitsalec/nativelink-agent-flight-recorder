@@ -1,0 +1,98 @@
+{
+  "agent_provenance": {
+    "classes": {
+      "receipt_verified_v1": 1
+    }
+  },
+  "artifact_verification": {
+    "mismatched": 0,
+    "missing": 0,
+    "present_unverified": 0,
+    "remote_mismatch": 0,
+    "remote_missing": 0,
+    "remote_present": 0,
+    "remote_verified": 0,
+    "total": 14,
+    "unverified_remote": 14,
+    "verified_count": 0
+  },
+  "cache": {
+    "hit_rate": 0.5,
+    "hits": 2,
+    "misses": 2
+  },
+  "classification": {
+    "attribution_target_referenced": true,
+    "classification": "scenario_validation_failure",
+    "honest_scenario_failure": true,
+    "matched_signatures": []
+  },
+  "confidence": "low",
+  "evidence_refs": [
+    "run-group:agentic-loop-iter1",
+    "artifact:run.json",
+    "collectable_v1:bazel.bep.json",
+    "collectable_v1:bazel.execution-log.json",
+    "run:run_7cefaac6717cfc49b328751f",
+    "path:tasks/escalation.py",
+    "scenario:two-act-underspec-iter1",
+    "agent:loop-iter1",
+    "prompt:sha256:0f631e165958418598ec4001ba69264dda2223f46419529150032d1ecc5bb57c",
+    "adapter:nlfr-loop",
+    "artifact:agent-receipt.json",
+    "receipt:sha256:c987cb80e63f081623694b3380fa7a4e2c72c66a3e5023c8aa643885e8721ded",
+    "session:2a1576cd-8952-4209-848a-ed14dd56ca23",
+    "artifact:bazel.bep.json",
+    "artifact:bazel.stderr.txt",
+    "artifact:bazel.stdout.txt"
+  ],
+  "failure_evidence": {
+    "excerpt": "[artifact: bazel.stderr.txt]\nFAIL: //tasks:escalation_policy_test (see <redacted-path>)\nINFO: From Testing //tasks:escalation_policy_test:\nINFO: Found 3 targets and 2 test targets...\nINFO: Elapsed time: 5.359s, Critical Path: 0.25s\nINFO: 12 processes: 2 remote cache hit, 8 internal, 2 darwin-sandbox.\nINFO: Build completed, 1 test FAILED, 12 total actions\nINFO: \nINFO: Build Event Protocol files produced successfully.\n\n[artifact: bazel.stdout.txt]\nFAIL: test_second_staleness_window_escalates_again (__main__.EscalationPolicyTest.test_second_staleness_window_escalates_again)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"<redacted-path>\", line 25, in test_second_staleness_window_escalates_again\n    self.assertEqual(escalation_tier(10, 60), \"p0\")\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: 'p1' != 'p0'\n- p1\n+ p0\n\n\n----------------------------------------------------------------------\nRan 4 tests in 0.000s\n\nFAILED (failures=1)\n================================================================================\n//tasks:priority_test                                           (cached) PASSED in 0.3s\n//tasks:escalation_policy_test                                           FAILED in 0.2s\n  <redacted-path>\n\nExecuted 1 out of 2 tests: 1 test passes and 1 fails locally.\nThere were tests whose specified size is too big. Use the --test_verbose_timeout_warnings command line option to see which ones these are.\n",
+    "excerpt_sha256": "7adaded28e237a235ffc769459cd90091cc237241742bd38b0db2e2f3f343800",
+    "refs": [
+      "artifact:bazel.stderr.txt",
+      "artifact:bazel.stdout.txt"
+    ]
+  },
+  "failures": [
+    {
+      "attributed_targets": [
+        "//tasks:escalation_policy_test"
+      ],
+      "failure_kind": "build_finished",
+      "message": "Bazel finished with TESTS_FAILED (exit code 3)",
+      "span": {
+        "event_index": 41,
+        "id": {
+          "buildFinished": {}
+        }
+      }
+    }
+  ],
+  "generated_at": "2026-07-10T02:56:42.622725Z",
+  "next_steps": [
+    {
+      "action": "dispatch_fix_with_evidence",
+      "confidence": "high",
+      "evidence_refs": [],
+      "inputs": {
+        "attribution_target": "//tasks:escalation_policy_test",
+        "changed_paths": [
+          "tasks/escalation.py"
+        ],
+        "evidence_excerpt_sha256": "7adaded28e237a235ffc769459cd90091cc237241742bd38b0db2e2f3f343800"
+      },
+      "reason": "validation red is honestly attributed to the target under test; recorded failure evidence is available to hand to a fixing agent",
+      "redaction_state": "safe",
+      "source_kind": "derived_v1"
+    }
+  ],
+  "redaction_state": "safe",
+  "run_group": "agentic-loop-iter1",
+  "schema_version": "nlfr.evaluation.v1",
+  "source_kind": "derived_v1",
+  "status": {
+    "failure_count": 1,
+    "status": "failed"
+  }
+}

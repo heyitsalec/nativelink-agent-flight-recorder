@@ -57,6 +57,15 @@ NLFR is a local-first black-box recorder for agent validation loops:
   carry `receipt_verified_v1` receipts: CLI-resolved model id, session id,
   token usage, prompt/response SHA-256 — never the raw prompt
   ([live summary](proof-samples/two-act-spark-live-summary-sample.json)).
+- **Native closed loop** (`scripts/agentic-loop-proof.sh` → `nlfr loop`): a
+  real Claude authored a red patch, `nlfr evaluate` classified the recorded
+  failure honestly (`scenario_validation_failure`, attributed to the hidden
+  target) and recorded the verdict as an `evaluation` proof block, the loop
+  dispatched the fix with the recorded excerpt, and validation went green with
+  warm NativeLink cache hits — `fixed_and_green`, both agent legs
+  `receipt_verified_v1` (`claude-opus-4-8`), every decision from verdicts, not
+  bash ([live summary](proof-samples/agentic-loop-live-summary-sample.json) ·
+  [stub mechanics](proof-samples/agentic-loop-stub-summary-sample.json)).
 - Agent receipt provenance ladder on every agent node: `receipt_verified_v1`
   (parsed live-CLI receipt) > `receipt_imported_v1` (schema-valid receipt from
   an invocation NLFR did not observe — cloud/pod builds; always renders
