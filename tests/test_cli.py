@@ -40,6 +40,9 @@ def test_module_help_lists_registered_commands() -> None:
         "serve",
         "simulate",
         "redact",
+        "evaluate",
+        "loop",
+        "receipt",
     ):
         assert command in result.stdout
 
