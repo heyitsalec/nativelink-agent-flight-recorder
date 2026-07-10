@@ -57,9 +57,21 @@ NLFR is a local-first black-box recorder for agent validation loops:
   carry `receipt_verified_v1` receipts: CLI-resolved model id, session id,
   token usage, prompt/response SHA-256 — never the raw prompt
   ([live summary](proof-samples/two-act-spark-live-summary-sample.json)).
+- **Native closed loop** (`scripts/agentic-loop-proof.sh` → `nlfr loop`): a
+  real Claude authored a red patch, `nlfr evaluate` classified the recorded
+  failure honestly (`scenario_validation_failure`, attributed to the hidden
+  target) and recorded the verdict as an `evaluation` proof block, the loop
+  dispatched the fix with the recorded excerpt, and validation went green with
+  warm NativeLink cache hits — `fixed_and_green`, both agent legs
+  `receipt_verified_v1` (`claude-opus-4-8`), every decision from verdicts, not
+  bash ([live summary](proof-samples/agentic-loop-live-summary-sample.json) ·
+  [stub mechanics](proof-samples/agentic-loop-stub-summary-sample.json)).
 - Agent receipt provenance ladder on every agent node: `receipt_verified_v1`
-  (parsed live-CLI receipt) > `stub_receipt_v1` (deterministic stub, CI
-  mechanics gate) > `operator_asserted_v1` (claim without a receipt).
+  (parsed live-CLI receipt) > `receipt_imported_v1` (schema-valid receipt from
+  an invocation NLFR did not observe — cloud/pod builds; always renders
+  `receipt_verified: false`) > `stub_receipt_v1` (deterministic stub, CI
+  mechanics gate) > `operator_asserted_v1` (claim without a receipt). The
+  ladder states evidence shape, not trust.
 
 ## Shipped tooling (no Nix required)
 
@@ -79,6 +91,17 @@ These work against any Bazel repo, no NativeLink deployment:
 - **Verified receipts for the Claude and Gemini CLIs** — the Claude receipt is
   live-proven in the committed two-act run; the Gemini parser is fixture-tested
   (live validation env-gated, pending a host with that CLI).
+- **`nlfr evaluate`** — deterministic, truth-labeled verdict + precedence-ordered
+  next steps over a recorded run group (`derived_v1`, weakest-input confidence);
+  `--record` writes the verdict into the evidence DB as an `evaluation` proof
+  block ([CLI](wiki/reference/cli.md#evaluate)).
+- **`nlfr loop`** — the closed agent loop driven by recorded evidence: red leg
+  evaluated, honest-failure classification gates dispatch, the fixing agent
+  receives the recorded failure excerpt, the fix revalidates into its own run
+  group ([CLI](wiki/reference/cli.md#loop)).
+- **`nlfr receipt import`** — attach agent receipts produced in cloud/pod builds
+  as `receipt_imported_v1`, schema- and privacy-validated, never rendered as
+  verified ([how-to](wiki/how-to/capture-agent-telemetry-in-ci.md)).
 - **`nlfr db upgrade` / `nlfr db gc`** — schema migration and
   operator-consented evidence retention ([CLI](wiki/reference/cli.md#db-upgrade)).
 - **Bazel version matrix** — BEP, exec-log, and profile parsers are pinned across

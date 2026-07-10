@@ -333,6 +333,87 @@ retention job reading stdout JSON never gets empty output on a refusal. Without
 (guard-rail refusals stay exit 2); only the output *shape* gains the `--json`
 branch.
 
+## evaluate
+
+```bash
+python3 -m nlfr evaluate --run-group loop-iter1 \
+  --db data/nlfr-loop/nlfr.sqlite \
+  --artifact-root data/nlfr-loop/runs/<run>/artifacts \
+  --attribution-target //tasks:escalation_policy_test \
+  --record --output verdict.json
+```
+
+Evaluates one run group's recorded evidence into a deterministic, truth-labeled
+verdict (`nlfr.evaluation.v1`): validation status, honest-failure
+classification (`scenario_validation_failure` / `toolchain_failure` /
+`unattributed_failure` / `first_pass_success` / `unclassified`), a redacted
+failure-evidence excerpt (from the recorded `bazel.stderr/stdout.txt`
+artifacts when `--artifact-root` is given), cache and artifact-verification
+rollups, and a `next_steps` list with a **tested precedence contract**:
+`record_environment_blocker` > `rerun_validation` >
+`dispatch_fix_with_evidence` > `attach_missing_evidence` > `none_complete`.
+
+The verdict is always `derived_v1` with weakest-input confidence — a computed
+judgment over already-labeled evidence, never a new observation. Degraded
+inputs degrade the verdict honestly: no raw logs means `unclassified` plus an
+`attach_missing_evidence` step, never a guess. `--workspace PATH` lets the
+evaluator observe pending (unvalidated) edits by hashing changed files against
+the newest recorded after-hash; without it, `rerun_validation` never fires.
+
+`--record` re-opens the DB read-write and upserts the verdict as an
+`evaluation` proof block (idempotent per run). `--format markdown` renders a
+short human summary with a sibling `.json` sidecar. Exit codes: `0` evaluated,
+`2` cannot evaluate (missing DB / unknown run group), and `1` only with
+`--fail-on-action-required` when the first next step is not `none_complete`.
+
+## loop
+
+```bash
+python3 -m nlfr loop --scenario two-act-underspec \
+  --mode cache-only --skip-nativelink --remote-cache grpc://127.0.0.1:50051 \
+  --claude-bin claude --max-iterations 2 --output-dir data/nlfr-loop
+```
+
+Drives the closed agent loop natively: per iteration it invokes the agent
+(`agent-invoke`, receipts captured), applies the change to the loop's own
+workspace copy, validates through `nlfr run` into an **iteration-scoped run
+group** (`<prefix>-iter<N>`), ingests, exports projections, then evaluates
+with `--record` and branches ONLY on `next_steps[0].action`:
+
+- `dispatch_fix_with_evidence` — the next prompt embeds the verdict's recorded
+  failure excerpt (recorded artifacts, never a re-run) and the loop iterates;
+- `record_environment_blocker` — exit 2 with `loop-blocker.json`: retrying into
+  a broken toolchain would fabricate an agent-failure narrative;
+- `none_complete` — success: first-vs-last compare projection exported, exit 0.
+
+Hitting `--max-iterations` while red exits 1. `loop-summary.json`
+(`nlfr.loop.v1`) records per-iteration verdict/receipt refs, the outcome, and
+honest checks (first iteration red, honest classification, fix receipt
+present, final green, warm cache, compare exported). Raw prompts live only in
+a scratch directory deleted before the command returns. The loop does not
+manage the NativeLink server — see
+[`scripts/agentic-loop-proof.sh`](../../../scripts/agentic-loop-proof.sh) for
+the environment bring-up wrapper.
+
+## receipt import
+
+```bash
+python3 -m nlfr receipt import --receipt agent-receipt.json \
+  --db data/nlfr-record/pr-validation/nlfr.sqlite --run-group pr-validation
+```
+
+Attaches an `nlfr.agent_receipt.v1` file produced by an invocation NLFR did
+not observe (CI runner, pod, hosted agent) to a recorded run group. The file
+is schema- and privacy-validated first (raw-prompt keys reject the import with
+exit 2; nothing is written), recorded as a content-hashed artifact, and
+attached as an `agent_provenance` proof block with `provenance_class:
+receipt_imported_v1`, `source_kind: collectable_v1`, `confidence: medium`.
+Imported receipts are stamped `live: false` / `observed_by_nlfr: false` and
+always render `receipt_verified: false` — the class states evidence shape,
+not trust ([how-to](../how-to/capture-agent-telemetry-in-ci.md)).
+`--run-key` targets a specific run; the default is the newest run in the
+group.
+
 ## compare (M9)
 
 ### compare index

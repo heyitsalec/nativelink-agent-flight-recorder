@@ -1,0 +1,51 @@
+{
+  "api_error_code": null,
+  "api_error_status": null,
+  "captured_at": "2026-07-10T02:56:49.592440Z",
+  "cli": {
+    "command": [
+      "claude",
+      "-p",
+      "<prompt:sha256>",
+      "--output-format",
+      "json",
+      "--model",
+      "claude-opus-4-8"
+    ],
+    "name": "claude",
+    "version": "2.1.206 (Claude Code)"
+  },
+  "confidence": "high",
+  "duration_api_ms": 5754,
+  "duration_ms": 5783,
+  "evidence_refs": [
+    "prompt:sha256:ca0c587b432e453f707a2790b36316ccc681e373dbf031688ab294f723e3ab75",
+    "cli:claude",
+    "response:sha256:05ebf5fac774dc31a311ffa04e9850a51c4c042063cb3eb6e301dd1f926aa026",
+    "session:5b90aed0-4ccb-4ef2-9560-184fa4b5c81f"
+  ],
+  "model": {
+    "requested": "claude-opus-4-8",
+    "resolved": "claude-opus-4-8",
+    "resolved_all": [
+      "claude-opus-4-8"
+    ]
+  },
+  "num_turns": 1,
+  "prompt_sha256": "ca0c587b432e453f707a2790b36316ccc681e373dbf031688ab294f723e3ab75",
+  "redaction_state": "redacted",
+  "response_chars": 598,
+  "response_sha256": "05ebf5fac774dc31a311ffa04e9850a51c4c042063cb3eb6e301dd1f926aa026",
+  "result_subtype": "success",
+  "schema_version": "nlfr.agent_receipt.v1",
+  "session_id": "5b90aed0-4ccb-4ef2-9560-184fa4b5c81f",
+  "source_kind": "collectable_v1",
+  "status": "success",
+  "total_cost_usd": 0.1227355,
+  "usage": {
+    "cache_creation_input_tokens": 3910,
+    "cache_read_input_tokens": 15261,
+    "input_tokens": 13021,
+    "output_tokens": 436
+  }
+}

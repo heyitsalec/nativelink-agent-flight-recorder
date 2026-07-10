@@ -38,6 +38,9 @@ safety-critical) who has to show *what actually ran* when an agent wrote the cod
 | **PR-comment / CI-attachment proof** | `nlfr proof comment` → a compact, redact-gated proof summary (status, cache economics, artifact-verification rollup, agent-receipt presence, in-toto ref) as a PR comment + JSON sidecar ([how-to](docs/wiki/how-to/pr-comment-proof.md)). |
 | **Contract-enforced projections** | Projection JSON shape is CI-gated against committed JSON contracts ([contracts](docs/wiki/reference/contracts/README.md)). |
 | **Verified agent receipts** | `receipt_verified_v1` receipts — model, session, token usage, prompt/response SHA-256; raw prompt structurally absent. Claude is live-proven in the committed two-act run; the Gemini parser is fixture-tested (live validation env-gated). |
+| **Evidence evaluation** | `nlfr evaluate` → deterministic, truth-labeled verdict (`nlfr.evaluation.v1`) over a recorded run group: status, honest-failure classification, redacted failure-evidence excerpt, and a precedence-ordered `next_steps` list; `--record` writes the verdict back into the evidence DB as an `evaluation` proof block. |
+| **Closed agent loop** | `nlfr loop` → evaluate → fix → revalidate driven entirely by recorded evidence: the fixing agent receives the verdict's recorded failure excerpt (never a re-run), each iteration is its own run group, and toolchain blockers stop the loop instead of fabricating agent-failure narratives ([proof script](scripts/agentic-loop-proof.sh)). |
+| **Cloud/pod agent telemetry** | `nlfr receipt import` attaches receipts produced where NLFR wasn't (CI runners, pods) as `receipt_imported_v1` — schema- and privacy-validated, honestly rendered `receipt_verified: false` ([how-to](docs/wiki/how-to/capture-agent-telemetry-in-ci.md)). |
 | **`nlfr db upgrade` / `db gc`** | Schema migration and operator-consented evidence retention ([CLI reference](docs/wiki/reference/cli.md#db-upgrade)). |
 | **Bazel version matrix** | BEP + exec-log + profile parsers pinned across Bazel 7.4.1 / 9.0.0 with populator-verified fixtures; `doctor`/`record` warn (non-blocking) on untested versions ([version matrix](docs/wiki/reference/bazel-version-matrix.md)). |
 
@@ -71,6 +74,20 @@ target, and stores the agent's receipt (model, session, prompt SHA-256 — never
 the raw prompt). **Act 2** — the agent receives the recorded failure evidence
 and ships the fix: validation goes green with warm NativeLink cache hits on
 unchanged targets, and a compare projection contrasts the two acts.
+
+**The loop is now closed natively.** `nlfr loop` drives the whole story from
+recorded evidence — `nlfr evaluate` turns the red leg into a truth-labeled
+verdict (`derived_v1`, recorded into the DB as an `evaluation` proof block),
+and the verdict's first next step decides what happens: dispatch the fix with
+the recorded excerpt, stop on an environment blocker, or finish green. The
+committed live run
+([summary](docs/proof-samples/agentic-loop-live-summary-sample.json) ·
+[iter-1 verdict](docs/proof-samples/agentic-loop-live-iter1-verdict-sample.json) ·
+[fix receipt](docs/proof-samples/agentic-loop-live-fix-receipt-sample.json))
+shows a real Claude (server-resolved `claude-opus-4-8`, `receipt_verified_v1`
+on both legs) going red, being evaluated, and fixing itself to green with warm
+cache hits — outcome `fixed_and_green`, every decision made by the recorder's
+own verdicts, not a shell script.
 
 <p align="center">
   <img src="apps/canvas/baselines/screenshots/two-act-graph-receipt-badge.png" alt="Two-act spark act 1 in the canvas: failed agent patch in the Action Graph with the agent receipt pane open" width="100%">
@@ -174,8 +191,11 @@ Every normalized evidence row and projection object carries four fields:
 
 Agent nodes additionally carry a receipt provenance badge:
 `receipt_verified_v1` (parsed live-CLI receipt — the committed two-act run),
+`receipt_imported_v1` (schema-valid receipt imported from an invocation NLFR
+did not observe — cloud/pod builds; renders `receipt_verified: false`),
 `stub_receipt_v1` (deterministic stub used by the CI mechanics gate), or
-`operator_asserted_v1` (operator claim without a receipt).
+`operator_asserted_v1` (operator claim without a receipt). The ladder is a
+statement about evidence shape, not trust.
 
 Receipts are captured through a per-CLI parser registry
 ([`src/nlfr/agent_receipt.py`](src/nlfr/agent_receipt.py)): `nlfr agent-invoke

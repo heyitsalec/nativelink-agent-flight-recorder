@@ -30,7 +30,6 @@ SPARK_SCHEMA_VERSION = "nlfr.spark.scenario.v1"
 FORBIDDEN_SCENARIO_KEYS = frozenset({"prompt", "raw_prompt", "prompt_text"})
 
 _FENCED_BLOCK = re.compile(r"```(?:python)?[ \t]*\n(.*?)```", re.DOTALL)
-_HOME_PATH = re.compile(r"(/Users/[^\s\"')(]+|/home/[^\s\"')(]+|/private/var/[^\s\"')(]*)")
 
 
 def load_spark_scenario(path: str | Path) -> dict[str, Any]:
@@ -168,17 +167,12 @@ def extract_python_file(response_text: str) -> str:
     return content
 
 
-#: Signatures of toolchain/startup failures that must NEVER count as an honest
-#: act-1 red leg — bazel died before executing the agent's code.
-TOOLCHAIN_FAILURE_SIGNATURES = (
-    "Bazel compatibility check failed",
-    "is not compatible with module",
-    "Error computing the main repository mapping",
-    "The command is only supported from within a workspace",
-    "Error downloading",
-    "command not found",
-    "FATAL: bazel exited",
-)
+#: Toolchain/startup failure signatures. The logic moved to nlfr.evaluator
+#: (loop infrastructure, not demo-scenario code); re-exported here so existing
+#: imports and scripts keep working unchanged.
+from nlfr.evaluator import TOOLCHAIN_FAILURE_SIGNATURES  # noqa: E402
+from nlfr.evaluator import classify_validation_failure as _classify  # noqa: E402
+from nlfr.evaluator import failure_excerpt  # noqa: E402,F401
 
 
 def classify_validation_failure(
@@ -188,76 +182,17 @@ def classify_validation_failure(
 ) -> dict[str, Any]:
     """Classify a red validation leg as honest scenario failure or toolchain blocker.
 
-    An act-1 red is only honest when bazel actually evaluated the agent's code:
-    the recorded output must reference the hidden validation target (test
-    failure or its build failure) and must not match toolchain/startup failure
-    signatures. Anything else is an environment problem and must be recorded as
-    a truth-labeled blocker, never presented as "the recorder caught the agent".
+    Thin wrapper over :func:`nlfr.evaluator.classify_validation_failure`
+    preserving the spark-era key name ``hidden_target_referenced``.
     """
 
-    root = Path(artifact_root)
-    text = ""
-    for name in ("bazel.stderr.txt", "bazel.stdout.txt"):
-        path = root / name
-        if path.exists():
-            text += path.read_text(encoding="utf-8", errors="replace")
-    matched = [sig for sig in TOOLCHAIN_FAILURE_SIGNATURES if sig in text]
-    hidden_referenced = hidden_target in text
-    if matched:
-        return {
-            "classification": "toolchain_failure",
-            "honest_scenario_failure": False,
-            "matched_signatures": matched,
-            "hidden_target_referenced": hidden_referenced,
-        }
-    if not hidden_referenced:
-        return {
-            "classification": "unattributed_failure",
-            "honest_scenario_failure": False,
-            "matched_signatures": [],
-            "hidden_target_referenced": False,
-        }
+    result = _classify(artifact_root, attribution_target=hidden_target)
     return {
-        "classification": "scenario_validation_failure",
-        "honest_scenario_failure": True,
-        "matched_signatures": [],
-        "hidden_target_referenced": True,
+        "classification": result["classification"],
+        "honest_scenario_failure": result["honest_scenario_failure"],
+        "matched_signatures": result["matched_signatures"],
+        "hidden_target_referenced": bool(result["attribution_target_referenced"]),
     }
-
-
-def failure_excerpt(artifact_root: str | Path, *, max_lines: int = 80) -> str:
-    """Extract a redacted bazel test failure excerpt from recorded run artifacts.
-
-    Reads the recorded ``bazel.stderr.txt`` / ``bazel.stdout.txt`` artifacts of
-    a red validation run and returns the failure region (from the first line
-    mentioning a failure to the end), with absolute host paths redacted. This
-    is the dogfooding hook: Act 2 debugging context comes from the recorder's
-    own immutable evidence, not from re-running anything.
-    """
-
-    root = Path(artifact_root)
-    sections = []
-    for name in ("bazel.stderr.txt", "bazel.stdout.txt"):
-        path = root / name
-        if not path.exists():
-            continue
-        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
-        markers = [
-            index
-            for index, line in enumerate(lines)
-            if "FAIL" in line or "Error" in line or "error:" in line
-        ]
-        if not markers:
-            continue
-        start = markers[0]
-        excerpt_lines = lines[start : start + max_lines]
-        body = "\n".join(_HOME_PATH.sub("<redacted-path>", line) for line in excerpt_lines)
-        sections.append(f"[artifact: {name}]\n{body}")
-    if not sections:
-        raise ValueError(f"no failure evidence found under {root}")
-    # Both streams matter: bazel's summary lands on stderr while the failing
-    # test's own output (e.g. unittest assertion detail) lands on stdout.
-    return "\n\n".join(sections) + "\n"
 
 
 def _reject_forbidden_keys(obj: Any, *, path: str) -> None:

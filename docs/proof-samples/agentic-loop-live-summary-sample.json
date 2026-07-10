@@ -1,0 +1,44 @@
+{
+  "checks": {
+    "compare_exported": true,
+    "final_green": true,
+    "first_iteration_red": true,
+    "fix_receipt_present": true,
+    "honest_classification": true,
+    "warm_cache_final": true
+  },
+  "compare_ref": "${HOME}/Documents/nativelink-agent-flight-recorder/.claude/worktrees/agentloop/data/agentic-loop-live/loop/projections/compare-agentic-loop-iter1-vs-agentic-loop-iter2.json",
+  "confidence": "medium",
+  "evidence_refs": [
+    "verdict:${HOME}/Documents/nativelink-agent-flight-recorder/.claude/worktrees/agentloop/data/agentic-loop-live/loop/verdicts/iter1-verdict.json",
+    "verdict:${HOME}/Documents/nativelink-agent-flight-recorder/.claude/worktrees/agentloop/data/agentic-loop-live/loop/verdicts/iter2-verdict.json",
+    "compare:${HOME}/Documents/nativelink-agent-flight-recorder/.claude/worktrees/agentloop/data/agentic-loop-live/loop/projections/compare-agentic-loop-iter1-vs-agentic-loop-iter2.json"
+  ],
+  "generated_at": "2026-07-10T02:56:54.168263Z",
+  "iterations": [
+    {
+      "action_taken": "dispatch_fix_with_evidence",
+      "classification": "scenario_validation_failure",
+      "iteration": 1,
+      "provenance_class": "receipt_verified_v1",
+      "receipt_ref": "${HOME}/Documents/nativelink-agent-flight-recorder/.claude/worktrees/agentloop/data/agentic-loop-live/loop/receipts/iter1-receipt.json",
+      "run_group": "agentic-loop-iter1",
+      "status": "failed",
+      "verdict_ref": "${HOME}/Documents/nativelink-agent-flight-recorder/.claude/worktrees/agentloop/data/agentic-loop-live/loop/verdicts/iter1-verdict.json"
+    },
+    {
+      "action_taken": "none_complete",
+      "classification": "first_pass_success",
+      "iteration": 2,
+      "provenance_class": "receipt_verified_v1",
+      "receipt_ref": "${HOME}/Documents/nativelink-agent-flight-recorder/.claude/worktrees/agentloop/data/agentic-loop-live/loop/receipts/iter2-receipt.json",
+      "run_group": "agentic-loop-iter2",
+      "status": "completed",
+      "verdict_ref": "${HOME}/Documents/nativelink-agent-flight-recorder/.claude/worktrees/agentloop/data/agentic-loop-live/loop/verdicts/iter2-verdict.json"
+    }
+  ],
+  "outcome": "fixed_and_green",
+  "redaction_state": "redacted",
+  "schema_version": "nlfr.loop.v1",
+  "source_kind": "derived_v1"
+}
