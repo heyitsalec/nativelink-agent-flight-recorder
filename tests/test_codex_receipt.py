@@ -92,6 +92,43 @@ def test_codex_is_registered_as_a_parser_family_and_choice():
 # --------------------------------------------------------------------------- #
 
 
+def test_codex_empty_stdout_stream_is_unparseable_and_degrades():
+    # A dead/quiet codex process must yield an honest below-verified receipt,
+    # never a crash: no events -> unparseable (None) -> invalid_output.
+    from nlfr.commands.agent_invoke_cmd import _parse_cli_stdout
+
+    assert _parse_cli_stdout("codex", "") is None
+    assert _parse_cli_stdout("codex", "\n\n   \n") is None
+    receipt = _codex_receipt("happy.json", cli_result=None)
+    assert receipt["status"] == "invalid_output"
+    assert not is_live_receipt(receipt)
+
+
+def test_codex_interleaved_garbage_lines_are_skipped_and_last_message_wins():
+    # Hostile stdout: banners and broken JSON interleaved with real events, and
+    # TWO agent messages — parsing must survive and the LAST message must win,
+    # pinned by the response hash.
+    from nlfr.commands.agent_invoke_cmd import _parse_cli_stdout
+
+    stdout = "\n".join(
+        [
+            "codex-cli booting...",
+            '{"type": "thread.started", "thread_id": "019f-test"}',
+            "{not json at all",
+            '{"type": "item.completed", "item": {"type": "agent_message", "text": "first draft"}}',
+            "42",
+            '{"type": "item.completed", "item": {"type": "agent_message", "text": "final answer"}}',
+            '{"type": "turn.completed", "usage": {"input_tokens": 10, "cached_input_tokens": 4, "output_tokens": 2}}',
+        ]
+    )
+    cli_result = _parse_cli_stdout("codex", stdout)
+    assert cli_result is not None
+    receipt = _codex_receipt("happy.json", cli_result=cli_result)
+    assert receipt["response_sha256"] == sha256_text("final answer")
+    assert receipt["usage"]["input_tokens"] == 6  # net of cache, gemini precedent
+    assert receipt["usage"]["cache_read_input_tokens"] == 4
+
+
 def test_codex_real_success_degrades_because_no_model_id_is_attested():
     """The empirically-captured success stream degrades below the verified tier.
 

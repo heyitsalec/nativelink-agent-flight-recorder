@@ -313,6 +313,7 @@ Supported CLIs and their evidence status:
 |---------------|----------------------|
 | `claude` | Live-proven — the committed two-act run carries `receipt_verified_v1` Claude receipts. |
 | `gemini` | Doc-derived from the official Gemini CLI `--output-format json` contract (`response` + `stats.models` + `session_id`, optional `error`) and **fixture-tested**. Live validation is env-gated (`NLFR_RUN_AGENT_LIVE_GEMINI=1` with the Gemini CLI on PATH) and pending a machine with that CLI — **not** yet live-proven. |
+| `codex` | Empirically derived from real `codex exec --json` JSONL runs (codex-cli 0.144.1) and fixture-tested. That stream attests **no model id**, so real codex successes honestly degrade to `invalid_output` — below the verified tier — until codex surfaces the model on its stream (the parser auto-upgrades when it does). Sanitized-from-real fixtures; model-bearing fixtures are forward-compat only. |
 
 ## Conditional claims (M7)
 
