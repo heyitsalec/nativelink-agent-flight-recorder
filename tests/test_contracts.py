@@ -56,7 +56,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from nlfr.agent_receipt import build_receipt, sha256_text  # noqa: E402
 from nlfr.artifacts import read_manifest, write_artifact  # noqa: E402
 from nlfr.db import connect, initialize  # noqa: E402
-from nlfr.db.ingest import upsert_cache_event, upsert_run  # noqa: E402
+from nlfr.db.ingest import upsert_cache_event, upsert_proof_block, upsert_run  # noqa: E402
 from nlfr.projectors import (  # noqa: E402
     export_action_graph,
     export_in_toto_statement,
@@ -64,6 +64,7 @@ from nlfr.projectors import (  # noqa: E402
     export_validation_runway,
 )
 from nlfr.projectors.compare import export_compare_projection  # noqa: E402
+from nlfr.projectors.timeline import build_timeline_projection  # noqa: E402
 
 # Reused idiomatic fixtures — real ingest seeds, not hand-written payloads.
 from test_in_toto_export import RUN_GROUP as IN_TOTO_RUN_GROUP  # noqa: E402
@@ -556,3 +557,98 @@ def test_negative_control_unknown_dimension_id_is_rejected(tmp_path: Path) -> No
     dimension["left"] = {"anything": "goes"}
     rogue["dimensions"].append(dimension)
     assert not validator.is_valid(rogue)
+
+
+# --------------------------------------------------------------------------- #
+# timeline_projection.v1.json  <- projectors/timeline.py build_timeline_projection
+# --------------------------------------------------------------------------- #
+
+
+def _seed_timeline_db(tmp_path: Path) -> Path:
+    """Minimal real-exporter input: one run + one recorded verdict block."""
+
+    db_path = tmp_path / "timeline" / "nlfr.sqlite"
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    conn = initialize(connect(db_path))
+    run_id = upsert_run(
+        conn,
+        stable_key="run:timeline-demo",
+        run_group="timeline-demo",
+        scenario="record",
+        mode="cache-only",
+        status="completed",
+        started_at="2026-07-11T01:00:00Z",
+        source_kind="collectable_v1",
+        confidence="high",
+        evidence_refs=["run:timeline-demo"],
+        redaction_state="safe",
+    )
+    upsert_proof_block(
+        conn,
+        stable_key=f"{run_id}:evaluation",
+        run_id=run_id,
+        block_key="evaluation",
+        block_kind="evaluation",
+        title="Evaluation verdict",
+        summary="status=ok",
+        payload={
+            "schema_version": "nlfr.evaluation.v1",
+            "generated_at": "2026-07-11T01:10:00Z",
+            "run_group": "timeline-demo",
+            "status": {"status": "ok", "failure_count": 0},
+            "classification": {"classification": "first_pass_success"},
+            "next_steps": [{"action": "none_complete"}],
+        },
+        source_kind="derived_v1",
+        confidence="medium",
+        evidence_refs=["run-group:timeline-demo"],
+        redaction_state="safe",
+    )
+    conn.commit()
+    conn.close()
+    return db_path
+
+
+def _timeline_projection(tmp_path: Path) -> dict:
+    from nlfr.db.connection import connect_readonly
+
+    db_path = _seed_timeline_db(tmp_path)
+    conn = connect_readonly(db_path)
+    try:
+        return build_timeline_projection([("timeline", conn)])
+    finally:
+        conn.close()
+
+
+def test_timeline_projection_matches_contract(tmp_path: Path) -> None:
+    validator = _validator("timeline_projection.v1.json")
+    validator.validate(_timeline_projection(tmp_path))
+
+
+def test_negative_control_timeline_rejects_bad_event_kind(tmp_path: Path) -> None:
+    validator = _validator("timeline_projection.v1.json")
+    projection = _timeline_projection(tmp_path)
+    projection["events"][0]["kind"] = "vibe"
+    with pytest.raises(ValidationError):
+        validator.validate(projection)
+
+
+def test_negative_control_timeline_rejects_nonderived_chapter(tmp_path: Path) -> None:
+    validator = _validator("timeline_projection.v1.json")
+    projection = _timeline_projection(tmp_path)
+    projection["chapters"].append(
+        {
+            "kind": "repair_loop",
+            "label": "forged",
+            "start_ts": "2026-07-11T01:10:00Z",
+            "end_ts": None,
+            "open": True,
+            "event_indexes": [0],
+            "source_kind": "collectable_v1",
+            "confidence": "high",
+            "evidence_refs": [],
+            "redaction_state": "safe",
+        }
+    )
+    with pytest.raises(ValidationError):
+        validator.validate(projection)
