@@ -21,6 +21,7 @@ by label so provenance survives the merge.
 
 from __future__ import annotations
 
+import re
 import sqlite3
 from typing import Any
 
@@ -30,9 +31,29 @@ from nlfr.redaction import RedactionConfig, redact_payload
 TIMELINE_KINDS = ("run", "verdict", "receipt")
 
 #: Chapter vocabulary. ``repair_loop`` is the only derived chapter kind in v1:
-#: a recorded dispatch verdict opening, closed by the next ok verdict (or
-#: honestly left ``open`` when the record contains no green close).
+#: a recorded dispatch verdict opening, closed by the next ok verdict IN THE
+#: SAME LINEAGE (or honestly left ``open`` when the record contains no green
+#: close for that lineage).
 CHAPTER_KINDS = ("repair_loop",)
+
+#: Run groups belonging to one repair lineage share a prefix; the trailing
+#: tokens are the product's OWN recorded naming conventions, not inference:
+#: ``nlfr loop`` mints ``<prefix>-iter<N>`` per iteration, the A/B recording
+#: protocol mints ``-r<N>`` retries, and proof legs mint ``-red``/``-green``.
+#: Stripping them (repeatedly) yields the lineage key. Unrelated lineages can
+#: never open or close each other's chapters.
+_LINEAGE_TOKEN = re.compile(r"-(?:red|green|iter\d+|r\d+)$")
+
+
+def _lineage(run_group: str | None) -> str | None:
+    if not run_group:
+        return None
+    current = run_group
+    previous = None
+    while current != previous:
+        previous = current
+        current = _LINEAGE_TOKEN.sub("", current)
+    return current or run_group
 
 
 def build_timeline_projection(
@@ -128,6 +149,7 @@ def build_timeline_projection(
                             "status": receipt.get("status"),
                             "output_tokens": (receipt.get("usage") or {}).get("output_tokens"),
                             "session_id": receipt.get("session_id"),
+                            "run_group": payload.get("run_group"),
                         },
                         row=block,
                     )
@@ -160,7 +182,9 @@ def build_timeline_projection(
         "source_kind": "derived_v1",
         "confidence": _weakest(consulted),
         "evidence_refs": [f"db:{label}" for label in source_labels],
-        "redaction_state": "safe",
+        "redaction_state": _redaction_rollup(
+            [row.get("redaction_state") for row in consulted]
+        ),
     }
     result = redact_payload(projection, RedactionConfig())
     return result.payload  # type: ignore[return-value]
@@ -189,48 +213,90 @@ def _event(
 
 
 def _derive_repair_chapters(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Chapters spanning a dispatch verdict through the next ok verdict.
+    """Chapters spanning a dispatch verdict through the next ok verdict of the
+    SAME repair lineage.
 
-    Purely a synthesis over recorded verdict events: opens at
-    ``next_action == dispatch_fix_with_evidence``, closes at the next verdict
-    whose status is ``ok``. A dispatch with no recorded green close stays an
-    honestly ``open`` chapter rather than being dropped or auto-closed.
+    Purely a synthesis over recorded verdict events, scoped by lineage (see
+    ``_lineage``): a chapter opens at ``next_action == dispatch_fix_with_evidence``
+    and closes only at a later ``ok`` verdict whose run group shares the
+    lineage — an unrelated group's green can never mark another lineage's
+    repair resolved. A second dispatch in the same lineage supersedes the
+    first attempt: the earlier chapter stays honestly ``open`` (it never
+    recorded a green close) and a new chapter begins, so distinct dispatch
+    attempts are distinct beats. Non-verdict events join the open chapter of
+    their own lineage only.
     """
 
     chapters: list[dict[str, Any]] = []
-    open_chapter: dict[str, Any] | None = None
+    open_by_lineage: dict[str, dict[str, Any]] = {}
+
+    def _new_chapter(event: dict[str, Any], lineage: str) -> dict[str, Any]:
+        return {
+            "kind": "repair_loop",
+            "label": "verdict-driven repair",
+            "lineage": lineage,
+            "start_ts": event["ts"],
+            "end_ts": None,
+            "open": True,
+            "event_indexes": [event["index"]],
+            "source_kind": "derived_v1",
+            "confidence": "medium",
+            "evidence_refs": [f"event:{event['index']}"],
+            "redaction_state": "safe",
+        }
+
     for event in events:
+        lineage = _lineage((event.get("detail") or {}).get("run_group"))
+        if lineage is None:
+            continue
+        chapter = open_by_lineage.get(lineage)
         if event["kind"] != "verdict":
-            if open_chapter is not None:
-                open_chapter["event_indexes"].append(event["index"])
+            if chapter is not None:
+                chapter["event_indexes"].append(event["index"])
             continue
         action = (event.get("detail") or {}).get("next_action")
         status = (event.get("detail") or {}).get("status")
-        if open_chapter is None:
-            if action == "dispatch_fix_with_evidence":
-                open_chapter = {
-                    "kind": "repair_loop",
-                    "label": "verdict-driven repair",
-                    "start_ts": event["ts"],
-                    "end_ts": None,
-                    "open": True,
-                    "event_indexes": [event["index"]],
-                    "source_kind": "derived_v1",
-                    "confidence": "medium",
-                    "evidence_refs": [f"event:{event['index']}"],
-                    "redaction_state": "safe",
-                }
-        else:
-            open_chapter["event_indexes"].append(event["index"])
-            open_chapter["evidence_refs"].append(f"event:{event['index']}")
+        if action == "dispatch_fix_with_evidence":
+            if chapter is not None:
+                # Superseded attempt: no green close was recorded for it, so
+                # it stays open; the new dispatch is its own beat.
+                chapters.append(chapter)
+            open_by_lineage[lineage] = _new_chapter(event, lineage)
+        elif chapter is not None:
+            chapter["event_indexes"].append(event["index"])
+            chapter["evidence_refs"].append(f"event:{event['index']}")
             if status == "ok":
-                open_chapter["end_ts"] = event["ts"]
-                open_chapter["open"] = False
-                chapters.append(open_chapter)
-                open_chapter = None
-    if open_chapter is not None:
-        chapters.append(open_chapter)
+                chapter["end_ts"] = event["ts"]
+                chapter["open"] = False
+                chapters.append(chapter)
+                del open_by_lineage[lineage]
+    chapters.extend(open_by_lineage.values())
+    chapters.sort(key=lambda chapter: chapter["start_ts"])
+    by_index = {event["index"]: event for event in events}
+    for chapter in chapters:
+        chapter["redaction_state"] = _redaction_rollup(
+            [
+                by_index[index].get("redaction_state")
+                for index in chapter["event_indexes"]
+                if index in by_index
+            ]
+        )
     return chapters
+
+
+_REDACTION_ORDER = ("blocked", "redacted", "safe", "unknown")
+
+
+def _redaction_rollup(values: list[str | None]) -> str:
+    """Mirror proof.py's rule: the most-restrictive state present wins."""
+
+    present = {value for value in values if value}
+    for state in _REDACTION_ORDER[:2]:
+        if state in present:
+            return state
+    if "safe" in present:
+        return "safe"
+    return "unknown" if not present else "safe"
 
 
 def _weakest(consulted: list[dict[str, Any]]) -> str:

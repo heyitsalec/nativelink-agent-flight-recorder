@@ -37,11 +37,11 @@ def run_nlfr(*args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-def _verdict_payload(ts: str, status: str, action: str) -> dict:
+def _verdict_payload(ts: str, status: str, action: str, group: str = "loop-iter1") -> dict:
     return {
         "schema_version": "nlfr.evaluation.v1",
         "generated_at": ts,
-        "run_group": "loop-iter1",
+        "run_group": group,
         "status": {"status": status, "failure_count": 0 if status == "ok" else 1},
         "classification": {"classification": "scenario_validation_failure"},
         "next_steps": [{"action": action}],
@@ -73,7 +73,7 @@ def _seed(db_path: Path, *, group: str, base_hour: int) -> None:
         block_kind="evaluation",
         title="Evaluation verdict",
         summary=f"status={status}",
-        payload=_verdict_payload(f"2026-07-11T0{base_hour}:10:00Z", status, action),
+        payload=_verdict_payload(f"2026-07-11T0{base_hour}:10:00Z", status, action, group),
         source_kind="derived_v1",
         confidence="medium",
         evidence_refs=[f"run-group:{group}"],
@@ -91,6 +91,7 @@ def _seed(db_path: Path, *, group: str, base_hour: int) -> None:
             payload={
                 "schema_version": "nlfr.agent_provenance.v1",
                 "generated_at": f"2026-07-11T0{base_hour}:20:00Z",
+                "run_group": group,
                 "agent": {
                     "name": "loop-fix",
                     "model": "claude-fable-5",
@@ -162,6 +163,7 @@ def test_events_copy_truth_labels_from_rows(tmp_path: Path) -> None:
     assert receipt_event["detail"]["provenance_class"] == "receipt_verified_v1"
     assert receipt_event["detail"]["output_tokens"] == 111
     assert projection["source_kind"] == "derived_v1"
+    assert projection["redaction_state"] == "redacted"  # rolled up, not hardcoded
 
 
 def test_repair_chapter_spans_dispatch_to_green(tmp_path: Path) -> None:
@@ -175,7 +177,10 @@ def test_repair_chapter_spans_dispatch_to_green(tmp_path: Path) -> None:
     assert chapter["end_ts"] == "2026-07-11T02:10:00Z"
     # dispatch verdict, the receipt + green run between, the closing verdict
     assert chapter["event_indexes"] == [1, 2, 3, 4]
+    assert chapter["lineage"] == "selfheal"
     assert chapter["source_kind"] == "derived_v1"
+    # the chapter spans a redacted receipt event — the rollup must say so
+    assert chapter["redaction_state"] == "redacted"
 
 
 def test_dispatch_without_green_close_stays_open(tmp_path: Path) -> None:
@@ -222,3 +227,189 @@ def test_cli_missing_db_exits_two(tmp_path: Path) -> None:
     result = run_nlfr("timeline", "export", "--db", str(tmp_path / "absent.sqlite"))
     assert result.returncode == 2
     assert "Traceback" not in result.stderr
+
+
+def test_unrelated_lineage_green_never_closes_anothers_dispatch(tmp_path: Path) -> None:
+    """The cross-contamination attack from review: featureA dispatches and never
+    goes green; featureB (unrelated) passes later. featureB's green must NOT
+    close featureA's chapter — it stays honestly open."""
+
+    db = tmp_path / "mixed" / "nlfr.sqlite"
+    db.parent.mkdir()
+    conn = initialize(connect(db))
+    a_run = upsert_run(
+        conn, stable_key="run:featureA", run_group="featureA",
+        scenario="loop", mode="cache-only", status="failed",
+        started_at="2026-07-11T10:00:00Z",
+        source_kind="collectable_v1", confidence="high",
+        evidence_refs=["run:featureA"], redaction_state="safe",
+    )
+    upsert_proof_block(
+        conn, stable_key=f"{a_run}:evaluation", run_id=a_run,
+        block_key="evaluation", block_kind="evaluation",
+        title="Evaluation verdict", summary="status=failed",
+        payload={
+            "schema_version": "nlfr.evaluation.v1",
+            "generated_at": "2026-07-11T10:05:00Z",
+            "run_group": "featureA",
+            "status": {"status": "failed", "failure_count": 1},
+            "classification": {"classification": "scenario_validation_failure"},
+            "next_steps": [{"action": "dispatch_fix_with_evidence"}],
+        },
+        source_kind="derived_v1", confidence="medium",
+        evidence_refs=["run-group:featureA"], redaction_state="safe",
+    )
+    b_run = upsert_run(
+        conn, stable_key="run:featureB", run_group="featureB",
+        scenario="record", mode="cache-only", status="completed",
+        started_at="2026-07-11T10:20:00Z",
+        source_kind="collectable_v1", confidence="high",
+        evidence_refs=["run:featureB"], redaction_state="safe",
+    )
+    upsert_proof_block(
+        conn, stable_key=f"{b_run}:evaluation", run_id=b_run,
+        block_key="evaluation", block_kind="evaluation",
+        title="Evaluation verdict", summary="status=ok",
+        payload={
+            "schema_version": "nlfr.evaluation.v1",
+            "generated_at": "2026-07-11T10:30:00Z",
+            "run_group": "featureB",
+            "status": {"status": "ok", "failure_count": 0},
+            "classification": {"classification": "first_pass_success"},
+            "next_steps": [{"action": "none_complete"}],
+        },
+        source_kind="derived_v1", confidence="medium",
+        evidence_refs=["run-group:featureB"], redaction_state="safe",
+    )
+    conn.commit()
+    conn.close()
+    ro = connect_readonly(db)
+    try:
+        projection = build_timeline_projection([("mixed", ro)])
+    finally:
+        ro.close()
+    chapters = projection["chapters"]
+    assert len(chapters) == 1
+    assert chapters[0]["lineage"] == "featureA"
+    assert chapters[0]["open"] is True
+    assert chapters[0]["end_ts"] is None
+
+
+def test_second_dispatch_supersedes_as_its_own_open_beat(tmp_path: Path) -> None:
+    """Two dispatches in one lineage before a green: the first attempt stays an
+    honestly open chapter (no green ever closed IT); the second is its own
+    beat, closed by the lineage's green."""
+
+    red = tmp_path / "r" / "nlfr.sqlite"
+    red2 = tmp_path / "r2" / "nlfr.sqlite"
+    green = tmp_path / "g" / "nlfr.sqlite"
+    for path in (red, red2, green):
+        path.parent.mkdir()
+    _seed(red, group="heal-red", base_hour=1)
+
+    conn = initialize(connect(red2))
+    run_id = upsert_run(
+        conn, stable_key="run:heal-red-r2", run_group="heal-red-r2",
+        scenario="loop", mode="cache-only", status="failed",
+        started_at="2026-07-11T01:30:00Z",
+        source_kind="collectable_v1", confidence="high",
+        evidence_refs=["run:heal-red-r2"], redaction_state="safe",
+    )
+    upsert_proof_block(
+        conn, stable_key=f"{run_id}:evaluation", run_id=run_id,
+        block_key="evaluation", block_kind="evaluation",
+        title="Evaluation verdict", summary="status=failed",
+        payload={
+            "schema_version": "nlfr.evaluation.v1",
+            "generated_at": "2026-07-11T01:40:00Z",
+            "run_group": "heal-red-r2",
+            "status": {"status": "failed", "failure_count": 1},
+            "classification": {"classification": "scenario_validation_failure"},
+            "next_steps": [{"action": "dispatch_fix_with_evidence"}],
+        },
+        source_kind="derived_v1", confidence="medium",
+        evidence_refs=["run-group:heal-red-r2"], redaction_state="safe",
+    )
+    conn.commit()
+    conn.close()
+    _seed(green, group="heal-green", base_hour=2)
+
+    sources = [
+        ("r", connect_readonly(red)),
+        ("r2", connect_readonly(red2)),
+        ("g", connect_readonly(green)),
+    ]
+    try:
+        projection = build_timeline_projection(sources)
+    finally:
+        for _, ro in sources:
+            ro.close()
+    chapters = projection["chapters"]
+    assert len(chapters) == 2
+    assert [chapter["lineage"] for chapter in chapters] == ["heal", "heal"]
+    first, second = chapters
+    assert first["open"] is True and first["end_ts"] is None
+    assert second["open"] is False and second["end_ts"] == "2026-07-11T02:10:00Z"
+
+
+def test_zero_event_projection_is_contract_valid(tmp_path: Path) -> None:
+    import jsonschema
+
+    db = tmp_path / "empty" / "nlfr.sqlite"
+    db.parent.mkdir()
+    conn = initialize(connect(db))
+    conn.commit()
+    conn.close()
+    ro = connect_readonly(db)
+    try:
+        projection = build_timeline_projection([("empty", ro)])
+    finally:
+        ro.close()
+    assert projection["summary"]["events"] == 0
+    assert projection["span"] == {"start": None, "end": None}
+    assert projection["chapters"] == []
+    contract = json.loads((ROOT / "contracts" / "timeline_projection.v1.json").read_text())
+    jsonschema.Draft202012Validator(contract).validate(projection)
+
+
+def test_identical_timestamps_keep_stable_indexes(tmp_path: Path) -> None:
+    db = tmp_path / "same-ts" / "nlfr.sqlite"
+    db.parent.mkdir()
+    conn = initialize(connect(db))
+    for name in ("alpha", "beta"):
+        upsert_run(
+            conn, stable_key=f"run:{name}", run_group=name,
+            scenario="record", mode="cache-only", status="completed",
+            started_at="2026-07-11T05:00:00Z",
+            source_kind="collectable_v1", confidence="high",
+            evidence_refs=[f"run:{name}"], redaction_state="safe",
+        )
+    conn.commit()
+    conn.close()
+    ro = connect_readonly(db)
+    try:
+        projection = build_timeline_projection([("same-ts", ro)])
+    finally:
+        ro.close()
+    assert [event["index"] for event in projection["events"]] == [0, 1]
+    assert projection["summary"]["events"] == 2
+
+
+def test_cli_db_and_db_root_overlap_deduplicates(tmp_path: Path) -> None:
+    root = tmp_path / "record-root"
+    (root / "groupA").mkdir(parents=True)
+    (root / "groupB").mkdir(parents=True)
+    _seed(root / "groupA" / "nlfr.sqlite", group="groupA-red", base_hour=1)
+    _seed(root / "groupB" / "nlfr.sqlite", group="groupB-green", base_hour=2)
+    out = tmp_path / "timeline.json"
+    result = run_nlfr(
+        "timeline", "export",
+        "--db", str(root / "groupA" / "nlfr.sqlite"),
+        "--db-root", str(root),
+        "--output", str(out),
+    )
+    assert result.returncode == 0, result.stderr
+    projection = json.loads(out.read_text(encoding="utf-8"))
+    # groupA passed twice (explicit + discovered) must count once
+    assert sorted(projection["sources"]) == ["groupA", "groupB"]
+    assert projection["summary"]["runs"] == 2

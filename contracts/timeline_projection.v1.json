@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://nativelink-agent-flight-recorder.local/contracts/timeline_projection.v1.json",
   "title": "NLFR Timeline Projection v1",
-  "description": "The flight record as a replayable, chronological event stream: recorded runs, evaluation verdict blocks, and agent-receipt provenance blocks merged across one or more evidence databases, plus derived repair-loop chapters (a dispatch_fix_with_evidence verdict through the next ok verdict; a dispatch with no recorded green close stays open:true). Every event carries the truth quad copied from the row/block it was read from; chapters and the root are derived_v1 by construction. Timestamps are RECORDED (started_at / generated_at / captured_at), never export wall-clock. Produced by src/nlfr/projectors/timeline.py (build_timeline_projection) via `nlfr timeline export`. CONTRACT POLICY (docs/wiki/reference/contracts/README.md): deliberately ADDITIVE — unknown fields are permitted and consumers MUST ignore them; validation checks presence, type, and enums of KNOWN fields only.",
+  "description": "The flight record as a replayable, chronological event stream: recorded runs, evaluation verdict blocks, and agent-receipt provenance blocks merged across one or more evidence databases, plus derived repair-loop chapters (a dispatch_fix_with_evidence verdict through the next ok verdict OF THE SAME LINEAGE (run-group prefix after stripping the product's own recorded -iterN/-rN/-red/-green suffixes) \u2014 an unrelated group's green can never close another lineage's dispatch, and a second same-lineage dispatch supersedes the first attempt, which stays open; a dispatch with no recorded green close stays open:true). Every event carries the truth quad copied from the row/block it was read from; chapters and the root are derived_v1 by construction. Timestamps are RECORDED (started_at / generated_at / captured_at), never export wall-clock. Produced by src/nlfr/projectors/timeline.py (build_timeline_projection) via `nlfr timeline export`. CONTRACT POLICY (docs/wiki/reference/contracts/README.md): deliberately ADDITIVE \u2014 unknown fields are permitted and consumers MUST ignore them; validation checks presence, type, and enums of KNOWN fields only.",
   "type": "object",
   "required": [
     "schema_version",
@@ -19,27 +19,72 @@
     "redaction_state"
   ],
   "properties": {
-    "schema_version": { "const": 1 },
-    "projection_kind": { "const": "timeline" },
-    "generated_at": { "type": "string" },
-    "sources": { "type": "array", "items": { "type": "string" } },
+    "schema_version": {
+      "const": 1
+    },
+    "projection_kind": {
+      "const": "timeline"
+    },
+    "generated_at": {
+      "type": "string"
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "span": {
       "type": "object",
-      "required": ["start", "end"],
+      "required": [
+        "start",
+        "end"
+      ],
       "properties": {
-        "start": { "type": ["string", "null"] },
-        "end": { "type": ["string", "null"] }
+        "start": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "end": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
       }
     },
     "summary": {
       "type": "object",
-      "required": ["events", "runs", "verdicts", "receipts", "repair_loops"],
+      "required": [
+        "events",
+        "runs",
+        "verdicts",
+        "receipts",
+        "repair_loops"
+      ],
       "properties": {
-        "events": { "type": "integer", "minimum": 0 },
-        "runs": { "type": "integer", "minimum": 0 },
-        "verdicts": { "type": "integer", "minimum": 0 },
-        "receipts": { "type": "integer", "minimum": 0 },
-        "repair_loops": { "type": "integer", "minimum": 0 }
+        "events": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "runs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "verdicts": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "receipts": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "repair_loops": {
+          "type": "integer",
+          "minimum": 0
+        }
       }
     },
     "events": {
@@ -59,18 +104,60 @@
           "redaction_state"
         ],
         "properties": {
-          "ts": { "type": "string" },
-          "kind": { "enum": ["run", "verdict", "receipt"] },
-          "label": { "type": "string" },
-          "source": { "type": "string" },
-          "index": { "type": "integer", "minimum": 0 },
-          "detail": { "type": "object" },
-          "source_kind": {
-            "enum": ["collectable_v1", "derived_v1", "simulated_v1", "future", "unknown"]
+          "ts": {
+            "type": "string"
           },
-          "confidence": { "enum": ["high", "medium", "low", "unknown"] },
-          "evidence_refs": { "type": "array", "items": { "type": "string" } },
-          "redaction_state": { "enum": ["safe", "redacted", "blocked", "unknown"] }
+          "kind": {
+            "enum": [
+              "run",
+              "verdict",
+              "receipt"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "index": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "detail": {
+            "type": "object"
+          },
+          "source_kind": {
+            "enum": [
+              "collectable_v1",
+              "derived_v1",
+              "simulated_v1",
+              "future",
+              "unknown"
+            ]
+          },
+          "confidence": {
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "unknown"
+            ]
+          },
+          "evidence_refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "redaction_state": {
+            "enum": [
+              "safe",
+              "redacted",
+              "blocked",
+              "unknown"
+            ]
+          }
         }
       }
     },
@@ -91,25 +178,89 @@
           "redaction_state"
         ],
         "properties": {
-          "kind": { "enum": ["repair_loop"] },
-          "label": { "type": "string" },
-          "start_ts": { "type": "string" },
-          "end_ts": { "type": ["string", "null"] },
-          "open": { "type": "boolean" },
+          "kind": {
+            "enum": [
+              "repair_loop"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "start_ts": {
+            "type": "string"
+          },
+          "end_ts": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "open": {
+            "type": "boolean"
+          },
           "event_indexes": {
             "type": "array",
-            "items": { "type": "integer", "minimum": 0 }
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            }
           },
-          "source_kind": { "const": "derived_v1" },
-          "confidence": { "enum": ["high", "medium", "low", "unknown"] },
-          "evidence_refs": { "type": "array", "items": { "type": "string" } },
-          "redaction_state": { "enum": ["safe", "redacted", "blocked", "unknown"] }
+          "source_kind": {
+            "const": "derived_v1"
+          },
+          "confidence": {
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "unknown"
+            ]
+          },
+          "evidence_refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "redaction_state": {
+            "enum": [
+              "safe",
+              "redacted",
+              "blocked",
+              "unknown"
+            ]
+          },
+          "lineage": {
+            "type": "string",
+            "description": "Repair lineage key: the run-group prefix after stripping the product's own recorded iteration/retry/leg suffixes (-iterN, -rN, -red, -green). Chapters only open/close within one lineage."
+          }
         }
       }
     },
-    "source_kind": { "const": "derived_v1" },
-    "confidence": { "enum": ["high", "medium", "low", "unknown"] },
-    "evidence_refs": { "type": "array", "items": { "type": "string" } },
-    "redaction_state": { "enum": ["safe", "redacted", "blocked", "unknown"] }
+    "source_kind": {
+      "const": "derived_v1"
+    },
+    "confidence": {
+      "enum": [
+        "high",
+        "medium",
+        "low",
+        "unknown"
+      ]
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "redaction_state": {
+      "enum": [
+        "safe",
+        "redacted",
+        "blocked",
+        "unknown"
+      ]
+    }
   }
 }

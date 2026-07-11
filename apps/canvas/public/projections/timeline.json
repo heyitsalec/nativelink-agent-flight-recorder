@@ -2,25 +2,41 @@
   "chapters": [
     {
       "confidence": "medium",
-      "end_ts": "2026-07-11T06:38:42.790263Z",
+      "end_ts": null,
       "event_indexes": [
         9,
-        10,
+        10
+      ],
+      "evidence_refs": [
+        "event:9"
+      ],
+      "kind": "repair_loop",
+      "label": "verdict-driven repair",
+      "lineage": "body-claude-w4-selfheal",
+      "open": true,
+      "redaction_state": "redacted",
+      "source_kind": "derived_v1",
+      "start_ts": "2026-07-11T06:35:19.398438Z"
+    },
+    {
+      "confidence": "medium",
+      "end_ts": "2026-07-11T06:38:42.790263Z",
+      "event_indexes": [
         11,
         12,
         13
       ],
       "evidence_refs": [
-        "event:9",
         "event:11",
         "event:13"
       ],
       "kind": "repair_loop",
       "label": "verdict-driven repair",
+      "lineage": "body-claude-w4-selfheal",
       "open": false,
-      "redaction_state": "safe",
+      "redaction_state": "redacted",
       "source_kind": "derived_v1",
-      "start_ts": "2026-07-11T06:35:19.398438Z"
+      "start_ts": "2026-07-11T06:36:40.787534Z"
     }
   ],
   "confidence": "low",
@@ -323,9 +339,9 @@
     "db:body-claude-w4-rexec",
     "db:body-claude-w4-app-cas-warm"
   ],
-  "generated_at": "2026-07-11T14:48:58.082675Z",
+  "generated_at": "2026-07-11T15:32:55.667626Z",
   "projection_kind": "timeline",
-  "redaction_state": "safe",
+  "redaction_state": "redacted",
   "schema_version": 1,
   "source_kind": "derived_v1",
   "sources": [
@@ -344,7 +360,7 @@
   "summary": {
     "events": 14,
     "receipts": 0,
-    "repair_loops": 1,
+    "repair_loops": 2,
     "runs": 7,
     "verdicts": 7
   }

@@ -154,10 +154,23 @@ def export_timeline(args: argparse.Namespace) -> int:
             return 2
         for child in sorted(root.iterdir()):
             candidate = child / "nlfr.sqlite"
-            if child.is_dir() and candidate.is_file():
+            # Mirror compare's discovery hardening: one level down, real
+            # directories only — a symlinked subdir escaping the root is
+            # skipped rather than silently followed.
+            if child.is_dir() and not child.is_symlink() and candidate.is_file():
                 db_paths.append(str(candidate))
     if not db_paths:
         db_paths = ["data/nlfr/nlfr.sqlite"]
+    # An explicit --db that --db-root also discovered must count once.
+    seen: set[str] = set()
+    deduped: list[str] = []
+    for db_path in db_paths:
+        resolved = str(_Path(db_path).resolve())
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        deduped.append(db_path)
+    db_paths = deduped
 
     sources = []
     try:
