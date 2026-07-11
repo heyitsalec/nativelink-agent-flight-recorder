@@ -129,7 +129,12 @@ export function executeOperatorCommand(raw: string, deps: CommandDeps): void {
         ? "Compare lens shows derived proof-packet deltas only."
         : "Compare lens unavailable — compare-projection.json not loaded.",
     );
-  } else if (value.includes("replay") || value.includes("playback")) {
+  } else if (value.includes("replay") || value.includes("playback") || value.includes("timeline")) {
+    // "timeline" ownership (review arbitration): the projection this lens
+    // replays is literally named timeline (timeline.json), so explicit
+    // free-text "timeline" opens Replay. Runway keeps the keyword only for
+    // fuzzy palette RANKING (paletteCommands) — this branch sits before the
+    // runway branch, so it wins the router.
     routeActions.setMode("replay");
     routeActions.setFocus("all");
     routeActions.setOperatorNote(
@@ -137,7 +142,7 @@ export function executeOperatorCommand(raw: string, deps: CommandDeps): void {
         ? "Replay walks the recorded flight record — playback auto-pauses at repair loops."
         : "Replay lens unavailable — timeline.json not loaded.",
     );
-  } else if (value.includes("runway") || value.includes("timeline")) {
+  } else if (value.includes("runway")) {
     routeActions.setMode("runway");
     routeActions.setFocus("all");
     routeActions.setOperatorNote("Validation runway is projected over the same graph evidence.");

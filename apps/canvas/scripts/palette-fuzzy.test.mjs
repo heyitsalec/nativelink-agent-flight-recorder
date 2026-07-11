@@ -37,6 +37,7 @@ test("catalog covers the three groups and only real router commands", () => {
   assert.ok(commands.includes("runway"));
   assert.ok(commands.includes("remote"));
   assert.ok(commands.includes("compare"));
+  assert.ok(commands.includes("replay"));
   assert.ok(commands.includes("reset"));
 });
 
@@ -46,9 +47,15 @@ test("contiguous substring on the name ranks first", () => {
 });
 
 test("keyword match surfaces a command whose name lacks the term", () => {
-  // "timeline" is a keyword of runway, not in its name.
+  // OWNERSHIP CHANGE (replay review, arbitrated): "timeline" used to be
+  // runway's keyword alone; the Replay lens's projection is literally named
+  // timeline (timeline.json), so the keyword now belongs to BOTH — the
+  // palette surfaces both rows (fine: the operator picks), while the
+  // free-text router prefers Replay (OperatorPanel routes
+  // replay|playback|timeline before the runway branch).
   const results = filterPaletteCommands("timeline");
   assert.ok(results.some((c) => c.id === "lens-runway"));
+  assert.ok(results.some((c) => c.id === "lens-replay"));
 });
 
 test("subsequence match (fuzzy) still finds the command", () => {

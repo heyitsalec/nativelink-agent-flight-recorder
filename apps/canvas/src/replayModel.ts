@@ -199,6 +199,28 @@ export function isPausePosition(
   return chapterStartPositions(events, chapters).includes(position);
 }
 
+export type PlayPressDecision = "pause_at_origin" | "play";
+
+/**
+ * What pressing PLAY does at `position` (review fix — pause-at-origin):
+ * standing on a repair-loop chapter start whose pause card has NOT yet been
+ * shown must surface the card instead of silently advancing past the beat.
+ * `lastAcknowledged` is the position whose pause card was most recently shown
+ * (by auto-pause or by this decision) — the SAME chapter start is never
+ * re-paused twice in a row: once acknowledged, play advances.
+ */
+export function playPressDecision(
+  events: ReadonlyArray<TimelineEvent>,
+  chapters: ReadonlyArray<TimelineChapter>,
+  position: number,
+  lastAcknowledged: number | null,
+): PlayPressDecision {
+  if (lastAcknowledged !== position && isPausePosition(events, chapters, position)) {
+    return "pause_at_origin";
+  }
+  return "play";
+}
+
 export type BucketChapterMark = {
   /** Chapter labels intersecting the bucket, in chapter order. */
   labels: string[];
@@ -259,6 +281,16 @@ export function replaySummaryLine(projection: TimelineProjection): string {
     `${verdicts} verdict${verdicts === 1 ? "" : "s"} · ${receipts} receipt${receipts === 1 ? "" : "s"} · ` +
     `${loops} repair loop${loops === 1 ? "" : "s"}`
   );
+}
+
+/** The event card's chapter meta line — includes the recorded `lineage` key
+ *  when the projector emitted one (additive contract field), and always states
+ *  open-vs-closed in words, never implied-closed. */
+export function chapterMetaLine(chapter: TimelineChapter): string {
+  const lineage =
+    typeof chapter.lineage === "string" && chapter.lineage ? ` · lineage ${chapter.lineage}` : "";
+  const state = chapter.open ? "open — no recorded green close" : "closed";
+  return `repair loop · ${chapter.label}${lineage} · ${state}`;
 }
 
 export type ReplayDetailRow = {

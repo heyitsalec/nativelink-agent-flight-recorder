@@ -4,9 +4,11 @@ import {
   bucketChapterMarks,
   bucketize,
   chapterForEvent,
+  chapterMetaLine,
   chapterStartPositions,
   formatRecordedTs,
   playheadBucket,
+  playPressDecision,
   replayDetailRows,
   replayPositionReadout,
   replaySummaryLine,
@@ -165,6 +167,16 @@ export function ReplayLensPanel(instance: ComponentInstance) {
   const [position, setPosition] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [autoPaused, setAutoPaused] = useState(false);
+  // The chapter-start position whose pause card was most recently shown
+  // (review fix — pause-at-origin). Acknowledged means "the operator has SEEN
+  // the pause card for this beat": auto-pause acknowledges on arrival, and
+  // pressing play on an un-acknowledged chapter start shows the card instead
+  // of silently advancing past it; the same start never re-pauses twice in a
+  // row (playPressDecision in replayModel — unit-tested).
+  const acknowledgedPauseRef = useRef<number | null>(null);
+  useEffect(() => {
+    acknowledgedPauseRef.current = null;
+  }, [events]);
 
   // Advance one recorded event per tick while playing. Reduced motion never
   // reaches here (the play control is a Step button), but guard anyway.
@@ -176,8 +188,8 @@ export function ReplayLensPanel(instance: ComponentInstance) {
     return () => window.clearInterval(id);
   }, [playing, reducedMotion, total, lastPosition]);
 
-  // Auto-pause watcher: only a position CHANGE during playback can pause, so
-  // pressing play while already standing on a chapter start still moves.
+  // Auto-pause watcher: only a position CHANGE during playback can pause (the
+  // standing-on-a-beat case is handled by togglePlay's pause-at-origin).
   const prevPositionRef = useRef(position);
   useEffect(() => {
     const moved = prevPositionRef.current !== position;
@@ -186,75 +198,11 @@ export function ReplayLensPanel(instance: ComponentInstance) {
     if (pausePositions.has(position)) {
       setPlaying(false);
       setAutoPaused(true);
+      acknowledgedPauseRef.current = position;
     } else if (position >= lastPosition) {
       setPlaying(false);
     }
   }, [position, playing, pausePositions, lastPosition]);
-
-  // Keyboard — ←/→ step, space plays/pauses (or steps under reduced motion).
-  // A WINDOW listener (the ⌘K precedent) so the keys work the moment the lens
-  // opens, without requiring focus inside it. Focus handling: typing surfaces
-  // (input/textarea/select/contentEditable — e.g. the operator bar or the
-  // palette) are never hijacked, and space on a focused button keeps its
-  // native activation instead of double-firing playback.
-  const keyStateRef = useRef({ position, playing, total, reducedMotion, lastPosition });
-  useEffect(() => {
-    keyStateRef.current = { position, playing, total, reducedMotion, lastPosition };
-  }, [position, playing, total, reducedMotion, lastPosition]);
-  useEffect(() => {
-    if (!projection) return;
-    function onWindowKeyDown(event: KeyboardEvent) {
-      const state = keyStateRef.current;
-      if (state.total === 0) return;
-      const target = event.target;
-      if (
-        target instanceof HTMLElement &&
-        (target.closest("input, textarea, select") || target.isContentEditable)
-      ) {
-        return;
-      }
-      const jump = (next: number) => {
-        setPlaying(false);
-        setAutoPaused(false);
-        setPosition(Math.min(Math.max(next, 0), state.lastPosition));
-      };
-      if (event.key === "ArrowLeft") {
-        event.preventDefault();
-        jump(state.position - 1);
-      } else if (event.key === "ArrowRight") {
-        event.preventDefault();
-        jump(state.position + 1);
-      } else if (event.key === " " || event.key === "Spacebar") {
-        if (target instanceof HTMLElement && target.closest("button, a, [role='button']")) {
-          return; // native activation of the focused control wins
-        }
-        event.preventDefault();
-        if (state.reducedMotion) {
-          jump(state.position + 1);
-          return;
-        }
-        if (state.playing) {
-          setPlaying(false);
-          return;
-        }
-        setAutoPaused(false);
-        if (state.position >= state.lastPosition) setPosition(0);
-        setPlaying(true);
-      }
-    }
-    window.addEventListener("keydown", onWindowKeyDown);
-    return () => window.removeEventListener("keydown", onWindowKeyDown);
-  }, [projection]);
-
-  if (!projection) {
-    return (
-      <ReplayEmptyState
-        pathHint={pathHint}
-        onClose={() => routeActions.setMode("graph")}
-        onOpenComposer={() => overlayActions.openComposer()}
-      />
-    );
-  }
 
   const jumpTo = (next: number) => {
     setPlaying(false);
@@ -275,10 +223,67 @@ export function ReplayLensPanel(instance: ComponentInstance) {
       setPlaying(false);
       return;
     }
+    // Pause-at-origin (review fix): standing on a repair-loop start whose
+    // pause card has not been shown → surface the card, don't move; the next
+    // play (now acknowledged) advances.
+    if (playPressDecision(events, chapters, position, acknowledgedPauseRef.current) === "pause_at_origin") {
+      acknowledgedPauseRef.current = position;
+      setAutoPaused(true);
+      return;
+    }
     setAutoPaused(false);
     if (position >= lastPosition) setPosition(0);
     setPlaying(true);
   };
+
+  // Keyboard — ←/→ step, space plays/pauses (or steps under reduced motion).
+  // A WINDOW listener (the ⌘K precedent) so the keys work the moment the lens
+  // opens, without requiring focus inside it. Focus handling: typing surfaces
+  // (input/textarea/select/contentEditable — e.g. the operator bar or the
+  // palette) are never hijacked, and space on a focused button keeps its
+  // native activation instead of double-firing playback. Space routes through
+  // the SAME togglePlay as the button, so pause-at-origin applies to both.
+  const keyActionsRef = useRef({ step, togglePlay });
+  useEffect(() => {
+    keyActionsRef.current = { step, togglePlay };
+  });
+  useEffect(() => {
+    if (!projection) return;
+    function onWindowKeyDown(event: KeyboardEvent) {
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        (target.closest("input, textarea, select") || target.isContentEditable)
+      ) {
+        return;
+      }
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        keyActionsRef.current.step(-1);
+      } else if (event.key === "ArrowRight") {
+        event.preventDefault();
+        keyActionsRef.current.step(1);
+      } else if (event.key === " " || event.key === "Spacebar") {
+        if (target instanceof HTMLElement && target.closest("button, a, [role='button']")) {
+          return; // native activation of the focused control wins
+        }
+        event.preventDefault();
+        keyActionsRef.current.togglePlay();
+      }
+    }
+    window.addEventListener("keydown", onWindowKeyDown);
+    return () => window.removeEventListener("keydown", onWindowKeyDown);
+  }, [projection]);
+
+  if (!projection) {
+    return (
+      <ReplayEmptyState
+        pathHint={pathHint}
+        onClose={() => routeActions.setMode("graph")}
+        onOpenComposer={() => overlayActions.openComposer()}
+      />
+    );
+  }
 
   const current: TimelineEvent | null = total > 0 ? events[position] : null;
   const currentChapter = current ? chapterForEvent(chapters, current.index) : null;
@@ -322,6 +327,9 @@ export function ReplayLensPanel(instance: ComponentInstance) {
           <SourceGlyph kind={projection.source_kind} size={11} />
           <span className="replay-head-kind">{sourceMeta.enum} projection</span>
           <ConfidenceMeter confidence={projection.confidence} />
+          {/* Rolled-up root redaction (most-restrictive over events/chapters) —
+              a "redacted" rollup is stated, never hidden. */}
+          <RedactionChip state={projection.redaction_state} />
           <span className="replay-head-span">{spanLine}</span>
           <span className="replay-head-sources">
             {projection.sources.length} source db{projection.sources.length === 1 ? "" : "s"}
@@ -483,12 +491,14 @@ export function ReplayLensPanel(instance: ComponentInstance) {
                       currentChapter === chapter ? " active" : ""
                     }`}
                     data-testid="replay-chapter-chip"
+                    data-chapter-open={chapter.open}
+                    data-lineage={chapter.lineage ?? undefined}
                     disabled={chapterPosition < 0}
                     onClick={() => chapterPosition >= 0 && jumpTo(chapterPosition)}
                     title={
                       chapter.open
-                        ? `${chapter.label} — open: no recorded green close (started ${formatRecordedTs(chapter.start_ts)} UTC)`
-                        : `${chapter.label} — ${formatRecordedTs(chapter.start_ts)} → ${
+                        ? `${chapterMetaLine(chapter)} (started ${formatRecordedTs(chapter.start_ts)} UTC)`
+                        : `${chapterMetaLine(chapter)} — ${formatRecordedTs(chapter.start_ts)} → ${
                             chapter.end_ts ? formatRecordedTs(chapter.end_ts) : "?"
                           } UTC · ${chapter.event_indexes.length} events`
                     }
@@ -533,9 +543,8 @@ export function ReplayLensPanel(instance: ComponentInstance) {
                 <span className="replay-event-ts">recorded {formatRecordedTs(current.ts)} UTC</span>
               </div>
               {currentChapter && (
-                <p className="replay-event-chapter">
-                  repair loop · {currentChapter.label} ·{" "}
-                  {currentChapter.open ? "open — no recorded green close" : "closed"}
+                <p className="replay-event-chapter" data-testid="replay-event-chapter">
+                  {chapterMetaLine(currentChapter)}
                 </p>
               )}
               <EventDetailRows event={current} />

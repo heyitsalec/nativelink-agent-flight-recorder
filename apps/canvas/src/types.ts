@@ -123,6 +123,10 @@ export type TimelineChapter = TruthLabels & {
   open: boolean;
   /** TimelineEvent.index values belonging to this chapter. */
   event_indexes: number[];
+  /** Optional (additive contract field): repair lineage key — the run-group
+   *  prefix after stripping the product's own -iterN/-rN/-red/-green suffixes.
+   *  Chapters only open/close within one lineage. */
+  lineage?: string;
 };
 
 export type TimelineProjection = TruthLabels & {

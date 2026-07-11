@@ -3,19 +3,23 @@
  * `node --test` imports it directly; Node strips TS types on import). Run with
  * `npm --prefix apps/canvas run test:unit`. Covers, against the REAL committed
  * timeline projection (public/projections/timeline.json — an actual recorded
- * self-healing repair cycle: 14 events, 7 runs + 7 verdicts, 1 closed
- * repair_loop chapter):
+ * self-healing repair cycle: 14 events, 7 runs + 7 verdicts, and TWO
+ * lineage-scoped repair_loop chapters in lineage "body-claude-w4-selfheal": a
+ * superseded fix attempt that stays honestly OPEN, then the resolved loop
+ * closed by the real green):
  *   - bucketize: hourly buckets whose counts sum EXACTLY to the event total —
  *     nothing invented, nothing dropped; per-kind counts match the summary.
- *   - chapterForEvent: maps every chapter event index to its chapter and
+ *   - chapterForEvent: maps every chapter event index to ITS chapter and
  *     nothing else (resolved via the event's `index` field, never assumed to
  *     equal the array position).
- *   - nextPauseIndex / chapterStartPositions: the auto-pause beat is the
- *     chapter's FIRST event (the red dispatch verdict at index 9).
- *   - open-chapter handling on a synthetic fixture (incl. a receipt event and
- *     an open:true chapter): buckets span contiguous hours (a silent hour is an
- *     honest empty bar), the open chapter marks `open`, and readouts/summary
- *     lines state real numbers only.
+ *   - nextPauseIndex / chapterStartPositions: TWO auto-pause beats — each
+ *     chapter's FIRST event (the dispatch verdicts at indexes 9 and 11).
+ *   - playPressDecision (pause-at-origin review fix): play on an
+ *     un-acknowledged chapter start pauses at origin; the SAME start never
+ *     re-pauses twice in a row.
+ *   - chapterMetaLine: renders the recorded `lineage` key when present.
+ *   - open-chapter + receipt handling on a synthetic fixture; a zero-events
+ *     projection (span nulls) degrades honestly without crashing.
  */
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -26,11 +30,13 @@ import {
   bucketChapterMarks,
   bucketize,
   chapterForEvent,
+  chapterMetaLine,
   chapterStartPositions,
   formatRecordedTs,
   isPausePosition,
   nextPauseIndex,
   playheadBucket,
+  playPressDecision,
   replayDetailRows,
   replayPositionReadout,
   replaySummaryLine,
@@ -85,38 +91,103 @@ test("playheadBucket resolves any event position to its bucket", () => {
   assert.equal(playheadBucket(buckets, 99), -1);
 });
 
-/* ── chapters over the REAL projection ──────────────────────────────────── */
+/* ── chapters over the REAL projection (two lineage-scoped loops) ───────── */
 
-test("chapterForEvent maps exactly the 5 chapter event indexes", () => {
-  const chapter = timeline.chapters[0];
-  assert.deepEqual(chapter.event_indexes, [9, 10, 11, 12, 13]);
-  for (const index of chapter.event_indexes) {
-    assert.equal(chapterForEvent(timeline.chapters, index), chapter);
+test("chapterForEvent maps the two lineage-scoped chapters' event indexes", () => {
+  const [superseded, resolved] = timeline.chapters;
+  assert.equal(timeline.chapters.length, 2);
+  // Superseded attempt: dispatch (9) + the failed fix run (10), honestly OPEN.
+  assert.deepEqual(superseded.event_indexes, [9, 10]);
+  assert.equal(superseded.open, true);
+  assert.equal(superseded.end_ts, null);
+  // Resolved loop: second dispatch (11) through the real green close (13).
+  assert.deepEqual(resolved.event_indexes, [11, 12, 13]);
+  assert.equal(resolved.open, false);
+  // Both are the SAME recorded lineage — that is what scopes them.
+  assert.equal(superseded.lineage, "body-claude-w4-selfheal");
+  assert.equal(resolved.lineage, "body-claude-w4-selfheal");
+  for (const index of superseded.event_indexes) {
+    assert.equal(chapterForEvent(timeline.chapters, index), superseded);
   }
-  // Events before the loop belong to no chapter.
+  for (const index of resolved.event_indexes) {
+    assert.equal(chapterForEvent(timeline.chapters, index), resolved);
+  }
+  // Events before the loops belong to no chapter.
   for (const index of [0, 4, 8]) {
     assert.equal(chapterForEvent(timeline.chapters, index), null);
   }
 });
 
-test("nextPauseIndex hits the chapter's first event (the red dispatch verdict)", () => {
-  assert.deepEqual(chapterStartPositions(timeline.events, timeline.chapters), [9]);
+test("nextPauseIndex walks BOTH dispatch beats (indexes 9 then 11)", () => {
+  assert.deepEqual(chapterStartPositions(timeline.events, timeline.chapters), [9, 11]);
   assert.equal(nextPauseIndex(timeline.events, timeline.chapters, 0), 9);
   assert.equal(nextPauseIndex(timeline.events, timeline.chapters, 8), 9);
-  // Standing on the pause beat: the next pause is strictly after it — none.
-  assert.equal(nextPauseIndex(timeline.events, timeline.chapters, 9), null);
+  // Standing on the first beat: the NEXT pause is the second dispatch.
+  assert.equal(nextPauseIndex(timeline.events, timeline.chapters, 9), 11);
+  assert.equal(nextPauseIndex(timeline.events, timeline.chapters, 10), 11);
+  // After the second beat there is no further pause.
+  assert.equal(nextPauseIndex(timeline.events, timeline.chapters, 11), null);
   assert.equal(isPausePosition(timeline.events, timeline.chapters, 9), true);
+  assert.equal(isPausePosition(timeline.events, timeline.chapters, 11), true);
   assert.equal(isPausePosition(timeline.events, timeline.chapters, 10), false);
-  // The pause beat really is the dispatch_fix_with_evidence verdict.
-  assert.equal(timeline.events[9].kind, "verdict");
-  assert.equal(timeline.events[9].detail.next_action, "dispatch_fix_with_evidence");
+  // Both pause beats really are dispatch_fix_with_evidence verdicts.
+  for (const position of [9, 11]) {
+    assert.equal(timeline.events[position].kind, "verdict");
+    assert.equal(timeline.events[position].detail.next_action, "dispatch_fix_with_evidence");
+  }
 });
 
-test("closed chapter marks its bucket solid — never 'open'", () => {
+test("real fixture bucket mark: superseded OPEN chapter wins the open mark", () => {
   const { buckets } = bucketize(timeline.events, timeline.span);
   const marks = bucketChapterMarks(buckets, timeline.events, timeline.chapters);
   assert.equal(marks.length, 1);
-  assert.deepEqual(marks[0], { labels: ["verdict-driven repair"], open: false });
+  // Both chapters intersect the single 06:00 bucket; the open one marks it open.
+  assert.deepEqual(marks[0], {
+    labels: ["verdict-driven repair", "verdict-driven repair"],
+    open: true,
+  });
+  // The resolved chapter ALONE marks solid/closed — never 'open'.
+  const closedOnly = bucketChapterMarks(buckets, timeline.events, [timeline.chapters[1]]);
+  assert.deepEqual(closedOnly[0], { labels: ["verdict-driven repair"], open: false });
+});
+
+/* ── playPressDecision (pause-at-origin, review fix) ────────────────────── */
+
+test("play on an un-acknowledged chapter start pauses at origin", () => {
+  // Standing on either dispatch beat with no acknowledged card → pause first.
+  assert.equal(playPressDecision(timeline.events, timeline.chapters, 9, null), "pause_at_origin");
+  assert.equal(playPressDecision(timeline.events, timeline.chapters, 11, null), "pause_at_origin");
+  // Moving to the SECOND beat after acknowledging the first still pauses.
+  assert.equal(playPressDecision(timeline.events, timeline.chapters, 11, 9), "pause_at_origin");
+});
+
+test("the SAME chapter start never re-pauses twice in a row", () => {
+  assert.equal(playPressDecision(timeline.events, timeline.chapters, 9, 9), "play");
+  assert.equal(playPressDecision(timeline.events, timeline.chapters, 11, 11), "play");
+});
+
+test("play anywhere else just plays", () => {
+  assert.equal(playPressDecision(timeline.events, timeline.chapters, 0, null), "play");
+  assert.equal(playPressDecision(timeline.events, timeline.chapters, 10, null), "play");
+  assert.equal(playPressDecision([], [], 0, null), "play");
+});
+
+/* ── chapterMetaLine (lineage rendering) ────────────────────────────────── */
+
+test("chapterMetaLine renders the recorded lineage key and open/closed words", () => {
+  assert.equal(
+    chapterMetaLine(timeline.chapters[0]),
+    "repair loop · verdict-driven repair · lineage body-claude-w4-selfheal · open — no recorded green close",
+  );
+  assert.equal(
+    chapterMetaLine(timeline.chapters[1]),
+    "repair loop · verdict-driven repair · lineage body-claude-w4-selfheal · closed",
+  );
+  // Lineage is an ADDITIVE contract field — absent lineage renders no slot.
+  assert.equal(
+    chapterMetaLine({ ...timeline.chapters[1], lineage: undefined }),
+    "repair loop · verdict-driven repair · closed",
+  );
 });
 
 /* ── synthetic fixture: receipt event + OPEN chapter + hour gap ─────────── */
@@ -215,7 +286,39 @@ test("replayPositionReadout states real 1-based positions", () => {
 test("replaySummaryLine reads only the projection's real summary numbers", () => {
   assert.equal(
     replaySummaryLine(timeline),
-    "14 events · 7 runs · 7 verdicts · 0 receipts · 1 repair loop",
+    "14 events · 7 runs · 7 verdicts · 0 receipts · 2 repair loops",
+  );
+});
+
+/* ── zero-events projection (span nulls) degrades honestly ──────────────── */
+
+test("empty projection: no buckets, no beats, honest readouts — no crash", () => {
+  const empty = {
+    schema_version: 1,
+    projection_kind: "timeline",
+    generated_at: "2026-07-11T00:00:00Z",
+    sources: [],
+    span: { start: null, end: null },
+    summary: { events: 0, runs: 0, verdicts: 0, receipts: 0, repair_loops: 0 },
+    events: [],
+    chapters: [],
+    source_kind: "derived_v1",
+    confidence: "unknown",
+    evidence_refs: [],
+    redaction_state: "safe",
+  };
+  const { buckets, maxTotal, unplaced } = bucketize(empty.events, empty.span);
+  assert.deepEqual(buckets, []);
+  assert.equal(maxTotal, 0);
+  assert.deepEqual(unplaced, []);
+  assert.deepEqual(chapterStartPositions(empty.events, empty.chapters), []);
+  assert.equal(nextPauseIndex(empty.events, empty.chapters, 0), null);
+  assert.equal(playheadBucket(buckets, 0), -1);
+  assert.deepEqual(bucketChapterMarks(buckets, empty.events, empty.chapters), []);
+  assert.equal(replayPositionReadout(0, empty.events.length), "no events recorded");
+  assert.equal(
+    replaySummaryLine(empty),
+    "0 events · 0 runs · 0 verdicts · 0 receipts · 0 repair loops",
   );
 });
 

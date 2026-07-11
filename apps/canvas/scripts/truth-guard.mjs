@@ -285,10 +285,15 @@ if (comparePresent) {
 }
 
 // Replay lens interaction (compare precedent): the lens opens on the recorded
-// timeline, and stepping the playback advances the REAL event pointer — the
-// detail card must state "event 2 / N" after one replay-next click.
+// timeline, stepping advances the REAL event pointer ("event 2 / N" after one
+// replay-next), the fixture's TWO lineage-scoped repair chapters render as two
+// chips (the superseded first one saying "open" — unresolved is never
+// implied-closed), and REAL playback auto-pauses TWICE — once at each
+// dispatch beat — with the chapter card naming the recorded lineage.
 let replayLensOk = true;
 let replayStepOk = true;
+let replayChaptersOk = true;
+let replayPausesOk = true;
 if (timelinePresent) {
   await page.locator('[aria-label="Replay"]').click();
   replayLensOk = await page.locator('[data-testid="replay-lens"]').isVisible();
@@ -304,6 +309,52 @@ if (timelinePresent) {
     if (!replayStepOk) {
       timelineErrors.push(
         `replay-next did not advance to event 2 (card position=${cardPosition}, readout=${JSON.stringify(readout)})`,
+      );
+    }
+
+    // Two chapter chips; the first (superseded attempt) states "open".
+    const chips = page.locator('[data-testid="replay-chapter-chip"]');
+    const chipCount = await chips.count();
+    const firstChipOpen = chipCount > 0 ? await chips.first().getAttribute("data-chapter-open") : null;
+    const firstChipText = chipCount > 0 ? ((await chips.first().textContent()) ?? "").trim() : "";
+    replayChaptersOk = chipCount === 2 && firstChipOpen === "true" && firstChipText.includes("open");
+    if (!replayChaptersOk) {
+      timelineErrors.push(
+        `expected 2 chapter chips with the first stating open (count=${chipCount}, first open=${firstChipOpen}, text=${JSON.stringify(firstChipText)})`,
+      );
+    }
+
+    // Real playback pauses at BOTH dispatch beats. From event 2 (position 1),
+    // press play → first auto-pause at event 10; play again → second at
+    // event 12. The pause note is the visible card state; the chapter meta
+    // line carries the recorded lineage.
+    const pauseNote = page.locator('[data-testid="replay-pause-note"]');
+    const pausedAt = [];
+    let pauseLineage = "";
+    try {
+      for (let round = 0; round < 2; round++) {
+        await page.locator('[data-testid="replay-play"]').click();
+        // Resuming clears the previous pause card before the next beat shows
+        // it again — wait out the transition so round 2 can't re-read round 1.
+        await pauseNote.waitFor({ state: "hidden", timeout: 5000 });
+        await pauseNote.waitFor({ state: "visible", timeout: 20000 });
+        pausedAt.push(await card.getAttribute("data-event-position"));
+        if (round === 0) {
+          pauseLineage =
+            (await page.locator('[data-testid="replay-event-chapter"]').textContent()) ?? "";
+        }
+      }
+    } catch {
+      // fall through — pausedAt length records how far playback got
+    }
+    replayPausesOk =
+      pausedAt.length === 2 &&
+      pausedAt[0] === "10" &&
+      pausedAt[1] === "12" &&
+      pauseLineage.includes("lineage ");
+    if (!replayPausesOk) {
+      timelineErrors.push(
+        `playback did not auto-pause at both dispatch beats (paused at ${JSON.stringify(pausedAt)}, chapter line=${JSON.stringify(pauseLineage.trim())})`,
       );
     }
   } else {
@@ -323,7 +374,9 @@ const report = {
     compareLensOk &&
     timelineErrors.length === 0 &&
     replayLensOk &&
-    replayStepOk,
+    replayStepOk &&
+    replayChaptersOk &&
+    replayPausesOk,
   expectedCount: expectedIds.size,
   initial: {
     renderedCount: initial.renderedIds.length,
@@ -351,6 +404,8 @@ const report = {
     schema_ok: timelinePresent ? timelineErrors.length === 0 : null,
     lens_visible: timelinePresent ? replayLensOk : null,
     step_advanced_to_event_2: timelinePresent ? replayStepOk : null,
+    two_chapter_chips_first_open: timelinePresent ? replayChaptersOk : null,
+    auto_paused_at_both_dispatch_beats: timelinePresent ? replayPausesOk : null,
     errors: timelineErrors,
   },
 };
