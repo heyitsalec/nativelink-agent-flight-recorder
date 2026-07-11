@@ -7,14 +7,18 @@ session id, token usage, response SHA-256, prompt SHA-256, timestamp, and CLI
 version. The raw prompt is read from ``--prompt-file``, hashed, and never
 written to any output, log, or artifact.
 
-``--agent-cli`` selects the CLI family (``claude`` — the default — or
-``gemini``). Claude keeps its existing flags and receipt shape; the one
+``--agent-cli`` selects the CLI family (``claude`` — the default — ``gemini``,
+or ``codex``). Claude keeps its existing flags and receipt shape; the one
 deliberate change is that a claude success whose JSON lacks a verification
 field now degrades to an honest ``invalid_output`` receipt instead of raising
-(see ``nlfr.agent_receipt.build_receipt``). Each family parses its own
-``--output-format json`` shape through the per-CLI normalizer registry in
+(see ``nlfr.agent_receipt.build_receipt``). claude/gemini parse a single
+``--output-format json`` document; codex is invoked as ``codex exec --json
+<prompt>`` and its JSONL event stream is aggregated before normalization. Each
+family parses its own shape through the per-CLI normalizer registry in
 ``nlfr.agent_receipt``; the receipt shape, privacy posture, and verified-tier
-bar are identical across CLIs.
+bar are identical across CLIs. (Codex 0.144.1 does not attest a resolved model
+on its stream, so a real Codex success honestly degrades below the verified
+tier — see ``nlfr.agent_receipt._normalize_codex``.)
 
 The invocation cwd defaults to a fresh empty scratch directory so the agent
 cannot read workspace files (including hidden validation tests) through tools.
@@ -29,7 +33,13 @@ import sys
 import tempfile
 from pathlib import Path
 
-from nlfr.agent_receipt import CLI_PARSERS, build_receipt, receipt_sha256, sha256_text
+from nlfr.agent_receipt import (
+    CLI_PARSERS,
+    _codex_error,
+    build_receipt,
+    receipt_sha256,
+    sha256_text,
+)
 
 PROMPT_PLACEHOLDER = "<prompt:sha256>"
 
@@ -54,14 +64,32 @@ def run(args: argparse.Namespace) -> int:
     cli_name = Path(agent_bin).name
     cli_version = _cli_version(agent_bin)
 
-    command = [agent_bin, "-p", prompt_text, "--output-format", "json"]
-    sanitized_command = [agent_bin, "-p", PROMPT_PLACEHOLDER, "--output-format", "json"]
-    if args.model:
-        command.extend(["--model", args.model])
-        sanitized_command.extend(["--model", args.model])
-    for extra in [*args.claude_arg, *args.agent_arg]:
-        command.append(extra)
-        sanitized_command.append(extra)
+    if agent_cli == "codex":
+        # codex uses `codex exec --json <PROMPT>` — a JSONL event stream with the
+        # prompt as the LAST positional arg — NOT the claude/gemini `-p ...
+        # --output-format json` single-document form. --skip-git-repo-check lets
+        # the fresh scratch cwd (not a git repo) run headless. --claude-arg is
+        # claude-only (rejected earlier for non-claude families), so only
+        # --agent-arg extras are passed through here.
+        command = [agent_bin, "exec", "--json", "--skip-git-repo-check"]
+        sanitized_command = [agent_bin, "exec", "--json", "--skip-git-repo-check"]
+        if args.model:
+            command.extend(["--model", args.model])
+            sanitized_command.extend(["--model", args.model])
+        for extra in args.agent_arg:
+            command.append(extra)
+            sanitized_command.append(extra)
+        command.append(prompt_text)
+        sanitized_command.append(PROMPT_PLACEHOLDER)
+    else:
+        command = [agent_bin, "-p", prompt_text, "--output-format", "json"]
+        sanitized_command = [agent_bin, "-p", PROMPT_PLACEHOLDER, "--output-format", "json"]
+        if args.model:
+            command.extend(["--model", args.model])
+            sanitized_command.extend(["--model", args.model])
+        for extra in [*args.claude_arg, *args.agent_arg]:
+            command.append(extra)
+            sanitized_command.append(extra)
 
     cwd = Path(args.cwd).resolve() if args.cwd else Path(tempfile.mkdtemp(prefix="nlfr-agent-scratch."))
     cwd.mkdir(parents=True, exist_ok=True)
@@ -85,10 +113,7 @@ def run(args: argparse.Namespace) -> int:
         proc = None
 
     if proc is not None:
-        try:
-            cli_result = json.loads(proc.stdout)
-        except json.JSONDecodeError:
-            cli_result = None
+        cli_result = _parse_cli_stdout(agent_cli, proc.stdout)
         if cli_result is None:
             status = "invalid_output"
             detail = (
@@ -160,7 +185,7 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
 
     parser = subparsers.add_parser(
         "agent-invoke",
-        help="run a headless agent CLI (claude|gemini) and capture a verifiable receipt",
+        help="run a headless agent CLI (claude|gemini|codex) and capture a verifiable receipt",
         description=(
             "Run <cli> -p with a prompt file and capture a receipt artifact. "
             "The raw prompt is hashed and never stored."
@@ -279,6 +304,37 @@ def _resolve_bin(agent_cli: str, agent_bin: str | None, claude_bin: str | None) 
     return agent_cli
 
 
+def _parse_cli_stdout(agent_cli: str, stdout: str) -> dict | None:
+    """Parse CLI stdout into the per-family result object, or ``None`` if unparseable.
+
+    claude/gemini emit a single ``--output-format json`` document. codex emits
+    ``--json`` JSON Lines (one event per line); those are aggregated into
+    ``{"events": [...]}`` — the shape ``_normalize_codex`` consumes (JSONL is not
+    one ``json.loads``). A stream with no parseable events is unparseable (None).
+    """
+
+    if agent_cli == "codex":
+        events = []
+        for line in stdout.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                events.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+        return {"events": events} if events else None
+    try:
+        return json.loads(stdout)
+    except json.JSONDecodeError:
+        return None
+
+
+def _codex_events(cli_result: dict) -> list:
+    events = cli_result.get("events")
+    return events if isinstance(events, list) else []
+
+
 def _error_signal(agent_cli: str, cli_result: dict) -> tuple[bool, int | str | None]:
     """Return ``(is_error, api_status)`` from a parsed CLI result, per family.
 
@@ -292,6 +348,26 @@ def _error_signal(agent_cli: str, cli_result: dict) -> tuple[bool, int | str | N
     ``cli_error`` label is correct.
     """
 
+    if agent_cli == "codex":
+        events = _codex_events(cli_result)
+        subtype, api_status = _codex_error(events)
+        is_error = (
+            subtype is not None
+            or api_status is not None
+            or any(
+                isinstance(e, dict)
+                and (
+                    e.get("type") in ("turn.failed", "error")
+                    or (
+                        e.get("type") == "item.completed"
+                        and isinstance(e.get("item"), dict)
+                        and e["item"].get("type") == "error"
+                    )
+                )
+                for e in events
+            )
+        )
+        return is_error, api_status
     if agent_cli == "gemini":
         error = cli_result.get("error")
         if isinstance(error, dict):
@@ -306,6 +382,19 @@ def _error_signal(agent_cli: str, cli_result: dict) -> tuple[bool, int | str | N
 def _response_text(agent_cli: str, cli_result: dict) -> str:
     """Extract the agent response text from a parsed CLI result, per family."""
 
+    if agent_cli == "codex":
+        text = ""
+        for event in _codex_events(cli_result):
+            if not isinstance(event, dict) or event.get("type") != "item.completed":
+                continue
+            item = event.get("item")
+            if (
+                isinstance(item, dict)
+                and item.get("type") == "agent_message"
+                and isinstance(item.get("text"), str)
+            ):
+                text = item["text"]  # keep the LAST agent_message (final answer)
+        return text
     if agent_cli == "gemini":
         return cli_result.get("response") or ""
     return cli_result.get("result") or ""
@@ -330,7 +419,20 @@ def _cli_version(agent_bin: str) -> str | None:
 def _sanitize_detail(agent_cli: str, cli_result: dict, prompt_text: str) -> str:
     """Build a failure detail string guaranteed not to leak the prompt."""
 
-    if agent_cli == "gemini":
+    if agent_cli == "codex":
+        message = None
+        for event in _codex_events(cli_result):
+            if not isinstance(event, dict):
+                continue
+            if event.get("type") == "turn.failed":
+                err = event.get("error")
+                if isinstance(err, dict) and err.get("message"):
+                    message = err["message"]
+                    break
+            if message is None and event.get("type") == "error" and event.get("message"):
+                message = event["message"]
+        raw = str(message or "unknown CLI error")
+    elif agent_cli == "gemini":
         error = cli_result.get("error")
         message = error.get("message") if isinstance(error, dict) else None
         raw = str(message or cli_result.get("response") or "unknown CLI error")
