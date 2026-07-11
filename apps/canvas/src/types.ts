@@ -73,7 +73,7 @@ export type PositionedEdge = ProjectionEdge & {
   target: PositionedNode;
 };
 
-export type CanvasMode = "graph" | "runway" | "proof" | "remote" | "compare";
+export type CanvasMode = "graph" | "runway" | "proof" | "remote" | "compare" | "replay";
 export type FocusFilter = "all" | "cache" | "failures" | "derived" | "remote" | "agent";
 
 export type CompareDimension = TruthLabels & {
@@ -94,4 +94,44 @@ export type CompareProjection = TruthLabels & {
   right_run_group: string;
   summary: Record<string, unknown>;
   dimensions: CompareDimension[];
+};
+
+/* ── Timeline projection (contracts/timeline_projection.v1.json) ──────────
+ * Mirrors the KNOWN fields of the additive contract; unknown fields are
+ * permitted on the wire and simply ignored by these types (tolerant decode).
+ */
+
+export type TimelineEventKind = "run" | "verdict" | "receipt";
+
+export type TimelineEvent = TruthLabels & {
+  ts: string;
+  kind: TimelineEventKind;
+  label: string;
+  /** Evidence database the event was read from. */
+  source: string;
+  /** Chronological index assigned by the projector (chapters reference it). */
+  index: number;
+  detail: Record<string, unknown>;
+};
+
+export type TimelineChapter = TruthLabels & {
+  kind: "repair_loop";
+  label: string;
+  start_ts: string;
+  /** null while the loop is open (no recorded green close). */
+  end_ts: string | null;
+  open: boolean;
+  /** TimelineEvent.index values belonging to this chapter. */
+  event_indexes: number[];
+};
+
+export type TimelineProjection = TruthLabels & {
+  schema_version: 1;
+  projection_kind: "timeline";
+  generated_at: string;
+  sources: string[];
+  span: { start: string | null; end: string | null };
+  summary: Record<string, unknown>;
+  events: TimelineEvent[];
+  chapters: TimelineChapter[];
 };

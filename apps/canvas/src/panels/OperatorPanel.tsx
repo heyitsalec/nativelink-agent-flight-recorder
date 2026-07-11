@@ -8,6 +8,7 @@ import {
   Database,
   FileCheck2,
   Globe,
+  History,
   Info,
   Rows3,
   RotateCcw,
@@ -128,6 +129,14 @@ export function executeOperatorCommand(raw: string, deps: CommandDeps): void {
         ? "Compare lens shows derived proof-packet deltas only."
         : "Compare lens unavailable — compare-projection.json not loaded.",
     );
+  } else if (value.includes("replay") || value.includes("playback")) {
+    routeActions.setMode("replay");
+    routeActions.setFocus("all");
+    routeActions.setOperatorNote(
+      bindings.timelineProjection
+        ? "Replay walks the recorded flight record — playback auto-pauses at repair loops."
+        : "Replay lens unavailable — timeline.json not loaded.",
+    );
   } else if (value.includes("runway") || value.includes("timeline")) {
     routeActions.setMode("runway");
     routeActions.setFocus("all");
@@ -157,6 +166,7 @@ const PALETTE_ICONS: Record<string, typeof Search> = {
   rows: Rows3,
   globe: Globe,
   columns: Columns2,
+  history: History,
   reset: RotateCcw,
 };
 
@@ -358,9 +368,11 @@ export function OperatorCommandBarPanel(instance: ComponentInstance) {
         ? "operator--lens-remote"
         : route.mode === "compare"
           ? "operator--lens-compare"
-          : route.mode === "runway"
-            ? "operator--lens-runway"
-            : "";
+          : route.mode === "replay"
+            ? "operator--lens-replay"
+            : route.mode === "runway"
+              ? "operator--lens-runway"
+              : "";
 
   const overlays =
     typeof document !== "undefined"

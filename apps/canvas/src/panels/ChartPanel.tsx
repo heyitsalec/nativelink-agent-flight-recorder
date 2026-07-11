@@ -11,6 +11,7 @@ import {
   FileText,
   GitCommitVertical,
   Globe,
+  History,
   LayoutGrid,
   Maximize2,
   Network,
@@ -55,13 +56,14 @@ import { ConfidenceMeter, ProvenanceBadge, SourceGlyph, StatusGlyph, TruthLegend
 import { SOURCE_KIND_META } from "./shared/truth/copy";
 
 // Lens icons per board 1c: graph=network, runway=rows, proof=file-check,
-// remote=globe, compare=columns.
+// remote=globe, compare=columns; replay=history (flight-record playback).
 const MODE_ICONS: Record<ViewModeId, React.ReactNode> = {
   graph: <Network size={18} />,
   runway: <Rows3 size={18} />,
   proof: <FileCheck2 size={18} />,
   remote: <Globe size={18} />,
   compare: <Columns2 size={18} />,
+  replay: <History size={18} />,
 };
 
 /** Short VISIBLE chip labels for the mobile lens chip row (board 1m) so all
@@ -76,6 +78,7 @@ const SHORT_LENS_LABELS: Record<ViewModeId, string> = {
   proof: "Proof",
   remote: "Remote",
   compare: "Compare",
+  replay: "Replay",
 };
 
 /** Honest name for a mix segment: the "unknown" bucket also absorbs any
@@ -561,12 +564,16 @@ export function ActionGraphCanvasPanel(instance: ComponentInstance) {
       ? `${totals.total} total · ${totals.cards} cards · ${totals.clustered} in ${totals.clusters} cluster${totals.clusters === 1 ? "" : "s"}`
       : `${totals.total} nodes / ${totals.cards} shown`;
 
-  // When a full-overlay lens is open (proof / remote / compare) the graph is
-  // background context — dim it to ~38% (DESIGN-SYSTEM.md §4/§5/§6) so the
-  // floating panel reads as the foreground. The inspector (graph/runway mode)
-  // keeps the graph bright and interactive — it dims only non-neighbour nodes.
+  // When a full-overlay lens is open (proof / remote / compare / replay) the
+  // graph is background context — dim it to ~38% (DESIGN-SYSTEM.md §4/§5/§6)
+  // so the floating panel reads as the foreground. The inspector (graph/runway
+  // mode) keeps the graph bright and interactive — it dims only non-neighbour
+  // nodes.
   const lensDimmed =
-    route.mode === "proof" || route.mode === "remote" || route.mode === "compare";
+    route.mode === "proof" ||
+    route.mode === "remote" ||
+    route.mode === "compare" ||
+    route.mode === "replay";
 
   return (
     <section

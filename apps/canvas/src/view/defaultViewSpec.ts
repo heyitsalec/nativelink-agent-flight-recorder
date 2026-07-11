@@ -55,6 +55,14 @@ export const DEFAULT_VIEW_SPEC: ViewSpec = {
       refresh: "on_run_group_change",
       notes: "Optional pairwise compare; empty state when absent.",
     },
+    "binding.timeline": {
+      projection_kind: "timeline",
+      path: "/projections/timeline.json",
+      required: false,
+      fallback: "none",
+      refresh: "on_run_group_change",
+      notes: "Optional replay timeline; empty state when absent.",
+    },
   },
   modes: [
     {
@@ -104,6 +112,15 @@ export const DEFAULT_VIEW_SPEC: ViewSpec = {
       default_focus: "derived",
       data_testid: "canvas-mode-compare",
     },
+    {
+      mode_id: "replay",
+      label: "Replay",
+      icon: "history",
+      primary_component: "graph-main",
+      rail_component: "replay-lens",
+      default_focus: "all",
+      data_testid: "canvas-mode-replay",
+    },
   ],
   components: [
     {
@@ -124,7 +141,7 @@ export const DEFAULT_VIEW_SPEC: ViewSpec = {
       instance_id: "modes",
       component_kind: "mode_rail",
       region: "header",
-      props: { modes: "graph,runway,proof,remote,compare" },
+      props: { modes: "graph,runway,proof,remote,compare,replay" },
       data_testid: "canvas-mode-rail",
     },
     {
@@ -199,6 +216,14 @@ export const DEFAULT_VIEW_SPEC: ViewSpec = {
       data_testid: "compare-lens",
     },
     {
+      instance_id: "replay-lens",
+      component_kind: "replay_timeline",
+      region: "rail",
+      projection_binding: "binding.timeline",
+      visible_when: { mode: ["replay"], binding_missing_ok: "binding.timeline" },
+      data_testid: "replay-lens",
+    },
+    {
       instance_id: "inspector-selected-node",
       component_kind: "evidence_inspector",
       region: "rail",
@@ -209,7 +234,7 @@ export const DEFAULT_VIEW_SPEC: ViewSpec = {
       // inspector z6 > runway z5), intercepting real clicks (redesign P6 fix M1).
       visible_when: {
         mode: ["graph"],
-        mode_not: ["runway", "proof", "remote", "compare"],
+        mode_not: ["runway", "proof", "remote", "compare", "replay"],
         selected_node: true,
       },
       data_testid: "evidence-inspector",

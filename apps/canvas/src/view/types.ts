@@ -1,6 +1,6 @@
 import type { Confidence, FocusFilter, RedactionState, SourceKind } from "../types";
 
-export type ViewModeId = "graph" | "runway" | "proof" | "remote" | "compare";
+export type ViewModeId = "graph" | "runway" | "proof" | "remote" | "compare" | "replay";
 
 export type RegionSlot = "notice" | "header" | "primary" | "rail" | "operator";
 
@@ -17,11 +17,18 @@ export type ComponentKind =
   | "remote_boundary_lens"
   | "compare_lens"
   | "compare_dimension_card"
+  | "replay_timeline"
   | "truth_legend"
   | "operator_command_bar"
   | "zoom_controls";
 
-export type ProjectionKind = "action_graph" | "proof_packet" | "compare" | "runway" | "run_group_index";
+export type ProjectionKind =
+  | "action_graph"
+  | "proof_packet"
+  | "compare"
+  | "timeline"
+  | "runway"
+  | "run_group_index";
 
 export type FallbackPolicy = `fixture:${string}` | "none";
 

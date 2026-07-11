@@ -71,6 +71,12 @@ function railWarningCopy(
       ? "Compare panel is off — the compare lens will not render in compare mode."
       : "Compare panel is off but compare-projection.json is absent — enabling it will render the honest empty state.";
   }
+  if (rail.mode_id === "replay" && bindingKey === "binding.timeline") {
+    const present = bindingStatus?.[bindingKey] === "ok";
+    return present
+      ? "Replay panel is off — the replay lens will not render in replay mode."
+      : "Replay panel is off but timeline.json is absent — enabling it will render the honest empty state.";
+  }
   const panelLabel = panel ? humanKind(panel.component_kind) : rail.rail;
   return `${panelLabel} is off — ${rail.label} mode will render without its rail panel.`;
 }

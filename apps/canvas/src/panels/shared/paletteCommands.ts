@@ -103,6 +103,15 @@ export const PALETTE_COMMANDS: PaletteCommand[] = [
     keywords: ["compare", "diff", "runs", "delta"],
   },
   {
+    id: "lens-replay",
+    group: "LENSES",
+    name: "replay",
+    description: "replay the flight record event by event",
+    command: "replay",
+    icon: "history",
+    keywords: ["replay", "playback", "flight", "events", "history"],
+  },
+  {
     id: "canvas-reset",
     group: "CANVAS",
     name: "reset",

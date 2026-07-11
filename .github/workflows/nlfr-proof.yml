@@ -55,6 +55,7 @@ jobs:
           npm ci --prefix apps/canvas
           (cd apps/canvas && npx playwright install --with-deps chromium)
           ./scripts/record-canvas-build.sh
+          npm --prefix apps/canvas run test:unit
           npm --prefix apps/canvas run test:truth
 
       - name: Upload record-proof artifacts

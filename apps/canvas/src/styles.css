@@ -118,10 +118,12 @@
   /* Lens accents (P1 mapping onto truth anchors; per-lens accent chrome is
      retired in later phases): proof asserts collectable evidence, the remote
      boundary is future/not-observed, compare is a derived_v1 join, the
-     runway stays neutral. */
+     runway stays neutral. Replay walks a derived_v1 timeline projection
+     (chapters are derived by construction) → derived anchor, same as compare. */
   --lens-proof-accent: var(--truth-collectable);
   --lens-remote-accent: var(--truth-future);
   --lens-compare-accent: var(--truth-derived);
+  --lens-replay-accent: var(--truth-derived);
   --lens-runway-accent: var(--n6);
 
   font-family: var(--font-ui);
@@ -2397,6 +2399,11 @@ select:focus-visible {
   box-shadow: var(--elev3-shadow), inset 0 2px 0 var(--lens-runway-accent);
 }
 
+.operator--lens-replay {
+  border-color: color-mix(in srgb, var(--lens-replay-accent) 28%, transparent);
+  box-shadow: var(--elev3-shadow), inset 0 2px 0 var(--lens-replay-accent);
+}
+
 @media (max-width: 760px) {
   .topbar {
     gap: 12px;
@@ -2597,6 +2604,18 @@ select:focus-visible {
   left: 50%;
   transform: translateX(-50%);
   width: min(940px, calc(100vw - 32px));
+  display: flex;
+  pointer-events: auto;
+}
+
+/* Replay — wide centered E3 panel (flight-record playback). */
+.grid-region-rail > .grid-slot-replay_timeline {
+  position: fixed;
+  top: 116px;
+  bottom: 92px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(960px, calc(100vw - 32px));
   display: flex;
   pointer-events: auto;
 }
@@ -4162,6 +4181,496 @@ select:focus-visible {
 }
 
 /* ============================================================================
+   Replay lens — flight-record playback over the timeline projection.
+   Wide centered E3 panel (compare's recipe). Event KIND (run/verdict/receipt)
+   is NOT a truth label: it is encoded as TEXTURE (solid / hatched / dotted)
+   + text, never color alone; each event's real truth quad renders via the
+   shared primitives. Chapters are derived_v1 → derived amber, with the
+   open/closed distinction carried by dashed-vs-solid geometry AND the word
+   "open", never color alone.
+   ========================================================================= */
+.replay-lens {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px 28px;
+  overflow-y: auto;
+  border: var(--elev3-border);
+  border-radius: var(--radius-drawer);
+  background: var(--elev3-bg);
+  backdrop-filter: var(--elev3-blur);
+  box-shadow: var(--elev3-shadow);
+  color: var(--ink);
+}
+
+.replay-lens--empty {
+  align-items: center;
+  justify-content: center;
+}
+
+.replay-close {
+  top: 16px;
+  right: 16px;
+}
+
+.replay-head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 36px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.replay-overline {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-hint);
+}
+
+.replay-heading {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.replay-head-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.replay-head-kind,
+.replay-head-span,
+.replay-head-sources {
+  font: 500 11px/1.4 var(--font-mono);
+  color: var(--text-hint);
+}
+
+.replay-no-events {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  border: 1.25px dashed var(--border-control);
+  border-radius: var(--radius-card);
+  background: color-mix(in srgb, var(--truth-future) 5%, transparent);
+  font-size: 12.5px;
+  color: var(--text-body);
+}
+
+/* ── Histogram ── */
+.replay-histogram-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.replay-histogram {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  padding: 10px 12px 6px;
+  border: var(--elev1-border);
+  border-radius: var(--radius-card);
+  background: var(--elev1-bg);
+}
+
+.replay-bucket {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+  padding: 2px 3px 4px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: transparent;
+  cursor: pointer;
+}
+
+.replay-bucket:disabled {
+  cursor: default;
+}
+
+.replay-bucket:hover:not(:disabled) {
+  background: var(--hover-wash);
+}
+
+.replay-bucket.active {
+  border-color: color-mix(in srgb, var(--lens-replay-accent) 45%, transparent);
+  background: color-mix(in srgb, var(--lens-replay-accent) 8%, transparent);
+}
+
+.replay-bar-count {
+  height: 14px;
+  font: 600 10.5px/14px var(--font-mono);
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.replay-bar {
+  display: flex;
+  flex-direction: column-reverse; /* run at the base, verdict, then receipt */
+  height: 96px;
+  gap: 1px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+/* Kind textures — grayscale-safe (solid / hatched / dotted), neutral ramp
+   (kind is NOT a truth label; no truth hue is spent on it). */
+.replay-seg {
+  width: 100%;
+  min-height: 3px;
+  border-radius: 2px 2px 0 0;
+}
+
+.replay-seg--run {
+  background: var(--n7);
+}
+
+.replay-seg--verdict {
+  background: repeating-linear-gradient(45deg, var(--n6) 0 3px, transparent 3px 6px);
+  border: 1px solid var(--n6);
+}
+
+.replay-seg--receipt {
+  background: radial-gradient(circle at 2.5px 2.5px, var(--n6) 1.2px, transparent 1.3px);
+  background-size: 5px 5px;
+  border: 1px dashed var(--n6);
+}
+
+/* Chapter marks under the bars: derived amber; a closed loop is a solid rule,
+   an OPEN loop is dashed AND says "open" (unresolved is never implied-closed). */
+.replay-chapter-mark {
+  height: 11px;
+  border-bottom: 3px solid var(--truth-derived);
+  font: 700 8.5px/10px var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--truth-derived);
+  text-align: center;
+}
+
+.replay-chapter-mark--open {
+  border-bottom-style: dashed;
+}
+
+.replay-chapter-mark--none {
+  border-bottom-color: transparent;
+}
+
+.replay-bar-hour {
+  font: 500 10px/12px var(--font-mono);
+  color: var(--text-hint);
+  text-align: center;
+}
+
+/* Playhead — functional motion, 180ms ease-out (motion law: 150-200ms, no
+   decorative animation). Removed under prefers-reduced-motion below. */
+.replay-playhead {
+  position: absolute;
+  top: 6px;
+  bottom: 28px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--lens-replay-accent);
+  pointer-events: none;
+  z-index: 1;
+  transition: left 180ms ease-out;
+}
+
+.replay-playhead::after {
+  content: "";
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid var(--lens-replay-accent);
+}
+
+/* NEW PRECEDENT — first prefers-reduced-motion handling in this codebase
+   (see ReplayPanel.tsx header comment): the panel's JS disables autoplay
+   (play becomes step); this strips the playhead slide. */
+@media (prefers-reduced-motion: reduce) {
+  .replay-playhead {
+    transition: none;
+  }
+}
+
+.replay-kind-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.replay-kind-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.replay-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 10px;
+  min-height: 0;
+  border-radius: 2px;
+}
+
+.replay-unplaced {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ── Controls ── */
+.replay-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.replay-ctl {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-control);
+  background: var(--elev1-bg);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.replay-ctl:hover:not(:disabled) {
+  background: var(--hover-wash);
+}
+
+.replay-ctl:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.replay-ctl--play {
+  border-color: color-mix(in srgb, var(--lens-replay-accent) 45%, transparent);
+  color: var(--lens-replay-accent);
+}
+
+.replay-position {
+  margin-left: 4px;
+  font: 600 12px/1.2 var(--font-mono);
+  color: var(--ink);
+}
+
+.replay-keys {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+/* ── Chapter chips ── */
+.replay-chapters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.replay-chapters-overline {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-hint);
+}
+
+.replay-chapters-empty {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.replay-chapter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid color-mix(in srgb, var(--truth-derived) 30%, transparent);
+  border-radius: var(--radius-pill);
+  background: var(--truth-derived-tint);
+  color: var(--truth-derived);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.replay-chapter-chip--open {
+  border-style: dashed;
+}
+
+.replay-chapter-chip.active {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--truth-derived) 30%, transparent);
+}
+
+.replay-chapter-chip:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.replay-chapter-chip-meta {
+  font: 500 10.5px/1.2 var(--font-mono);
+  opacity: 0.85;
+}
+
+/* ── Event detail card ── */
+.replay-event-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border: var(--elev1-border);
+  border-radius: var(--radius-card);
+  background: var(--elev1-bg);
+}
+
+.replay-event-card--paused {
+  border-color: color-mix(in srgb, var(--truth-derived) 40%, transparent);
+}
+
+.replay-pause-note {
+  padding: 8px 10px;
+  border: 1px dashed color-mix(in srgb, var(--truth-derived) 45%, transparent);
+  border-radius: var(--radius-control);
+  background: var(--truth-derived-tint);
+  color: var(--truth-derived);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.replay-event-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.replay-event-overline {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-hint);
+}
+
+.replay-event-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 600 11px/1.2 var(--font-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-body);
+}
+
+.replay-event-label {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.replay-event-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.replay-event-meta code {
+  font: 500 11px/1.2 var(--font-mono);
+  color: var(--text-body);
+}
+
+.replay-event-ts {
+  font: 500 11px/1.4 var(--font-mono);
+}
+
+.replay-event-chapter {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--truth-derived);
+}
+
+.replay-kv {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.replay-kv div {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 8px;
+  align-items: baseline;
+}
+
+.replay-kv dt {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.replay-kv dd {
+  margin: 0;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.replay-event-truth {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  padding-top: 8px;
+  border-top: 1px solid var(--hairline);
+}
+
+/* Truth legend rendered inside the lens flows statically (its base style is
+   the floating absolute panel over the graph). */
+.replay-legend-slot .truth-legend {
+  position: static;
+  left: auto;
+  bottom: auto;
+  width: 100%;
+  background: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+}
+
+/* ============================================================================
    Header Composer button (board 1k) — pencil ink chip beside the view picker.
    ========================================================================= */
 .view-template-group {
@@ -4724,7 +5233,8 @@ select:focus-visible {
      no selection) from laying a dead overlay over the graph. */
   .grid-rail-bottom-sheet > .grid-slot-evidence_inspector:not(:empty),
   .grid-rail-bottom-sheet > .grid-slot-remote_boundary_lens:not(:empty),
-  .grid-rail-bottom-sheet > .grid-slot-compare_lens:not(:empty) {
+  .grid-rail-bottom-sheet > .grid-slot-compare_lens:not(:empty),
+  .grid-rail-bottom-sheet > .grid-slot-replay_timeline:not(:empty) {
     position: fixed;
     top: 176px;
     left: 10px;

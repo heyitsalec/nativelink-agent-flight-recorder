@@ -811,8 +811,9 @@ function ProofBlockCard({
 /** Collapsible evidence-ref footer (redesign P5): count pill + expand on
  *  demand, middle-truncated mono refs with copy, "show N more…" past the
  *  preview limit. Collapsed by default except on the active block. Redacted
- *  refs keep their slot as a lock chip carrying the partial path. */
-function EvidenceRefs({ refs, defaultOpen }: { refs: string[]; defaultOpen: boolean }) {
+ *  refs keep their slot as a lock chip carrying the partial path. Exported so
+ *  the Replay lens event card reuses it rather than forking the pattern. */
+export function EvidenceRefs({ refs, defaultOpen }: { refs: string[]; defaultOpen: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   const [showAll, setShowAll] = useState(false);
   useEffect(() => {
