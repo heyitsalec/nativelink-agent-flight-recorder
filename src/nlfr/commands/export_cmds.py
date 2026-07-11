@@ -23,6 +23,7 @@ from nlfr.projectors.pr_comment import (
     render_pr_comment_markdown,
 )
 from nlfr.projectors.proof_markdown import export_proof_markdown, proof_markdown_exit_code
+from nlfr.projectors.timeline import build_timeline_projection
 
 
 def export_graph(args: argparse.Namespace) -> int:
@@ -140,6 +141,39 @@ def export_proof_comment(args: argparse.Namespace) -> int:
     return 0
 
 
+def export_timeline(args: argparse.Namespace) -> int:
+    """Export the merged timeline projection for one or more evidence DBs."""
+
+    from pathlib import Path as _Path
+
+    db_paths: list[str] = list(args.db or [])
+    if args.db_root:
+        root = _Path(args.db_root)
+        if not root.is_dir():
+            print(f"--db-root is not a directory: {root}", file=sys.stderr)
+            return 2
+        for child in sorted(root.iterdir()):
+            candidate = child / "nlfr.sqlite"
+            if child.is_dir() and candidate.is_file():
+                db_paths.append(str(candidate))
+    if not db_paths:
+        db_paths = ["data/nlfr/nlfr.sqlite"]
+
+    sources = []
+    try:
+        for db_path in db_paths:
+            label = _Path(db_path).parent.name or _Path(db_path).stem
+            sources.append((label, connect_readonly(db_path)))
+        write_or_print(build_timeline_projection(sources), args.output)
+    except UnreadableDatabaseError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    finally:
+        for _, conn in sources:
+            conn.close()
+    return 0
+
+
 def _resolve_in_toto(args: argparse.Namespace) -> dict[str, object]:
     """Resolve the honest in-toto attestation reference to cite (never fabricated).
 
@@ -219,6 +253,40 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
     )
     runway_subparsers = runway.add_subparsers(dest="runway_command", metavar="command", required=True)
     add_export_command(runway_subparsers, "export", export_runway, "export runway projection JSON")
+
+    timeline = subparsers.add_parser(
+        "timeline",
+        help="timeline projection commands",
+        description="Timeline projection commands (the replayable flight record).",
+    )
+    timeline_subparsers = timeline.add_subparsers(
+        dest="timeline_command", metavar="command", required=True
+    )
+    timeline_export = timeline_subparsers.add_parser(
+        "export",
+        help="export a chronological, truth-labeled event timeline",
+        description=(
+            "Merge one or more evidence databases into a single chronological "
+            "timeline projection (runs, evaluation verdicts, agent receipts) "
+            "with derived repair-loop chapters. Renders in the canvas Replay "
+            "lens; recorded timestamps only, never wall-clock."
+        ),
+    )
+    timeline_export.add_argument(
+        "--db",
+        action="append",
+        default=None,
+        help="SQLite database path; repeatable to merge several databases",
+    )
+    timeline_export.add_argument(
+        "--db-root",
+        help=(
+            "an `nlfr record` layout root: every immediate subdirectory "
+            "containing an nlfr.sqlite is merged (same discovery as compare)"
+        ),
+    )
+    timeline_export.add_argument("--output", help="output path for JSON projection")
+    timeline_export.set_defaults(handler=export_timeline)
 
     proof = subparsers.add_parser(
         "proof",

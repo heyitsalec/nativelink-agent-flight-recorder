@@ -43,6 +43,7 @@ def test_module_help_lists_registered_commands() -> None:
         "evaluate",
         "loop",
         "receipt",
+        "timeline",
     ):
         assert command in result.stdout
 
