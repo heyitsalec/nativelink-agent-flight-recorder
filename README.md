@@ -37,7 +37,7 @@ safety-critical) who has to show *what actually ran* when an agent wrote the cod
 | **in-toto export** | `nlfr proof export --format in-toto` → unsigned, DSSE-ready in-toto v1 Statement; sign externally with cosign ([how-to](docs/wiki/how-to/export-in-toto-attestation.md)). |
 | **PR-comment / CI-attachment proof** | `nlfr proof comment` → a compact, redact-gated proof summary (status, cache economics, artifact-verification rollup, agent-receipt presence, in-toto ref) as a PR comment + JSON sidecar ([how-to](docs/wiki/how-to/pr-comment-proof.md)). |
 | **Contract-enforced projections** | Projection JSON shape is CI-gated against committed JSON contracts ([contracts](docs/wiki/reference/contracts/README.md)). |
-| **Verified agent receipts** | `receipt_verified_v1` receipts — model, session, token usage, prompt/response SHA-256; raw prompt structurally absent. Claude is live-proven in the committed two-act run; the Gemini parser is fixture-tested (live validation env-gated). |
+| **Verified agent receipts** | `receipt_verified_v1` receipts — model, session, token usage, prompt/response SHA-256; raw prompt structurally absent. Claude is live-proven in the committed two-act run; the Gemini parser is fixture-tested (live validation env-gated); the Codex parser is fixture-tested from a real `codex exec --json` capture — but codex-cli 0.144.1 attests no resolved model on its stream, so a live Codex leg honestly degrades below the verified tier until Codex surfaces the model. |
 | **Evidence evaluation** | `nlfr evaluate` → deterministic, truth-labeled verdict (`nlfr.evaluation.v1`) over a recorded run group: status, honest-failure classification, redacted failure-evidence excerpt, and a precedence-ordered `next_steps` list; `--record` writes the verdict back into the evidence DB as an `evaluation` proof block. |
 | **Closed agent loop** | `nlfr loop` → evaluate → fix → revalidate driven entirely by recorded evidence: the fixing agent receives the verdict's recorded failure excerpt (never a re-run), each iteration is its own run group, and toolchain blockers stop the loop instead of fabricating agent-failure narratives ([proof script](scripts/agentic-loop-proof.sh)). |
 | **Cloud/pod agent telemetry** | `nlfr receipt import` attaches receipts produced where NLFR wasn't (CI runners, pods) as `receipt_imported_v1` — schema- and privacy-validated, honestly rendered `receipt_verified: false` ([how-to](docs/wiki/how-to/capture-agent-telemetry-in-ci.md)). |
@@ -199,14 +199,21 @@ statement about evidence shape, not trust.
 
 Receipts are captured through a per-CLI parser registry
 ([`src/nlfr/agent_receipt.py`](src/nlfr/agent_receipt.py)): `nlfr agent-invoke
---agent-cli {claude,gemini}`. Every CLI clears the same verified-tier bar
+--agent-cli {claude,gemini,codex}`. Every CLI clears the same verified-tier bar
 (success + response SHA-256 + session id + single server-resolved model) and the
 same privacy posture (prompt hashed, raw prompt structurally rejected). The
 committed two-act run is a live **Claude** receipt. The **Gemini** integration
 is derived from the official Gemini CLI `--output-format json` docs and is
 fixture-tested — live validation is env-gated (`NLFR_RUN_AGENT_LIVE_GEMINI=1`
 with the Gemini CLI on PATH) and pending a machine with that CLI; it has not
-been live-proven here.
+been live-proven here. The **Codex** integration is *empirical* — fixture-tested
+from a real `codex exec --json` JSONL capture (codex-cli 0.144.1). Honest caveat:
+that stream attests no server-resolved model (the model lives only in the on-disk
+session rollout, which also stores the raw prompt and is privacy-forbidden as a
+receipt source), so a live Codex success degrades to `invalid_output` below the
+verified tier. The parser is forward-compatible — the instant a Codex build
+surfaces the model on its stream, Codex legs clear the same bar with no code
+change (env-gated live check: `NLFR_RUN_AGENT_LIVE_CODEX=1`).
 
 V1 does **not** claim remote worker assignment, queue time, action placement,
 scheduler assignment, load distribution, or full remote-execution fleet

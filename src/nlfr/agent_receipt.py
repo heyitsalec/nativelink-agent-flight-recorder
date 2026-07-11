@@ -7,11 +7,20 @@ stored or exported (AGENTS.md privacy rule) — hash only. The response text is
 code and may be stored as a separate artifact.
 
 Each supported CLI has a *normalizer* in ``CLI_PARSERS`` that maps that CLI's
-raw ``--output-format json`` shape onto one internal receipt shape. Claude Code
-was the first integration; Gemini CLI is the second (its shape is doc-derived
-and fixture-tested — see contracts and tests). Adding a CLI is a normalizer
-plus a ``LIVE_CLI_NAMES`` entry; the receipt/validation/privacy machinery is
-shared, so every CLI clears the exact same verified-receipt bar.
+raw machine-readable shape onto one internal receipt shape. Claude Code was the
+first integration; Gemini CLI is the second (doc-derived, fixture-tested); Codex
+CLI is the third (``codex exec --json`` — an *empirically* determined JSONL event
+stream, fixture-tested from a real invocation). Adding a CLI is a normalizer plus
+a ``LIVE_CLI_NAMES`` entry; the receipt/validation/privacy machinery is shared,
+so every CLI clears the exact same verified-receipt bar.
+
+Honest-tier caveat for Codex: codex-cli 0.144.1's ``exec --json`` stream does
+NOT attest a server-resolved model id (the resolved model lives only in the
+on-disk session rollout, which also stores the raw prompt and is therefore
+privacy-forbidden as a receipt source). A real Codex success consequently
+degrades to ``invalid_output`` below the verified tier. The parser is
+forward-compatible: the instant a Codex build surfaces the model on its stream,
+Codex legs clear the same bar with no other change. See ``_normalize_codex``.
 """
 
 from __future__ import annotations
@@ -29,7 +38,7 @@ RECEIPT_SCHEMA_VERSION = "nlfr.agent_receipt.v1"
 FORBIDDEN_PROMPT_KEYS = frozenset({"prompt", "raw_prompt", "prompt_text", "system_prompt"})
 
 #: CLI basenames accepted as live agent invocations (one parser family each).
-LIVE_CLI_NAMES = frozenset({"claude", "gemini"})
+LIVE_CLI_NAMES = frozenset({"claude", "gemini", "codex"})
 
 
 def sha256_text(text: str) -> str:
@@ -195,10 +204,195 @@ def _sum_gemini_input_tokens(models: dict[str, Any]) -> int | None:
     return total if found else None
 
 
-#: Per-CLI normalizers: raw CLI ``--output-format json`` object → internal shape.
+def _normalize_codex(result: dict[str, Any]) -> dict[str, Any]:
+    """Map an aggregated ``codex exec --json`` event stream onto the internal shape.
+
+    EMPIRICALLY determined against codex-cli 0.144.1 (the installed build), not
+    doc-derived. ``codex exec --json`` emits **JSON Lines** — one event object per
+    line — unlike the single ``--output-format json`` document that
+    ``claude``/``gemini`` produce. The invocation wrapper aggregates those lines
+    into ``{"events": [...]}`` (JSONL is not one ``json.loads``); this normalizer
+    walks that list. The observed success stream (four events, verbatim except a
+    sanitized thread id)::
+
+        {"type":"thread.started","thread_id":"<uuid>"}
+        {"type":"turn.started"}
+        {"type":"item.completed","item":{"type":"agent_message","text":"ok"}}
+        {"type":"turn.completed","usage":{"input_tokens":13660,
+             "cached_input_tokens":9984,"output_tokens":5,
+             "reasoning_output_tokens":0}}
+
+    Field mapping:
+
+    * ``session_id`` ← ``thread.started.thread_id`` — codex's conversation id and
+      the only session-like identifier it emits (the packet's sanctioned fallback
+      for a missing ``session_id``).
+    * ``response_text`` ← the LAST ``item.completed`` whose ``item.type`` is
+      ``agent_message`` (the final answer, i.e. what ``--output-last-message``
+      writes).
+    * ``usage`` ← summed across ``turn.completed`` events. codex's
+      ``input_tokens`` is GROSS — it INCLUDES ``cached_input_tokens`` — exactly
+      like Gemini's ``tokens.prompt`` and unlike Claude's cache-EXCLUDING
+      ``input_tokens``. We therefore record the NET ``max(0, input - cached)`` as
+      ``input_tokens`` and ``cached_input_tokens`` as ``cache_read_input_tokens``,
+      so cached tokens are never double-counted (mirrors ``_sum_gemini_input_tokens``).
+      ``output_tokens`` already INCLUDES ``reasoning_output_tokens`` (OpenAI
+      Responses semantics), so it maps as-is and reasoning tokens are not re-added.
+      codex reports no cache-CREATION count → left absent, never invented.
+    * ``resolved_models`` ← distinct ``model`` strings attested on
+      ``thread.started`` / ``turn.started`` / ``turn.completed`` events. **codex
+      0.144.1 attests NO model here**, so this is ``[]`` for a real run and a real
+      Codex "success" honestly degrades to ``invalid_output`` below the verified
+      tier (see ``build_receipt``). The resolved model id exists only in the
+      on-disk session rollout, which also stores the raw prompt and is thus
+      privacy-forbidden as a receipt source. The scan is forward-compatible: the
+      moment a build attests the model on its stream, Codex clears the same bar.
+    * error signals ← a ``turn.failed`` event (or a top-level ``error`` event / an
+      ``item`` of type ``error``). codex nests an HTTP-style ``status`` and an
+      ``error.type`` inside a JSON-string ``message`` — parsed into
+      ``api_error_status`` (int) and ``result_subtype`` (str). Fields codex does
+      not report (turns aside, durations, cost) are left absent.
+    """
+
+    events = result.get("events") if isinstance(result.get("events"), list) else []
+
+    session_id: str | None = None
+    response_text: str | None = None
+    models: list[str] = []
+    net_input = output = cache_read = 0
+    found_input = found_output = found_cache = False
+    turns = 0
+
+    for event in events:
+        if not isinstance(event, dict):
+            continue
+        etype = event.get("type")
+        if etype == "thread.started" and session_id is None:
+            tid = event.get("thread_id")
+            session_id = tid if isinstance(tid, str) and tid else None
+        _collect_codex_model(event, models)
+        if etype == "item.completed":
+            item = event.get("item")
+            if isinstance(item, dict) and item.get("type") == "agent_message":
+                text = item.get("text")
+                if isinstance(text, str):
+                    response_text = text  # keep the LAST agent_message (final answer)
+        if etype == "turn.completed":
+            turns += 1
+            usage = event.get("usage")
+            if isinstance(usage, dict):
+                gross = _codex_int(usage.get("input_tokens"))
+                cached = _codex_int(usage.get("cached_input_tokens"))
+                out = _codex_int(usage.get("output_tokens"))
+                if gross is not None:
+                    net_input += max(0, gross - (cached or 0))
+                    found_input = True
+                if cached is not None:
+                    cache_read += cached
+                    found_cache = True
+                if out is not None:
+                    output += out
+                    found_output = True
+
+    result_subtype, api_error_status = _codex_error(events)
+    return {
+        "response_text": response_text,
+        "resolved_models": sorted(set(models)),
+        "session_id": session_id,
+        "usage": {
+            # NET of cache reads (codex's input_tokens is gross-of-cache).
+            "input_tokens": net_input if found_input else None,
+            "output_tokens": output if found_output else None,
+            # codex reports cached (read) tokens but NOT cache-creation tokens.
+            "cache_creation_input_tokens": None,
+            "cache_read_input_tokens": cache_read if found_cache else None,
+        },
+        "num_turns": turns or None,
+        # codex's exec --json stream reports none of these; omit, do not invent.
+        "duration_ms": None,
+        "duration_api_ms": None,
+        "total_cost_usd": None,
+        "result_subtype": result_subtype,
+        "api_error_status": api_error_status,
+        # codex nests status/type inside the error message; it has no separate
+        # symbolic string code, so api_error_code stays absent.
+        "api_error_code": None,
+    }
+
+
+def _codex_int(value: Any) -> int | None:
+    """Return ``value`` if it is a real int (bools excluded), else ``None``."""
+
+    return value if isinstance(value, int) and not isinstance(value, bool) else None
+
+
+def _collect_codex_model(event: dict[str, Any], models: list[str]) -> None:
+    """Append a non-empty ``model`` string attested on a codex stream event.
+
+    codex 0.144.1 attests NO model on ``thread.started`` / ``turn.*`` events, so
+    this is a no-op for current output (``resolved_models`` stays empty → honest
+    degrade). It is forward-compatible: a build that surfaces the resolved model
+    on the session/turn event lifts Codex to the verified tier with no other change.
+    """
+
+    if event.get("type") not in ("thread.started", "turn.started", "turn.completed"):
+        return
+    model = event.get("model")
+    if isinstance(model, str) and model and model not in models:
+        models.append(model)
+
+
+def _codex_error(events: list[Any]) -> tuple[str | None, int | None]:
+    """Extract ``(result_subtype, api_error_status)`` from a codex failure stream.
+
+    codex signals a failed turn with a ``turn.failed`` event carrying
+    ``error.message`` (authoritative); a top-level ``error`` event or an ``item``
+    of type ``error`` are fallbacks. The message is often a JSON string embedding
+    an HTTP-style ``status`` and a nested ``error.type`` (e.g.
+    ``{"type":"error","status":400,"error":{"type":"invalid_request_error",...}}``)
+    → those become ``api_error_status`` (int) and ``result_subtype`` (str). A
+    plain-text message yields no structured status (both ``None``) — an honest gap.
+    """
+
+    message: str | None = None
+    for event in events:
+        if not isinstance(event, dict):
+            continue
+        etype = event.get("type")
+        if etype == "turn.failed":
+            err = event.get("error")
+            if isinstance(err, dict) and isinstance(err.get("message"), str):
+                message = err["message"]
+                break  # turn.failed is authoritative
+        elif etype == "error" and message is None and isinstance(event.get("message"), str):
+            message = event["message"]
+        elif etype == "item.completed" and message is None:
+            item = event.get("item")
+            if isinstance(item, dict) and item.get("type") == "error" and isinstance(
+                item.get("message"), str
+            ):
+                message = item["message"]
+    if message is None:
+        return None, None
+    try:
+        parsed = json.loads(message)
+    except (json.JSONDecodeError, TypeError):
+        return None, None  # plain-text error message → no structured status
+    if not isinstance(parsed, dict):
+        return None, None
+    status = parsed.get("status")
+    api_error_status = status if isinstance(status, int) and not isinstance(status, bool) else None
+    inner = parsed.get("error") if isinstance(parsed.get("error"), dict) else {}
+    subtype = inner.get("type") or parsed.get("type")
+    result_subtype = subtype if isinstance(subtype, str) and subtype else None
+    return result_subtype, api_error_status
+
+
+#: Per-CLI normalizers: raw CLI machine-readable object → internal shape.
 CLI_PARSERS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "claude": _normalize_claude,
     "gemini": _normalize_gemini,
+    "codex": _normalize_codex,
 }
 
 
@@ -207,13 +401,15 @@ def cli_family_for(cli_name: str) -> str:
 
     Explicit families are passed through unchanged by ``build_receipt``; this
     heuristic only covers callers that pass a bare name (including test stubs
-    such as ``spark-stub-claude.sh``). Anything not recognizably Gemini falls
-    back to the Claude family, preserving historical behavior.
+    such as ``spark-stub-claude.sh``). Anything not recognizably Gemini or Codex
+    falls back to the Claude family, preserving historical behavior.
     """
 
     lowered = (cli_name or "").lower()
     if "gemini" in lowered:
         return "gemini"
+    if "codex" in lowered:
+        return "codex"
     return "claude"
 
 
