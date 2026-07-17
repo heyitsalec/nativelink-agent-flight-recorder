@@ -20,6 +20,7 @@ import argparse
 import json
 import shutil
 import sys
+import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -771,7 +772,11 @@ def _terminal_status(result: ProcessResult) -> str:
 
 
 def _default_run_group() -> str:
-    return f"record-{datetime.now(UTC).strftime('%Y-%m-%d')}"
+    """Date for humans, a uuid slice for identity: a date-only default collides
+    the moment two hosts (or two repos, or two same-day runs) record without an
+    explicit --run-group — and fleet-level consumers key evidence by run group.
+    Operators who want a stable name still pass --run-group explicitly."""
+    return f"record-{datetime.now(UTC).strftime('%Y-%m-%d')}-{uuid.uuid4().hex[:8]}"
 
 
 def _run_key(run_group: str) -> str:

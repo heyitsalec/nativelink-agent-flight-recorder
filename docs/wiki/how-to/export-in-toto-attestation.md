@@ -51,15 +51,15 @@ An in-toto v1 Statement is a small JSON envelope:
 
 This continues directly from **[record your own Bazel build](record-your-own-build.md)**.
 That guide writes its SQLite spine to `data/nlfr-record/<run-group>/nlfr.sqlite` and
-prints the run group it used (default `record-<UTC date>`, e.g. `record-2026-07-06`).
+prints the run group it used (default `record-<UTC date>-<8-hex id>`, e.g. `record-2026-07-06-1a2b3c4d`).
 Point `--db` at that file and `--run-group` at that exact group — both values come
 straight from the summary `nlfr record` prints:
 
 ```bash
 # Unsigned, DSSE-ready in-toto Statement (default output is stdout).
 uv run nlfr proof export \
-  --db data/nlfr-record/record-2026-07-06/nlfr.sqlite \
-  --run-group record-2026-07-06 \
+  --db data/nlfr-record/record-2026-07-06-1a2b3c4d/nlfr.sqlite \
+  --run-group record-2026-07-06-1a2b3c4d \
   --format in-toto \
   --output out/proof.intoto.json
 ```
@@ -72,7 +72,7 @@ uv run nlfr proof export \
 > present; you can also list them yourself any time:
 >
 > ```bash
-> nlfr compare index --db data/nlfr-record/record-2026-07-06/nlfr.sqlite
+> nlfr compare index --db data/nlfr-record/record-2026-07-06-1a2b3c4d/nlfr.sqlite
 > ```
 >
 > Automation that genuinely wants the empty envelope can pass
