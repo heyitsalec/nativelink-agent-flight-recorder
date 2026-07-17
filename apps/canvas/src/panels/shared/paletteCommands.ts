@@ -103,6 +103,19 @@ export const PALETTE_COMMANDS: PaletteCommand[] = [
     keywords: ["compare", "diff", "runs", "delta"],
   },
   {
+    id: "lens-replay",
+    group: "LENSES",
+    name: "replay",
+    description: "replay the flight record event by event",
+    command: "replay",
+    icon: "history",
+    // "timeline" now belongs here too: the projection this lens replays is
+    // literally named timeline (timeline.json). Runway keeps the keyword for
+    // fuzzy ranking, so a "timeline" query surfaces BOTH; the free-text router
+    // prefers Replay (OperatorPanel).
+    keywords: ["replay", "playback", "timeline", "flight", "events", "history"],
+  },
+  {
     id: "canvas-reset",
     group: "CANVAS",
     name: "reset",

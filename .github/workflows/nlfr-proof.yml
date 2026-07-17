@@ -54,6 +54,11 @@ jobs:
         run: |
           npm ci --prefix apps/canvas
           (cd apps/canvas && npx playwright install --with-deps chromium)
+          # test:unit must run BEFORE record-canvas-build.sh: the recorder
+          # regenerates apps/canvas/public/projections/*.json from a minimal
+          # CI-only run, clobbering the committed fixtures the unit suite
+          # asserts against.
+          npm --prefix apps/canvas run test:unit
           ./scripts/record-canvas-build.sh
           npm --prefix apps/canvas run test:truth
 

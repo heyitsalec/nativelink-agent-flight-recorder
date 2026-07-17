@@ -20,6 +20,7 @@ if (!url) {
 }
 const projectionPath = path.join(canvasRoot, "public", "projections", "action-graph.json");
 const comparePath = path.join(canvasRoot, "public", "projections", "compare-projection.json");
+const timelinePath = path.join(canvasRoot, "public", "projections", "timeline.json");
 
 const TRUTH_KEYS = ["source_kind", "confidence", "evidence_refs", "redaction_state"];
 const SOURCE_KINDS = new Set(["collectable_v1", "derived_v1", "simulated_v1", "future", "unknown"]);
@@ -62,6 +63,59 @@ function validateCompareProjection(payload, errors) {
   }
 }
 
+const TIMELINE_EVENT_KINDS = new Set(["run", "verdict", "receipt"]);
+
+/**
+ * Timeline projection guard (contracts/timeline_projection.v1.json, compare
+ * precedent above): truth quad on the root, every event, and every chapter;
+ * event kinds within the run/verdict/receipt enum; chapter kind repair_loop;
+ * chapters are derived BY CONSTRUCTION so chapters[].source_kind MUST be
+ * derived_v1 — a chapter claiming collectable would be an over-claim.
+ */
+function validateTimelineProjection(payload, errors) {
+  if (payload.projection_kind !== "timeline") {
+    errors.push("timeline projection_kind must be timeline");
+  }
+  validateTruthLabels(payload, "timeline.root", errors);
+  if (!Array.isArray(payload.events)) {
+    errors.push("timeline.events must be an array");
+  } else {
+    for (const [index, event] of payload.events.entries()) {
+      validateTruthLabels(event, `timeline.events[${index}]`, errors);
+      if (!TIMELINE_EVENT_KINDS.has(event.kind)) {
+        errors.push(`timeline.events[${index}]: invalid kind ${event.kind}`);
+      }
+      if (typeof event.ts !== "string" || !event.ts) {
+        errors.push(`timeline.events[${index}]: missing recorded ts`);
+      }
+      if (typeof event.label !== "string" || typeof event.source !== "string") {
+        errors.push(`timeline.events[${index}]: missing label/source`);
+      }
+    }
+  }
+  if (!Array.isArray(payload.chapters)) {
+    errors.push("timeline.chapters must be an array");
+  } else {
+    for (const [index, chapter] of payload.chapters.entries()) {
+      validateTruthLabels(chapter, `timeline.chapters[${index}]`, errors);
+      if (chapter.kind !== "repair_loop") {
+        errors.push(`timeline.chapters[${index}]: invalid kind ${chapter.kind}`);
+      }
+      if (chapter.source_kind !== "derived_v1") {
+        errors.push(
+          `timeline.chapters[${index}]: source_kind must be derived_v1 (chapters are derived by construction), got ${chapter.source_kind}`,
+        );
+      }
+      if (typeof chapter.open !== "boolean") {
+        errors.push(`timeline.chapters[${index}]: open must be a boolean`);
+      }
+      if (!Array.isArray(chapter.event_indexes)) {
+        errors.push(`timeline.chapters[${index}]: event_indexes must be an array`);
+      }
+    }
+  }
+}
+
 const projection = JSON.parse(await fs.readFile(projectionPath, "utf8"));
 const expectedIds = new Set(projection.nodes.map((node) => node.id));
 
@@ -74,6 +128,18 @@ try {
 } catch (error) {
   if (error && typeof error === "object" && "code" in error && error.code !== "ENOENT") {
     compareErrors.push(`compare projection read failed: ${error.message ?? error}`);
+  }
+}
+
+const timelineErrors = [];
+let timelinePresent = false;
+try {
+  const timelineProjection = JSON.parse(await fs.readFile(timelinePath, "utf8"));
+  timelinePresent = true;
+  validateTimelineProjection(timelineProjection, timelineErrors);
+} catch (error) {
+  if (error && typeof error === "object" && "code" in error && error.code !== "ENOENT") {
+    timelineErrors.push(`timeline projection read failed: ${error.message ?? error}`);
   }
 }
 
@@ -218,13 +284,99 @@ if (comparePresent) {
   compareLensOk = await page.locator('[data-testid="compare-lens"]').isVisible();
 }
 
+// Replay lens interaction (compare precedent): the lens opens on the recorded
+// timeline, stepping advances the REAL event pointer ("event 2 / N" after one
+// replay-next), the fixture's TWO lineage-scoped repair chapters render as two
+// chips (the superseded first one saying "open" — unresolved is never
+// implied-closed), and REAL playback auto-pauses TWICE — once at each
+// dispatch beat — with the chapter card naming the recorded lineage.
+let replayLensOk = true;
+let replayStepOk = true;
+let replayChaptersOk = true;
+let replayPausesOk = true;
+if (timelinePresent) {
+  await page.locator('[aria-label="Replay"]').click();
+  replayLensOk = await page.locator('[data-testid="replay-lens"]').isVisible();
+  if (replayLensOk) {
+    await page.locator('[data-testid="replay-next"]').click();
+    const card = page.locator('[data-testid="replay-event-card"]');
+    const cardPosition = await card.getAttribute("data-event-position").catch(() => null);
+    const readout = await page
+      .locator('[data-testid="replay-position"]')
+      .textContent()
+      .catch(() => null);
+    replayStepOk = cardPosition === "2" && typeof readout === "string" && /^event 2 \/ \d+$/.test(readout.trim());
+    if (!replayStepOk) {
+      timelineErrors.push(
+        `replay-next did not advance to event 2 (card position=${cardPosition}, readout=${JSON.stringify(readout)})`,
+      );
+    }
+
+    // Two chapter chips; the first (superseded attempt) states "open".
+    const chips = page.locator('[data-testid="replay-chapter-chip"]');
+    const chipCount = await chips.count();
+    const firstChipOpen = chipCount > 0 ? await chips.first().getAttribute("data-chapter-open") : null;
+    const firstChipText = chipCount > 0 ? ((await chips.first().textContent()) ?? "").trim() : "";
+    replayChaptersOk = chipCount === 2 && firstChipOpen === "true" && firstChipText.includes("open");
+    if (!replayChaptersOk) {
+      timelineErrors.push(
+        `expected 2 chapter chips with the first stating open (count=${chipCount}, first open=${firstChipOpen}, text=${JSON.stringify(firstChipText)})`,
+      );
+    }
+
+    // Real playback pauses at BOTH dispatch beats. From event 2 (position 1),
+    // press play → first auto-pause at event 10; play again → second at
+    // event 12. The pause note is the visible card state; the chapter meta
+    // line carries the recorded lineage.
+    const pauseNote = page.locator('[data-testid="replay-pause-note"]');
+    const pausedAt = [];
+    let pauseLineage = "";
+    try {
+      for (let round = 0; round < 2; round++) {
+        await page.locator('[data-testid="replay-play"]').click();
+        // Resuming clears the previous pause card before the next beat shows
+        // it again — wait out the transition so round 2 can't re-read round 1.
+        await pauseNote.waitFor({ state: "hidden", timeout: 5000 });
+        await pauseNote.waitFor({ state: "visible", timeout: 20000 });
+        pausedAt.push(await card.getAttribute("data-event-position"));
+        if (round === 0) {
+          pauseLineage =
+            (await page.locator('[data-testid="replay-event-chapter"]').textContent()) ?? "";
+        }
+      }
+    } catch {
+      // fall through — pausedAt length records how far playback got
+    }
+    replayPausesOk =
+      pausedAt.length === 2 &&
+      pausedAt[0] === "10" &&
+      pausedAt[1] === "12" &&
+      pauseLineage.includes("lineage ");
+    if (!replayPausesOk) {
+      timelineErrors.push(
+        `playback did not auto-pause at both dispatch beats (paused at ${JSON.stringify(pausedAt)}, chapter line=${JSON.stringify(pauseLineage.trim())})`,
+      );
+    }
+  } else {
+    timelineErrors.push("replay lens not visible after clicking the Replay mode button");
+  }
+}
+
 await browser.close();
 if (previewServer) {
   await previewServer.close();
 }
 
 const report = {
-  ok: graphErrors.length === 0 && compareErrors.length === 0 && compareLensOk,
+  ok:
+    graphErrors.length === 0 &&
+    compareErrors.length === 0 &&
+    compareLensOk &&
+    timelineErrors.length === 0 &&
+    replayLensOk &&
+    replayStepOk &&
+    replayChaptersOk &&
+    replayPausesOk,
   expectedCount: expectedIds.size,
   initial: {
     renderedCount: initial.renderedIds.length,
@@ -246,6 +398,15 @@ const report = {
     schema_ok: compareErrors.length === 0,
     lens_visible: comparePresent ? compareLensOk : null,
     errors: compareErrors,
+  },
+  timeline: {
+    present: timelinePresent,
+    schema_ok: timelinePresent ? timelineErrors.length === 0 : null,
+    lens_visible: timelinePresent ? replayLensOk : null,
+    step_advanced_to_event_2: timelinePresent ? replayStepOk : null,
+    two_chapter_chips_first_open: timelinePresent ? replayChaptersOk : null,
+    auto_paused_at_both_dispatch_beats: timelinePresent ? replayPausesOk : null,
+    errors: timelineErrors,
   },
 };
 

@@ -1,0 +1,367 @@
+{
+  "chapters": [
+    {
+      "confidence": "medium",
+      "end_ts": null,
+      "event_indexes": [
+        9,
+        10
+      ],
+      "evidence_refs": [
+        "event:9"
+      ],
+      "kind": "repair_loop",
+      "label": "verdict-driven repair",
+      "lineage": "body-claude-w4-selfheal",
+      "open": true,
+      "redaction_state": "redacted",
+      "source_kind": "derived_v1",
+      "start_ts": "2026-07-11T06:35:19.398438Z"
+    },
+    {
+      "confidence": "medium",
+      "end_ts": "2026-07-11T06:38:42.790263Z",
+      "event_indexes": [
+        11,
+        12,
+        13
+      ],
+      "evidence_refs": [
+        "event:11",
+        "event:13"
+      ],
+      "kind": "repair_loop",
+      "label": "verdict-driven repair",
+      "lineage": "body-claude-w4-selfheal",
+      "open": false,
+      "redaction_state": "redacted",
+      "source_kind": "derived_v1",
+      "start_ts": "2026-07-11T06:36:40.787534Z"
+    }
+  ],
+  "confidence": "low",
+  "events": [
+    {
+      "confidence": "high",
+      "detail": {
+        "mode": "record",
+        "run_group": "body-claude-w4-cas",
+        "scenario": "record",
+        "status": "completed"
+      },
+      "evidence_refs": [
+        "artifact:run.json"
+      ],
+      "index": 0,
+      "kind": "run",
+      "label": "body-claude-w4-cas \u00b7 completed",
+      "redaction_state": "safe",
+      "source": "body-claude-w4-cas",
+      "source_kind": "collectable_v1",
+      "ts": "2026-07-11T06:31:47.356039Z"
+    },
+    {
+      "confidence": "high",
+      "detail": {
+        "mode": "record",
+        "run_group": "body-claude-w4-cas-warm",
+        "scenario": "record",
+        "status": "completed"
+      },
+      "evidence_refs": [
+        "artifact:run.json"
+      ],
+      "index": 1,
+      "kind": "run",
+      "label": "body-claude-w4-cas-warm \u00b7 completed",
+      "redaction_state": "safe",
+      "source": "body-claude-w4-cas-warm",
+      "source_kind": "collectable_v1",
+      "ts": "2026-07-11T06:31:55.420767Z"
+    },
+    {
+      "confidence": "high",
+      "detail": {
+        "mode": "record",
+        "run_group": "body-claude-w4-rexec",
+        "scenario": "record",
+        "status": "completed"
+      },
+      "evidence_refs": [
+        "artifact:run.json"
+      ],
+      "index": 2,
+      "kind": "run",
+      "label": "body-claude-w4-rexec \u00b7 completed",
+      "redaction_state": "safe",
+      "source": "body-claude-w4-rexec",
+      "source_kind": "collectable_v1",
+      "ts": "2026-07-11T06:32:27.282818Z"
+    },
+    {
+      "confidence": "high",
+      "detail": {
+        "mode": "record",
+        "run_group": "body-claude-w4-app-cas-warm",
+        "scenario": "record",
+        "status": "completed"
+      },
+      "evidence_refs": [
+        "artifact:run.json"
+      ],
+      "index": 3,
+      "kind": "run",
+      "label": "body-claude-w4-app-cas-warm \u00b7 completed",
+      "redaction_state": "safe",
+      "source": "body-claude-w4-app-cas-warm",
+      "source_kind": "collectable_v1",
+      "ts": "2026-07-11T06:33:55.089530Z"
+    },
+    {
+      "confidence": "low",
+      "detail": {
+        "classification": "first_pass_success",
+        "next_action": "none_complete",
+        "run_group": "body-claude-w4-cas",
+        "status": "ok"
+      },
+      "evidence_refs": [
+        "run-group:body-claude-w4-cas",
+        "artifact:run.json",
+        "collectable_v1:bazel-bep.json"
+      ],
+      "index": 4,
+      "kind": "verdict",
+      "label": "verdict \u00b7 ok \u00b7 none_complete",
+      "redaction_state": "safe",
+      "source": "body-claude-w4-cas",
+      "source_kind": "derived_v1",
+      "ts": "2026-07-11T06:34:32.617917Z"
+    },
+    {
+      "confidence": "low",
+      "detail": {
+        "classification": "first_pass_success",
+        "next_action": "none_complete",
+        "run_group": "body-claude-w4-cas-warm",
+        "status": "ok"
+      },
+      "evidence_refs": [
+        "run-group:body-claude-w4-cas-warm",
+        "artifact:run.json",
+        "collectable_v1:bazel-bep.json"
+      ],
+      "index": 5,
+      "kind": "verdict",
+      "label": "verdict \u00b7 ok \u00b7 none_complete",
+      "redaction_state": "safe",
+      "source": "body-claude-w4-cas-warm",
+      "source_kind": "derived_v1",
+      "ts": "2026-07-11T06:34:32.781324Z"
+    },
+    {
+      "confidence": "low",
+      "detail": {
+        "classification": "first_pass_success",
+        "next_action": "none_complete",
+        "run_group": "body-claude-w4-rexec",
+        "status": "ok"
+      },
+      "evidence_refs": [
+        "run-group:body-claude-w4-rexec",
+        "artifact:run.json",
+        "collectable_v1:bazel-bep.json"
+      ],
+      "index": 6,
+      "kind": "verdict",
+      "label": "verdict \u00b7 ok \u00b7 none_complete",
+      "redaction_state": "safe",
+      "source": "body-claude-w4-rexec",
+      "source_kind": "derived_v1",
+      "ts": "2026-07-11T06:34:32.919997Z"
+    },
+    {
+      "confidence": "low",
+      "detail": {
+        "classification": "first_pass_success",
+        "next_action": "none_complete",
+        "run_group": "body-claude-w4-app-cas-warm",
+        "status": "ok"
+      },
+      "evidence_refs": [
+        "run-group:body-claude-w4-app-cas-warm",
+        "artifact:run.json",
+        "collectable_v1:bazel-bep.json"
+      ],
+      "index": 7,
+      "kind": "verdict",
+      "label": "verdict \u00b7 ok \u00b7 none_complete",
+      "redaction_state": "safe",
+      "source": "body-claude-w4-app-cas-warm",
+      "source_kind": "derived_v1",
+      "ts": "2026-07-11T06:34:33.207906Z"
+    },
+    {
+      "confidence": "high",
+      "detail": {
+        "mode": "record",
+        "run_group": "body-claude-w4-selfheal-red",
+        "scenario": "record",
+        "status": "failed"
+      },
+      "evidence_refs": [
+        "artifact:run.json"
+      ],
+      "index": 8,
+      "kind": "run",
+      "label": "body-claude-w4-selfheal-red \u00b7 failed",
+      "redaction_state": "safe",
+      "source": "red",
+      "source_kind": "collectable_v1",
+      "ts": "2026-07-11T06:35:16.152084Z"
+    },
+    {
+      "confidence": "low",
+      "detail": {
+        "classification": "scenario_validation_failure",
+        "next_action": "dispatch_fix_with_evidence",
+        "run_group": "body-claude-w4-selfheal-red",
+        "status": "failed"
+      },
+      "evidence_refs": [
+        "run-group:body-claude-w4-selfheal-red",
+        "artifact:run.json",
+        "collectable_v1:bazel-bep.json",
+        "run:run_af3d0a4901ccee29f5c15ec0",
+        "invocation:invocations_15ae2bdefb039e2a288171b9",
+        "artifact:bazel.stderr.txt",
+        "artifact:bazel.stdout.txt"
+      ],
+      "index": 9,
+      "kind": "verdict",
+      "label": "verdict \u00b7 failed \u00b7 dispatch_fix_with_evidence",
+      "redaction_state": "redacted",
+      "source": "red",
+      "source_kind": "derived_v1",
+      "ts": "2026-07-11T06:35:19.398438Z"
+    },
+    {
+      "confidence": "high",
+      "detail": {
+        "mode": "record",
+        "run_group": "body-claude-w4-selfheal-green",
+        "scenario": "record",
+        "status": "failed"
+      },
+      "evidence_refs": [
+        "artifact:run.json"
+      ],
+      "index": 10,
+      "kind": "run",
+      "label": "body-claude-w4-selfheal-green \u00b7 failed",
+      "redaction_state": "safe",
+      "source": "green-iter1-red",
+      "source_kind": "collectable_v1",
+      "ts": "2026-07-11T06:35:51.666038Z"
+    },
+    {
+      "confidence": "low",
+      "detail": {
+        "classification": "scenario_validation_failure",
+        "next_action": "dispatch_fix_with_evidence",
+        "run_group": "body-claude-w4-selfheal-green",
+        "status": "failed"
+      },
+      "evidence_refs": [
+        "run-group:body-claude-w4-selfheal-green",
+        "artifact:run.json",
+        "collectable_v1:bazel-bep.json",
+        "run:run_fbebc7dd6e612e8374e625dd",
+        "invocation:invocations_2877d69867ec2cea1eaf0686",
+        "artifact:bazel.stderr.txt",
+        "artifact:bazel.stdout.txt"
+      ],
+      "index": 11,
+      "kind": "verdict",
+      "label": "verdict \u00b7 failed \u00b7 dispatch_fix_with_evidence",
+      "redaction_state": "redacted",
+      "source": "green-iter1-red",
+      "source_kind": "derived_v1",
+      "ts": "2026-07-11T06:36:40.787534Z"
+    },
+    {
+      "confidence": "high",
+      "detail": {
+        "mode": "record",
+        "run_group": "body-claude-w4-selfheal-green",
+        "scenario": "record",
+        "status": "completed"
+      },
+      "evidence_refs": [
+        "artifact:run.json"
+      ],
+      "index": 12,
+      "kind": "run",
+      "label": "body-claude-w4-selfheal-green \u00b7 completed",
+      "redaction_state": "safe",
+      "source": "green",
+      "source_kind": "collectable_v1",
+      "ts": "2026-07-11T06:38:39.366276Z"
+    },
+    {
+      "confidence": "low",
+      "detail": {
+        "classification": "first_pass_success",
+        "next_action": "none_complete",
+        "run_group": "body-claude-w4-selfheal-green",
+        "status": "ok"
+      },
+      "evidence_refs": [
+        "run-group:body-claude-w4-selfheal-green",
+        "artifact:run.json",
+        "collectable_v1:bazel-bep.json"
+      ],
+      "index": 13,
+      "kind": "verdict",
+      "label": "verdict \u00b7 ok \u00b7 none_complete",
+      "redaction_state": "safe",
+      "source": "green",
+      "source_kind": "derived_v1",
+      "ts": "2026-07-11T06:38:42.790263Z"
+    }
+  ],
+  "evidence_refs": [
+    "db:red",
+    "db:green-iter1-red",
+    "db:green",
+    "db:body-claude-w4-cas",
+    "db:body-claude-w4-cas-warm",
+    "db:body-claude-w4-rexec",
+    "db:body-claude-w4-app-cas-warm"
+  ],
+  "generated_at": "2026-07-11T15:32:55.667626Z",
+  "projection_kind": "timeline",
+  "redaction_state": "redacted",
+  "schema_version": 1,
+  "source_kind": "derived_v1",
+  "sources": [
+    "red",
+    "green-iter1-red",
+    "green",
+    "body-claude-w4-cas",
+    "body-claude-w4-cas-warm",
+    "body-claude-w4-rexec",
+    "body-claude-w4-app-cas-warm"
+  ],
+  "span": {
+    "end": "2026-07-11T06:38:42.790263Z",
+    "start": "2026-07-11T06:31:47.356039Z"
+  },
+  "summary": {
+    "events": 14,
+    "receipts": 0,
+    "repair_loops": 2,
+    "runs": 7,
+    "verdicts": 7
+  }
+}

@@ -3,12 +3,14 @@ import { createElement } from "react";
 import type { ComponentInstance, ComponentKind } from "../view/types";
 import { CHART_PANELS } from "./ChartPanel";
 import { OPERATOR_PANELS } from "./OperatorPanel";
+import { REPLAY_PANELS } from "./ReplayPanel";
 import { TABLE_PANELS } from "./TablePanel";
 
 const PANEL_REGISTRY: Partial<Record<ComponentKind, FunctionComponent<ComponentInstance>>> = {
   ...CHART_PANELS,
   ...TABLE_PANELS,
   ...OPERATOR_PANELS,
+  ...REPLAY_PANELS,
 };
 
 export function renderPanel(instance: ComponentInstance): ReactNode {
@@ -28,4 +30,4 @@ export function renderPanel(instance: ComponentInstance): ReactNode {
   return createElement(Panel, instance);
 }
 
-export { CHART_PANELS, TABLE_PANELS, OPERATOR_PANELS, PANEL_REGISTRY };
+export { CHART_PANELS, TABLE_PANELS, OPERATOR_PANELS, REPLAY_PANELS, PANEL_REGISTRY };

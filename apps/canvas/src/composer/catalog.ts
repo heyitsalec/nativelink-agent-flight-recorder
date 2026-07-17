@@ -13,7 +13,7 @@ export type CatalogEntry = {
   props_schema: CatalogPropSchema;
 };
 
-/** v1 component catalog — 15 kinds from docs/design/component-catalog.md */
+/** v1 component catalog — 16 kinds from docs/design/component-catalog.md */
 export const COMPONENT_CATALOG: CatalogEntry[] = [
   {
     kind: "projection_notice",
@@ -39,7 +39,7 @@ export const COMPONENT_CATALOG: CatalogEntry[] = [
     default_testid: "canvas-mode-rail",
     binding_required: false,
     props_schema: {
-      modes: { type: "string", default: "graph,runway,proof,remote,compare" },
+      modes: { type: "string", default: "graph,runway,proof,remote,compare,replay" },
     },
   },
   {
@@ -150,13 +150,22 @@ export const COMPONENT_CATALOG: CatalogEntry[] = [
     },
   },
   {
+    kind: "replay_timeline",
+    region: "rail",
+    default_testid: "replay-lens",
+    binding_required: true,
+    props_schema: {
+      empty_state_path_hint: { type: "string", default: "/projections/timeline.json" },
+    },
+  },
+  {
     kind: "operator_command_bar",
     region: "operator",
     default_testid: "operator-chat",
     binding_required: false,
     props_schema: {
       placeholder: { type: "string", default: "focus cache misses" },
-      commands: { type: "string", default: "cache,fail,proof,remote,agent,compare,runway,reset" },
+      commands: { type: "string", default: "cache,fail,proof,remote,agent,compare,replay,runway,reset" },
     },
   },
 ];

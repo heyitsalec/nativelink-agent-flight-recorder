@@ -1,7 +1,12 @@
 import { withBase } from "../lib/basePath";
 import { classifyBindingFetch, projectionParseDetail } from "../pageModel";
 import { sampleProofPacket, sampleProjection } from "../sampleProjection";
-import type { ActionGraphProjection, CompareProjection, ProofPacket } from "../types";
+import type {
+  ActionGraphProjection,
+  CompareProjection,
+  ProofPacket,
+  TimelineProjection,
+} from "../types";
 import type {
   BindingKey,
   BindingResolveStatus,
@@ -14,6 +19,7 @@ export type ResolvedBindings = {
   actionGraph: ActionGraphProjection;
   proofPacket: ProofPacket;
   compareProjection: CompareProjection | null;
+  timelineProjection: TimelineProjection | null;
   usingFixtureFallback: boolean;
   entries: ResolvedBindingEntry[];
   values: Record<BindingKey, unknown>;
@@ -126,6 +132,9 @@ export async function resolveBindings(spec: ViewSpec): Promise<ResolvedBindings>
   const proofPacket =
     (values["binding.proof_packet"] as ProofPacket | undefined) ?? sampleProofPacket;
   const compareProjection = (values["binding.compare"] as CompareProjection | null) ?? null;
+  // Optional, no fallback (compare's null-when-absent pattern): the replay lens
+  // renders its honest empty state when this stays null.
+  const timelineProjection = (values["binding.timeline"] as TimelineProjection | null) ?? null;
 
   if (!values["binding.action_graph"]) usingFixtureFallback = true;
   if (!values["binding.proof_packet"] && status["binding.proof_packet"] === "fixture") {
@@ -136,6 +145,7 @@ export async function resolveBindings(spec: ViewSpec): Promise<ResolvedBindings>
     actionGraph,
     proofPacket,
     compareProjection,
+    timelineProjection,
     usingFixtureFallback,
     entries,
     values,

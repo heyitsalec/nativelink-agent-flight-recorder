@@ -24,7 +24,7 @@ export type RunGroupChangeResult = {
 };
 
 const INSPECTOR_MODES: ViewModeId[] = ["graph", "runway"];
-const LENS_MODES: ViewModeId[] = ["proof", "remote", "compare"];
+const LENS_MODES: ViewModeId[] = ["proof", "remote", "compare", "replay"];
 
 function defaultFocusForMode(spec: ViewSpec, mode: ViewModeId): FocusFilter {
   const lens = spec.modes.find((entry) => entry.mode_id === mode);
