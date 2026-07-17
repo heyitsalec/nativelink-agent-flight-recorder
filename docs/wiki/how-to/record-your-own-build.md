@@ -48,7 +48,7 @@ Every projected row carries the NLFR truth labels: `source_kind`, `confidence`,
 ## Common options
 
 ```bash
-# Name the run group (default: record-<UTC date>, e.g. record-2026-07-06)
+# Name the run group (default: record-<UTC date>-<8-hex id>, e.g. record-2026-07-06-1a2b3c4d)
 nlfr record --run-group nightly -- bazel test //...
 
 # Record from a different workspace root
