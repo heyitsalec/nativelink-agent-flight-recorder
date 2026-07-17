@@ -202,7 +202,7 @@
         "reference_key": { "type": "string" },
         "name": { "type": ["string", "null"] },
         "uri": { "type": ["string", "null"] },
-        "presence": { "enum": ["local_verified", "local_present", "local_mismatch", "missing", "unverified_remote_reference"] },
+        "presence": { "enum": ["local_verified", "local_present", "local_mismatch", "missing", "unverified_remote_reference", "remote_verified", "remote_present", "remote_mismatch", "remote_missing"] },
         "digest_verified": { "type": ["boolean", "null"] },
         "declared_digest": { "type": ["string", "null"] },
         "computed_digest": { "type": ["string", "null"] },
