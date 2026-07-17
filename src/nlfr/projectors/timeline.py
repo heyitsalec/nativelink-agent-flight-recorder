@@ -288,15 +288,19 @@ _REDACTION_ORDER = ("blocked", "redacted", "safe", "unknown")
 
 
 def _redaction_rollup(values: list[str | None]) -> str:
-    """Mirror proof.py's rule: the most-restrictive state present wins."""
+    """Mirror proof.py's rule: blocked/redacted win, `safe` only when every
+    contributing row is safe, and anything unassessed rolls up as `unknown` —
+    never `safe`."""
 
-    present = {value for value in values if value}
+    present = {value if value else "unknown" for value in values}
+    if not present:
+        return "unknown"
     for state in _REDACTION_ORDER[:2]:
         if state in present:
             return state
-    if "safe" in present:
+    if present == {"safe"}:
         return "safe"
-    return "unknown" if not present else "safe"
+    return "unknown"
 
 
 def _weakest(consulted: list[dict[str, Any]]) -> str:

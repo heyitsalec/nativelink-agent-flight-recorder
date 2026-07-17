@@ -413,3 +413,65 @@ def test_cli_db_and_db_root_overlap_deduplicates(tmp_path: Path) -> None:
     # groupA passed twice (explicit + discovered) must count once
     assert sorted(projection["sources"]) == ["groupA", "groupB"]
     assert projection["summary"]["runs"] == 2
+
+
+def test_redaction_rollup_never_promotes_unknown_to_safe() -> None:
+    from nlfr.projectors.timeline import _redaction_rollup
+
+    # unassessed rows (schema default "unknown", or missing) must never
+    # roll up as "safe" — the untrusted default stays visible
+    assert _redaction_rollup(["unknown", "unknown"]) == "unknown"
+    assert _redaction_rollup([None, "unknown"]) == "unknown"
+    assert _redaction_rollup(["safe", "unknown"]) == "unknown"
+    assert _redaction_rollup(["safe", None]) == "unknown"
+    assert _redaction_rollup([]) == "unknown"
+    assert _redaction_rollup(["safe", "safe"]) == "safe"
+    assert _redaction_rollup(["safe", "redacted", "unknown"]) == "redacted"
+    assert _redaction_rollup(["redacted", "blocked"]) == "blocked"
+
+
+def test_all_unassessed_rows_roll_up_unknown_not_safe(tmp_path: Path) -> None:
+    db = tmp_path / "unassessed" / "nlfr.sqlite"
+    db.parent.mkdir()
+    conn = initialize(connect(db))
+    run_id = upsert_run(
+        conn,
+        stable_key="run:selfheal-red",
+        run_group="selfheal-red",
+        scenario="loop",
+        mode="cache-only",
+        status="failed",
+        started_at="2026-07-11T01:00:00Z",
+        source_kind="collectable_v1",
+        confidence="high",
+        evidence_refs=["run:selfheal-red"],
+        redaction_state="unknown",
+    )
+    upsert_proof_block(
+        conn,
+        stable_key=f"{run_id}:evaluation",
+        run_id=run_id,
+        block_key="evaluation",
+        block_kind="evaluation",
+        title="Evaluation verdict",
+        summary="status=failed",
+        payload=_verdict_payload(
+            "2026-07-11T01:10:00Z", "failed", "dispatch_fix_with_evidence",
+            "selfheal-red",
+        ),
+        source_kind="derived_v1",
+        confidence="medium",
+        evidence_refs=["run-group:selfheal-red"],
+        redaction_state="unknown",
+    )
+    conn.commit()
+    conn.close()
+    ro = connect_readonly(db)
+    try:
+        projection = build_timeline_projection([("unassessed", ro)])
+    finally:
+        ro.close()
+    assert projection["redaction_state"] == "unknown"
+    (chapter,) = projection["chapters"]
+    assert chapter["open"] is True
+    assert chapter["redaction_state"] == "unknown"
