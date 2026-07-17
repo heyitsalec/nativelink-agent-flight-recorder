@@ -49,9 +49,14 @@ def _yaml_capable_python() -> str | None:
         if not py or py in seen:
             continue
         seen.add(py)
-        probe = subprocess.run(
-            [py, "-c", "import yaml"], capture_output=True, text=True
-        )
+        try:
+            probe = subprocess.run(
+                [py, "-c", "import yaml"], capture_output=True, text=True
+            )
+        except OSError:
+            # Hardcoded candidates (/usr/bin/python3, /opt/homebrew/bin/python3)
+            # may simply not exist on this host — skip them, don't error.
+            continue
         if probe.returncode == 0:
             return py
     return None
