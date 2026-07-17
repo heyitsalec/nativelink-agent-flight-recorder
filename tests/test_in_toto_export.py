@@ -592,3 +592,32 @@ def test_run_group_with_runs_but_zero_artifacts_is_also_a_hard_error(tmp_path: P
     # Both the artifact-less group and the real one appear in the guidance list.
     assert "artifactless-group" in message
     assert RUN_GROUP in message
+
+
+def test_predicate_contract_presence_enum_covers_verification_vocabulary() -> None:
+    """Drift guard (found by downstream contract consumers, 2026-07-17): the
+    exporter emits every presence marker ``ingest.verification`` can produce,
+    so the predicate contract's ``presence`` enum must be a superset of that
+    vocabulary. The remote_* markers (issue #81 part A) shipped in the code
+    without extending the enum — real cluster-recorded exports then failed
+    downstream schema validation while nlfr's own local fixtures (which never
+    probe a CAS) kept passing."""
+
+    from nlfr.ingest import verification as v
+
+    contract = json.loads(
+        (ROOT / "contracts" / "in_toto_proof_predicate.v1.json").read_text()
+    )
+    enum = set(
+        contract["$defs"]["artifact_reference"]["properties"]["presence"]["enum"]
+    )
+    vocabulary = {
+        value
+        for name, value in vars(v).items()
+        if name.startswith("PRESENCE_") and isinstance(value, str)
+    }
+    assert vocabulary, "verification module must expose PRESENCE_* markers"
+    missing = vocabulary - enum
+    assert not missing, (
+        f"contract presence enum is missing markers the code can emit: {sorted(missing)}"
+    )
