@@ -22,7 +22,7 @@
   "patch": {
     "format": "unified_diff",
     "applies_to": "demo/bazel-monorepo",
-    "diff": "diff --git a/tasks/priority_test.py b/tasks/priority_test.py\n--- a/tasks/priority_test.py\n+++ b/tasks/priority_test.py\n@@ -7,3 +7,7 @@\n \n def test_describe_task_keeps_leaf_label_readable():\n     assert describe_task(\"NLFR-3\", 72) == \"NLFR-3: normal\"\n+\n+\n+def test_priority_band_marks_backlog_work():\n+    assert priority_band(10) == \"backlog\"\n"
+    "diff": "diff --git a/tasks/priority_test.py b/tasks/priority_test.py\n--- a/tasks/priority_test.py\n+++ b/tasks/priority_test.py\n@@ -7,6 +7,10 @@\n \n def test_describe_task_keeps_leaf_label_readable():\n     assert describe_task(\"NLFR-3\", 72) == \"NLFR-3: normal\"\n+\n+\n+def test_priority_band_marks_backlog_work():\n+    assert priority_band(10) == \"backlog\"\n \n \n if __name__ == \"__main__\":\n"
   },
   "expected_result": {
     "run_expectation": "passes_when_applied",
