@@ -66,23 +66,32 @@ def make_handler(root: Path) -> type[BaseHTTPRequestHandler]:
             path = urlparse(self.path).path
             if path == "/" or path == "/index.json":
                 # Only real files (not symlinks, which would 403 on fetch)
-                # so the listing never advertises an unservable name.
+                # so the listing never advertises an unservable name. A real
+                # on-disk index.json is excluded too: this route shadows it,
+                # so listing it would promise verbatim bytes GET can't give —
+                # the shadowing is disclosed instead of papered over.
                 names = sorted(
                     p.name
                     for p in root.iterdir()
-                    if p.is_file() and not p.is_symlink() and p.suffix == ".json"
+                    if p.is_file()
+                    and not p.is_symlink()
+                    and p.suffix == ".json"
+                    and p.name != "index.json"
                 )
-                self._send_json(
-                    200,
-                    {
-                        "server": "nlfr-serve",
-                        "projections": names,
-                        "note": (
-                            "this index is server-synthesized metadata; the projection "
-                            "FILES it lists are served byte-for-byte and invent no state"
-                        ),
-                    },
-                )
+                payload: dict[str, object] = {
+                    "server": "nlfr-serve",
+                    "projections": names,
+                    "note": (
+                        "this index is server-synthesized metadata; the projection "
+                        "FILES it lists are served byte-for-byte and invent no state"
+                    ),
+                }
+                if (root / "index.json").is_file():
+                    payload["shadowed"] = [
+                        "index.json (an on-disk file of this name exists but cannot be "
+                        "served verbatim at this route; rename it to serve it)"
+                    ]
+                self._send_json(200, payload)
                 return
             target = _resolve_within(root, path)
             if target is None:
@@ -91,15 +100,26 @@ def make_handler(root: Path) -> type[BaseHTTPRequestHandler]:
             if target.suffix != ".json":
                 self._reject(404, "only .json projections are served")
                 return
-            if not target.is_file():
+            # The stat/read pair is guarded: an unreadable file (mode 000,
+            # foreign-owned) or one deleted between checks (TOCTOU) must be
+            # an honest status, never a dropped connection — the same
+            # honest-errors rule the resolver already follows.
+            try:
+                if not target.is_file():
+                    self._reject(404, "no such projection")
+                    return
+                if target.stat().st_size > MAX_PROJECTION_BYTES:
+                    self._reject(413, "projection exceeds the served size cap")
+                    return
+                # Serve the exact bytes; validate it is JSON so a corrupt file
+                # is an honest 500, never silently served as something else.
+                raw = target.read_bytes()
+            except FileNotFoundError:
                 self._reject(404, "no such projection")
                 return
-            if target.stat().st_size > MAX_PROJECTION_BYTES:
-                self._reject(413, "projection exceeds the served size cap")
+            except OSError as exc:
+                self._reject(500, f"projection is not readable: {exc.__class__.__name__}")
                 return
-            # Serve the exact bytes; validate it is JSON so a corrupt file is
-            # an honest 500, never silently served as something else.
-            raw = target.read_bytes()
             try:
                 json.loads(raw)
             except json.JSONDecodeError as exc:

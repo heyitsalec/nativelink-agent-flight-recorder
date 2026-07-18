@@ -172,3 +172,50 @@ def test_write_methods_are_rejected(tmp_path: Path) -> None:
             assert e.code == 405
     finally:
         server.shutdown()
+
+
+def test_unreadable_projection_is_an_honest_500_not_a_dropped_connection(tmp_path: Path) -> None:
+    # Fable re-review fold: read_bytes()/stat() were unguarded, so a file
+    # that passes is_file() but fails to read (mode 000, or deleted between
+    # checks) dropped the TCP connection — the class the honest-errors rule
+    # forbids. It must be an honest status with a JSON body instead.
+    import os
+
+    if os.geteuid() == 0:  # root reads mode-000 files; the trigger needs a non-root run
+        return
+    doc = tmp_path / "locked.json"
+    doc.write_text("{}")
+    doc.chmod(0)
+    server, base = _serve(tmp_path)
+    try:
+        try:
+            status, body = _get(f"{base}/locked.json")
+        except urllib.error.HTTPError as exc:  # urllib raises on 5xx; that IS a served status
+            status, body = exc.code, exc.read()
+        assert status == 500
+        assert "not readable" in json.loads(body)["error"]
+    finally:
+        doc.chmod(0o644)
+        server.shutdown()
+
+
+def test_on_disk_index_json_is_never_listed_and_shadowing_is_disclosed(tmp_path: Path) -> None:
+    # Fable re-review fold: the synthesized index shadows a real index.json;
+    # listing that name would promise verbatim bytes GET cannot give. It is
+    # excluded from `projections` and the shadowing disclosed instead.
+    (tmp_path / "index.json").write_text(json.dumps({"real": "on-disk file"}))
+    (tmp_path / "fleet.json").write_text(json.dumps({"schema": "x"}))
+    server, base = _serve(tmp_path)
+    try:
+        status, body = _get(f"{base}/index.json")
+        assert status == 200
+        index = json.loads(body)
+        assert index["server"] == "nlfr-serve", "route serves the synthesized index"
+        assert index["projections"] == ["fleet.json"], "shadowed name is not advertised"
+        assert any("index.json" in s for s in index["shadowed"])
+        # Absent an on-disk index.json there is no shadowed key at all.
+        (tmp_path / "index.json").unlink()
+        status, body = _get(f"{base}/")
+        assert "shadowed" not in json.loads(body)
+    finally:
+        server.shutdown()
