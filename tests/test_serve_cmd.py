@@ -102,6 +102,64 @@ def test_corrupt_projection_is_a_500_not_silently_served(tmp_path: Path) -> None
         server.shutdown()
 
 
+def test_null_byte_path_is_an_honest_reject_not_a_crash(tmp_path: Path) -> None:
+    # A NUL byte in the path must be refused with an HTTP status, never an
+    # uncaught ValueError that drops the connection (PR#119 review fold).
+    (tmp_path / "real.json").write_text("{}")
+    assert _resolve_within(tmp_path, "/real.json%00.txt") is None
+    assert _resolve_within(tmp_path, "/\x00") is None
+    server, base = _serve(tmp_path)
+    try:
+        try:
+            _get(f"{base}/real.json%00.txt")
+            assert False, "expected an HTTP error status"
+        except urllib.error.HTTPError as e:
+            assert e.code in (400, 403, 404), f"got {e.code}"  # any honest status, not a crash
+    finally:
+        server.shutdown()
+
+
+def test_directory_symlink_escape_is_refused(tmp_path: Path) -> None:
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "secret.json").write_text('{"secret": true}')
+    root = tmp_path / "served"
+    root.mkdir()
+    (root / "linkdir").symlink_to(outside)  # directory symlink out of root
+    assert _resolve_within(root, "/linkdir/secret.json") is None
+
+
+def test_oversize_projection_is_413(tmp_path: Path) -> None:
+    from nlfr.commands.serve_cmd import MAX_PROJECTION_BYTES
+
+    big = tmp_path / "big.json"
+    big.write_text("[" + "0," * (MAX_PROJECTION_BYTES // 2) + "0]")
+    assert big.stat().st_size > MAX_PROJECTION_BYTES
+    server, base = _serve(tmp_path)
+    try:
+        try:
+            _get(f"{base}/big.json")
+            assert False, "expected 413"
+        except urllib.error.HTTPError as e:
+            assert e.code == 413
+    finally:
+        server.shutdown()
+
+
+def test_index_skips_symlinks(tmp_path: Path) -> None:
+    (tmp_path / "real.json").write_text("{}")
+    outside = tmp_path / "out"
+    outside.mkdir()
+    (outside / "t.json").write_text("{}")
+    (tmp_path / "linked.json").symlink_to(outside / "t.json")
+    server, base = _serve(tmp_path)
+    try:
+        status, body = _get(f"{base}/")
+        assert json.loads(body)["projections"] == ["real.json"], "symlink advertised"
+    finally:
+        server.shutdown()
+
+
 def test_write_methods_are_rejected(tmp_path: Path) -> None:
     (tmp_path / "fleet.json").write_text("{}")
     server, base = _serve(tmp_path)

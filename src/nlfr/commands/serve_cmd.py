@@ -22,14 +22,26 @@ def _resolve_within(root: Path, url_path: str) -> Path | None:
     # Normalize the percent-decoded POSIX path, strip leading slashes, and
     # reject any component that would climb out of root.
     decoded = unquote(url_path)
+    if "\x00" in decoded:
+        return None  # embedded NUL — reject before it reaches the filesystem
     normalized = posixpath.normpath(decoded).lstrip("/")
-    if normalized in ("", "."):
-        return root.resolve()
-    candidate = (root / normalized).resolve()
-    root_resolved = root.resolve()
+    try:
+        if normalized in ("", "."):
+            return root.resolve()
+        candidate = (root / normalized).resolve()
+        root_resolved = root.resolve()
+    except (ValueError, OSError):
+        # Any path the OS refuses to stat (NUL, too long, bad bytes) is an
+        # honest rejection, never an uncaught crash (PR#119 review fold).
+        return None
     if candidate == root_resolved or root_resolved in candidate.parents:
         return candidate
     return None
+
+
+# Local dev tool: cap the served file size so a giant file can't exhaust
+# memory. Projections are small (KBs–low MBs); 64 MiB is generous.
+MAX_PROJECTION_BYTES = 64 * 1024 * 1024
 
 
 def make_handler(root: Path) -> type[BaseHTTPRequestHandler]:
@@ -53,15 +65,22 @@ def make_handler(root: Path) -> type[BaseHTTPRequestHandler]:
         def do_GET(self) -> None:  # noqa: N802 (stdlib naming)
             path = urlparse(self.path).path
             if path == "/" or path == "/index.json":
+                # Only real files (not symlinks, which would 403 on fetch)
+                # so the listing never advertises an unservable name.
                 names = sorted(
-                    p.name for p in root.iterdir() if p.is_file() and p.suffix == ".json"
+                    p.name
+                    for p in root.iterdir()
+                    if p.is_file() and not p.is_symlink() and p.suffix == ".json"
                 )
                 self._send_json(
                     200,
                     {
                         "server": "nlfr-serve",
                         "projections": names,
-                        "note": "read-only; serves exactly the exported JSON on disk, invents no state",
+                        "note": (
+                            "this index is server-synthesized metadata; the projection "
+                            "FILES it lists are served byte-for-byte and invent no state"
+                        ),
                     },
                 )
                 return
@@ -74,6 +93,9 @@ def make_handler(root: Path) -> type[BaseHTTPRequestHandler]:
                 return
             if not target.is_file():
                 self._reject(404, "no such projection")
+                return
+            if target.stat().st_size > MAX_PROJECTION_BYTES:
+                self._reject(413, "projection exceeds the served size cap")
                 return
             # Serve the exact bytes; validate it is JSON so a corrupt file is
             # an honest 500, never silently served as something else.
@@ -118,6 +140,13 @@ def run(args: argparse.Namespace) -> int:
         f"serving {root} ({len(list(root.glob('*.json')))} projections)",
         flush=True,
     )
+    if str(bound_host) not in ("127.0.0.1", "::1", "localhost"):
+        print(
+            "nlfr serve: WARNING — bound to a non-loopback interface; projections "
+            "(which can carry paths and evidence) are served with NO authentication "
+            "to anyone who can reach this address.",
+            flush=True,
+        )
     try:
         server.serve_forever()
     except KeyboardInterrupt:
@@ -140,6 +169,10 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         default="projections",
         help="directory of exported .json projections to serve (default: projections)",
     )
-    parser.add_argument("--host", default="127.0.0.1", help="bind host")
+    parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="bind host (default loopback; a non-loopback host serves projections UNAUTHENTICATED)",
+    )
     parser.add_argument("--port", type=int, default=8080, help="bind port")
     parser.set_defaults(handler=run)
