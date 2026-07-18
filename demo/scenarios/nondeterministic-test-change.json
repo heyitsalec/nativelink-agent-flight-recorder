@@ -22,7 +22,7 @@
   "patch": {
     "format": "unified_diff",
     "applies_to": "demo/bazel-monorepo",
-    "diff": "diff --git a/tasks/priority_test.py b/tasks/priority_test.py\n--- a/tasks/priority_test.py\n+++ b/tasks/priority_test.py\n@@ -1,4 +1,5 @@\n from tasks.priority import describe_task, priority_band\n+import random\n \n \n def test_priority_band_marks_urgent_work():\n@@ -7,3 +8,7 @@\n \n def test_describe_task_keeps_leaf_label_readable():\n     assert describe_task(\"NLFR-3\", 72) == \"NLFR-3: normal\"\n+\n+\n+def test_scheduler_jitter_is_stable():\n+    assert random.choice([True, False])\n"
+    "diff": "diff --git a/tasks/priority_test.py b/tasks/priority_test.py\n--- a/tasks/priority_test.py\n+++ b/tasks/priority_test.py\n@@ -1,4 +1,5 @@\n from tasks.priority import describe_task, priority_band\n+import random\n \n \n def test_priority_band_marks_urgent_work():\n@@ -7,6 +8,10 @@\n \n def test_describe_task_keeps_leaf_label_readable():\n     assert describe_task(\"NLFR-3\", 72) == \"NLFR-3: normal\"\n+\n+\n+def test_scheduler_jitter_is_stable():\n+    assert random.choice([True, False])\n \n \n if __name__ == \"__main__\":\n"
   },
   "expected_result": {
     "run_expectation": "may_pass_or_fail_without_code_changes",
