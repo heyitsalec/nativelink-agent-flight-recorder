@@ -8,6 +8,7 @@ def test_priority_band_marks_urgent_work():
 def test_describe_task_keeps_leaf_label_readable():
     assert describe_task("NLFR-3", 72) == "NLFR-3: normal"
 
+
 if __name__ == "__main__":
     # py_test executes this file as a script: without a main block the
     # test functions above are DEFINED but never CALLED, so the target is
